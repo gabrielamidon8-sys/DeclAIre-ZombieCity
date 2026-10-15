@@ -111,6 +111,17 @@ var ZB = (function () {
 
   /* ---------- drawing ---------- */
   var NOBLINK = false;
+  // Level of detail: 2 = everything, 1 = drops a few purely decorative layers, 0 = silhouette parts only.
+  // Portraits always draw at full detail.
+  var DETAIL = 2, SKIP = [{ glow: 1, smoke: 1, flames: 1, chains: 1, plates: 1, circuits: 1, eyes: 1, mushrooms: 1 }, { smoke: 1, chains: 1, plates: 1 }, {}];
+  var GLOW = {};
+  function glowImg(col) {          // the soft glow, rendered once per colour instead of a fresh gradient every frame
+    var c = GLOW[col]; if (c) return c;
+    c = document.createElement('canvas'); c.width = c.height = 96;
+    var g = c.getContext('2d'), gr = g.createRadialGradient(48, 48, 48 * 0.18, 48, 48, 48);
+    gr.addColorStop(0, hexA(col, 1)); gr.addColorStop(1, hexA(col, 0)); g.fillStyle = gr; g.fillRect(0, 0, 96, 96);
+    GLOW[col] = c; return c;
+  }
   var HEAD = { brute: 0.45, hound: 0.95, spider: 0.35, serpent: 0.1, wraith: 0.3, blob: 0.25, insect: 0.6, golem: 0.75, horror: 0, eye: 0 };
   function seeded(n) { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
   function circ(g, x, y, r) { g.beginPath(); g.arc(x, y, Math.max(0.5, r), 0, TAU); g.fill(); }
@@ -251,7 +262,7 @@ var ZB = (function () {
         g.fillStyle = '#3a3f45'; circ(g, 0, 0, r * 0.1); g.restore();
       }
     },
-    glow: function (g, r, C, T) { var gr = g.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 2.2); gr.addColorStop(0, hexA(C[2], 0.35 + Math.sin(T * 3) * 0.1)); gr.addColorStop(1, hexA(C[2], 0)); g.fillStyle = gr; circ(g, 0, 0, r * 2.2); },
+    glow: function (g, r, C, T) { var a = g.globalAlpha; g.globalAlpha = a * (0.35 + Math.sin(T * 3) * 0.1); g.drawImage(glowImg(C[2]), -r * 2.2, -r * 2.2, r * 4.4, r * 4.4); g.globalAlpha = a; },
     smoke: function (g, r, C, T) { g.fillStyle = 'rgba(10,8,14,0.35)'; for (var i = 0; i < 5; i++) { var k = (T * 0.8 + i / 5) % 1; circ(g, -r * (0.8 + k * 1.6), Math.sin(i * 2.1 + T) * r * 0.5, r * (0.35 + k * 0.4)); } },
     tail: function (g, r, C, T) { g.fillStyle = shade(C[0], -0.05); for (var i = 0; i < 6; i++) { var x = -r * (0.9 + i * 0.28), y = Math.sin(T * 5 - i * 0.6) * r * 0.08 * i; circ(g, x, y, r * (0.22 - i * 0.025)); g.fillStyle = C[1]; g.beginPath(); g.moveTo(x, y - r * 0.15); g.lineTo(x - r * 0.08, y - r * 0.3); g.lineTo(x - r * 0.12, y - r * 0.12); g.fill(); g.fillStyle = shade(C[0], -0.05); } },
     spikes: function (g, r, C) { g.fillStyle = C[1]; for (var i = 0; i < 10; i++) { var a = i / 10 * TAU + 0.3; g.beginPath(); g.moveTo(Math.cos(a - 0.12) * r * 0.85, Math.sin(a - 0.12) * r * 0.85); g.lineTo(Math.cos(a) * r * 1.3, Math.sin(a) * r * 1.3); g.lineTo(Math.cos(a + 0.12) * r * 0.85, Math.sin(a + 0.12) * r * 0.85); g.fill(); } },
@@ -289,10 +300,10 @@ var ZB = (function () {
     if (mut) g.translate((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4);
     g.rotate(z.ang); g.scale(sc, sc);
     var look = (rb.look == null ? 0 : rb.look) - z.ang;
-    var p, j;
-    for (j = 0; j < F.parts.length; j++) { p = F.parts[j]; if (UNDER[p] && PART[p]) PART[p](g, r, C, T, z, hx); }
+    var p, j, sk = NOBLINK ? SKIP[2] : SKIP[DETAIL];
+    for (j = 0; j < F.parts.length; j++) { p = F.parts[j]; if (UNDER[p] && PART[p] && !sk[p]) PART[p](g, r, C, T, z, hx); }
     BODY[F.body](g, r, C, T, z.walk || 0, def.id, look);
-    for (j = 0; j < F.parts.length; j++) { p = F.parts[j]; if (!UNDER[p] && PART[p]) PART[p](g, r, C, T, z, hx); }
+    for (j = 0; j < F.parts.length; j++) { p = F.parts[j]; if (!UNDER[p] && PART[p] && !sk[p]) PART[p](g, r, C, T, z, hx); }
     if (z.flash > 0 || mut) { var gc = g.globalCompositeOperation; g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,255,255,' + Math.min(0.5, (z.flash || 0) * 5 + (mut ? 0.25 + Math.sin(T * 30) * 0.2 : 0)) + ')'; circ(g, 0, 0, r * 1.1); g.globalCompositeOperation = gc; }
     g.restore();
   }
@@ -318,5 +329,6 @@ var ZB = (function () {
     ],
     music: function () { return null; }
   };
-  return { ROSTER: ROSTER, OVERLORD: OVERLORD, EL: EL, draw: draw, portrait: portrait, hexA: hexA };
+  return { ROSTER: ROSTER, OVERLORD: OVERLORD, EL: EL, draw: draw, portrait: portrait, hexA: hexA,
+    setDetail: function (d) { DETAIL = Math.max(0, Math.min(2, d | 0)); }, clearCache: function () { GLOW = {}; } };
 })();

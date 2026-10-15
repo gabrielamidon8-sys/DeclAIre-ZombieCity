@@ -5,7 +5,7 @@ A top-down zombie survival shooter for phones and browsers. You hold the streets
 ## Play
 
 - **Android:** download the latest `.apk` from the [Releases](../../releases) page and open it on your phone. Updates install over the old version and keep your saves.
-- **Browser:** open `zombie-city.html` in any modern browser. It's a single self-contained file.
+- **Browser:** open `zombie-city-offline.html` in any modern browser. It's a single self-contained file that needs no internet connection.
 
 ## What's in the game
 
@@ -15,11 +15,13 @@ A top-down zombie survival shooter for phones and browsers. You hold the streets
 - An A-10 Warthog airstrike earned at chain 75
 - 20 wave songs that get more intense, from synthwave to orchestral speedcore, remixed for each boss
 - A light show that reacts to the built-in songs or your own music
+- Tunes itself to your device: it detects the hardware, adjusts resolution and detail as you play, and cleans up its own caches
 
 ## Versions
 
 | Version | Highlights |
 |---|---|
+| **1.3** | The game detects your device and adjusts quality on its own while you play: resolution, effects and level of detail for zombies and bosses. It caps at 60 fps on fast-refresh screens, follows battery saver and phone heat, frees memory when Android asks, and repairs itself if the game loop or audio stalls. A new Performance panel shows what it's doing. Fonts are built in, so nothing loads from the internet. |
 | **1.2** | Sound effects no longer break up the music. The light show now follows the beat of your own songs, even loud ones. Bullets can hit zombies right on top of you. |
 | **1.1** | A different song for every wave, 50 mutating bosses, the A-10 airstrike, the skull wheel and the Overlord. |
 | **1.0** | First Android app release. |
@@ -38,9 +40,11 @@ The game is plain JavaScript split into modules that `build.js` joins into one p
 | `mutations.js` | The mutation list |
 | `weapons.js` | The weapon list |
 | `audio.js` | The music engine, songs and sound effects |
+| `perf.js` | Device detection, the quality governor, LOD settings, cache refresher and self-repair |
+| `fonts/` | The three fonts (embedded into the page at build time) and their licenses |
 
 ```sh
-node build.js          # browser version -> zombie-city.html
+node build.js          # browser version -> zombie-city.html (+ zombie-city-offline.html)
 node build.js app      # Android page    -> android/www/index.html
 ```
 

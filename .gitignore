@@ -13,3 +13,6 @@ node_modules/
 
 # Debug build used by automated tests
 zc-test-body.html
+
+# Backup bundles (they hold the APKs, which go on the Releases page)
+*.zip

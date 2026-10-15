@@ -41,12 +41,12 @@ const sprites = new Map();
 function resize() {
   const r = cv.getBoundingClientRect();
   W = Math.max(1, r.width); H = Math.max(1, r.height);
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-  const nz = clamp(Math.min(W, H) / 480, 0.66, 1.2);
-  if (Math.abs(nz - ZOOM) > 0.001 || Math.abs(SPR - DPR * nz) > 0.001) { ZOOM = nz; SPR = DPR * nz; sprites.clear(); }
-  vignette = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.hypot(W, H) * 0.62);
-  vignette.addColorStop(0, 'rgba(4,5,8,0)'); vignette.addColorStop(1, 'rgba(4,5,8,0.74)');
+  // render resolution comes from the quality governor: the device's pixel density, capped per tier, times a scale step
+  DPR = Math.max(0.5, Math.min(window.devicePixelRatio || 1, Q.dpr) * RES_STEPS[PERF.res]);
+  const cw = Math.max(1, Math.round(W * DPR)), ch = Math.max(1, Math.round(H * DPR));
+  if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+  const nz = clamp(Math.min(W, H) / 480, 0.66, 1.2), ns = DPR * nz * Q.spr;
+  if (Math.abs(nz - ZOOM) > 0.001 || Math.abs(SPR - ns) > 0.001) { ZOOM = nz; SPR = ns; sprites.clear(); }
 }
 window.addEventListener('resize', resize);
 
@@ -54,14 +54,14 @@ function getSprite(m, r, plain) {
   const rq = Math.max(3, Math.round(r));
   const key = m.id + '|' + rq + '|' + (plain ? 1 : 0);
   let s = sprites.get(key);
-  if (s) return s;
+  if (s) { sprites.delete(key); sprites.set(key, s); return s; }   // keep the map in least-recently-used order
   const half = rq * 2.4, size = Math.ceil(half * 2 * SPR);
   const c = document.createElement('canvas'); c.width = c.height = size;
   const g = c.getContext('2d'); g.scale(SPR, SPR); g.translate(half, half);
   Z.drawMutation(g, m, rq, { noAbility: plain });
   s = { c: c, half: half, rq: rq };
   sprites.set(key, s);
-  if (sprites.size > 500) sprites.delete(sprites.keys().next().value);
+  if (sprites.size > Q.sprCap * 1.25) sprites.delete(sprites.keys().next().value);
   return s;
 }
 
@@ -126,8 +126,8 @@ function drawCar(g, r) {
   g.restore();
 }
 function renderChunk(c) {
-  const can = document.createElement('canvas'); can.width = can.height = CH;
-  const g = can.getContext('2d');
+  const sc = Q.chunkScale, can = document.createElement('canvas'); can.width = can.height = Math.round(CH * sc);
+  const g = can.getContext('2d'); g.scale(sc, sc); c.sc = sc;
   const R = chunkRng(c.cx, c.cy, 0xabc123);
   const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD;
   g.translate(-ox, -oy);
@@ -417,14 +417,15 @@ function tryDash() {
 
 /* ================= fx helpers ================= */
 function burst(x, y, n, col, spd, size, life) {
+  n *= Q.burst; n = Math.floor(n) + (Math.random() < n % 1 ? 1 : 0);
   for (let i = 0; i < n; i++) {
-    if (G.parts.length > 520) G.parts.shift();
+    if (G.parts.length >= Q.parts) G.parts.shift();
     const a = rand(TAU), s = rand(spd * 0.25, spd);
     G.parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(life * 0.5, life), max: life, c: col, s: rand(size * 0.5, size) });
   }
 }
 function ring(x, y, r0, r1, life, c, w) { G.rings.push({ x: x, y: y, r0: r0, r1: r1, t: 0, life: life, c: c, w: w || 2 }); }
-function splat(x, y, r, c) { if (G.splats.length > 150) G.splats.shift(); G.splats.push({ x: x, y: y, r: r, c: c, rot: rand(TAU), sq: rand(0.5, 0.9) }); }
+function splat(x, y, r, c) { if (G.splats.length >= Q.splats) G.splats.shift(); G.splats.push({ x: x, y: y, r: r, c: c, rot: rand(TAU), sq: rand(0.5, 0.9) }); }
 function shakeIt(v) { if (!RM) G.shake = Math.max(G.shake, v); }
 function bolt(x1, y1, x2, y2, c) {
   const pts = [x1, y1], n = 7;
@@ -1021,6 +1022,7 @@ function updFx(dt) {
   G.parts = G.parts.filter(q => q.life > 0);
   for (const r of G.rings) r.t += dt; G.rings = G.rings.filter(r => r.t < r.life);
   for (const t of G.texts) { t.t += dt; t.y -= 26 * dt; } G.texts = G.texts.filter(t => t.t < t.life);
+  if (G.texts.length > Q.texts) G.texts.splice(0, G.texts.length - Q.texts);
   for (const b of G.bolts) b.life -= dt; G.bolts = G.bolts.filter(b => b.life > 0);
   G.shake = Math.max(0, G.shake - dt * 30); G.hurtFlash = Math.max(0, G.hurtFlash - dt);
 }
@@ -1352,15 +1354,18 @@ function updAttract(dt) {
 }
 
 /* ================= render ================= */
+const LODQ = [];
 function render() {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#0c0e12'; ctx.fillRect(0, 0, cv.width, cv.height);
   let shx = 0, shy = 0; if (G.shake > 0.1) { shx = rand(-0.5, 0.5) * G.shake; shy = rand(-0.5, 0.5) * G.shake; }
   const s = DPR * ZOOM;
   ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - cam.x * s, DPR * (H / 2 + shy) - cam.y * s);
-  const hw = W / 2 / ZOOM, hh = H / 2 / ZOOM, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh;
-  for (let cx = Math.floor(x0 / CH); cx <= Math.floor(x1 / CH); cx++) for (let cy = Math.floor(y0 / CH); cy <= Math.floor(y1 / CH); cy++) {
-    const c = getChunk(cx, cy); if (!c.can) renderChunk(c); c.seen = frameNo;
+  const hw = W / 2 / ZOOM, hh = H / 2 / ZOOM, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake;
+  // the city tiles cover every pixel, so the frame is never cleared first (one less full-screen fill per frame)
+  let rebuild = 1;
+  for (let cx = Math.floor((x0 - pad) / CH); cx <= Math.floor((x1 + pad) / CH); cx++) for (let cy = Math.floor((y0 - pad) / CH); cy <= Math.floor((y1 + pad) / CH); cy++) {
+    const c = getChunk(cx, cy);
+    if (!c.can || (c.sc !== Q.chunkScale && rebuild-- > 0)) renderChunk(c);
+    c.seen = frameNo;
     ctx.drawImage(c.can, c.ox, c.oy, CH + 0.6, CH + 0.6);
   }
   const vis = (x, y, r) => x > x0 - r && x < x1 + r && y > y0 - r && y < y1 + r;
@@ -1384,17 +1389,27 @@ function render() {
     ctx.restore();
   }
   // zombie telegraphs under bodies
+  const lowFx = Q.lod >= 2;
   for (const z of G.zs) {
     if (z.dead || !vis(z.x, z.y, 300)) continue;
     if (z.st.wind > 0) { ctx.strokeStyle = 'rgba(255,70,60,' + (0.25 + (0.65 - z.st.wind) * 0.8) + ')'; ctx.lineWidth = z.r * 1.2; ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(z.x + z.st.cx * 300, z.y + z.st.cy * 300); ctx.stroke(); }
     if (z.snatch) drawSnatchZone(z);
     if (z.rb) drawBossTele(z);
-    if (z.m.S.p.rad && !z.st.under && !z.st.down) { ctx.fillStyle = 'rgba(200,255,60,0.06)'; ctx.beginPath(); ctx.arc(z.x, z.y, 90, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(200,255,60,0.2)'; ctx.lineWidth = 1.5; ctx.stroke(); }
-    if (z.abs.indexOf('chiller') >= 0 && !z.st.under) { ctx.fillStyle = 'rgba(170,220,255,0.07)'; ctx.beginPath(); ctx.arc(z.x, z.y, 150, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(190,230,255,0.22)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    // danger auras: on Low the faint fill is skipped and only the outline is drawn
+    if (z.m.S.p.rad && !z.st.under && !z.st.down) { ctx.fillStyle = 'rgba(200,255,60,0.06)'; ctx.beginPath(); ctx.arc(z.x, z.y, 90, 0, TAU); if (!lowFx) ctx.fill(); ctx.strokeStyle = 'rgba(200,255,60,' + (lowFx ? 0.32 : 0.2) + ')'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    if (z.abs.indexOf('chiller') >= 0 && !z.st.under) { ctx.fillStyle = 'rgba(170,220,255,0.07)'; ctx.beginPath(); ctx.arc(z.x, z.y, 150, 0, TAU); if (!lowFx) ctx.fill(); ctx.strokeStyle = 'rgba(190,230,255,' + (lowFx ? 0.34 : 0.22) + ')'; ctx.lineWidth = 1.5; ctx.stroke(); }
     if (z.abs.indexOf('magnet') >= 0 && G.p && Math.hypot(G.p.x - z.x, G.p.y - z.y) < 290) { ctx.strokeStyle = 'rgba(200,80,80,0.25)'; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -G.time * 40; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(G.p.x, G.p.y); ctx.stroke(); ctx.setLineDash([]); }
   }
   if (vz) drawVizMobs(vz, vis);
-  for (const z of G.zs) if (!z.dead && !z.boss && vis(z.x, z.y, z.r * 2.6)) drawZ(z);
+  // level of detail: zombies far from you, or part of a big crowd, skip their cosmetic overlays
+  let nv = 0; for (const z of G.zs) if (!z.dead && !z.boss && vis(z.x, z.y, z.r * 2.6)) LODQ[nv++] = z;
+  const fx = G.p && G.mode !== 'title' ? G.p.x : cam.x, fy = G.p && G.mode !== 'title' ? G.p.y : cam.y;
+  const nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, crowd = nv > 70 ? 1 : 0, ln = PERF.lodN; ln[0] = ln[1] = ln[2] = ln[3] = 0;
+  for (let i = 0; i < nv; i++) {
+    const z = LODQ[i], dx = z.x - fx, dy = z.y - fy, far = dx * dx + dy * dy > nr2, lod = Math.min(3, Q.lod + (far ? 1 + crowd : 0));
+    ln[lod]++; drawZ(z, lod, far);
+  }
+  LODQ.length = Math.min(LODQ.length, 256);
   for (const z of G.zs) if (!z.dead && z.boss) drawZ(z);
   if (G.p && G.mode !== 'title') drawPlayer(G.p);
   // bullets
@@ -1439,7 +1454,7 @@ function render() {
   ctx.globalAlpha = 1;
   // screen space
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (vignette) { ctx.fillStyle = vignette; ctx.fillRect(0, 0, W, H); }
+  ctx.drawImage(screenGrad('vig', 0.32, 0.62, '4,5,8', 0.74), 0, 0, W, H);
   if (vz) drawVizScreen(vz);
   if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') drawScreenFx();
 }
@@ -1524,7 +1539,9 @@ function drawSnatcher(z) {
   ctx.strokeStyle = 'rgba(229,72,77,' + (0.4 + Math.sin(G.time * 4) * 0.2) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(z.x, z.y, r * 1.45, 0, TAU); ctx.stroke();
   if (s.state === 'stunned') { ctx.fillStyle = '#f2cc3a'; for (let i = 0; i < 3; i++) { const a = G.time * 4 + i * TAU / 3; ctx.beginPath(); ctx.arc(z.x + Math.cos(a) * r * 0.7, z.y - r * 0.9 + Math.sin(a) * r * 0.25, 4, 0, TAU); ctx.fill(); } }
 }
-function drawZ(z) {
+// lod 0: everything · 1: no cosmetic status rings · 2: also no burn glow, and health bars only near you · 3: sprite only
+function drawZ(z, lod, far) {
+  lod = lod || 0;
   if (z.rb) { drawRoster(z); return; }
   if (z.m.unique) { drawSnatcher(z); return; }
   if (z.st.down > 0) {
@@ -1553,22 +1570,23 @@ function drawZ(z) {
   ctx.rotate(z.ang + Math.sin(G.time * 7 + z.bob) * 0.06);
   ctx.globalAlpha = a;
   ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2);
-  if (z.flash > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * a; ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); ctx.globalCompositeOperation = 'source-over'; }
+  if (z.flash > 0 && lod < 3) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * a; ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); ctx.globalCompositeOperation = 'source-over'; }
   ctx.restore(); ctx.globalAlpha = 1;
+  if (lod >= 3) { if (z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0)) lod = 2; else return; }
   if (z.shield > 1) { ctx.strokeStyle = 'rgba(110,180,255,' + (0.25 + 0.6 * z.shield / z.shieldMax) + ')'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.35, 0, TAU); ctx.stroke(); }
   if (z.abs.indexOf('bomber') >= 0) { const pul = z.st.fuse > 0 ? 1 : 0.5 + Math.sin(G.time * 6 + z.bob) * 0.5; ctx.fillStyle = 'rgba(255,80,40,' + (0.15 + 0.3 * pul) + ')'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (0.6 + (z.st.fuse > 0 ? (0.55 - z.st.fuse) * 2 : 0)), 0, TAU); ctx.fill(); }
-  if (z.buffT > 0) { ctx.strokeStyle = 'rgba(255,110,80,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.2, 0, TAU); ctx.stroke(); }
-  if (z.burnT > 0) { ctx.fillStyle = 'rgba(255,120,40,' + (0.12 + Math.random() * 0.14) + ')'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.05, 0, TAU); ctx.fill(); }
-  if (z.poisonT > 0) { ctx.strokeStyle = 'rgba(155,226,58,0.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.18, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
+  if (z.buffT > 0 && lod < 1) { ctx.strokeStyle = 'rgba(255,110,80,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.2, 0, TAU); ctx.stroke(); }
+  if (z.burnT > 0 && lod < 2) { ctx.fillStyle = 'rgba(255,120,40,' + (0.12 + Math.random() * 0.14) + ')'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.05, 0, TAU); ctx.fill(); }
+  if (z.poisonT > 0 && lod < 1) { ctx.strokeStyle = 'rgba(155,226,58,0.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.18, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
   if (z.frozen && z.stun > 0) { ctx.fillStyle = 'rgba(200,240,255,0.42)'; ctx.fillRect(z.x - z.r * 1.1, z.y - z.r * 1.1, z.r * 2.2, z.r * 2.2); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5; ctx.strokeRect(z.x - z.r * 1.1, z.y - z.r * 1.1, z.r * 2.2, z.r * 2.2); }
-  if (z.st.surgeT > 0) { ctx.strokeStyle = 'rgba(122,240,255,' + (0.4 + Math.random() * 0.4) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.3, 0, TAU); ctx.stroke(); }
-  if (z.slowT > 0) { ctx.strokeStyle = 'rgba(170,220,255,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.1, 0, TAU); ctx.stroke(); }
+  if (z.st.surgeT > 0 && lod < 1) { ctx.strokeStyle = 'rgba(122,240,255,' + (0.4 + Math.random() * 0.4) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.3, 0, TAU); ctx.stroke(); }
+  if (z.slowT > 0 && lod < 1) { ctx.strokeStyle = 'rgba(170,220,255,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.1, 0, TAU); ctx.stroke(); }
   if (z.st.aim > 0 && G.p) { ctx.strokeStyle = 'rgba(255,60,50,' + (0.2 + (1 - z.st.aim) * 0.7) + ')'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(G.p.x, G.p.y); ctx.stroke(); }
-  if (z.st.zap > 0 && G.p && Math.random() < 0.6) { ctx.strokeStyle = 'rgba(255,243,107,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.4 + rand(0, 6), 0, TAU); ctx.stroke(); }
+  if (z.st.zap > 0 && lod < 1 && G.p && Math.random() < 0.6) { ctx.strokeStyle = 'rgba(255,243,107,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.4 + rand(0, 6), 0, TAU); ctx.stroke(); }
   if (z.warn > 0 && !z.boss) { ctx.fillStyle = '#ff5a4a'; ctx.font = "bold 16px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('!', z.x, z.y - z.r - 10); }
   if (z.boss) {
     ctx.strokeStyle = 'rgba(229,72,77,' + (0.45 + Math.sin(G.time * 4) * 0.2) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.25, 0, TAU); ctx.stroke();
-  } else if (z.hp < z.maxHp && !z.illusion && z.maxHp > 6) {
+  } else if (z.hp < z.maxHp && !z.illusion && z.maxHp > 6 && (lod < 2 || !far)) {
     const w = Math.max(18, z.r * 1.6), f = clamp(z.hp / z.maxHp, 0, 1);
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(z.x - w / 2, z.y - z.r - 9, w, 4);
     ctx.fillStyle = RARITY[z.m.rarity].color; ctx.fillRect(z.x - w / 2, z.y - z.r - 9, w * f, 4);
@@ -1576,11 +1594,12 @@ function drawZ(z) {
 }
 const GUN_LEN = { pistol: 16, smg: 20, rifle: 26, shotgun: 26, sniper: 34, revolver: 18, lmg: 28, burst: 24, launcher: 24, flamer: 26 };
 const GUN_W = { shotgun: 6, lmg: 7, launcher: 9, flamer: 6 };
+let flashGrad = null;   // the flashlight's gradient is built once and reused (it is drawn relative to the player)
 function drawPlayer(p) {
   ctx.save(); ctx.translate(p.x, p.y);
   if (G.mode !== 'over') {
-    const gr = ctx.createRadialGradient(0, 0, 10, 0, 0, 300); gr.addColorStop(0, 'rgba(255,236,180,0.17)'); gr.addColorStop(1, 'rgba(255,236,180,0)');
-    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 300, p.aim - 0.42, p.aim + 0.42); ctx.closePath(); ctx.fill();
+    if (!flashGrad) { flashGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 300); flashGrad.addColorStop(0, 'rgba(255,236,180,0.17)'); flashGrad.addColorStop(1, 'rgba(255,236,180,0)'); }
+    ctx.fillStyle = flashGrad; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 300, p.aim - 0.42, p.aim + 0.42); ctx.closePath(); ctx.fill();
   }
   if (p.iframe > 0 && p.dashT <= 0 && Math.floor(G.time * 30) % 2) ctx.globalAlpha = 0.5;
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(2, 4, 13, 12, 0, 0, TAU); ctx.fill();
@@ -1616,6 +1635,16 @@ function glowSprite(col) {
   gr.addColorStop(0, hexA(col, 0.85)); gr.addColorStop(0.22, hexA(col, 0.38)); gr.addColorStop(0.6, hexA(col, 0.08)); gr.addColorStop(1, hexA(col, 0));
   g.fillStyle = gr; g.fillRect(0, 0, 128, 128); glowCache.set(col, c); return c;
 }
+// full-screen radial gradients (vignette, hurt flash, chain glow) are rendered once at half resolution and reused
+const SG = new Map();
+function screenGrad(key, r0f, r1f, rgb, a1) {
+  const c = SG.get(key); if (c && c.w === W && c.h === H) return c.can;
+  const sw = Math.max(1, Math.ceil(W / 2)), sh = Math.max(1, Math.ceil(H / 2)), can = document.createElement('canvas'); can.width = sw; can.height = sh;
+  const g = can.getContext('2d'), gr = g.createRadialGradient(sw / 2, sh / 2, Math.min(sw, sh) * r0f, sw / 2, sh / 2, Math.hypot(sw, sh) * r1f);
+  gr.addColorStop(0, 'rgba(' + rgb + ',0)'); gr.addColorStop(1, 'rgba(' + rgb + ',' + a1 + ')'); g.fillStyle = gr; g.fillRect(0, 0, sw, sh);
+  if (SG.size > 12) SG.clear();
+  SG.set(key, { can: can, w: W, h: H }); return can;
+}
 function rgbOf(hex) { const n = parseInt(hex.slice(1), 16); return (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255); }
 function vizLevel() { return AUD.vis === 'off' ? 0 : AUD.vis === 'low' ? 0.45 : 1; }
 function vizFrame() {
@@ -1629,7 +1658,7 @@ function vizFrame() {
   const w = G.mode === 'title' ? 2 : Math.max(1, G.wave), col = NEON[(w - 1) % NEON.length];
   if (col !== VZ.col) { VZ.col = col; VZ.col2 = NEON[(w + 3) % NEON.length]; VZ.rgb = rgbOf(col); }
   // DOM: HUD numbers and buttons pulse on the beat
-  const b = (v.beat * VZ.I).toFixed(2), css = b + VZ.col;
+  const qb = Q.beat === 2 ? 100 : Q.beat === 1 ? 10 : 0, b = qb ? (Math.round(v.beat * VZ.I * qb) / qb).toFixed(2) : '0', css = b + VZ.col;
   if (css !== VZ.css) { VZ.css = css; const a = $('app'); a.style.setProperty('--beat', b); a.style.setProperty('--neon', VZ.col); }
   return v;
 }
@@ -1644,8 +1673,8 @@ function drawVizGround(v, x0, y0, x1, y1) {
     if (x < x0 - 20 || x > x1 + 20 || y < y0 - 20 || y > y1 + 20) return;
     const d = Math.hypot(x - px, y - py); let a = base;
     for (let i = 0; i < rip.length; i++) { const k = (d - rip[i] * 950) / 70; a += Math.exp(-k * k) * (1 - rip[i] / 1.1); }
-    a = Math.min(1, a * I); if (a < 0.02) return;
-    ctx.globalAlpha = a * 0.3; if (horiz) ctx.fillRect(x - 15, y - 6, 30, 12); else ctx.fillRect(x - 6, y - 15, 12, 30);
+    a = Math.min(1, a * I); if (a < (Q.viz ? 0.02 : 0.08)) return;
+    if (Q.viz >= 2) { ctx.globalAlpha = a * 0.3; if (horiz) ctx.fillRect(x - 15, y - 6, 30, 12); else ctx.fillRect(x - 6, y - 15, 12, 30); }
     ctx.globalAlpha = a; if (horiz) ctx.fillRect(x - 11, y - 1.5, 22, 3); else ctx.fillRect(x - 1.5, y - 11, 3, 22);
   };
   const cx0 = Math.floor((x0 - 130) / CH), cx1 = Math.floor((x1 + 130) / CH), cy0 = Math.floor((y0 - 130) / CH), cy1 = Math.floor((y1 + 130) / CH);
@@ -1656,25 +1685,27 @@ function drawVizGround(v, x0, y0, x1, y1) {
   }
   // rooftop neon trim rides the hi-hats and the high end
   const ra = I * (0.05 + v.hat * 0.32 + v.high * 0.6);
-  if (ra > 0.03) {
+  if (ra > 0.03 && Q.viz >= 1) {
     ctx.strokeStyle = VZ.col2;
     for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
       const c = chunks.get(cx + ',' + cy); if (!c) continue;
       for (const r of c.rects) {
         if (r.k !== 'b' || r.x > x1 || r.y > y1 || r.x + r.w < x0 || r.y + r.h < y0) continue;
-        ctx.globalAlpha = Math.min(0.5, ra * 0.35); ctx.lineWidth = 8; ctx.strokeRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12);
+        if (Q.viz >= 2) { ctx.globalAlpha = Math.min(0.5, ra * 0.35); ctx.lineWidth = 8; ctx.strokeRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12); }
         ctx.globalAlpha = Math.min(1, ra); ctx.lineWidth = 2; ctx.strokeRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12);
       }
     }
   }
   // streetlights alternate between two neon colors on the beat
   const kr = 1 + v.kick * 0.14;
-  if (AUD.vis === 'full') for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
+  let glows = Q.viz >= 2 ? 99 : Q.viz ? 6 : 0;
+  if (AUD.vis === 'full' && glows) for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
     const c = getChunk(cx, cy); if (!c.lights) c.lights = lightsOf(cx, cy);
     for (let j = 0; j < c.lights.length; j++) {
       const L = c.lights[j], on = (j + cx + cy + v.beatN) % 2 === 0, r = 86 * kr;
       if (L.x + r < x0 || L.x - r > x1 || L.y + r < y0 || L.y - r > y1) continue;
       const la = Math.min(1, I * (0.12 + (on ? v.beat * 0.6 : v.beat * 0.08) + v.bass * 0.2)); if (la < 0.04) continue;
+      if (glows-- <= 0) break;
       ctx.globalAlpha = la; ctx.drawImage(glowSprite(on ? VZ.col : VZ.col2), L.x - r, L.y - r, r * 2, r * 2);
     }
   }
@@ -1689,10 +1720,10 @@ function drawVizGround(v, x0, y0, x1, y1) {
 }
 // Zombies light up from underneath on every kick.
 function drawVizMobs(v, vis) {
-  const a = VZ.I * v.kick * 0.42; if (a < 0.02 || AUD.vis !== 'full') return;
+  const a = VZ.I * v.kick * 0.42, max = Q.viz >= 2 ? 45 : Q.viz ? 18 : 0; if (a < 0.02 || AUD.vis !== 'full' || !max) return;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, a);
   const spr = glowSprite(VZ.col); let n = 0;
-  for (const z of G.zs) { if (z.dead || z.fly || z.st.under || !vis(z.x, z.y, z.r * 2)) continue; const r = z.r * 1.75; ctx.drawImage(spr, z.x - r, z.y - r, r * 2, r * 2); if (++n >= 45) break; }
+  for (const z of G.zs) { if (z.dead || z.fly || z.st.under || !vis(z.x, z.y, z.r * 2)) continue; const r = z.r * 1.75; ctx.drawImage(spr, z.x - r, z.y - r, r * 2, r * 2); if (++n >= max) break; }
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
 }
 // Tracers flare on the beat.
@@ -1724,9 +1755,9 @@ function drawVizScreen(v) {
   }
   const sp = v.spec;
   if (sp) {
-    const n = SPEC_BINS.length, bw = W / n, maxH = Math.min(78, H * 0.1);
-    const gr = ctx.createLinearGradient(0, H - maxH, 0, H); gr.addColorStop(0, hexA(VZ.col2, 0.9)); gr.addColorStop(1, hexA(VZ.col, 0.15));
-    ctx.fillStyle = gr;
+    const n = SPEC_BINS.length, bw = W / n, maxH = Math.min(78, H * 0.1), gk = H + VZ.col + VZ.col2;
+    if (!VZ.specGr || VZ.specKey !== gk) { VZ.specKey = gk; VZ.specGr = ctx.createLinearGradient(0, H - maxH, 0, H); VZ.specGr.addColorStop(0, hexA(VZ.col2, 0.9)); VZ.specGr.addColorStop(1, hexA(VZ.col, 0.15)); }
+    ctx.fillStyle = VZ.specGr;
     for (let i = 0; i < n; i++) {
       const [lo, hi] = SPEC_BINS[i]; let s = 0; for (let k = lo; k < hi; k++) s += sp[k];
       const val = Math.pow(s / (hi - lo) / 255, 1.5), h = val * maxH; if (h < 1) continue;
@@ -1736,16 +1767,11 @@ function drawVizScreen(v) {
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
 }
 function drawScreenFx() {
-  if (G.hurtFlash > 0) {
-    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.hypot(W, H) * 0.6);
-    g.addColorStop(0, 'rgba(160,20,25,0)'); g.addColorStop(1, 'rgba(160,20,25,' + G.hurtFlash * 1.4 + ')'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  }
+  if (G.hurtFlash > 0) { ctx.globalAlpha = Math.min(1, G.hurtFlash * 1.4); ctx.drawImage(screenGrad('hurt', 0.3, 0.6, '160,20,25', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
   const p = G.p;
   if (G.chain >= 25 && G.time - G.lastKill < CHAIN_WINDOW && (G.mode === 'play' || G.mode === 'skull')) {
-    const a = Math.min(0.3, 0.12 + 0.05 * Math.sin(G.time * 6) + (G.chain - 25) * 0.0015);
-    const gc = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.38, W / 2, H / 2, Math.hypot(W, H) * 0.6);
-    gc.addColorStop(0, hexA(chainColor(G.chain), 0)); gc.addColorStop(1, hexA(chainColor(G.chain), a));
-    ctx.fillStyle = gc; ctx.fillRect(0, 0, W, H);
+    const a = Math.min(0.3, 0.12 + 0.05 * Math.sin(G.time * 6) + (G.chain - 25) * 0.0015), cc = chainColor(G.chain);
+    ctx.globalAlpha = a; ctx.drawImage(screenGrad('chain' + cc, 0.38, 0.6, rgbOf(cc), 1), 0, 0, W, H); ctx.globalAlpha = 1;
   }
   if (G.tierFlash > 0) { ctx.fillStyle = hexA(chainColor(G.chain), G.tierFlash * 0.28); ctx.fillRect(0, 0, W, H); }
   if (G.cineT > 0) { const k = Math.min(1, Math.min(G.cineT, 2.4 - G.cineT) * 4), bh = 58 * k; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, bh); ctx.fillRect(0, H - bh, W, bh); }
@@ -1826,7 +1852,19 @@ function update(dt) {
     if (!FF.ready || G.time - FF.t > 0.35 || Math.abs(pcx - FF.pcx) + Math.abs(pcy - FF.pcy) >= 2) buildField(); }
   if (G.cineT > 0) G.cineT -= dt;
   let nf = 0; for (const z of G.zs) if (z.fly && !z.dead) nf++; G.nFly = nf;
-  for (let i = 0; i < G.zs.length; i++) { const z = G.zs[i]; if (!z.dead) updZ(z, dt); }
+  const fr = Math.max(W, H) / ZOOM * 0.75 + 220, far2 = fr * fr, px = G.p.x, py = G.p.y;
+  for (let i = 0; i < G.zs.length; i++) {
+    const z = G.zs[i]; if (z.dead) continue;
+    if (Q.sim > 1 && !z.boss && !z.rb && !z.m.unique) {
+      const dx = z.x - px, dy = z.y - py;
+      if (dx * dx + dy * dy > far2) {
+        z.lodAcc = (z.lodAcc || 0) + dt;
+        if (((frameNo + ((z.bob * 1000) | 0)) % Q.sim) !== 0 && z.lodAcc < 0.12) continue;
+        const d = z.lodAcc; z.lodAcc = 0; updZ(z, d); continue;
+      }
+    }
+    if (z.lodAcc) { const d = Math.min(0.15, z.lodAcc + dt); z.lodAcc = 0; updZ(z, d); } else updZ(z, dt);
+  }
   updBullets(dt); updEshots(dt); updHaz(dt); updPicks(dt); updBlasts(dt); updJets(dt);
   G.zs = G.zs.filter(z => !z.dead);
   updFx(dt);
@@ -1837,10 +1875,18 @@ function update(dt) {
 }
 let last = performance.now();
 function frame(now) {
+  if (now === PERF.lastNow) return;            // a duplicate loop (left over from a watchdog restart) ends here
+  PERF.lastNow = now; PERF.lastFrame = performance.now();
+  const rawIv = PERF.lastRaf ? now - PERF.lastRaf : 16.7; PERF.lastRaf = now; trackHz(rawIv);
+  // frame-rate limit: on a 90/120 Hz screen the game still draws at 60 by default, which halves the work
+  const cap = effCap();
+  if (cap && cap < PERF.hz - 3 && now - PERF.lastDraw < 1000 / cap - 4) { requestAnimationFrame(frame); return; }
+  const iv = PERF.lastDraw ? now - PERF.lastDraw : 16.7; PERF.lastDraw = now;
   const rdt = Math.min(0.05, (now - last) / 1000); last = now; frameNo++;
   let dt = rdt;
   if (G.slowT > 0) { G.slowT -= rdt; dt = rdt * 0.3; }
   if (G.tierFlash > 0) G.tierFlash = Math.max(0, G.tierFlash - rdt * 2.5);
+  const t0 = performance.now();
   try {
     if (SFX.tick) SFX.tick();
     vzNow = vizFrame();
@@ -1851,12 +1897,9 @@ function frame(now) {
     render();
     if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'skull' || G.mode === 'cine') { updHud(); bossMusic(); }
     SFX.setScene(G.mode === 'skull' ? 'skull' : G.mode === 'cine' ? 'cine' : G.mode === 'play' ? ((G.boss && !G.boss.dead) || G.chain >= 25 ? 'drop' : 'play') : G.mode === 'upgrade' ? 'break' : G.mode === 'pause' ? 'pause' : G.mode === 'over' ? 'over' : 'title', G.mode === 'title' ? 0 : G.wave);
-    if (frameNo % 120 === 0) {
-      for (const c of chunks.values()) if (c.can && frameNo - c.seen > 240) c.can = null;
-      if (chunks.size > 400) for (const [key, c] of chunks) { if (Math.abs(c.ox - cam.x) > CH * 4 || Math.abs(c.oy - cam.y) > CH * 4) chunks.delete(key); }
-      if (G.mode === 'title') $('seasonLeft').textContent = seasonLeft();
-    }
-  } catch (err) { console.error(err); }
+    if (frameNo % 120 === 0 && G.mode === 'title') $('seasonLeft').textContent = seasonLeft();
+  } catch (err) { perfError(err); }
+  perfFrame(now, iv, performance.now() - t0);
   requestAnimationFrame(frame);
 }
 

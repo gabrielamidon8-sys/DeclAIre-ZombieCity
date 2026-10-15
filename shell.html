@@ -22,6 +22,7 @@
   --f-num:'Share Tech Mono', ui-monospace, Menlo, Consolas, monospace;
   color-scheme:dark;
 }
+[hidden]{display:none!important}
 html{height:100%;box-sizing:border-box;background:var(--night)}
 *,*::before,*::after{box-sizing:inherit}
 body{height:100%;margin:0;background:var(--night);color:var(--bone);font-family:var(--f-ui);font-size:15px;line-height:1.45;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -378,6 +379,15 @@ p{margin:0}
 .detail-art{width:180px;height:180px;background:radial-gradient(circle at 50% 50%, #232831 0%, #12151a 70%);border:1px solid var(--line);border-radius:2px}
 .detail-text{display:flex;flex-direction:column;gap:10px;min-width:0}
 .detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pf-in{grid-template-columns:minmax(0, 1fr);width:min(560px, 100%)}
+#perfPanel{--rc:var(--tape)}
+.pf-device{font-family:var(--f-num);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.pf-seg{flex-wrap:wrap}
+.pf-seg .tab{min-height:40px;flex:1 1 0;min-width:0;padding:8px 6px;font-size:12px;letter-spacing:.04em}
+.pf-cache{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pf-cache span{font-size:12px;color:var(--muted);flex:1 1 180px}
+.pf-note{font-size:13px;color:#cfc9bb}
+.pf-note:empty{display:none}
 .detail h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1.05;text-wrap:balance}
 .tagline{font-family:var(--f-num);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--rc)}
 .trait{font-size:14px;color:#d4cebf;max-width:60ch}
@@ -464,6 +474,7 @@ p{margin:0}
       </div>
       <p class="best" id="loadLine"></p>
       <div class="audio-row" id="titleAudio"></div>
+      <div class="audio-row"><button type="button" class="btn small ghost" id="titlePerf">Performance</button></div>
       <p class="hint" id="ctrlHint">Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.</p>
       <p class="best" id="bestLine"></p>
     </div>
@@ -554,6 +565,7 @@ p{margin:0}
         <button class="btn ghost" id="quitBtn">Quit to menu</button>
       </div>
       <div class="audio-row" id="pauseAudio"></div>
+      <div class="audio-row"><button type="button" class="btn small ghost" id="pausePerf">Performance</button></div>
       <div class="build">
         <p class="sub-eyebrow">Your build</p>
         <div class="build-w"><canvas id="bwIcon" aria-hidden="true"></canvas><div><b id="bwName"></b><span id="bwRar"></span><p id="bwDesc"></p></div></div>
@@ -672,6 +684,26 @@ p{margin:0}
           <button class="icon-btn" id="blCloseD" aria-label="Close boss details">&#215;</button>
         </div>
         <div class="bl-forms" id="blForms"></div>
+      </div>
+    </div>
+  </div>
+  <div class="detail" id="perfPanel" hidden role="dialog" aria-label="Performance">
+    <div class="detail-in pf-in">
+      <div class="detail-text">
+        <div class="detail-top">
+          <div><p class="tagline">Tunes itself to your device</p><h3>Performance</h3></div>
+          <button type="button" class="icon-btn" id="pfClose" aria-label="Close performance">&#215;</button>
+        </div>
+        <p class="pf-device" id="pfDevice"></p>
+        <dl class="build-stats" id="pfStats"></dl>
+        <p class="sub-eyebrow">Quality</p>
+        <div class="tabs pf-seg" id="pfQuality" role="group" aria-label="Quality"></div>
+        <p class="sub-eyebrow">Frame rate limit</p>
+        <div class="tabs pf-seg" id="pfCap" role="group" aria-label="Frame rate limit"></div>
+        <p class="sub-eyebrow">Battery saver</p>
+        <div class="tabs pf-seg" id="pfSaver" role="group" aria-label="Battery saver"></div>
+        <div class="pf-cache"><button type="button" class="btn small" id="pfRefresh">Refresh cache</button><span>Frees the graphics the game has stored. They rebuild as needed.</span></div>
+        <p class="pf-note" id="pfNote"></p>
       </div>
     </div>
   </div>

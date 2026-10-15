@@ -10,6 +10,7 @@ var SFX = (function () {
   var onAn = null, onSpec = null, onPrev = null, BANK = {}, BAKING = false, sfxComp = null, musComp = null;
   var musFilter = null, vizAn = null, synthBus = null, drumBus = null, revIn = null, dlyIn = null, dly = null, distIn = null, bellBus = null;
   var gtrIn = null, leadIn = null, pulse25 = null;
+  var SHAPERS = [], AQ = 2, HB = { ct: -1, stuck: 0 }, rebuilds = 0;   // audio quality level and the self-repair heartbeat
   var sfxOn = true, musicMode = 'builtin', customEl = null, customSrc = null, customUrl = null;
   var last = {}, seqTimer = null, nextT = 0, stepI = 0, barN = 0, lateN = 0;
   var scene = 'title', mWave = 0, BPM = 84, STEP = 60 / BPM / 4, TR = 0, impactPending = false;
@@ -36,7 +37,7 @@ var SFX = (function () {
     sfxComp.threshold.value = -14; sfxComp.knee.value = 8; sfxComp.ratio.value = 6; sfxComp.attack.value = 0.002; sfxComp.release.value = 0.12;
     musComp.threshold.value = -15; musComp.knee.value = 10; musComp.ratio.value = 3; musComp.attack.value = 0.006; musComp.release.value = 0.2;
     var mix = ac.createGain(); mix.gain.value = 0.5;
-    var clip = ac.createWaveShaper(); clip.curve = softClip(); clip.oversample = '2x';
+    var clip = ac.createWaveShaper(); clip.curve = softClip(); clip.oversample = AQ >= 1 ? '2x' : 'none'; SHAPERS = [clip];
     master = ac.createGain(); master.gain.value = 0.95;
     sfxBus = ac.createGain(); sfxBus.gain.value = 0.85;
     musBus = ac.createGain(); musBus.gain.value = 0;
@@ -60,7 +61,7 @@ var SFX = (function () {
     var fb = ac.createGain(), dlp = ac.createBiquadFilter(), dOut = ac.createGain();
     fb.gain.value = 0.36; dlp.type = 'lowpass'; dlp.frequency.value = 3200; dOut.gain.value = 0.26;
     dlyIn.connect(dly); dly.connect(dlp); dlp.connect(fb); fb.connect(dly); dlp.connect(dOut); dOut.connect(musBus);
-    distIn = ac.createWaveShaper(); distIn.curve = distCurve(60); distIn.oversample = '2x';
+    distIn = ac.createWaveShaper(); distIn.curve = distCurve(60); distIn.oversample = AQ >= 1 ? '2x' : 'none'; SHAPERS.push(distIn);
     var distOut = ac.createGain(); distOut.gain.value = 0.3; distIn.connect(distOut); distOut.connect(drumBus);
     bellBus = ac.createGain(); bellBus.connect(musBus); bellBus.connect(revIn);
     // guitar amps: rhythm (chugs, power chords) and lead, each its own drive so chords and solos stay clean of each other
@@ -79,7 +80,7 @@ var SFX = (function () {
   }
   function amp(drive, hp, lp, vol, rev, delay) {
     var input = ac.createGain(), pre = ac.createGain(), sh = ac.createWaveShaper(), h = ac.createBiquadFilter(), pk = ac.createBiquadFilter(), l = ac.createBiquadFilter(), out = ac.createGain();
-    pre.gain.value = drive; sh.curve = distCurve(90); sh.oversample = '2x';
+    pre.gain.value = drive; sh.curve = distCurve(90); sh.oversample = AQ >= 1 ? '2x' : 'none'; SHAPERS.push(sh);
     h.type = 'highpass'; h.frequency.value = hp; pk.type = 'peaking'; pk.frequency.value = 1900; pk.gain.value = 4; pk.Q.value = 0.8;
     l.type = 'lowpass'; l.frequency.value = lp; out.gain.value = vol;
     input.connect(pre); pre.connect(sh); sh.connect(h); h.connect(pk); pk.connect(l); l.connect(out); out.connect(musBus);
@@ -706,7 +707,8 @@ var SFX = (function () {
     if (impactPending) { impactPending = false; if (song.id !== 'title') { vImpact(t); ev(t, 'impact'); } }
     X.drop = scene === 'drop' || scene === 'cine'; X.boss = !!bossMod;
     song.play(X, s, b, t, ch);
-    if (bossMod && bossMod.add && song.id !== 'qte') for (var k = 0; k < bossMod.add.length; k++) { var L = LAYERS[bossMod.add[k]]; if (L) L(s, b, t, ch); }
+    // on weak devices a boss remix keeps its two most important extra layers
+    if (bossMod && bossMod.add && song.id !== 'qte') for (var k = 0, nL = AQ < 1 ? Math.min(2, bossMod.add.length) : bossMod.add.length; k < nL; k++) { var L = LAYERS[bossMod.add[k]]; if (L) L(s, b, t, ch); }
   }
 
   // scenes: the song keeps playing between waves, muffled; the filter sweeps open into each wave like a drop
@@ -890,8 +892,43 @@ var SFX = (function () {
   function fx(n, rate) { if (!sfx('x_' + n, rate)) FX[n](ac.currentTime); }
   function bell2(t, f, vol, dur) { osc('sine', f, f, t, dur, vol, null, 0.002); osc('sine', f * 2.76, f * 2.76, t, dur * 0.7, vol * 0.45, null, 0.002); }
 
+  // ---------- self-repair ----------
+  // Phones sometimes leave the audio clock frozen (a Bluetooth headset switch, a call, the OS reclaiming the device).
+  // heal() runs every couple of seconds: it resumes a suspended context and rebuilds a frozen one from scratch.
+  function rebuild() {
+    try { clearInterval(seqTimer); } catch (e) { }
+    var old = ac; ac = null; BANK = {}; customSrc = null; HB.ct = -1; HB.stuck = 0; rebuilds++;
+    // the new engine's clock starts at zero, so beat history from the old clock is cleared
+    evq.length = 0; lastKick = lastKickEv = lastSnare = lastHat = lastBeat = lastBar = lastImpact = -9;
+    for (var b = 0; b < 4; b++) VIZ.beats[b] = -9;
+    onT = -1; OH.length = 0; for (var j = 0; j < OB.length; j++) OB[j].t = -9;
+    if (customEl) {
+      var src = customEl.src, at = customEl.currentTime || 0;
+      try { customEl.pause(); } catch (e) { }
+      customEl = new Audio(); customEl.loop = true; customEl.src = src;
+      try { customEl.currentTime = at; } catch (e) { }
+    }
+    try { if (old) old.close(); } catch (e) { }
+    init();
+  }
+  function selfHeal(visible) {
+    if (!ac || !visible) { HB.ct = -1; HB.stuck = 0; return ''; }
+    if (ac.state === 'closed') { rebuild(); return 'rebuilt'; }
+    if (ac.state !== 'running') { ac.resume().catch(function () { }); return 'resumed'; }
+    if (HB.ct >= 0 && ac.currentTime === HB.ct) { if (++HB.stuck >= 2) { rebuild(); return 'rebuilt'; } }
+    else HB.stuck = 0;
+    HB.ct = ac.currentTime;
+    return '';
+  }
+  function setQuality(q) {
+    AQ = q;
+    for (var i = 0; i < SHAPERS.length; i++) { try { SHAPERS[i].oversample = q >= 1 ? '2x' : 'none'; } catch (e) { } }
+  }
+
   var api = {
     tick: sched,
+    selfHeal: selfHeal, rebuild: rebuild, setQuality: setQuality,
+    health: function () { return { state: ac ? ac.state : 'off', rebuilds: rebuilds, late: lateN, quality: AQ }; },
     init: init,
     unlocked: function () { return ready(); },
     setSfx: function (on) { sfxOn = !!on; },

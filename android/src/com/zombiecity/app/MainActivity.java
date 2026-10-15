@@ -1,7 +1,14 @@
 package com.zombiecity.app;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.ComponentCallbacks2;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Build;
+import android.os.PowerManager;
+import android.webkit.JavascriptInterface;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -59,8 +66,71 @@ public class MainActivity extends Activity {
         s.setAllowContentAccess(true);
         web.setWebViewClient(new AssetClient());
         web.setWebChromeClient(new Chrome());
+        web.addJavascriptInterface(new Native(), "ZCNative");
         setContentView(web);
+        refreshCacheOnUpdate();
         web.loadUrl(HOME);
+    }
+
+    /** After an app update, clear the WebView's cache once so nothing from the old version lingers. */
+    void refreshCacheOnUpdate() {
+        try {
+            @SuppressWarnings("deprecation")
+            int ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+            SharedPreferences prefs = getSharedPreferences("zc", MODE_PRIVATE);
+            if (prefs.getInt("ver", -1) != ver) {
+                web.clearCache(true);
+                prefs.edit().putInt("ver", ver).apply();
+            }
+        } catch (Exception e) { /* keep going with whatever cache there is */ }
+    }
+
+    /** Device facts the game uses to pick its quality level: memory, chip, screen refresh, battery saver, heat. */
+    class Native {
+        @JavascriptInterface
+        @SuppressWarnings("deprecation")
+        public String info() {
+            StringBuilder b = new StringBuilder("{");
+            try {
+                ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+                am.getMemoryInfo(mi);
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                int thermal = Build.VERSION.SDK_INT >= 29 ? pm.getCurrentThermalStatus() : 0;
+                String soc = Build.VERSION.SDK_INT >= 31 ? Build.SOC_MANUFACTURER + " " + Build.SOC_MODEL : Build.HARDWARE;
+                float hz = getWindowManager().getDefaultDisplay().getRefreshRate();
+                b.append("\"model\":").append(q(Build.MANUFACTURER + " " + Build.MODEL))
+                 .append(",\"soc\":").append(q(soc))
+                 .append(",\"sdk\":").append(Build.VERSION.SDK_INT)
+                 .append(",\"cores\":").append(Runtime.getRuntime().availableProcessors())
+                 .append(",\"totalMem\":").append(mi.totalMem)
+                 .append(",\"availMem\":").append(mi.availMem)
+                 .append(",\"lowMemory\":").append(mi.lowMemory)
+                 .append(",\"lowRam\":").append(am.isLowRamDevice())
+                 .append(",\"hz\":").append(hz)
+                 .append(",\"powerSave\":").append(pm.isPowerSaveMode())
+                 .append(",\"thermal\":").append(thermal);
+            } catch (Exception e) { /* report what we have */ }
+            return b.append("}").toString();
+        }
+    }
+
+    static String q(String s) {
+        if (s == null) return "\"\"";
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
+    /** Android asks apps to give memory back; the game trims its graphics caches when it does. */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (web != null) web.evaluateJavascript("window.zcTrim && window.zcTrim(" + level + ")", null);
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL);
     }
 
     static String mime(String path) {
