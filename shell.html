@@ -1,0 +1,712 @@
+<title>Zombie City</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Saira+Stencil+One&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: one full-screen canvas city at night; DOM panels float above it inside safe side gutters.
+   Single dark look by choice: sodium streetlights, quarantine tape, specimen-lab labels. */
+:root{
+  --night:#0e1115;
+  --panel:#161a20;
+  --panel-2:#1e232b;
+  --bone:#ebe5d6;
+  --muted:#8f959e;
+  --tape:#f2cc3a;
+  --tape-ink:#17140b;
+  --blood:#d9434b;
+  --line:rgba(235,229,214,.14);
+  --scrim:rgba(8,10,13,.8);
+  --f-display:'Saira Stencil One', Impact, 'Arial Narrow Bold', sans-serif;
+  --f-ui:'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+  --f-num:'Share Tech Mono', ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;background:var(--night);color:var(--bone);font-family:var(--f-ui);font-size:15px;line-height:1.45;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#app{position:relative;height:100%;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid var(--tape);outline-offset:2px}
+h1,h2{text-wrap:balance;margin:0}
+p{margin:0}
+
+/* ---------- buttons ---------- */
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:10px 18px;border:1px solid var(--line);border-radius:2px;background:var(--panel-2);font-weight:600;font-size:14px;letter-spacing:.08em;text-transform:uppercase}
+.btn:hover{border-color:rgba(235,229,214,.35)}
+.btn.primary{background:var(--tape);color:var(--tape-ink);border-color:var(--tape)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn em{font-style:normal;font-family:var(--f-num);font-size:13px;letter-spacing:0;color:var(--muted)}
+.btn:disabled{opacity:.55;cursor:default}
+.icon-btn{width:44px;height:44px;flex:none;display:grid;place-items:center;border:1px solid var(--line);border-radius:2px;background:rgba(14,17,21,.72);font-size:22px;line-height:1}
+.eyebrow{font-family:var(--f-num);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--tape)}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;pointer-events:none;z-index:10}
+#hud button{pointer-events:auto}
+.hud-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;gap:10px;padding-block:10px 0;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.vitals{flex:1 1 0;min-width:0;max-width:240px;display:flex;flex-direction:column;gap:5px;padding-top:4px}
+.hp{height:12px;background:rgba(0,0,0,.55);border:1px solid var(--line);border-radius:1px;overflow:hidden;box-shadow:0 0 calc(var(--beat, 0) * 14px) color-mix(in srgb, var(--neon, #000) 70%, transparent)}
+.hp i{display:block;height:100%;width:100%;background:var(--blood);transition:width .12s linear}
+.hp-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:20px}
+.hp-row b{font-family:var(--f-num);font-weight:400;font-size:15px;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000}
+.fx-chip{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:1px;background:rgba(0,0,0,.6);border:1px solid currentColor}
+.wave{flex:none;display:flex;flex-direction:column;align-items:center;line-height:1;padding-top:2px}
+.wave span{font-family:var(--f-num);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.wave b{font-family:var(--f-display);font-weight:400;font-size:30px;color:var(--tape);text-shadow:0 2px 6px rgba(0,0,0,.7), 0 0 calc(var(--beat, 0) * 26px) var(--neon, transparent);transform:scale(calc(1 + var(--beat, 0) * .16))}
+.score{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;padding-top:3px}
+.score b{font-family:var(--f-num);font-weight:400;font-size:18px;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000}
+.score span{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.pause-ico{display:flex;gap:4px}
+.pause-ico i{display:block;width:4px;height:14px;background:var(--bone)}
+#bossBar{position:absolute;top:84px;left:50%;transform:translateX(-50%);width:min(520px, calc(100% - 32px));display:flex;flex-direction:column;gap:4px;text-align:center}
+#bossName{font-family:var(--f-display);font-size:15px;letter-spacing:.04em;color:#ff8a7f;text-shadow:0 1px 4px #000}
+#bossBar .bar{height:8px;background:rgba(0,0,0,.6);border:1px solid rgba(255,138,127,.4)}
+#bossFill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8e1c22,#e5484d)}
+#bossBar .bar2{display:none;border-color:rgba(200,120,255,.55)}
+#bossBar.two .bar2{display:block}
+#bossBar.two .bar{height:10px}
+#bossBar.two #bossFill{background:linear-gradient(90deg,#a3122a,#ff2d4a)}
+#bossFill2{display:block;height:100%;width:100%;background:linear-gradient(90deg,#3d0a6b,#b14dff);transform-origin:0 50%}
+#bossBar.breaking .bar1{animation:barshake .5s linear 2}
+#bossBar.breaking #bossFill2{animation:barfill 2.2s cubic-bezier(.2,.8,.3,1)}
+#bossBar.breaking .bar2{box-shadow:0 0 18px rgba(177,77,255,.8)}
+@keyframes barshake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes barfill{0%{transform:scaleX(0);filter:brightness(2.4)}100%{transform:scaleX(1);filter:none}}
+#airBtn{position:absolute;bottom:112px;right:max(26px, calc(env(safe-area-inset-right, 0px) + 18px));width:66px;height:66px;border-radius:50%;border:2px solid rgba(159,211,106,.35);background:rgba(14,17,21,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;color:rgba(159,211,106,.45);touch-action:none;padding:0}
+#airBtn svg{width:30px;height:30px}
+#airBtn b{font-family:var(--f-num);font-weight:400;font-size:11px;letter-spacing:.08em;line-height:1}
+#airBtn em{position:absolute;top:-6px;right:-8px;font-style:normal;font-family:var(--f-num);font-size:11px;padding:1px 5px;border-radius:999px;background:#12151a;border:1px solid currentColor}
+#airBtn.ready{border-color:#9fd36a;color:#c9f59a;background:radial-gradient(circle, rgba(159,211,106,.3), rgba(14,17,21,.8) 70%);animation:airglow 1.2s ease-in-out infinite}
+@keyframes airglow{50%{box-shadow:0 0 22px rgba(159,211,106,.75)}}
+#qte.fast #qteBtn.go::after{animation-duration:.78s}
+#qte.fast .qte-head b{color:#ff2d4a}
+#toasts{position:absolute;top:90px;display:flex;flex-direction:column;gap:6px;left:max(16px, env(safe-area-inset-left, 0px));max-width:min(300px, calc(100% - 32px))}
+.has-boss #toasts{top:150px}
+#bossInfo{font-family:var(--f-num);font-size:12px;letter-spacing:.06em;color:#e8c9c4;text-shadow:0 1px 3px #000}
+.tabs.series .tab em{font-style:normal;font-family:var(--f-num);font-size:12px;letter-spacing:0;color:var(--muted);margin-left:6px}
+.tabs.series .tab.on em{color:var(--tape)}
+.grabbed #toasts,.grabbed #combo,.grabbed #banner{visibility:hidden}
+#qte{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center, rgba(120,10,18,0) 35%, rgba(120,10,18,.5) 100%)}
+.qte-head{position:absolute;top:156px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.qte-head b{font-family:var(--f-display);font-weight:400;font-size:clamp(32px, 10vw, 48px);line-height:1;color:#ff6a6f;text-shadow:0 3px 16px #000}
+#qtePips{display:flex;gap:6px}
+#qtePips i{display:block;width:14px;height:14px;border-radius:50%;border:2px solid var(--tape);background:rgba(0,0,0,.55)}
+#qtePips i.on{background:var(--tape)}
+.qte-time{width:min(260px, 70%);height:6px;background:rgba(0,0,0,.6);border:1px solid rgba(255,106,111,.5)}
+.qte-time i{display:block;height:100%;width:100%;background:#ff6a6f}
+#qteBtn{position:absolute;left:50%;top:60%;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;border:3px solid var(--tape-ink);background:radial-gradient(circle at 40% 35%, #ffe680, var(--tape) 62%);box-shadow:0 0 0 4px rgba(242,204,58,.35), 0 8px 24px rgba(0,0,0,.6);pointer-events:auto;touch-action:none}
+#qteBtn::after{content:"";position:absolute;inset:-28px;border-radius:50%;border:3px solid rgba(242,204,58,.9);opacity:0;pointer-events:none}
+#qteBtn.go::after{animation:qring 1.15s linear forwards}
+@keyframes qring{0%{transform:scale(1.2);opacity:1}100%{transform:scale(.55);opacity:.15}}
+.toast{display:grid;gap:1px;padding:7px 11px;background:rgba(13,15,19,.92);border:1px solid var(--rc,#888);border-radius:2px;animation:tin .25s ease-out}
+.toast small{font-family:var(--f-num);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--rc,#888)}
+.toast b{font-size:15px;font-weight:600}
+.toast.out{opacity:0;transform:translateX(-8px);transition:.4s}
+@keyframes tin{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+#banner{position:absolute;left:0;right:0;top:26%;text-align:center;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+#banner b{display:block;font-family:var(--f-display);font-weight:400;font-size:clamp(40px, 13vw, 84px);line-height:1;color:var(--bone);text-shadow:0 4px 24px rgba(0,0,0,.85)}
+#banner span{display:inline-block;margin-top:8px;font-family:var(--f-num);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--tape);background:rgba(8,10,13,.7);padding:4px 10px}
+#banner.show{animation:bn 2.6s ease-out forwards}
+@keyframes bn{0%{opacity:0;transform:scale(1.15)}10%{opacity:1;transform:scale(1)}78%{opacity:1}100%{opacity:0}}
+#dashBtn{position:absolute;bottom:22px;right:max(20px, calc(env(safe-area-inset-right, 0px) + 12px));width:78px;height:78px;border-radius:50%;border:2px solid var(--tape);background:conic-gradient(rgba(242,204,58,.28) calc(var(--cd,1) * 360deg), rgba(14,17,21,.72) 0);display:grid;place-items:center;font-family:var(--f-num);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--tape);touch-action:none}
+#dashBtn{box-shadow:0 0 calc(var(--beat, 0) * 28px) color-mix(in srgb, var(--neon, #000) 65%, transparent)}
+#dashBtn.cool{border-color:rgba(242,204,58,.35);color:var(--muted)}
+
+/* ---------- overlays ---------- */
+.ov{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--scrim);overflow-y:auto;padding-block:20px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.panel{width:min(600px, 100%);margin:auto;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:22px 20px;display:flex;flex-direction:column;gap:16px}
+.panel.narrow{width:min(380px, 100%)}
+.panel h2{font-family:var(--f-display);font-weight:400;font-size:30px;line-height:1.05;letter-spacing:.01em}
+.panel h2.big{font-size:clamp(38px, 11vw, 56px);color:var(--blood)}
+
+/* title */
+.ov-title{align-items:stretch;justify-content:flex-end;flex-direction:column;background:linear-gradient(to top, rgba(9,11,14,.96) 0%, rgba(9,11,14,.86) 38%, rgba(9,11,14,.25) 72%, rgba(9,11,14,.05) 100%);padding-block:0}
+.tape{position:absolute;left:-10%;right:-10%;top:clamp(36px, 11vh, 110px);transform:rotate(-5deg);background:var(--tape);color:var(--tape-ink);font-family:var(--f-display);font-size:15px;letter-spacing:.24em;text-transform:uppercase;white-space:nowrap;overflow:hidden;padding:7px 0;box-shadow:0 6px 18px rgba(0,0,0,.55)}
+.tape::before,.tape::after{content:"";position:absolute;left:0;right:0;height:5px;background:repeating-linear-gradient(-45deg,var(--tape-ink) 0 8px,transparent 8px 16px)}
+.tape::before{top:0}.tape::after{bottom:0}
+.tape span{display:inline-block;padding-left:4%;animation:tape 40s linear infinite}
+@keyframes tape{to{transform:translateX(-33.3%)}}
+.title-body{width:min(620px, 100%);display:flex;flex-direction:column;gap:14px;padding-block:24px 28px;margin-left:clamp(0px, 4vw, 56px)}
+.season-chip{align-self:flex-start;font-family:var(--f-num);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--bone);background:rgba(8,10,13,.75);border:1px solid var(--line);padding:4px 9px}
+.season-chip b{font-weight:400;color:var(--tape)}
+.title-body h1{font-family:var(--f-display);font-weight:400;font-size:clamp(64px, 21vw, 136px);line-height:.84;letter-spacing:.005em;color:var(--bone);text-shadow:0 6px 30px rgba(0,0,0,.6)}
+.title-body h1 span{color:var(--tape);text-shadow:0 6px 30px rgba(0,0,0,.6), 0 0 calc(var(--beat, 0) * 60px) var(--neon, transparent)}
+.lede{max-width:46ch;color:#cfc9bb;font-size:15px}
+.hint{font-size:13px;color:var(--muted);max-width:52ch}
+.best{font-family:var(--f-num);font-size:13px;color:var(--muted)}
+.best b{font-weight:400;color:var(--bone)}
+
+/* card draft */
+.ov-cards{flex-direction:column;justify-content:flex-start;background:radial-gradient(ellipse at 50% 38%, rgba(40,32,12,.6), rgba(6,7,9,.94) 72%)}
+.cards-wrap{width:min(900px, 100%);margin:auto;display:flex;flex-direction:column;gap:14px}
+.cards-head{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.cards-title{font-family:var(--f-display);font-weight:400;font-size:clamp(30px, 9vw, 48px);line-height:1;text-shadow:0 4px 20px #000}
+.cards-sub{font-size:14px;color:#cfc9bb;max-width:52ch}
+.card-row{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:14px;perspective:1200px}
+.gcard{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 12px 16px;min-width:0;text-align:center;color:var(--bone);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--rc) 16%, #171b21) 0%, #121519 62%);border:2px solid var(--rc);border-radius:10px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6), 0 14px 34px rgba(0,0,0,.55), 0 0 24px color-mix(in srgb, var(--rc) 25%, transparent);
+  overflow:hidden;opacity:0;transform:translateY(60px) rotateY(85deg);animation:deal .6s cubic-bezier(.2,.9,.25,1.15) var(--d) forwards}
+.gcard:hover{filter:brightness(1.12)}
+.gcard.r-3{animation:deal .6s cubic-bezier(.2,.9,.25,1.15) var(--d) forwards, epicglow 2.4s ease-in-out calc(var(--d) + .6s) infinite}
+.gcard.r-5{background:linear-gradient(180deg, #2c0f1d 0%, #120a10 66%)}
+.gc-shine{display:none;position:absolute;inset:0;pointer-events:none}
+.gcard.r-4 .gc-shine{display:block;background:linear-gradient(110deg, transparent 35%, rgba(255,230,170,.32) 50%, transparent 65%);background-size:260% 100%;animation:shine 2.6s linear infinite}
+.gcard.r-5 .gc-shine{display:block;background:radial-gradient(ellipse at 50% 115%, rgba(224,69,123,.42), transparent 62%);animation:cursepulse 1.8s ease-in-out infinite}
+.gc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;font-family:var(--f-num);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.gc-rar{font-style:normal;color:var(--rc)}
+.gc-type{font-style:normal;color:var(--muted)}
+.gcard kbd{font-family:var(--f-num);font-size:11px;color:var(--muted);border:1px solid var(--line);padding:0 5px}
+@media (pointer:coarse){.gcard kbd{display:none}}
+.gc-art{flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.6))}
+.gc-body{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;width:100%}
+.gc-name{font-family:var(--f-display);font-weight:400;font-size:22px;line-height:1.05;text-wrap:balance}
+.gc-stats{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:14px;font-weight:600}
+.gc-stats .good{color:#8fe388}.gc-stats .bad{color:#ff7b86}.gc-stats .meta{color:var(--muted);font-weight:500;font-size:13px}
+.gc-notes{display:flex;flex-direction:column;align-items:center;gap:4px}
+.gc-syn{font-size:12px;font-weight:700;color:var(--tape-ink);background:var(--tape);padding:3px 8px;border-radius:2px;line-height:1.25}
+.gc-react{font-size:12px;color:#bdb6a7}
+@media (max-width:640px){
+  .card-row{grid-template-columns:minmax(0, 1fr);gap:10px}
+  .gcard{display:grid;grid-template-columns:auto minmax(0, 1fr);grid-template-areas:"top top" "art body";align-items:center;text-align:left;column-gap:12px;row-gap:6px;padding:10px 12px 12px}
+  .gc-top{grid-area:top}.gc-art{grid-area:art}.gc-body{grid-area:body;align-items:flex-start}.gc-notes{align-items:flex-start}
+  .gc-name{font-size:20px}
+}
+/* forbidden cards (skull event) */
+.gcard.r-6{background:linear-gradient(180deg, #3d0712 0%, #0e0406 70%);box-shadow:0 0 0 1px rgba(0,0,0,.7), 0 14px 34px rgba(0,0,0,.6), 0 0 30px rgba(255,45,74,.45)}
+.gcard.r-6 .gc-shine{display:block;background:radial-gradient(ellipse at 50% -10%, rgba(255,45,74,.5), transparent 60%), repeating-linear-gradient(135deg, rgba(255,45,74,.07) 0 6px, transparent 6px 14px);animation:cursepulse 1.2s ease-in-out infinite}
+.gcard.r-6 .gc-name{color:#ffe3e6;text-shadow:0 0 14px rgba(255,45,74,.8)}
+.gcard.r-6 .gc-rar{text-shadow:0 0 8px rgba(255,45,74,.8)}
+.gc-lore{font-size:12px;font-style:italic;color:#eaa2ab;max-width:36ch}
+.gcard.from-skull{transform-origin:50% 0;animation:fromskull .7s cubic-bezier(.2,.9,.25,1.2) var(--d) forwards, forbidglow 1.6s ease-in-out calc(var(--d) + .7s) infinite}
+@keyframes fromskull{0%{opacity:0;transform:translateY(-140px) scale(.2) rotate(-8deg);filter:brightness(3) blur(4px)}55%{opacity:1;filter:brightness(1.6)}100%{opacity:1;transform:none;filter:none}}
+@keyframes forbidglow{50%{box-shadow:0 0 0 1px rgba(0,0,0,.7), 0 14px 34px rgba(0,0,0,.6), 0 0 52px rgba(255,45,74,.85)}}
+.gcard.shot{opacity:1;z-index:3;animation:jolt .16s linear, fall 1s cubic-bezier(.5,0,.85,.35) .16s forwards}
+.gcard.gone{opacity:1;animation:vanish .45s ease forwards}
+.bullet-hole{position:absolute;width:70px;height:70px;margin:-35px 0 0 -35px;pointer-events:none;z-index:4}
+.bullet-hole::before{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:radial-gradient(circle, #050403 0 38%, #3a2412 48%, rgba(255,190,110,.9) 56%, rgba(255,190,110,0) 72%)}
+.bullet-hole svg{display:block;width:100%;height:100%}
+.shot-flash{position:absolute;inset:0;z-index:45;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 45%, rgba(255,240,200,.7), rgba(255,200,120,0) 60%)}
+.shot-flash.on{animation:flash .24s ease-out}
+@keyframes deal{0%{opacity:0;transform:translateY(60px) rotateY(85deg)}60%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes epicglow{50%{box-shadow:0 0 0 1px rgba(0,0,0,.6), 0 14px 34px rgba(0,0,0,.55), 0 0 40px color-mix(in srgb, var(--rc) 60%, transparent)}}
+@keyframes shine{from{background-position:130% 0}to{background-position:-130% 0}}
+@keyframes cursepulse{50%{opacity:.35}}
+@keyframes jolt{0%{transform:none}35%{transform:translate(-7px, 4px) rotate(-3deg) scale(1.03)}70%{transform:translate(5px, -3px) rotate(2deg)}100%{transform:rotate(calc(var(--rot) * .3))}}
+@keyframes fall{0%{transform:translateY(0) rotate(calc(var(--rot) * .3))}100%{transform:translateY(130vh) rotate(calc(var(--rot) * 3))}}
+@keyframes vanish{to{opacity:0;transform:scale(.88);filter:blur(5px)}}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+
+/* HUD extras */
+.wchip{position:absolute;bottom:14px;left:max(16px, env(safe-area-inset-left, 0px));display:flex;align-items:center;gap:6px;max-width:calc(100% - 140px);padding:3px 8px 3px 4px;background:rgba(8,10,13,.66);border:1px solid var(--line);border-radius:2px;min-width:0}
+.wchip canvas{flex:none}
+.wchip span{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000}
+#combo{position:absolute;top:70px;right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
+.has-boss #combo{top:150px}
+#combo b{font-family:var(--f-display);font-weight:400;font-size:38px;line-height:1;color:var(--cc, var(--tape));text-shadow:0 3px 14px rgba(0,0,0,.8), 0 0 18px color-mix(in srgb, var(--cc, var(--tape)) 50%, transparent);transition:color .2s}
+#combo span{font-family:var(--f-num);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--bone)}
+#combo .cbar{display:block;width:70px;height:4px;background:rgba(0,0,0,.6)}
+#comboBar{display:block;height:100%;width:100%;background:var(--cc, var(--tape));box-shadow:0 0 8px var(--cc, var(--tape))}
+#combo.pop b{animation:cpop .2s ease-out}
+@keyframes cpop{0%{transform:scale(1.45)}100%{transform:scale(1)}}
+#chainPop{position:absolute;left:0;right:0;top:40%;display:flex;flex-direction:column;align-items:center;pointer-events:none;text-align:center}
+#chainPop b{font-family:var(--f-display);font-weight:400;font-size:clamp(46px, 15vw, 90px);line-height:1;color:var(--cc, var(--tape));text-shadow:0 4px 24px rgba(0,0,0,.85), 0 0 34px color-mix(in srgb, var(--cc, var(--tape)) 65%, transparent)}
+#chainPop span{font-family:var(--f-display);font-size:clamp(20px, 6vw, 32px);letter-spacing:.12em;text-transform:uppercase;color:var(--bone);text-shadow:0 2px 12px #000}
+#chainPop.go{animation:cpopbig 1.6s ease-out forwards}
+@keyframes cpopbig{0%{opacity:0;transform:scale(1.6)}12%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
+
+/* the skull: every x100 chain freezes the run and offers forbidden mods */
+.ov-skull{z-index:35;flex-direction:column;justify-content:flex-start;overflow-x:hidden;background:radial-gradient(ellipse at 50% 28%, rgba(110,8,20,.8), rgba(18,2,5,.94) 52%, rgba(3,1,2,.97) 80%);animation:skin .3s ease-out}
+.ov-skull.leaving{opacity:0;transition:opacity .6s ease}
+@keyframes skin{from{opacity:0}}
+.skull-wrap{width:min(900px, 100%);margin:auto;display:flex;flex-direction:column;align-items:center;gap:12px}
+.skull-stage{position:relative;width:min(230px, 56vw);transition:width .5s cubic-bezier(.3,1.2,.5,1)}
+.dealt .skull-stage{width:min(130px, 30vw)}
+.skull-rays{position:absolute;left:50%;top:44%;width:300%;aspect-ratio:1;transform:translate(-50%, -50%);pointer-events:none;opacity:0;transition:opacity .5s;
+  background:repeating-conic-gradient(from 0deg, rgba(255,45,74,.26) 0 5deg, transparent 5deg 15deg);
+  -webkit-mask-image:radial-gradient(circle, #000 12%, transparent 62%);mask-image:radial-gradient(circle, #000 12%, transparent 62%);animation:spin 16s linear infinite}
+.skull-stage.lit .skull-rays{opacity:1}
+@keyframes spin{to{transform:translate(-50%, -50%) rotate(360deg)}}
+.skull-art{position:relative;display:block;width:100%;height:auto;overflow:visible;opacity:0;filter:drop-shadow(0 0 22px rgba(255,45,74,.45)) drop-shadow(0 12px 18px rgba(0,0,0,.8))}
+.skull-art.rise{animation:skrise 1.15s cubic-bezier(.2,.85,.3,1) forwards}
+.skull-art.sink{animation:sksink .6s ease-in forwards}
+@keyframes skrise{0%{opacity:0;transform:translateY(50px) scale(.25)}45%{opacity:1;transform:translateY(-6px) scale(1.16)}60%{transform:scale(.96)}70%{transform:translate(-6px, 2px) rotate(-3deg)}78%{transform:translate(6px, -2px) rotate(3deg)}86%{transform:translate(-3px, 0) rotate(-1deg)}100%{opacity:1;transform:none}}
+@keyframes sksink{from{opacity:1;transform:none}to{opacity:0;transform:translateY(70px) scale(.55)}}
+.sk-jaw,.sk-head{transform-box:view-box;transition:transform .38s cubic-bezier(.3,1.7,.5,1)}
+.sk-jaw{transform-origin:100px 166px}
+.sk-head{transform-origin:100px 172px}
+.skull-art.open .sk-jaw{transform:translateY(34px) rotate(3deg)}
+.skull-art.open .sk-head{transform:translateY(-6px) rotate(-2deg)}
+.sk-maw{opacity:0;transition:opacity .3s}
+.skull-art.open .sk-maw{opacity:1;animation:mawpulse .9s ease-in-out .3s infinite}
+.sk-eye{opacity:.1}
+.skull-art.rise .sk-eye{animation:eyeon .35s ease-out .55s forwards, eyepulse 1.3s ease-in-out .9s infinite}
+.skull-art.open .sk-eye{animation:eyepulse .55s ease-in-out infinite}
+@keyframes eyeon{to{opacity:1}}
+@keyframes eyepulse{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes mawpulse{50%{opacity:.7}}
+.skull-text{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;animation:sktext .5s ease-out}
+.skull-text .eyebrow{color:#ff6a7a}
+.skull-text h2{font-family:var(--f-display);font-weight:400;font-size:clamp(28px, 8.4vw, 46px);line-height:1;color:#ffe3e6;text-shadow:0 0 22px rgba(255,45,74,.75), 0 4px 18px #000}
+.skull-text p:last-child{font-size:14px;color:#e8c3c7;max-width:46ch}
+@keyframes sktext{from{opacity:0;transform:translateY(10px)}}
+.skull-cards{width:100%}
+.skull-wheel{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.wheel-box{position:relative;width:min(320px, 78vw);aspect-ratio:1}
+.wheel-box canvas{width:100%;height:100%;display:block;border-radius:50%;box-shadow:0 0 0 4px #1a0a0e, 0 0 40px rgba(255,45,74,.45)}
+.wheel-pin{position:absolute;left:50%;top:-14px;width:0;height:0;margin-left:-15px;border-left:15px solid transparent;border-right:15px solid transparent;border-top:30px solid #f2cc3a;filter:drop-shadow(0 3px 4px #000)}
+.wheel-result{min-height:1.5em;font-family:var(--f-display);font-size:clamp(20px, 6vw, 28px);text-align:center;color:#ffe3e6;text-shadow:0 0 16px rgba(255,45,74,.7)}
+.wheel-result.ddup{color:#ff2d4a;animation:ddup .4s ease-in-out infinite alternate}
+@keyframes ddup{to{transform:scale(1.08)}}
+.skull-art.laugh .sk-jaw{animation:chatter .14s steps(2) infinite}
+.skull-art.laugh .sk-eye{animation:eyepulse .18s ease-in-out infinite}
+@keyframes chatter{0%{transform:translateY(34px) rotate(3deg)}100%{transform:translateY(4px)}}
+.skull-art.lunge{animation:lunge .32s ease-in forwards}
+@keyframes lunge{from{opacity:1;transform:none}to{opacity:1;transform:scale(3.4) translateY(30px)}}
+#bite{position:absolute;inset:0;z-index:50;pointer-events:none;overflow:hidden}
+#bite .teeth{position:absolute;left:0;width:100%;height:54%;transition:transform .2s cubic-bezier(.7,0,.9,.5)}
+#bite .top{top:0;transform:translateY(-102%)}
+#bite .bot{bottom:0;transform:translateY(102%)}
+#bite.chomp .teeth{transform:none}
+#bite.open .teeth{transition:transform .5s ease-in}
+#bite .cracks{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+#bite.cracked .cracks{opacity:1;transition:opacity .08s}
+.bl-in{grid-template-columns:minmax(0, 1fr)}
+.bl-forms{display:flex;flex-direction:column;gap:10px}
+.bl-form{display:flex;gap:12px;align-items:center;min-width:0}
+.bl-form canvas{flex:none;background:radial-gradient(circle, #232831, #12151a 70%);border:1px solid var(--line);border-radius:2px}
+.bl-form b{display:block;font-size:16px}
+.bl-form p{font-size:13px;color:#cfc9bb;margin-top:4px}
+.bcard canvas{background:radial-gradient(circle, #232831, #12151a 70%);border-radius:2px}
+.skull-stage.lit{margin-bottom:40px}
+.dealt .skull-stage.lit{margin-bottom:16px}
+@media (max-width:640px){
+  .dealt .skull-stage{width:92px}
+  .skull-wrap{gap:10px}
+  .skull-text{gap:4px}
+  .skull-text h2{font-size:clamp(24px, 7vw, 32px)}
+  .skull-text p:last-child{font-size:13px}
+  .skull-cards .gcard{padding:9px 12px 11px;row-gap:4px}
+  .skull-cards .gc-art{width:58px !important;height:58px !important}
+  .skull-cards .gc-name{font-size:19px}
+  .skull-cards .gc-stats{flex-direction:row;flex-wrap:wrap;gap:0 10px;font-size:13px;line-height:1.35}
+  .skull-cards .gc-lore{font-size:12px}
+}
+.skull-wrap .btn.ghost{border-color:rgba(255,106,122,.4);color:#f4c9cd;animation:sktext .5s ease-out .5s backwards}
+
+/* build summary, sound settings */
+.audio-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.btn.small{min-height:36px;padding:6px 12px;font-size:12px}
+.aud-note{font-size:12px;color:var(--muted);flex-basis:100%}
+.build{display:flex;flex-direction:column;gap:12px;padding-top:12px;border-top:1px solid var(--line)}
+.build-w{display:flex;gap:12px;align-items:center;min-width:0}
+.build-w canvas{flex:none;background:radial-gradient(circle, #232831, #12151a 70%);border:1px solid var(--line);border-radius:2px}
+.build-w div{min-width:0}
+.build-w b{display:block;font-size:17px}
+#bwRar{font-family:var(--f-num);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.build-w p{font-size:13px;color:#cfc9bb;margin-top:4px}
+.build-stats{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:6px;margin:0}
+.build-stats div{background:var(--panel-2);border:1px solid var(--line);padding:6px 8px;min-width:0}
+.build-stats dt{font-family:var(--f-num);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.build-stats dd{margin:0;font-family:var(--f-num);font-size:16px;font-variant-numeric:tabular-nums}
+.build-cards{display:flex;flex-wrap:wrap;gap:6px}
+.bc{font-size:12px;font-weight:600;padding:3px 9px;border:1px solid var(--rc);color:var(--rc);border-radius:999px}
+.bc-empty{font-size:13px;color:var(--muted)}
+.sub-eyebrow{font-family:var(--f-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* armory */
+.ar-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:8px}
+.wcard{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;background:var(--panel);border:1px solid var(--line);border-radius:2px;min-width:0;text-align:center}
+.wcard.known{border-color:color-mix(in srgb, var(--rc) 45%, transparent)}
+.wcard.equipped{outline:2px solid var(--tape);outline-offset:-2px}
+.wcard .num{font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.wcard .nm{font-size:13px;font-weight:600;line-height:1.2;min-height:2.4em;overflow-wrap:anywhere}
+.wcard.unknown .nm{color:var(--muted);font-weight:500}
+.wcard .rar{font-family:var(--f-num);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--rc)}
+.wcard .eq{position:absolute;top:6px;right:6px;font-family:var(--f-num);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tape-ink);background:var(--tape);padding:1px 5px}
+.detail-in.wide{grid-template-columns:260px minmax(0, 1fr)}
+@media (max-width:640px){.detail-in.wide{grid-template-columns:minmax(0, 1fr)}}
+.detail-art.wide{width:260px;height:110px;max-width:100%}
+
+/* game over */
+.stats{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px;margin:0}
+.stats div{background:var(--panel-2);border:1px solid var(--line);padding:10px;min-width:0}
+.stats dt{font-family:var(--f-num);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.stats dd{margin:2px 0 0;font-family:var(--f-num);font-size:22px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stats dd.small{font-family:var(--f-ui);font-size:15px;font-weight:600;line-height:1.25}
+@media (max-width:460px){.stats{grid-template-columns:repeat(2, minmax(0, 1fr))}}
+.post{display:flex;flex-direction:column;gap:6px}
+.post label{font-family:var(--f-num);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.post-row{display:flex;gap:8px;flex-wrap:wrap}
+.post input{flex:1 1 160px;min-width:0;height:46px;padding:0 12px;background:var(--night);border:1px solid var(--line);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:17px;letter-spacing:.1em;text-transform:uppercase;-webkit-user-select:text;user-select:text}
+.post-status{font-size:13px;color:var(--muted);min-height:1.2em}
+
+/* sheets: codex + leaderboard */
+.sheet{z-index:30;display:block;background:var(--night);padding-block:0}
+.sheet-head{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-block:16px 12px;background:linear-gradient(var(--night) 80%, rgba(14,17,21,0))}
+.sheet-head h2{font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1.05}
+.sheet-head h2 span{font-family:var(--f-num);font-size:.8em}
+.sheet-inner{width:min(980px, 100%);margin:0 auto;padding-bottom:28px;display:flex;flex-direction:column;gap:14px}
+.cx-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:#cfc9bb;cursor:pointer}
+.toggle input{width:18px;height:18px;accent-color:var(--tape)}
+.rar-sum{display:flex;flex-wrap:wrap;gap:4px 12px;font-family:var(--f-num);font-size:12px}
+.rar-sum span{color:var(--rc)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+.chip{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:6px 10px;border:1px solid var(--line);border-radius:2px;background:var(--panel);text-align:left}
+.chip span{font-size:13px;font-weight:600}
+.chip em{font-style:normal;font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.chip.on{border-color:var(--tape);background:#26230f}
+.chip.on em{color:var(--tape)}
+.strain-note{font-size:14px;color:#cfc9bb}
+.strain-note b{color:var(--bone)}
+.cx-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(104px, 1fr));gap:8px}
+.card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px 10px;background:var(--panel);border:1px solid var(--line);border-radius:2px;min-width:0;text-align:center}
+.card.known{border-color:color-mix(in srgb, var(--rc) 45%, transparent)}
+.card canvas{width:88px;height:88px}
+.card .num{font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.card .nm{font-size:13px;font-weight:600;line-height:1.2;min-height:2.4em;overflow-wrap:anywhere}
+.card.unknown .nm{color:var(--muted);font-weight:500}
+.card .rar{font-family:var(--f-num);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--rc)}
+.detail{position:absolute;left:0;right:0;bottom:0;z-index:40;max-height:88%;overflow-y:auto;background:var(--panel);border-top:2px solid var(--rc,var(--line));box-shadow:0 -12px 40px rgba(0,0,0,.6);padding-block:18px 24px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.detail-in{width:min(760px, 100%);margin:0 auto;display:grid;grid-template-columns:180px minmax(0, 1fr);gap:18px;align-items:start}
+@media (max-width:560px){.detail-in{grid-template-columns:minmax(0, 1fr)}.detail-art{justify-self:center}}
+.detail-art{width:180px;height:180px;background:radial-gradient(circle at 50% 50%, #232831 0%, #12151a 70%);border:1px solid var(--line);border-radius:2px}
+.detail-text{display:flex;flex-direction:column;gap:10px;min-width:0}
+.detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.detail h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1.05;text-wrap:balance}
+.tagline{font-family:var(--f-num);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--rc)}
+.trait{font-size:14px;color:#d4cebf;max-width:60ch}
+.trait b{color:var(--bone);font-weight:600}
+.bars{display:grid;gap:8px}
+.bar-row{display:grid;grid-template-columns:86px minmax(0, 1fr) 54px;gap:10px;align-items:center;font-size:13px}
+.bar-row span{color:var(--muted)}
+.bar-row em{font-style:normal;font-family:var(--f-num);text-align:right;font-variant-numeric:tabular-nums}
+.track{height:8px;background:var(--night);border:1px solid var(--line)}
+.track i{display:block;height:100%;background:var(--rc,var(--tape))}
+
+/* leaderboard */
+.tabs{display:flex;gap:6px}
+.tab{padding:8px 14px;border:1px solid var(--line);background:var(--panel);border-radius:2px;font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.tab.on{border-color:var(--tape);color:var(--tape)}
+.lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.lb-row{display:grid;grid-template-columns:40px minmax(0, 1fr) auto 64px;gap:10px;align-items:center;padding:10px 12px;background:var(--panel);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.lb-row .rk{font-family:var(--f-num);color:var(--muted)}
+.lb-row .tg{font-weight:600;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-row .sc{font-family:var(--f-num);font-size:16px}
+.lb-row .wv{font-family:var(--f-num);font-size:12px;color:var(--muted);text-align:right}
+.lb-row.top .rk{color:var(--tape)}
+.lb-row.me{border-color:var(--tape)}
+.lb-head{display:grid;grid-template-columns:40px minmax(0, 1fr) auto 64px;gap:10px;padding:0 12px;font-family:var(--f-num);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lb-head span:nth-child(3),.lb-head span:nth-child(4){text-align:right}
+.lb-note{font-size:13px;color:var(--muted);max-width:62ch}
+.empty{padding:22px 14px;border:1px dashed var(--line);color:var(--muted);font-size:14px;text-align:center}
+
+@media (prefers-reduced-motion:reduce){
+  .wave b{transform:none}
+  #airBtn.ready,.wheel-result.ddup,.skull-art.laugh .sk-jaw,.skull-art.laugh .sk-eye{animation:none}
+  .skull-art.lunge{animation:none;opacity:0}
+  #bite .teeth{transition:none}
+  .tape span,#banner.show,.toast,#qteBtn.go::after,.gc-shine,#combo.pop b{animation:none}
+  .gcard{animation:none;opacity:1;transform:none}
+  .gcard.shot,.gcard.gone{animation:vanish .3s ease forwards}
+  #banner.show{opacity:1}
+  .skull-art.rise,.skull-art.open .sk-eye,.skull-art.rise .sk-eye,.skull-rays,.skull-art.open .sk-maw{animation:none}
+  .skull-art.rise{opacity:1}
+  .sk-eye{opacity:1}
+  .sk-jaw,.sk-head,.skull-stage{transition:none}
+}
+</style>
+
+<div id="app">
+  <canvas id="cv" aria-label="Zombie City game view"></canvas>
+
+  <div id="hud" hidden>
+    <div class="hud-top">
+      <div class="vitals">
+        <div class="hp"><i id="hpFill"></i></div>
+        <div class="hp-row"><b id="hpText">100</b><span id="fxChips"></span></div>
+      </div>
+      <div class="wave"><span>Wave</span><b id="waveNum">1</b></div>
+      <div class="score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
+      <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span></button>
+    </div>
+    <div id="bossBar" hidden><span id="bossName"></span><div class="bar bar1"><i id="bossFill"></i></div><div class="bar bar2"><i id="bossFill2"></i></div><span id="bossInfo"></span></div>
+    <div id="toasts" aria-live="polite"></div>
+    <div id="banner" hidden></div>
+    <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
+    <div id="chainPop" hidden></div>
+    <button id="dashBtn" aria-label="Dash">Dash</button>
+    <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em></button>
+    <div class="wchip" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><span id="wName">Standard Pistol</span></div>
+    <div id="qte" hidden>
+      <div class="qte-head"><b>Break free</b><span id="qtePips" aria-label="Escape progress"></span><div class="qte-time"><i id="qteTime"></i></div></div>
+      <button id="qteBtn" type="button" aria-label="Tap to break free"></button>
+    </div>
+  </div>
+
+  <section id="title" class="ov ov-title" aria-label="Main menu">
+    <div class="tape" aria-hidden="true"><span>Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183;</span></div>
+    <div class="title-body">
+      <p class="season-chip"><span id="seasonName">Season</span> season &#183; resets in <b id="seasonLeft">--</b></p>
+      <h1>Zombie<br><span>City</span></h1>
+      <p class="lede">An endless quarantine zone. Every zombie carries one of 1,000 mutations. Survive the waves, shoot the cards you want, collect 250 weapons and hunt 50 bosses that mutate as you fight them. Every wave plays a new song, from synthwave to orchestral metal and speedcore.</p>
+      <div class="btns">
+        <button class="btn primary" id="playBtn">Enter the city</button>
+        <button class="btn" id="armoryBtn">Armory <em id="gunCount">1/250</em></button>
+        <button class="btn" id="codexBtn">Specimen log <em id="foundCount">0/1000</em></button>
+        <button class="btn" id="bossLogBtn">Boss log <em id="bossCount">0/50</em></button>
+        <button class="btn" id="lbBtn">Leaderboard</button>
+      </div>
+      <p class="best" id="loadLine"></p>
+      <div class="audio-row" id="titleAudio"></div>
+      <p class="hint" id="ctrlHint">Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.</p>
+      <p class="best" id="bestLine"></p>
+    </div>
+  </section>
+
+  <section id="upgrade" class="ov ov-cards" hidden aria-label="Choose a card">
+    <div class="cards-wrap">
+      <div class="cards-head">
+        <p class="eyebrow" id="upEyebrow">Wave cleared</p>
+        <h2 class="cards-title">Choose your card</h2>
+        <p class="cards-sub" id="upSub">Shoot the card you want.</p>
+      </div>
+      <div class="card-row" id="upGrid"></div>
+    </div>
+  </section>
+
+  <section id="skull" class="ov ov-skull" hidden aria-label="Forbidden modifications">
+    <div class="skull-wrap">
+      <div class="skull-stage" id="skullStage">
+        <div class="skull-rays" aria-hidden="true"></div>
+        <svg class="skull-art" id="skullArt" viewBox="0 0 200 236" aria-hidden="true">
+          <defs>
+            <radialGradient id="skMaw" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#fff1b0"/><stop offset=".25" stop-color="#ff7a2e"/><stop offset=".6" stop-color="#c3101f"/><stop offset="1" stop-color="#2a0306"/></radialGradient>
+            <linearGradient id="skBone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3ecdc"/><stop offset=".55" stop-color="#d9cfb8"/><stop offset="1" stop-color="#9e927a"/></linearGradient>
+            <radialGradient id="skShade" cx="50%" cy="38%" r="62%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#2a1a10" stop-opacity=".55"/></radialGradient>
+            <radialGradient id="skEye" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff4d6"/><stop offset=".35" stop-color="#ff3b4f"/><stop offset="1" stop-color="#ff3b4f" stop-opacity="0"/></radialGradient>
+          </defs>
+          <ellipse class="sk-maw" cx="100" cy="190" rx="50" ry="26" fill="url(#skMaw)"/>
+          <g class="sk-jaw">
+            <path d="M46 166 L154 166 L150 194 C142 214 124 226 100 226 C76 226 58 214 50 194 Z" fill="url(#skBone)" stroke="#1a1210" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M58 200 C70 214 84 218 100 218 C116 218 130 214 142 200" fill="none" stroke="#6d6250" stroke-width="2"/>
+            <g fill="#efe6d2" stroke="#1a1210" stroke-width="1.6">
+              <rect x="61" y="166" width="9" height="15" rx="2"/><rect x="71" y="166" width="9" height="16" rx="2"/><rect x="81" y="166" width="9" height="17" rx="2"/><rect x="91" y="166" width="8.5" height="17" rx="2"/>
+              <rect x="100.5" y="166" width="8.5" height="17" rx="2"/><rect x="110" y="166" width="9" height="17" rx="2"/><rect x="120" y="166" width="9" height="16" rx="2"/><rect x="130" y="166" width="9" height="15" rx="2"/>
+            </g>
+          </g>
+          <g class="sk-head">
+            <path d="M100 10 C50 10 20 48 20 98 C20 124 30 142 44 152 L46 174 L154 174 L156 152 C170 142 180 124 180 98 C180 48 150 10 100 10 Z" fill="url(#skBone)" stroke="#1a1210" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M100 10 C50 10 20 48 20 98 C20 124 30 142 44 152 L46 174 L154 174 L156 152 C170 142 180 124 180 98 C180 48 150 10 100 10 Z" fill="url(#skShade)"/>
+            <g fill="none" stroke="#3b2c20" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M101 12 L96 32 L107 48 L98 66 L103 76"/><path d="M107 48 L120 54"/>
+              <path d="M156 42 L142 54 L146 68 L136 78"/><path d="M38 70 L50 76 L48 88"/>
+            </g>
+            <path d="M34 134 C46 128 54 132 60 140" fill="none" stroke="#7c705c" stroke-width="2"/>
+            <path d="M166 134 C154 128 146 132 140 140" fill="none" stroke="#7c705c" stroke-width="2"/>
+            <path d="M42 94 C46 80 70 76 90 90 C94 108 86 126 68 128 C50 126 40 110 42 94 Z" fill="#0d0607" stroke="#1a1210" stroke-width="3"/>
+            <path d="M158 94 C154 80 130 76 110 90 C106 108 114 126 132 128 C150 126 160 110 158 94 Z" fill="#0d0607" stroke="#1a1210" stroke-width="3"/>
+            <path d="M40 82 C56 70 76 72 94 86" fill="none" stroke="#1a1210" stroke-width="4" stroke-linecap="round"/>
+            <path d="M160 82 C144 70 124 72 106 86" fill="none" stroke="#1a1210" stroke-width="4" stroke-linecap="round"/>
+            <circle class="sk-eye" cx="68" cy="106" r="15" fill="url(#skEye)"/>
+            <circle class="sk-eye" cx="132" cy="106" r="15" fill="url(#skEye)"/>
+            <path d="M100 126 L90 148 L100 144 L110 148 Z" fill="#0d0607" stroke="#1a1210" stroke-width="2.4" stroke-linejoin="round"/>
+            <g fill="#f3ead6" stroke="#1a1210" stroke-width="1.6">
+              <rect x="57" y="156" width="10" height="19" rx="2"/><rect x="68" y="155" width="10" height="21" rx="2"/><rect x="79" y="155" width="10" height="22" rx="2"/><rect x="90" y="155" width="9.5" height="23" rx="2"/>
+              <rect x="100.5" y="155" width="9.5" height="23" rx="2"/><rect x="111" y="155" width="10" height="22" rx="2"/><rect x="122" y="155" width="10" height="21" rx="2"/><rect x="133" y="156" width="10" height="19" rx="2"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="skull-text" id="skullText" hidden>
+        <p class="eyebrow" id="skullEyebrow">x100 chain</p>
+        <h2 id="skullTitle">Choose your custom modification</h2>
+        <p id="skullSub">Three forbidden mods. Insane power, brutal curse. Shoot one, or walk away.</p>
+      </div>
+      <div class="card-row skull-cards" id="skullCards"></div>
+      <div class="skull-wheel" id="skullWheel" hidden>
+        <div class="wheel-box"><canvas id="wheelCv" width="600" height="600" aria-label="Wheel of fate"></canvas><i class="wheel-pin" aria-hidden="true"></i></div>
+        <button class="btn primary" id="wheelSpin" type="button">Spin the wheel</button>
+        <p class="wheel-result" id="wheelResult" aria-live="polite"></p>
+      </div>
+      <button class="btn ghost" id="skullRefuse" type="button" hidden>Refuse the deal</button>
+    </div>
+  </section>
+  <div class="shot-flash" id="shotFlash"></div>
+  <div id="bite" hidden aria-hidden="true">
+    <svg class="teeth top" viewBox="0 0 400 220" preserveAspectRatio="none"><rect width="400" height="120" fill="#2a0a10"/><path d="M0 110 Q200 150 400 110 L400 120 L0 120 Z" fill="#5c1520"/><g fill="#efe6d2" stroke="#1a1210" stroke-width="3"><path d="M4 112 L28 210 L52 116 Z"/><path d="M54 117 L80 200 L104 122 Z"/><path d="M106 123 L132 214 L158 127 Z"/><path d="M160 128 L186 196 L212 128 Z"/><path d="M214 128 L240 214 L266 126 Z"/><path d="M268 124 L294 200 L318 120 Z"/><path d="M320 119 L344 210 L368 115 Z"/><path d="M370 113 L388 190 L398 111 Z"/></g></svg>
+    <svg class="teeth bot" viewBox="0 0 400 220" preserveAspectRatio="none"><rect y="100" width="400" height="120" fill="#2a0a10"/><path d="M0 110 Q200 70 400 110 L400 100 L0 100 Z" fill="#5c1520"/><g fill="#efe6d2" stroke="#1a1210" stroke-width="3"><path d="M10 108 L34 14 L58 104 Z"/><path d="M60 103 L86 26 L110 99 Z"/><path d="M112 98 L138 10 L164 94 Z"/><path d="M166 93 L192 30 L218 93 Z"/><path d="M220 93 L246 10 L272 95 Z"/><path d="M274 96 L300 26 L324 99 Z"/><path d="M326 100 L350 14 L374 104 Z"/><path d="M376 105 L392 34 L400 107 Z"/></g></svg>
+    <svg class="cracks" viewBox="0 0 400 800" preserveAspectRatio="none"><g fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2.4" stroke-linecap="round"><path d="M200 400 L150 330 L160 250 L110 170 L120 60"/><path d="M200 400 L260 340 L250 260 L310 190 L300 80"/><path d="M200 400 L120 420 L60 380 L10 410"/><path d="M200 400 L290 430 L350 400 L400 440"/><path d="M200 400 L170 490 L190 580 L140 680 L160 800"/><path d="M200 400 L240 500 L220 600 L280 700 L270 800"/><path d="M150 330 L100 320"/><path d="M250 260 L290 250"/><path d="M190 580 L240 600"/></g></svg>
+  </div>
+
+  <section id="pause" class="ov" hidden aria-label="Paused">
+    <div class="panel">
+      <p class="eyebrow" id="pauseInfo">Wave 1</p>
+      <h2>Paused</h2>
+      <div class="btns">
+        <button class="btn primary" id="resumeBtn">Resume</button>
+        <button class="btn" id="pauseCodexBtn">Specimen log</button>
+        <button class="btn ghost" id="quitBtn">Quit to menu</button>
+      </div>
+      <div class="audio-row" id="pauseAudio"></div>
+      <div class="build">
+        <p class="sub-eyebrow">Your build</p>
+        <div class="build-w"><canvas id="bwIcon" aria-hidden="true"></canvas><div><b id="bwName"></b><span id="bwRar"></span><p id="bwDesc"></p></div></div>
+        <dl class="build-stats" id="bStats"></dl>
+        <div class="build-cards" id="bCards"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="over" class="ov" hidden aria-label="Run over">
+    <div class="panel">
+      <p class="eyebrow" id="ovEyebrow">Run over</p>
+      <h2 class="big">You were overrun</h2>
+      <dl class="stats">
+        <div><dt>Score</dt><dd id="ovScore">0</dd></div>
+        <div><dt>Wave</dt><dd id="ovWave">1</dd></div>
+        <div><dt>Kills</dt><dd id="ovKills">0</dd></div>
+        <div><dt>Best chain</dt><dd id="ovChain">x0</dd></div>
+        <div><dt>New specimens</dt><dd id="ovFound">0</dd></div>
+        <div><dt>Weapon</dt><dd id="ovWeapon" class="small">Standard Pistol</dd></div>
+      </dl>
+      <form id="postForm" class="post">
+        <label for="callsign">Callsign for the leaderboard</label>
+        <div class="post-row"><input id="callsign" name="callsign" maxlength="14" autocomplete="off" spellcheck="false" placeholder="SURVIVOR"><button class="btn primary" type="submit" id="postBtn">Post score</button></div>
+        <p class="post-status" id="postStatus"></p>
+      </form>
+      <div class="btns">
+        <button class="btn primary" id="againBtn">Play again</button>
+        <button class="btn" id="overCodexBtn">Specimen log</button>
+        <button class="btn" id="overLbBtn">Leaderboard</button>
+        <button class="btn ghost" id="menuBtn">Main menu</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="codex" class="ov sheet" hidden aria-label="Specimen log">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div><p class="eyebrow">Specimen log</p><h2><span id="cxCount">0 / 1000</span> identified</h2></div>
+        <button class="icon-btn" id="cxClose" aria-label="Close specimen log">&#215;</button>
+      </header>
+      <div class="cx-tools">
+        <label class="toggle"><input type="checkbox" id="cxSpoil"> Show unidentified specimens</label>
+        <div class="rar-sum" id="cxRarity"></div>
+      </div>
+      <div class="tabs series" id="cxSeries" role="tablist" aria-label="Outbreaks">
+        <button class="tab on" type="button" data-s="0">Outbreak I <em>0/500</em></button>
+        <button class="tab" type="button" data-s="1">Outbreak II <em>0/500</em></button>
+      </div>
+      <div class="chips" id="cxStrains" role="tablist" aria-label="Strains"></div>
+      <p class="strain-note" id="cxStrainNote"></p>
+      <div class="cx-grid" id="cxGrid"></div>
+    </div>
+  </section>
+
+  <div class="detail" id="cxDetail" hidden role="dialog" aria-label="Specimen details">
+      <div class="detail-in">
+        <canvas class="detail-art" id="dtArt" width="180" height="180"></canvas>
+        <div class="detail-text">
+          <div class="detail-top">
+            <div><p class="tagline" id="dtTag"></p><h3 id="dtName"></h3></div>
+            <button class="icon-btn" id="dtClose" aria-label="Close details">&#215;</button>
+          </div>
+          <p class="trait" id="dtStrain"></p>
+          <p class="trait" id="dtAbility"></p>
+          <div class="bars" id="dtBars"></div>
+          <p class="trait" id="dtWave"></p>
+        </div>
+      </div>
+  </div>
+
+  <section id="armory" class="ov sheet" hidden aria-label="Armory">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div><p class="eyebrow">Armory</p><h2><span id="arCount">1 / 250</span> unlocked</h2></div>
+        <button class="icon-btn" id="arClose" aria-label="Close armory">&#215;</button>
+      </header>
+      <p class="strain-note" id="arLoadout"></p>
+      <div class="cx-tools"><label class="toggle"><input type="checkbox" id="arSpoil"> Show locked weapons</label></div>
+      <div class="chips" id="arFrames" role="tablist" aria-label="Weapon types"></div>
+      <p class="strain-note" id="arFrameNote"></p>
+      <div class="ar-grid" id="arGrid"></div>
+    </div>
+  </section>
+
+  <div class="detail" id="arDetail" hidden role="dialog" aria-label="Weapon details">
+    <div class="detail-in wide">
+      <canvas class="detail-art wide" id="awArt"></canvas>
+      <div class="detail-text">
+        <div class="detail-top">
+          <div><p class="tagline" id="awTag"></p><h3 id="awName"></h3></div>
+          <button class="icon-btn" id="awClose" aria-label="Close weapon details">&#215;</button>
+        </div>
+        <p class="trait" id="awMod"></p>
+        <p class="trait" id="awReact"></p>
+        <div class="bars" id="awBars"></div>
+        <div class="btns"><button class="btn primary" id="awEquip" type="button">Start runs with this</button></div>
+      </div>
+    </div>
+  </div>
+  <section id="bosslog" class="ov sheet" hidden aria-label="Boss log">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div><p class="eyebrow">Boss log</p><h2><span id="blCount">0 / 50</span> encountered</h2></div>
+        <button class="icon-btn" id="blClose" aria-label="Close boss log">&#215;</button>
+      </header>
+      <p class="strain-note">Bosses roam the city from wave 3 and guard every fifth wave. Each one mutates into new forms as you hurt it. Reach a x200 chain and the skull's wheel might summon the Overlord.</p>
+      <div class="ar-grid" id="blGrid"></div>
+    </div>
+  </section>
+  <div class="detail" id="blDetail" hidden role="dialog" aria-label="Boss details">
+    <div class="detail-in bl-in">
+      <div class="detail-text">
+        <div class="detail-top">
+          <div><p class="tagline" id="blTag"></p><h3 id="blName"></h3></div>
+          <button class="icon-btn" id="blCloseD" aria-label="Close boss details">&#215;</button>
+        </div>
+        <div class="bl-forms" id="blForms"></div>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="musicFile" accept="audio/*" hidden>
+
+  <section id="lb" class="ov sheet" hidden aria-label="Leaderboard">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div><p class="eyebrow">Season leaderboard</p><h2 id="lbSeason">Season</h2></div>
+        <button class="icon-btn" id="lbClose" aria-label="Close leaderboard">&#215;</button>
+      </header>
+      <p class="lb-note" id="lbReset"></p>
+      <div class="tabs" role="tablist">
+        <button class="tab on" id="tabGlobal" role="tab">Global</button>
+        <button class="tab" id="tabLocal" role="tab">This device</button>
+      </div>
+      <div class="lb-head"><span>Rank</span><span>Callsign</span><span>Score</span><span>Wave</span></div>
+      <ol class="lb-list" id="lbList"></ol>
+      <p class="lb-note" id="lbNote"></p>
+    </div>
+  </section>
+</div>
+
+<script>
+/*__MUTATIONS__*/
+</script>
+<script>
+/*__AUDIO__*/
+</script>
+<script>
+/*__WEAPONS__*/
+</script>
+<script>
+/*__BOSSES__*/
+</script>
+<script>
+/*__GAME__*/
+</script>

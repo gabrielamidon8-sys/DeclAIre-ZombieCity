@@ -1,0 +1,600 @@
+/* ================= arsenal: weapons, cards, chain kills, armory, sound settings ================= */
+/* This file is inserted inside the game's closure at build time, so it shares G, $, store and the helpers. */
+const WEAPONS = ZW.buildWeapons(), CARDS = ZW.CARDS, WRAR = ZW.RAR;
+const guns = new Set(store.get('zc_guns', [0])); guns.add(0);
+function saveGuns() { store.set('zc_guns', Array.from(guns)); }
+function loadoutId() { const id = store.get('zc_loadout', 0); return guns.has(id) && WEAPONS[id] ? id : 0; }
+
+function newCardStats() {
+  return { dmg: 0, rof: 0, multi: 0, burst: 0, flame: 0, pierce: 0, blast: 0, range: 0, crit: 0, critDmg: 0, move: 0, regen: 0, taken: 0, dash: 0, killHeal: 0, lifesteal: 0, burn: 0, slow: 0, freeze: 0, shock: 0, splash: 0, poison: 0, bounce: 0, elite: 0, homing: 0, execute: 0, phoenix: 0, zspeed: 0, split: 0, score: 0, luck: 0, gravity: 0, horde: 0, healMul: 0, jam: 0, vision: 0, hpPerShot: 0, selfDps: 0, zhp: 0, bossHp: 0, thunder: 0, echo: 0, maxHpPct: 0 };
+}
+// Combine the equipped weapon with every card taken so far into the live stats the game uses.
+function recalc(p) {
+  const w = p.weapon, c = p.cs, fx = w.fx;
+  let jam = fx.jamEvery ? Math.round(fx.jamEvery * (1 + Math.max(0, c.rof))) : 0;
+  if (c.jam) jam = jam ? Math.min(jam, c.jam) : c.jam;
+  p.S = {
+    dmg: w.dmg * Math.max(0.15, 1 + c.dmg), rof: w.rof * Math.max(0.25, 1 + c.rof),
+    pellets: Math.max(1, w.pellets + c.multi + c.flame), burst: w.burst + c.burst, spread: w.spread,
+    speed: w.speed * (1 + Math.max(0, c.range) * 0.3), range: w.range * Math.max(0.4, 1 + c.range),
+    pierce: w.pierce + c.pierce, crit: Math.min(0.95, w.crit + c.crit), critMul: w.critMul + c.critDmg,
+    knock: w.knock, kind: w.kind, blast: w.blast * (1 + c.blast),
+    burn: (fx.burn || 0) + c.burn, slow: (fx.slow || 0) + c.slow, freeze: Math.min(0.6, (fx.freeze || 0) + c.freeze), shock: (fx.shock || 0) + c.shock,
+    splash: (fx.splash || 0) + c.splash, poison: (fx.poison || 0) + c.poison, bounce: (fx.bounce || 0) + c.bounce,
+    homing: (fx.homing || 0) + c.homing, lifesteal: (fx.lifesteal || 0) + c.lifesteal, split: (fx.split || 0) + c.split,
+    execute: (fx.execute || 0) + c.execute, gravity: (fx.gravity || 0) + c.gravity, echo: fx.echo || c.echo || 0, boomerang: fx.boomerang || 0,
+    volatile: fx.volatile || 0, thunder: fx.thunder || c.thunder || 0, elite: c.elite, jamEvery: jam
+  };
+  p.speed = 172 * w.move * Math.max(0.4, 1 + c.move);
+  p.dashCd = 2.4 * Math.max(0.35, 1 - c.dash);
+  p.healMul = Math.max(0, 1 + c.healMul);
+  p.regen = c.regen; p.killHeal = c.killHeal + (fx.killHeal || 0);
+  p.taken = Math.max(0.3, 1 + c.taken + (fx.taken || 0));
+  p.scoreMul = 1 + c.score + (fx.score || 0);
+  p.luck = c.luck + (fx.luck || 0);
+  p.vision = c.vision;
+  G.zsMul = Math.max(0.5, 1 + c.zspeed);
+  G.hordeMul = 1 + c.horde;
+  p.hpPerShot = c.hpPerShot; p.selfDps = c.selfDps;
+  G.zhpMul = c.zhp; G.bossHpMul = c.bossHp;
+}
+function healPlayer(a) { const p = G.p; if (!p || a <= 0) return; p.hp = Math.min(p.maxHp, p.hp + a * p.healMul); }
+
+/* ---------- firing ---------- */
+function fireWeapon(t) {
+  const p = G.p, S = p.S, a = Math.atan2(t.y - p.y, t.x - p.x);
+  p.shots++;
+  if (p.hpPerShot) p.hp = Math.max(1, p.hp - p.hpPerShot);
+  if (S.thunder && p.shots % 6 === 0) thunderStrike(t);
+  volley(a, 1);
+  for (let i = 1; i < S.burst; i++) p.queue.push({ t: i * 0.07, mul: 1 });
+  if (S.echo) p.queue.push({ t: 0.17, mul: 0.6 });
+  if (S.jamEvery && p.shots % S.jamEvery === 0) { p.jamT = 1.2; SFX.jam(); G.texts.push({ x: p.x, y: p.y - 28, t: 0, life: 0.9, s: 'JAMMED', c: '#fff36b' }); }
+  SFX.shot(p.weapon.F.key);
+}
+function volley(a, mul) {
+  const p = G.p, S = p.S, w = p.weapon, n = S.pellets, kind = S.kind, cone = w.F.key === 'shotgun' || kind === 'flame';
+  const gap = 0.11 * Math.min(1, 6 / Math.max(1, n));
+  for (let i = 0; i < n; i++) {
+    let ang = a;
+    if (n > 1) ang += cone ? (i / (n - 1) - 0.5) * S.spread : (i - (n - 1) / 2) * gap;
+    ang += rand(-1, 1) * (kind === 'flame' ? S.spread * 0.5 : S.spread * 0.35 + 0.012);
+    const crit = Math.random() < S.crit, spd = S.speed * (kind === 'flame' ? rand(0.75, 1.15) : 1), life = S.range / spd;
+    G.bullets.push({
+      x: p.x + Math.cos(ang) * 18, y: p.y + Math.sin(ang) * 18, sx: p.x, sy: p.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+      dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
+      life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper'
+    });
+  }
+  p.flashT = 0.05;
+}
+function thunderStrike(t) {
+  const S = G.p.S;
+  bolt(t.x + rand(-40, 40), t.y - 460, t.x, t.y, '#e8f0ff'); bolt(t.x + rand(-40, 40), t.y - 460, t.x, t.y, '#a9c6ff');
+  ring(t.x, t.y, 6, 70, 0.35, '232,240,255', 4); shakeIt(5); SFX.zap(); SFX.boom(false);
+  hurtZombie(t, S.dmg * 4 * (G.p.weakT > 0 ? 0.65 : 1), { src: 'blast', crit: true });
+}
+function nearestZ(x, y, R, exclude) {
+  let best = null, bd = R * R;
+  near(x, y, R, o => { if (o.dead || o.illusion || o.st.under || o.st.down > 0 || (exclude && exclude.indexOf(o) >= 0)) return; const d = (o.x - x) * (o.x - x) + (o.y - y) * (o.y - y); if (d < bd) { bd = d; best = o; } });
+  return best;
+}
+function bonusDmg(z, dmg) { const S = G.p.S; if (S.execute && z.hp < z.maxHp * 0.3) dmg *= 1 + S.execute; if (S.elite && (z.boss || z.m.threat >= 7)) dmg *= 1 + S.elite; return dmg; }
+function updBullets(dt) {
+  const p = G.p, S = p.S;
+  for (const b of G.bullets) {
+    if (b.dead) continue;
+    if (b.homing && b.boom !== 2 && (frameNo & 1) === 0) {
+      const tg = nearestZ(b.x, b.y, 240, b.hit);
+      if (tg) { const ta = Math.atan2(tg.y - b.y, tg.x - b.x), ca = Math.atan2(b.vy, b.vx), na = angLerp(ca, ta, Math.min(1, dt * 14)), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
+    }
+    // swept hit test: check the whole path travelled this frame (from the player on the first frame), so fast
+    // bullets can't skip over small zombies and point-blank targets inside the muzzle still get hit
+    const sx = b.sx !== undefined ? b.sx : b.x, sy = b.sy !== undefined ? b.sy : b.y; b.sx = b.sy = undefined;
+    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    if (b.life <= 0) {
+      if (b.boom === 1) { b.boom = 2; b.life = b.max * 1.5; b.hit = null; continue; }
+      if (b.kind === 'grenade') explodeAt(b.x, b.y, b, null);
+      b.dead = true; continue;
+    }
+    if (b.boom === 2) {
+      const a = Math.atan2(p.y - b.y, p.x - b.x), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
+      if (Math.hypot(p.x - b.x, p.y - b.y) < 18) { b.dead = true; continue; }
+    } else if (pointInRect(b.x, b.y)) {
+      if (b.kind === 'grenade') { b.x -= b.vx * dt; b.y -= b.vy * dt; explodeAt(b.x, b.y, b, null); b.dead = true; continue; }
+      if (b.bounce > 0 && b.kind !== 'flame') { reflectBullet(b, dt); b.bounce--; continue; }
+      b.dead = true; if (b.kind !== 'flame') burst(b.x, b.y, 3, b.col, 90, 2, 0.2); continue;
+    }
+    const dx = b.x - sx, dy = b.y - sy, l2 = dx * dx + dy * dy;
+    near((sx + b.x) / 2, (sy + b.y) / 2, 64 + Math.sqrt(l2) / 2, z => {
+      if (z.dead || (b.hit && b.hit.indexOf(z) >= 0)) return;
+      const rr = z.r + (b.kind === 'flame' ? 8 : 3), u = l2 > 0 ? Math.max(0, Math.min(1, ((z.x - sx) * dx + (z.y - sy) * dy) / l2)) : 1;
+      const ex = z.x - (sx + dx * u), ey = z.y - (sy + dy * u); if (ex * ex + ey * ey > rr * rr) return;
+      if (b.kind === 'grenade') { explodeAt(b.x, b.y, b, z); b.dead = true; return false; }
+      const dmg = bonusDmg(z, b.dmg), sp = Math.hypot(b.vx, b.vy) || 1;
+      const res = hurtZombie(z, dmg, { src: 'bullet', crit: b.crit, kx: b.vx / sp * S.knock, ky: b.vy / sp * S.knock });
+      if (res === 'pass' || !res) return;
+      if (res === 'reflect') { b.dead = true; return false; }
+      if (b.kind !== 'flame') burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25);
+      onHitFx(z, b, dmg);
+      (b.hit || (b.hit = [])).push(z);
+      if (b.split > 0 && !b.shard) splitBullet(b, z);
+      if (b.pierce > 0) { b.pierce--; return; }
+      if (b.bounce > 0) {
+        const tg = nearestZ(b.x, b.y, 260, b.hit);
+        if (tg) { b.bounce--; const a = Math.atan2(tg.y - b.y, tg.x - b.x), s2 = Math.hypot(b.vx, b.vy); b.vx = Math.cos(a) * s2; b.vy = Math.sin(a) * s2; b.life = Math.max(b.life, 0.5); return false; }
+      }
+      b.dead = true; return false;
+    });
+  }
+  G.bullets = G.bullets.filter(b => !b.dead);
+  if (G.bullets.length > 700) G.bullets.splice(0, G.bullets.length - 700);
+}
+function onHitFx(z, b, dmg) {
+  const S = G.p.S;
+  if (S.burn) { z.burnT = 3; z.burnDps = Math.max(z.burnDps || 0, dmg * 0.22 * S.burn + 2 * S.burn); }
+  if (S.poison) { z.poisonT = 4; z.poisonDps = Math.min((z.poisonDps || 0) + dmg * 0.08 * S.poison + 0.5, z.maxHp * 0.3); }
+  if (S.slow) { z.slowT = 1.2 + 0.3 * S.slow; z.slowMul = Math.max(0.3, 1 - 0.22 * S.slow); }
+  if (S.freeze && !z.boss && Math.random() < S.freeze) { z.stun = Math.max(z.stun, 1); z.frozen = 1; }
+  if (S.shock && !b.chained) chainLightning(z, dmg * 0.45, S.shock);
+  if (S.splash) splashAt(b.x, b.y, 24 + 14 * S.splash, dmg * 0.4, z, false);
+  if (S.gravity) near(b.x, b.y, 70 + 25 * S.gravity, o => { if (o.dead || o.boss || o === z) return; const dx = b.x - o.x, dy = b.y - o.y, d = Math.hypot(dx, dy) || 1; o.kvx += dx / d * 170; o.kvy += dy / d * 170; });
+  if (S.lifesteal) healPlayer(dmg * S.lifesteal);
+  if (S.volatile && b.crit) splashAt(b.x, b.y, 56, dmg * 0.6, null, true);
+}
+function chainLightning(z, dmg, n) {
+  let from = z; const seen = [z];
+  for (let i = 0; i < n; i++) {
+    const tg = nearestZ(from.x, from.y, 140, seen); if (!tg) break;
+    bolt(from.x, from.y, tg.x, tg.y, '#fff36b'); seen.push(tg); hurtZombie(tg, dmg, { src: 'blast' }); from = tg;
+  }
+  if (seen.length > 1) SFX.zap();
+}
+function splashAt(x, y, R, dmg, except, big) {
+  near(x, y, R + 30, o => { if (o !== except && !o.dead && Math.hypot(o.x - x, o.y - y) < R + o.r) hurtZombie(o, dmg, { src: 'blast' }); });
+  ring(x, y, 4, R, 0.2, big ? '255,120,40' : '255,170,80', big ? 3 : 2);
+  if (big) { burst(x, y, 10, '#ffb347', 200, 4, 0.4); SFX.boom(false); }
+}
+function explodeAt(x, y, b, direct) {
+  const R = G.p.S.blast || 60;
+  near(x, y, R + 40, o => {
+    if (o.dead) return; const d = Math.hypot(o.x - x, o.y - y); if (d > R + o.r) return;
+    const dmg = bonusDmg(o, b.dmg * (o === direct ? 1.2 : 1));
+    const res = hurtZombie(o, dmg, { src: 'blast', crit: b.crit, kx: (o.x - x) / (d || 1) * 220, ky: (o.y - y) / (d || 1) * 220 });
+    if (res === true) onHitFx(o, { x: o.x, y: o.y, crit: b.crit, chained: true }, dmg * 0.6);
+  });
+  burst(x, y, 24, '#ffb347', 320, 5, 0.5); burst(x, y, 10, '#5a1a10', 200, 7, 0.7);
+  ring(x, y, 8, R, 0.35, '255,140,50', 4); splat(x, y, R * 0.5, 'rgba(20,10,6,0.55)'); shakeIt(6); SFX.boom(true);
+}
+function splitBullet(b, z) {
+  for (let s = -1; s <= 1; s += 2) for (let k = 0; k < b.split; k++) {
+    const a = Math.atan2(b.vy, b.vx) + s * (0.5 + k * 0.25), sp = Math.hypot(b.vx, b.vy) * 0.85;
+    G.bullets.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, dmg: b.dmg * 0.35, crit: false, pierce: 0, bounce: 0, split: 0, shard: true, life: 0.35, max: 0.35, hit: [z], kind: 'bullet', col: b.col, homing: 0, boom: 0 });
+  }
+}
+function reflectBullet(b, dt) {
+  const px = b.x - b.vx * dt, py = b.y - b.vy * dt;
+  if (!pointInRect(px, b.y)) b.vx = -b.vx; else if (!pointInRect(b.x, py)) b.vy = -b.vy; else { b.vx = -b.vx; b.vy = -b.vy; }
+  b.x = px; b.y = py; b.hit = null; burst(b.x, b.y, 2, b.col, 60, 2, 0.15);
+}
+// burn and poison ticking on a zombie. Returns true if it died.
+function dotZombie(z, dt) {
+  let d = 0;
+  if (z.burnT > 0) { z.burnT -= dt; d += z.burnDps; if (Math.random() < dt * 12) burst(z.x + rand(-0.5, 0.5) * z.r, z.y + rand(-0.5, 0.5) * z.r, 1, Math.random() < 0.5 ? '#ff9a3a' : '#ffd27a', 40, 3, 0.4); if (z.burnT <= 0) z.burnDps = 0; }
+  if (z.poisonT > 0) { z.poisonT -= dt; d += z.poisonDps; if (Math.random() < dt * 6) burst(z.x, z.y, 1, '#9be23a', 30, 3, 0.5); if (z.poisonT <= 0) z.poisonDps = 0; }
+  if (d > 0 && !z.st.under && !(z.st.down > 0)) { z.hp -= d * dt; if (z.hp <= 0) { killZombie(z); return true; } }
+  return false;
+}
+
+/* ---------- chain kills ---------- */
+const CHAIN_WINDOW = 2;
+const CHAIN_COLORS = ['#f2cc3a', '#ff8a3d', '#ff4d5e', '#c77dff', '#5ff0ff', '#8fe388', '#ffffff', '#ff6ad5'];
+const CHAIN_NAMES = { 10: 'Rampage', 25: 'Massacre', 50: 'Unstoppable', 75: 'Godlike', 100: 'Apocalypse', 125: 'Annihilation', 150: 'Extinction', 175: 'Armageddon', 200: 'Ragnarok' };
+function chainColor(n) { return CHAIN_COLORS[Math.floor(n / 25) % CHAIN_COLORS.length]; }
+function chainKill() {
+  G.chain = G.time - G.lastKill < CHAIN_WINDOW ? G.chain + 1 : 1;
+  G.lastKill = G.time; if (G.chain > G.bestChain) G.bestChain = G.chain;
+  SFX.kill(G.chain);
+  const c = G.chain;
+  if (c % 25 === 0) { SFX.tierUp(c / 25); if (!RM) G.slowT = 0.55; G.tierFlash = 1; }
+  else if (c === 10) SFX.milestone();
+  if (CHAIN_NAMES[c] || (c >= 25 && c % 25 === 0)) {
+    const el = $('chainPop'); el.textContent = ''; el.style.setProperty('--cc', chainColor(c));
+    const b = document.createElement('b'); b.textContent = 'x' + c; const s = document.createElement('span'); s.textContent = CHAIN_NAMES[c] || 'Unreal';
+    el.append(b, s); el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    clearTimeout(chainKill.t); chainKill.t = setTimeout(() => { el.hidden = true; }, 1600);
+  }
+  if (c % 75 === 0) grantAir();
+  if (c % 100 === 0 && G.mode === 'play') G.skullPending = true;
+  return 1 + Math.min(1.5, (c - 1) * 0.02);
+}
+
+/* ---------- the skull: forbidden modifications at every 100 chain ---------- */
+function openSkull() {
+  G.skullPending = false; if (G.mode !== 'play') return;
+  G.mode = 'skull'; G.picking = false; joy.active = false; joy.id = null;
+  if (G.grab) endGrab(true);
+  $('toasts').textContent = ''; $('banner').hidden = true; $('chainPop').hidden = true;
+  const ov = $('skull'), sk = $('skullArt'), row = $('skullCards');
+  row.textContent = ''; $('skullText').hidden = true; $('skullRefuse').hidden = true; $('skullWheel').hidden = true; $('wheelResult').textContent = ''; $('wheelResult').className = 'wheel-result';
+  const wheel = G.chain >= 200; G.wheel = null;
+  sk.setAttribute('class', 'skull-art'); $('skullStage').classList.remove('lit'); ov.classList.remove('leaving', 'dealt'); ov.scrollTop = 0; ov.hidden = false;
+  $('skullEyebrow').textContent = 'x' + G.chain + ' chain';
+  sk.getBoundingClientRect(); sk.classList.add('rise');
+  SFX.skull();
+  const pool = ZW.FORBIDDEN.slice(); G.skullChoices = [];
+  for (let i = 0; i < 3; i++) { const k = Math.floor(Math.random() * pool.length); G.skullChoices.push({ type: 'card', card: pool[k], r: 6 }); pool.splice(k, 1); }
+  setTimeout(() => { if (G.mode !== 'skull') return; sk.classList.add('open'); $('skullStage').classList.add('lit'); SFX.jaw(); shakeIt(10); }, RM ? 100 : 1250);
+  setTimeout(() => {
+    if (G.mode !== 'skull') return;
+    $('skullText').hidden = false; ov.classList.add('dealt');
+    if (wheel) { $('skullTitle').textContent = 'Spin the wheel of fate'; $('skullSub').textContent = 'Seven prizes. One death. The skull decides.'; buildWheel(); return; }
+    $('skullTitle').textContent = 'Choose your custom modification'; $('skullSub').textContent = 'Three forbidden mods. Insane power, brutal curse. Shoot one, or walk away.';
+    $('skullRefuse').hidden = false;
+    G.skullChoices.forEach((ch, i) => setTimeout(() => SFX.cardIn(i), 90 + i * 140)); setTimeout(() => SFX.rare(6), 420);
+    G.skullChoices.forEach((ch, i) => { const b = buildCard(ch, i, chooseForbidden); b.classList.add('from-skull'); row.appendChild(b); });
+    setTimeout(() => { const f = row.querySelector('button'); if (f && !TOUCH) f.focus({ preventScroll: true }); }, 60);
+  }, RM ? 200 : 2000);
+}
+function chooseForbidden(i, ev) {
+  if (G.mode !== 'skull' || G.picking || !G.skullChoices || !G.skullChoices[i]) return;
+  shootCard($('skullCards'), i, ev);
+  setTimeout(() => { const ch = G.skullChoices[i]; applyChoice(ch); closeSkull(ch.card.name, ch.card.lore); }, RM ? 350 : 1200);
+}
+function refuseSkull() {
+  if (G.mode !== 'skull' || G.picking) return;
+  G.picking = true; SFX.refuse();
+  Array.from($('skullCards').children).forEach(c => c.classList.add('gone'));
+  setTimeout(() => closeSkull('You refused', 'The skull remembers.'), 450);
+}
+function closeSkull(title, sub) {
+  const ov = $('skull'), sk = $('skullArt');
+  sk.classList.remove('open'); sk.classList.add('sink'); $('skullStage').classList.remove('lit'); ov.classList.add('leaving');
+  setTimeout(() => {
+    ov.hidden = true; ov.classList.remove('leaving'); G.picking = false; G.skullChoices = null;
+    if (G.mode !== 'skull') return;
+    G.mode = 'play'; G.p.iframe = Math.max(G.p.iframe, 2); G.lastKill = G.time;
+    banner(title, sub);
+  }, RM ? 150 : 650);
+}
+$('skullRefuse').addEventListener('click', refuseSkull);
+
+/* ---------- the wheel of fate: every 100 chain from x200 on ---------- */
+function buildWheel() {
+  const pool = ZW.FORBIDDEN.slice(), good = CARDS.filter(k => k.r === 3 || k.r === 4), segs = [];
+  for (let i = 0; i < 4 && pool.length; i++) { const k = Math.floor(Math.random() * pool.length); segs.push({ type: 'card', card: pool[k], r: 6 }); pool.splice(k, 1); }
+  for (let i = 0; i < 3 && good.length; i++) { const k = Math.floor(Math.random() * good.length); segs.push({ type: 'card', card: good[k], r: good[k].r }); good.splice(k, 1); }
+  segs.push({ ddup: true });
+  for (let i = segs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = segs[i]; segs[i] = segs[j]; segs[j] = t; }
+  G.wheel = { segs: segs, angle: 0, spinning: false, done: false };
+  drawWheel(); $('skullWheel').hidden = false; $('wheelSpin').hidden = false; $('wheelSpin').disabled = false;
+  SFX.rare(6);
+  clearTimeout(buildWheel.t); buildWheel.t = setTimeout(() => { if (G.wheel && !G.wheel.spinning && G.mode === 'skull') spinWheel(); }, 6000);
+}
+function drawWheel() {
+  const W8 = G.wheel; if (!W8) return;
+  const c = $('wheelCv'), g = c.getContext('2d'), n = W8.segs.length, R = 300, S = TAU / n;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 600, 600); g.translate(300, 300);
+  W8.segs.forEach((sg, i) => {
+    const a0 = -Math.PI / 2 + i * S, a1 = a0 + S;
+    g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, R, a0, a1); g.closePath();
+    g.fillStyle = sg.ddup ? '#050203' : sg.r === 6 ? (i % 2 ? '#6a0c1c' : '#8e1226') : sg.r === 4 ? '#8a6a12' : '#4b2a7a'; g.fill();
+    g.strokeStyle = '#1a0a0e'; g.lineWidth = 4; g.stroke();
+    g.save(); g.rotate(a0 + S / 2); g.textAlign = 'right'; g.textBaseline = 'middle';
+    const label = sg.ddup ? 'DEATH DO US PART' : sg.card.name;
+    let fs = sg.ddup ? 26 : 24; do { g.font = (sg.ddup ? 'bold ' : '600 ') + fs + "px 'Chakra Petch', sans-serif"; fs--; } while (g.measureText(label).width > 205 && fs > 12);
+    g.fillStyle = sg.ddup ? '#ff2d4a' : '#ffe3e6'; g.fillText(label, R - 20, 0);
+    g.restore();
+  });
+  g.beginPath(); g.arc(0, 0, 54, 0, TAU); g.fillStyle = '#12070a'; g.fill(); g.lineWidth = 6; g.strokeStyle = '#f2cc3a'; g.stroke();
+  g.fillStyle = '#ff2d4a'; g.font = "bold 46px 'Saira Stencil One', Impact, sans-serif"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 0, 3);
+}
+function spinWheel() {
+  const W8 = G.wheel; if (!W8 || W8.spinning || W8.done || G.mode !== 'skull') return;
+  W8.spinning = true; $('wheelSpin').disabled = true; clearTimeout(buildWheel.t);
+  const n = W8.segs.length, S = 360 / n, di = W8.segs.findIndex(s => s.ddup);
+  let k = Math.random() < 0.25 ? di : Math.floor(Math.random() * n); if (k === di && Math.random() < 0) k = (k + 1) % n;
+  const target = 360 * 6 + (360 - (k * S + S / 2)) + rand(-S * 0.3, S * 0.3), dur = RM ? 600 : 4600, t0 = performance.now(), cv = $('wheelCv');
+  let lastSeg = -1;
+  (function step(now) {
+    if (G.mode !== 'skull' || !G.wheel) return;
+    const f = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - f, 3.2), ang = target * e;
+    cv.style.transform = 'rotate(' + ang.toFixed(2) + 'deg)';
+    const seg = Math.floor((((360 - (ang % 360)) % 360) + 360) % 360 / S);
+    if (seg !== lastSeg) { lastSeg = seg; SFX.wheelTick(seg); }
+    if (f < 1) requestAnimationFrame(step); else landWheel(k);
+  })(t0);
+}
+function landWheel(k) {
+  const W8 = G.wheel; W8.done = true; W8.spinning = false; $('wheelSpin').hidden = true;
+  const sg = W8.segs[k], res = $('wheelResult');
+  if (!sg.ddup) {
+    SFX.wheelLand(false); res.textContent = sg.card.name; res.className = 'wheel-result';
+    setTimeout(() => { if (G.mode !== 'skull') return; applyChoice(sg); closeSkull(sg.card.name, 'The wheel has spoken'); }, RM ? 400 : 1500);
+    return;
+  }
+  // Death Do Us Part: the skull laughs, bites the screen, and the Overlord rises
+  SFX.wheelLand(true); res.textContent = 'Death do us part'; res.className = 'wheel-result ddup';
+  const sk = $('skullArt');
+  setTimeout(() => { if (G.mode !== 'skull') return; sk.classList.add('open', 'laugh'); SFX.laugh(); shakeIt(6); }, 500);
+  setTimeout(() => {
+    if (G.mode !== 'skull') return;
+    sk.classList.remove('laugh'); sk.classList.add('lunge'); $('skullWheel').hidden = true;
+    const b = $('bite'); b.hidden = false; b.className = ''; void b.offsetWidth;
+    setTimeout(() => { b.classList.add('chomp'); SFX.bite(); shakeIt(20); }, 220);
+    setTimeout(() => { b.classList.add('cracked'); const fl = $('shotFlash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on'); }, 440);
+    setTimeout(() => {
+      $('skull').hidden = true; sk.setAttribute('class', 'skull-art'); G.picking = false; G.skullChoices = null; G.wheel = null;
+      b.classList.add('open'); b.classList.remove('chomp');
+      setTimeout(() => { b.hidden = true; b.className = ''; }, 600);
+      G.mode = 'play'; G.lastKill = G.time; startOverlord();
+    }, 1250);
+  }, RM ? 900 : 2300);
+}
+$('wheelSpin').addEventListener('click', spinWheel);
+$('bossLogBtn').addEventListener('click', openBossLog);
+$('blClose').addEventListener('click', closeBossLog);
+$('blCloseD').addEventListener('click', () => { $('blDetail').hidden = true; });
+$('airBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); callAirstrike(); });
+
+/* ---------- cards ---------- */
+function rollRarity(luck, boss) {
+  const w = [52, 27, 13, 6, 2];
+  for (let i = 0; i < Math.min(6, luck); i++) { w[0] *= 0.72; w[2] *= 1.3; w[3] *= 1.4; w[4] *= 1.5; }
+  if (boss) { w[0] *= 0.4; w[1] *= 0.8; w[3] *= 2; w[4] *= 2.5; }
+  const all = w.concat([G.wave >= 3 ? 9 : 0]);
+  let r = Math.random() * all.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < all.length; i++) { r -= all[i]; if (r <= 0) return i; }
+  return 0;
+}
+function rollWeaponCard(boss) {
+  const p = G.p; let r = rollRarity(p.luck + (boss ? 1 : 0), boss); if (r === 5) r = 3;
+  let pool = WEAPONS.filter(w => w.rarity === r && w.id !== p.weapon.id); if (!pool.length) pool = WEAPONS.filter(w => w.id !== p.weapon.id);
+  const locked = pool.filter(w => !guns.has(w.id));
+  const w = locked.length && Math.random() < 0.7 ? pick(locked) : pick(pool);
+  return { type: 'weapon', w: w, r: w.rarity };
+}
+function rollCards() {
+  const p = G.p, boss = G.wave % 5 === 0, out = [], used = new Set();
+  const wSlot = boss ? Math.floor(Math.random() * 3) : Math.random() < 0.22 ? Math.floor(Math.random() * 3) : -1;
+  for (let s = 0; s < 3; s++) {
+    if (s === wSlot) { out.push(rollWeaponCard(boss)); continue; }
+    let r = rollRarity(p.luck, boss), c = null;
+    for (let tries = 0; tries < 12 && !c; tries++) {
+      const pool = CARDS.filter(k => k.r === r && !used.has(k.id) && !(k.max && (p.cards[k.id] || 0) >= k.max) && !(k.id === 'medkit' && p.hp > p.maxHp * 0.8));
+      if (pool.length) c = pick(pool); else r = r === 5 ? 0 : Math.max(0, r - 1);
+    }
+    if (!c) c = pick(CARDS.filter(k => k.r === 0 && !used.has(k.id)));
+    used.add(c.id); out.push({ type: 'card', card: c, r: c.r });
+  }
+  return out;
+}
+function paintWeapon(c, w, cw, ch, sil) {
+  const d = Math.min(window.devicePixelRatio || 1, 2); c.width = Math.round(cw * d); c.height = Math.round(ch * d);
+  c.style.width = cw + 'px'; c.style.height = ch + 'px';
+  const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, cw, ch);
+  const bx = w.F.box, sc = Math.min(cw / (bx[1] - bx[0] + 8), ch / 58);
+  ZW.drawWeapon(g, w, cw / 2 - (bx[0] + bx[1]) / 2 * sc, ch / 2 + sc, sc, sil);
+}
+function paintIcon(c, tag, color, size) {
+  const d = Math.min(window.devicePixelRatio || 1, 2); c.width = c.height = Math.round(size * d);
+  c.style.width = c.style.height = size + 'px';
+  const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, size, size); ZW.drawCardIcon(g, tag, color, size);
+}
+const CRACK = '<svg viewBox="-40 -40 80 80" aria-hidden="true"><g stroke="rgba(8,6,4,.9)" stroke-width="1.8" fill="none" stroke-linecap="round"><path d="M0 0 L13 -9 L21 -22 L24 -34"/><path d="M0 0 L-11 -15 L-15 -31"/><path d="M0 0 L-19 5 L-35 3"/><path d="M0 0 L5 18 L3 33"/><path d="M0 0 L20 11 L31 23"/><path d="M-6 -8 L-2 -12 L4 -10"/></g></svg>';
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function buildCard(ch, i, onPick) {
+  const p = G.p, R = WRAR[ch.r];
+  const b = el('button', 'gcard r-' + ch.r + (ch.type === 'weapon' ? ' weapon' : '')); b.type = 'button';
+  b.style.setProperty('--rc', R.color); b.style.setProperty('--d', (0.08 + i * 0.14) + 's');
+  const top = el('span', 'gc-top'); top.append(el('em', 'gc-rar', R.name), el('em', 'gc-type', ''), el('kbd', null, String(i + 1)));
+  const art = el('canvas', 'gc-art'); art.setAttribute('aria-hidden', 'true');
+  const body = el('span', 'gc-body'), name = el('b', 'gc-name', ''), ul = el('ul', 'gc-stats'), notes = el('span', 'gc-notes');
+  body.append(name, ul, notes);
+  b.append(el('span', 'gc-shine'), top, art, body);
+  const li = (t, cls) => { const x = el('li', cls, t); ul.appendChild(x); };
+  if (ch.type === 'weapon') {
+    const w = ch.w, cur = p.weapon;
+    top.querySelector('.gc-type').textContent = guns.has(w.id) ? 'Weapon' : 'New weapon';
+    name.textContent = w.name; paintWeapon(art, w, 132, 66, false); art.classList.add('w');
+    const cmp = (label, a, bv, fmt) => { const up = a >= bv; li((up ? '▲ ' : '▼ ') + label + ' ' + fmt(a), up ? 'good' : 'bad'); };
+    cmp('Damage', w.dmg * w.pellets * w.burst, cur.dmg * cur.pellets * cur.burst, v => Math.round(v));
+    cmp('Fire rate', w.rof, cur.rof, v => v.toFixed(1) + '/s');
+    cmp('Range', w.range, cur.range, v => Math.round(v));
+    li(w.M.desc, 'meta');
+    notes.append(el('span', 'gc-react', 'Cards: ' + (w.F.reactText + (w.M.reactText ? ' ' + w.M.reactText : ''))));
+  } else {
+    const c = ch.card, eff = ZW.cardEffects(c, p.weapon);
+    top.querySelector('.gc-type').textContent = c.r === 6 ? 'Deadly' : c.r === 5 ? 'Cursed card' : 'Card';
+    name.textContent = c.name;
+    paintIcon(art, c.icon || (c.r === 5 ? 'curse' : c.tags[0]), R.color, 84);
+    eff.lines.forEach(l => { const f = ZW.fmtLine(l); li(f.text, f.good ? 'good' : 'bad'); });
+    if (c.max) li('Taken ' + (p.cards[c.id] || 0) + ' of ' + c.max, 'meta');
+    if (eff.synergy) notes.append(el('span', 'gc-syn', 'Synergy with your ' + p.weapon.name + ': x1.5'));
+    eff.notes.forEach(n => notes.append(el('span', 'gc-react', n)));
+  }
+  if (ch.card && ch.card.lore) notes.append(el('span', 'gc-lore', ch.card.lore));
+  b.addEventListener('click', ev => (onPick || chooseCard)(i, ev));
+  return b;
+}
+function openCards() {
+  G.mode = 'upgrade'; G.picking = false;
+  $('toasts').textContent = ''; $('banner').hidden = true; hc.combo = false; $('combo').hidden = true; $('chainPop').hidden = true;
+  G.upChoices = rollCards();
+  $('upEyebrow').textContent = 'Wave ' + G.wave + ' cleared · +' + (G.wave * 100) + ' bonus';
+  $('upSub').textContent = 'Your weapon: ' + G.p.weapon.name + '. Shoot the card you want.';
+  const row = $('upGrid'); row.textContent = '';
+  G.upChoices.forEach((ch, i) => row.appendChild(buildCard(ch, i)));
+  showOv('upgrade');
+  G.upChoices.forEach((ch, i) => setTimeout(() => SFX.cardIn(i), 90 + i * 140));
+  const best = Math.max.apply(null, G.upChoices.map(c => c.r === 5 ? 5 : c.r));
+  if (best >= 3) setTimeout(() => SFX.rare(best), 380);
+  setTimeout(() => { const f = row.querySelector('button'); if (f && !TOUCH) f.focus({ preventScroll: true }); }, 60);
+}
+function shootCard(row, i, ev) {
+  G.picking = true;
+  const cards = Array.from(row.children), card = cards[i], rect = card.getBoundingClientRect();
+  let hx = rect.width * rand(0.35, 0.65), hy = rect.height * rand(0.3, 0.5);
+  if (ev && ev.detail && ev.clientX) { hx = ev.clientX - rect.left; hy = ev.clientY - rect.top; }
+  const hole = el('span', 'bullet-hole'); hole.innerHTML = CRACK; hole.style.left = hx + 'px'; hole.style.top = hy + 'px'; hole.style.transform = 'rotate(' + Math.round(rand(360)) + 'deg)';
+  card.appendChild(hole);
+  card.style.setProperty('--rot', ((hx < rect.width / 2 ? 1 : -1) * rand(10, 20)).toFixed(1) + 'deg');
+  card.classList.add('shot');
+  cards.forEach((c, j) => { if (j !== i) c.classList.add('gone'); });
+  const fl = $('shotFlash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
+  SFX.cardShot();
+}
+function chooseCard(i, ev) {
+  if (G.mode !== 'upgrade' || G.picking || !G.upChoices || !G.upChoices[i]) return;
+  shootCard($('upGrid'), i, ev);
+  setTimeout(() => {
+    applyChoice(G.upChoices[i]); G.upChoices = null; G.picking = false;
+    showOv(null); startWave(G.wave + 1);
+  }, RM ? 350 : 1200);
+}
+function applyChoice(ch) {
+  const p = G.p;
+  if (ch.type === 'weapon') { equipWeapon(ch.w); return; }
+  const c = ch.card, eff = ZW.cardEffects(c, p.weapon);
+  p.cards[c.id] = (p.cards[c.id] || 0) + 1;
+  eff.lines.forEach(l => {
+    const k = l.k, v = l.v;
+    if (k === 'heal') healPlayer(v);
+    else if (k === 'maxHp') { p.maxHp = Math.max(20, p.maxHp + v); if (v > 0) p.hp += v; p.hp = Math.min(p.hp, p.maxHp); }
+    else if (k === 'maxHpPct') { p.maxHp = Math.max(20, Math.round(p.maxHp * (1 + v))); p.hp = Math.min(p.hp, p.maxHp); }
+    else if (k === 'jam') p.cs.jam = p.cs.jam ? Math.min(p.cs.jam, v) : v;
+    else if (k === 'vision') p.cs.vision = Math.max(p.cs.vision, v);
+    else if (k in p.cs) p.cs[k] += v;
+  });
+  recalc(p); updWeaponChip();
+}
+function equipWeapon(w) {
+  const p = G.p, isNew = !guns.has(w.id);
+  p.weapon = w; p.shots = 0; p.queue = []; guns.add(w.id); saveGuns(); recalc(p); updWeaponChip();
+  if (isNew) { toast('New weapon unlocked · ' + WRAR[w.rarity].name, w.name, WRAR[w.rarity].color); SFX.unlock(); }
+}
+function updWeaponChip() {
+  const p = G.p; if (!p) return;
+  paintWeapon($('wIcon'), p.weapon, 48, 22, false);
+  const n = $('wName'); n.textContent = p.weapon.name; n.style.color = WRAR[p.weapon.rarity].color;
+}
+
+/* ---------- build summary (pause screen) ---------- */
+function renderBuild() {
+  const p = G.p; if (!p) return;
+  const w = p.weapon, S = p.S;
+  paintWeapon($('bwIcon'), w, 120, 56, false);
+  $('bwName').textContent = w.name; const r = $('bwRar'); r.textContent = WRAR[w.rarity].name + ' · ' + w.code; r.style.color = WRAR[w.rarity].color;
+  $('bwDesc').textContent = w.M.desc + ' ' + w.F.reactText;
+  const st = $('bStats'); st.textContent = '';
+  [['Damage', Math.round(S.dmg * S.pellets * S.burst)], ['Fire rate', S.rof.toFixed(1) + '/s'], ['Crit', Math.round(S.crit * 100) + '%'], ['Pierce', S.pierce], ['Range', Math.round(S.range)], ['Speed', Math.round(p.speed)]]
+    .forEach(x => { const d = el('div'); d.append(el('dt', null, x[0]), el('dd', null, String(x[1]))); st.appendChild(d); });
+  const cs = $('bCards'); cs.textContent = '';
+  const ids = Object.keys(p.cards);
+  if (!ids.length) cs.appendChild(el('span', 'bc-empty', 'No cards yet. Clear a wave to draw some.'));
+  ids.forEach(id => { const c = CARDS.find(k => k.id === id); if (!c) return; const s = el('span', 'bc', c.name + (p.cards[id] > 1 ? ' x' + p.cards[id] : '')); s.style.setProperty('--rc', WRAR[c.r].color); cs.appendChild(s); });
+}
+
+/* ---------- armory ---------- */
+let arFrame = 0, arSpoil = false, arCur = null;
+const W_MAX = { dmg: Math.max(...WEAPONS.map(w => w.dmg * w.pellets * w.burst)), rof: Math.max(...WEAPONS.map(w => w.rof)), range: Math.max(...WEAPONS.map(w => w.range)), dps: Math.max(...WEAPONS.map(w => w.dps)) };
+function openArmory() { $('armory').hidden = false; $('armory').scrollTop = 0; renderArmory(); }
+function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true; refreshTitle(); }
+function renderArmory() {
+  $('arCount').textContent = guns.size + ' / 250';
+  const lw = WEAPONS[loadoutId()], ld = $('arLoadout'); ld.textContent = '';
+  const lb = el('b', null, lw.name); lb.style.color = WRAR[lw.rarity].color; ld.append('Starting weapon: ', lb, '. Pick up new weapons from cards during a run to unlock them here.');
+  const chips = $('arFrames'); chips.textContent = '';
+  ZW.FRAMES.forEach((F, i) => {
+    let n = 0; for (let m = 0; m < 25; m++) if (guns.has(i * 25 + m)) n++;
+    const b = el('button', 'chip' + (i === arFrame ? ' on' : '')); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', i === arFrame);
+    b.append(el('span', null, F.name), el('em', null, n + '/25')); b.addEventListener('click', () => { arFrame = i; renderArmory(); });
+    chips.appendChild(b);
+  });
+  const F = ZW.FRAMES[arFrame], note = $('arFrameNote'); note.textContent = ''; note.append(el('b', null, F.name + '. '), F.desc + ' ' + F.reactText);
+  const grid = $('arGrid'); grid.textContent = '';
+  for (let m = 0; m < 25; m++) {
+    const w = WEAPONS[arFrame * 25 + m], have = guns.has(w.id), show = have || arSpoil, R = WRAR[w.rarity];
+    const b = el('button', 'wcard ' + (have ? 'known' : 'unknown') + (w.id === loadoutId() ? ' equipped' : '')); b.type = 'button'; b.style.setProperty('--rc', R.color);
+    const c = el('canvas'); c.setAttribute('aria-hidden', 'true');
+    b.append(c, el('span', 'num', w.code), el('span', 'nm', show ? w.name : 'Locked'), el('span', 'rar', R.name));
+    if (w.id === loadoutId()) b.append(el('span', 'eq', 'Equipped'));
+    b.addEventListener('click', () => openWeaponDetail(w));
+    grid.appendChild(b); paintWeapon(c, w, 128, 60, !show);
+  }
+}
+function openWeaponDetail(w) {
+  arCur = w; const have = guns.has(w.id), show = have || arSpoil, R = WRAR[w.rarity], d = $('arDetail');
+  d.style.setProperty('--rc', R.color);
+  paintWeapon($('awArt'), w, 260, 110, !show);
+  $('awTag').textContent = w.code + ' · ' + R.name; $('awName').textContent = show ? w.name : 'Locked weapon';
+  $('awMod').textContent = show ? w.M.name + ' mod: ' + w.M.desc : 'Find this weapon on a card during a run to unlock it.';
+  $('awReact').textContent = show ? 'How it reacts to cards: ' + w.F.reactText + (w.M.reactText ? ' ' + w.M.reactText : '') : '';
+  const bars = $('awBars'); bars.textContent = '';
+  [['Damage', w.dmg * w.pellets * w.burst / W_MAX.dmg, Math.round(w.dmg * w.pellets * w.burst)], ['Fire rate', w.rof / W_MAX.rof, w.rof.toFixed(1) + '/s'], ['Range', w.range / W_MAX.range, Math.round(w.range)], ['Power', w.dps / W_MAX.dps, Math.round(w.dps)]]
+    .forEach(r => { const row = el('div', 'bar-row'), t = el('div', 'track'), f = el('i'); f.style.width = show ? Math.round(r[1] * 100) + '%' : '0%'; t.appendChild(f); row.append(el('span', null, r[0]), t, el('em', null, show ? String(r[2]) : '?')); bars.appendChild(row); });
+  const eq = $('awEquip'); eq.hidden = !have; eq.disabled = w.id === loadoutId(); eq.textContent = w.id === loadoutId() ? 'Equipped' : 'Start runs with this';
+  d.hidden = false; d.scrollTop = 0;
+}
+$('awEquip').addEventListener('click', () => { if (!arCur || !guns.has(arCur.id)) return; store.set('zc_loadout', arCur.id); SFX.click(); openWeaponDetail(arCur); renderArmory(); });
+$('awClose').addEventListener('click', () => { $('arDetail').hidden = true; });
+$('armoryBtn').addEventListener('click', openArmory); $('arClose').addEventListener('click', closeArmory);
+$('arSpoil').addEventListener('change', e => { arSpoil = e.target.checked; renderArmory(); });
+
+/* ---------- sound settings ---------- */
+const AUD = store.get('zc_audio', { sfx: true, music: 'builtin' });
+if (!AUD.vis) AUD.vis = RM ? 'low' : 'full';
+SFX.setSfx(AUD.sfx); SFX.setMusicMode(AUD.music === 'custom' ? 'builtin' : AUD.music);
+function idb(op, val) {
+  return new Promise(res => {
+    try {
+      const rq = indexedDB.open('zombiecity', 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+      rq.onerror = () => res(null);
+      rq.onsuccess = () => {
+        try {
+          const tx = rq.result.transaction('kv', op === 'get' ? 'readonly' : 'readwrite'), st = tx.objectStore('kv');
+          const r = op === 'get' ? st.get('music') : op === 'del' ? st.delete('music') : st.put(val, 'music');
+          r.onsuccess = () => res(r.result || null); r.onerror = () => res(null);
+        } catch (e) { res(null); }
+      };
+    } catch (e) { res(null); }
+  });
+}
+idb('get').then(v => {
+  if (v && v.blob && SFX.loadCustom(v.blob)) { G.customName = v.name || 'your music'; if (AUD.music === 'custom') SFX.setMusicMode('custom'); }
+  else if (AUD.music === 'custom') { AUD.music = 'builtin'; store.set('zc_audio', AUD); }
+  renderAudio();
+});
+function setMusic(m) { AUD.music = m; store.set('zc_audio', AUD); SFX.setMusicMode(m); renderAudio(); }
+function renderAudio() {
+  ['titleAudio', 'pauseAudio'].forEach(id => {
+    const box = $(id); if (!box) return; box.textContent = '';
+    const s = el('button', 'btn small', 'Sound: ' + (AUD.sfx ? 'On' : 'Off')); s.type = 'button'; s.setAttribute('aria-pressed', AUD.sfx);
+    s.addEventListener('click', () => { AUD.sfx = !AUD.sfx; store.set('zc_audio', AUD); SFX.setSfx(AUD.sfx); SFX.click(); renderAudio(); });
+    const label = AUD.music === 'off' ? 'Off' : AUD.music === 'custom' ? 'Yours' : 'Built-in';
+    const m = el('button', 'btn small', 'Music: ' + label); m.type = 'button';
+    m.addEventListener('click', () => { const order = SFX.hasCustom() ? ['builtin', 'custom', 'off'] : ['builtin', 'off']; setMusic(order[(order.indexOf(AUD.music) + 1) % order.length]); });
+    const vl = { full: 'Full', low: 'Low', off: 'Off' }[AUD.vis];
+    const v = el('button', 'btn small', 'Light show: ' + vl); v.type = 'button';
+    v.addEventListener('click', () => { const o = ['full', 'low', 'off']; AUD.vis = o[(o.indexOf(AUD.vis) + 1) % 3]; store.set('zc_audio', AUD); SFX.click(); renderAudio(); });
+    const f = el('button', 'btn small ghost', SFX.hasCustom() ? 'Change my music' : 'Use my own music'); f.type = 'button';
+    f.addEventListener('click', () => $('musicFile').click());
+    box.append(s, m, v, f);
+    if (SFX.hasCustom() && G.customName) box.append(el('span', 'aud-note', 'Your track: ' + G.customName));
+  });
+}
+$('musicFile').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  SFX.init();
+  if (!SFX.loadCustom(file)) { toast('Music', 'That file could not be played.', '#e5484d'); return; }
+  G.customName = file.name.replace(/\.[^.]+$/, '').slice(0, 40);
+  if (file.size < 40e6) idb('put', { blob: file, name: G.customName });
+  setMusic('custom'); toast('Now playing', G.customName, '#f2cc3a');
+});
+function unlockAudio() { SFX.init(); }
+document.addEventListener('pointerdown', unlockAudio, true);
+document.addEventListener('keydown', unlockAudio, true);
+document.addEventListener('visibilitychange', () => { if (document.hidden) SFX.suspend(); else SFX.resume(); });
+renderAudio();

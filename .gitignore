@@ -10,3 +10,6 @@ android/keys/
 
 .DS_Store
 node_modules/
+
+# Debug build used by automated tests
+zc-test-body.html
