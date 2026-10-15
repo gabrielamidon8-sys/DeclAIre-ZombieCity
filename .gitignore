@@ -1,0 +1,12 @@
+# Built apps go on the Releases page, not in the code
+*.apk
+android/build/
+
+# The signing key must stay private. Anyone with it can publish fake updates of the app.
+*.p12
+*.jks
+*.keystore
+android/keys/
+
+.DS_Store
+node_modules/
