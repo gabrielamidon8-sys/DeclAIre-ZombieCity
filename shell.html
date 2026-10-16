@@ -412,7 +412,8 @@ p{margin:0}
 #intro.made2 .in-made{animation:inpush 5s linear forwards}
 @keyframes inpush{from{transform:translateY(-50%) scale(1)}to{transform:translateY(-50%) scale(1.07)}}
 #intro.made-out .in-made{opacity:0;transition:opacity .9s ease}
-.in-gate{position:absolute;left:0;right:0;top:50%;margin:0;text-align:center;font-family:var(--f-num);font-size:14px;letter-spacing:.35em;padding-left:.35em;text-transform:uppercase;color:#d8d2c4;animation:gatepulse 1.4s ease-in-out infinite}
+.in-gate{position:absolute;left:0;right:0;bottom:max(16px, env(safe-area-inset-bottom, 0px));margin:0;text-align:center;font-family:var(--f-num);font-size:13px;letter-spacing:.3em;padding-left:.3em;text-transform:uppercase;color:#e8e2d4;text-shadow:0 1px 6px #000;animation:gatepulse 1.4s ease-in-out infinite}
+#intro.muted .in-skip{opacity:0}
 @keyframes gatepulse{50%{opacity:.35}}
 .in-skip{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:max(16px, env(safe-area-inset-bottom, 0px));margin:0;font-family:var(--f-num);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(235,229,214,.4)}
 #intro.out .in-skip,#intro.made-out .in-skip{opacity:0}
@@ -750,7 +751,7 @@ p{margin:0}
     <div class="in-red"></div>
     <div class="in-studio"><b>Decl<span>AI</span>re</b><em>Studios</em></div>
     <div class="in-made"><em>Made with</em><b>Claude</b></div>
-    <p class="in-gate" hidden>Tap to start</p>
+    <p class="in-gate" hidden>Tap for sound</p>
     <p class="in-skip">Tap to skip</p>
   </section>
   <input type="file" id="musicFile" accept="audio/*" hidden>

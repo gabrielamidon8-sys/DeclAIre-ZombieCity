@@ -3,7 +3,7 @@
    the skull rises laughing and bites the road, and that frame freezes red and black under the studio name.
    Card 2: an orchestral cue under a gold title card, then the overlay fades into the title screen.
    Tap (or Space/Enter/Esc, or Android Back) skips the current card. */
-const INTRO = { on: false, card: 0, t: 0, gate: false, frozen: false, evI: 0, shake: 0, w: 1, h: 1, d: 1,
+const INTRO = { on: false, card: 0, t: 0, gate: false, muted: false, musicPending: false, onZ: [], frozen: false, evI: 0, shake: 0, w: 1, h: 1, d: 1,
   blocks: [], cols: 0, B: 40, roadY: 0, RH: 120, runners: [], dust: [], debris: [], embers: [], sk: null, bite: null, dustT: 0 };
 const IV = $('introCv'), IG = IV.getContext('2d'), INTRO_EL = $('intro');
 const T1 = { build0: 0.35, build1: 2.25, paint: 2.4, rumble: 2.55, run: 3.0, skull: 6.0, laugh: 6.85, lunge: 8.3, bite: 8.6, studioOut: 10.7, end: 11.3 };
@@ -75,7 +75,7 @@ function introEvents(card) {
     E.push([T1.studioOut, () => INTRO_EL.classList.add('studio-out')]);
     E.push([T1.end, () => introCard(2)]);
   } else {
-    E.push([0.05, () => { if (!INTRO.track || !SFX.introTrack()) { INTRO.track = false; INTRO.scoreLen = SFX.introScore(); } }]);
+    E.push([0.05, () => { if (!introAudible()) { INTRO.musicPending = true; return; } if (!INTRO.track || !SFX.introTrack(0)) { INTRO.track = false; INTRO.scoreLen = SFX.introScore(); } }]);
     E.push([T2.made, () => INTRO_EL.classList.add('made1')]);
     E.push([T2.hit, () => INTRO_EL.classList.add('made2')]);
     E.push([T2.final, () => INTRO_EL.classList.add('made3')]);
@@ -91,7 +91,7 @@ function introCard(n) {
   }
   INTRO.card = n; INTRO.t = 0; INTRO.evI = 0; INTRO.ev = introEvents(n); INTRO.frozen = false;
   INTRO_EL.classList.remove('frozen', 'studio', 'studio-out', 'made1', 'made2', 'made3', 'made-out');
-  INTRO_EL.classList.add('card' + n); INTRO_EL.classList.remove('card' + (3 - n));
+  INTRO_EL.classList.add('card' + n); INTRO_EL.classList.remove('card' + (3 - n)); if (INTRO.muted) INTRO_EL.classList.add('muted');
   if (n === 2) { INTRO.embers = []; const k = Math.round(30 + Q.parts / 10); for (let i = 0; i < k; i++) INTRO.embers.push(newEmber(true)); }
 }
 function introBite() {
@@ -238,11 +238,12 @@ function drawIntro1(dt) {
   INTRO.dustT -= dt;
   const puff = INTRO.dustT <= 0; if (puff) INTRO.dustT = 0.05;
   const byY = INTRO.runners.slice().sort((a, b) => a.y - b.y);
+  INTRO.onZ.length = 0;
   for (const r of byY) {
     if (t < r.t0) continue;
     if (!INTRO.frozen) { r.x += r.v * dt; r.walk += dt * 18; }
     if (r.x < -80 || r.x > w + 80) continue;
-    onScreen++;
+    onScreen++; if (r.kind === 'z') INTRO.onZ.push(r);
     const bob = r.kind === 'z' ? Math.sin(r.walk + r.bob) * 2 : 0;
     if (puff && r.kind === 'z' && Math.random() < 0.35 && INTRO.dust.length < 120) INTRO.dust.push({ x: r.x - r.r, y: r.y + r.r * 0.5, r: r.r * 0.5, vx: -40, life: 0.7, max: 0.7 });
     if (r.kind === 'player') drawRunner(g, r.x, r.y + bob, r.r, r.walk);
@@ -252,6 +253,12 @@ function drawIntro1(dt) {
     }
   }
   if (onScreen > 3 && t < T1.skull) INTRO.shake = Math.max(INTRO.shake, Math.min(9, onScreen * 0.22));
+  // footfalls: each frame, a share of the zombies on screen land a heavy step, panned to where they are
+  if (!INTRO.frozen && t < T1.skull && INTRO.onZ.length && introAudible()) {
+    let n = Math.min(44, INTRO.onZ.length * 1.6) * dt; n = Math.floor(n) + (Math.random() < n % 1 ? 1 : 0);
+    const big = 22 * clamp(Math.min(w, h) / 390, 1, 1.7);
+    for (let i = 0; i < n; i++) { const r = INTRO.onZ[(Math.random() * INTRO.onZ.length) | 0]; SFX.introStomp(r.x / w * 2 - 1, r.r > big ? 0.55 : 0.36, r.r > big); }
+  }
   drawSkull(g, t);
   for (const q of INTRO.debris) { if (!INTRO.frozen) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 900 * dt; q.rot += q.vr * dt; } g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillStyle = q.c; g.fillRect(-q.sz / 2, -q.sz / 2, q.sz, q.sz * 0.7); g.restore(); }
   if (INTRO.flash > 0) { g.setTransform(d, 0, 0, d, 0, 0); g.fillStyle = 'rgba(255,240,230,' + Math.min(0.8, INTRO.flash) + ')'; g.fillRect(0, 0, w, h); INTRO.flash -= dt * 6; }
@@ -323,9 +330,27 @@ function introFrame(dt) {
   if (INTRO.card === 1) { if (!INTRO.frozen) drawIntro1(dt); }
   else drawIntro2(dt);
 }
+function introAudible() { return SFX.health().state === 'running'; }
+function introSoundOn() {
+  INTRO.muted = false; INTRO_EL.classList.remove('muted'); INTRO_EL.querySelector('.in-gate').hidden = true;
+  const t = INTRO.t;
+  if (INTRO.card === 1) {
+    const end = T1.rumble + 3.4;
+    if (t >= T1.rumble && end - t > 0.6) SFX.introStampede(end - t);
+  } else if (INTRO.card === 2 && INTRO.musicPending) {
+    INTRO.musicPending = false;
+    if (INTRO.track) SFX.introTrack(t + 0.03);
+  }
+}
+function introUnlock() {
+  SFX.init();
+  let tries = 0;
+  const check = () => { if (!INTRO.on) return; if (introAudible()) introSoundOn(); else if (++tries < 20) setTimeout(check, 50); };
+  setTimeout(check, 30);
+}
 function introSkip() {
   if (!INTRO.on) return false;
-  if (INTRO.gate) { introBegin(); return true; }
+  if (INTRO.muted && !introAudible()) { introUnlock(); return true; }
   SFX.introCut();
   if (INTRO.card === 1) introCard(2); else introFinish();
   return true;
@@ -338,22 +363,22 @@ function introFinish() {
   setTimeout(() => { INTRO_EL.hidden = true; INTRO_EL.className = ''; IV.width = IV.height = 1; INTRO.blocks = []; INTRO.runners = []; INTRO.sk = null; INTRO.rays = null; }, 950);
 }
 function introBegin() {
-  INTRO.gate = false; INTRO_EL.querySelector('.in-gate').hidden = true;
+  INTRO.gate = false;
   SFX.init(); if (INTRO_MUSIC.length > 100) SFX.setIntroTrack(INTRO_MUSIC, INTRO_TRACK.gain); introCard(1);
 }
 function startIntro() {
   G.mode = 'intro'; INTRO.on = true;
   showOv(null); INTRO_EL.hidden = false; INTRO_EL.className = '';
   introBuild();
-  // browsers only allow sound after a tap: if the audio engine can't start on its own, wait for one
+  // the intro starts straight away. Browsers only allow sound after a tap, so if it is blocked a small
+  // "Tap for sound" hint shows, and that first tap switches the sound on mid-intro instead of skipping.
   SFX.init();
   if (INTRO_MUSIC.length > 100) SFX.setIntroTrack(INTRO_MUSIC, INTRO_TRACK.gain);
+  introBegin();
   setTimeout(() => {
-    if (!INTRO.on) return;
-    const st = SFX.health().state;
-    if (st === 'running') introBegin();
-    else { INTRO.gate = true; INTRO_EL.querySelector('.in-gate').hidden = false; }
-  }, 120);
+    if (!INTRO.on || introAudible()) return;
+    INTRO.muted = true; INTRO_EL.classList.add('muted'); INTRO_EL.querySelector('.in-gate').hidden = false;
+  }, 150);
 }
 INTRO_EL.addEventListener('pointerdown', e => { e.preventDefault(); introSkip(); });
 window.addEventListener('keydown', e => { if (INTRO.on && (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); introSkip(); } });

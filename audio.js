@@ -894,7 +894,7 @@ var SFX = (function () {
   function bell2(t, f, vol, dur) { osc('sine', f, f, t, dur, vol, null, 0.002); osc('sine', f * 2.76, f * 2.76, t, dur * 0.7, vol * 0.45, null, 0.002); }
 
   // ---------- intro routing ----------
-  var IB = null;
+  var IB = null, LAUGH_IR = null;
   function introBus() {
     if (!IB) {
       IB = { sfx: ac.createGain(), mus: ac.createGain(), synth: ac.createGain(), drum: ac.createGain() };
@@ -1030,16 +1030,29 @@ var SFX = (function () {
     introPaint: function () { if (!ok()) return; return viaIntro(function () { var t = ac.currentTime; noise(t, 0.55, 0.12, 'highpass', 2600, 0.7, 7000); noise(t + 0.05, 0.4, 0.06, 'bandpass', 5200, 3);  }); },
     // the stampede: rolling low rumble with footfalls and a crowd of groans, swelling and passing
     introStampede: function (dur) {
-      if (!ok()) return; return viaIntro(function () { var t = ac.currentTime; dur = dur || 3.2;
-      var src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
-      src.buffer = noiseBuf; src.loop = true; fl.type = 'lowpass'; fl.frequency.value = 260; fl.Q.value = 0.9;
-      lfo.frequency.value = 9; lg.gain.value = 0.45; lfo.connect(lg); lg.connect(am.gain); am.gain.value = 0.55;
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + dur * 0.35); g.gain.setValueAtTime(0.9, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      src.connect(fl); fl.connect(am); am.connect(g); g.connect(sfxBus); src.start(t); src.stop(t + dur + 0.1); lfo.start(t); lfo.stop(t + dur + 0.1);
-      osc('sine', 46, 38, t, dur, 0.35, null, dur * 0.3);
-      var F = [[600, 6], [1000, 7], [2400, 9]];
-      for (var i = 0; i < 22; i++) { var tt = t + dur * (0.12 + Math.random() * 0.7), f = 95 + Math.random() * 80; voice(tt, f * 1.15, f * 0.7, 0.4 + Math.random() * 0.5, 0.05 + Math.random() * 0.05, F); }
-      for (var j = 0; j < 26; j++) { var ft = t + dur * (0.15 + j / 26 * 0.65); drum(ft, 46 + Math.random() * 12, 0.12 + Math.random() * 0.1); }
+      if (!ok()) return; return viaIntro(function () {
+        var t = ac.currentTime; dur = dur || 3.2;
+        var src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+        src.buffer = noiseBuf; src.loop = true; fl.type = 'lowpass'; fl.frequency.value = 150; fl.Q.value = 1.1;
+        lfo.type = 'triangle'; lfo.frequency.value = 6.5; lg.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain); am.gain.value = 0.6;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(1.3, t + dur * 0.35); g.gain.setValueAtTime(1.3, t + dur * 0.62); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(fl); fl.connect(am); am.connect(g); g.connect(sfxBus); src.start(t); src.stop(t + dur + 0.1); lfo.start(t); lfo.stop(t + dur + 0.1);
+        osc('sine', 36, 30, t, dur, 0.45, null, dur * 0.3); osc('triangle', 48, 40, t, dur, 0.12, null, dur * 0.35);
+        var F = [[480, 5], [820, 6], [2200, 8]];
+        for (var i = 0; i < 26; i++) { var tt = t + dur * (0.12 + Math.random() * 0.72), f = 70 + Math.random() * 70; voice(tt, f * 1.2, f * 0.7, 0.45 + Math.random() * 0.55, 0.045 + Math.random() * 0.05, F); }
+      });
+    },
+    // one heavy footfall in the stampede: a deep thud, a dirt crunch, placed left-to-right where the zombie is
+    introStomp: function (pan, k, big) {
+      if (!ok()) return; return viaIntro(function () {
+        var t = ac.currentTime + Math.random() * 0.015, g = ac.createGain(), out = g;
+        g.gain.value = k;
+        if (ac.createStereoPanner) { var p = ac.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); p.connect(sfxBus); } else g.connect(sfxBus);
+        var f = (big ? 44 : 58) + Math.random() * 24;
+        osc('sine', f * 1.9, f * 0.5, t, 0.17 + Math.random() * 0.08 + (big ? 0.1 : 0), 0.55, out, 0.002);
+        noise(t, 0.08, 0.32, 'lowpass', 340 + Math.random() * 220, 0.9, 80, out);
+        if (Math.random() < 0.55) noise(t + 0.004, 0.035, 0.1, 'bandpass', 700 + Math.random() * 1100, 1.4, null, out);
+        setTimeout(function () { try { g.disconnect(); } catch (e) { } }, 900);
       });
     },
     // the freeze: impact, a low brass and choir stab, a ringing gong
@@ -1074,11 +1087,12 @@ var SFX = (function () {
     introCut: introCut,
     setIntroTrack: function (b64, gain) { ITRACK.b64 = b64 || ''; ITRACK.gain = gain || 1; decodeIntroTrack(); },
     introTrackReady: function () { decodeIntroTrack(); return !!ITRACK.buf; },
-    introTrack: function () {
+    introTrack: function (offset) {
       if (!ok() || !ITRACK.buf) return 0;
+      offset = Math.max(0, offset || 0); if (offset >= ITRACK.buf.duration - 0.1) return 0;
       return viaIntro(function () {
         var t = ac.currentTime + 0.03, src = ac.createBufferSource(), g = ac.createGain();
-        src.buffer = ITRACK.buf; g.gain.value = ITRACK.gain; src.connect(g); g.connect(musBus); src.start(t);
+        src.buffer = ITRACK.buf; g.gain.value = ITRACK.gain; src.connect(g); g.connect(musBus); src.start(t, offset);
         return ITRACK.buf.duration;
       });
     },
@@ -1200,10 +1214,23 @@ var SFX = (function () {
       else { [0, 4, 7, 12, 16].forEach(function (st, i) { bell(t + i * 0.06, 784 * Math.pow(2, st / 12), 0.07, 1); }); }
     },
     // the skull laughs: "HA HA HA HA" falling in pitch, with a growl under it
+    // the skull's laugh: a deep demonic "HA HA HA ... HAAA" in three voices (the laugh, an octave below, a fifth above),
+    // over a growl and a sub boom, sent into its own cavernous reverb
     laugh: function () {
-      if (!ok()) return; var t = ac.currentTime, F = [[750, 7], [1150, 8], [2600, 10]];
-      for (var i = 0; i < 6; i++) { var f = 200 - i * 18, tt = t + i * 0.26; voice(tt, f * 1.08, f * 0.9, 0.2, 0.32, F); voice(tt, f * 0.5, f * 0.45, 0.2, 0.18, F); }
-      osc('sawtooth', 60, 40, t, 1.8, 0.14, null, 0.2); noise(t, 1.8, 0.06, 'bandpass', 400, 2);
+      if (!ok()) return; var t = ac.currentTime;
+      var bus = ac.createGain(), rv = ac.createConvolver(), rg = ac.createGain();
+      if (!LAUGH_IR) LAUGH_IR = impulse(2.8);
+      rv.buffer = LAUGH_IR; rg.gain.value = 0.5; bus.connect(sfxBus); bus.connect(rv); rv.connect(rg); rg.connect(sfxBus);
+      setTimeout(function () { try { bus.disconnect(); rv.disconnect(); rg.disconnect(); } catch (e) { } }, 6000);
+      var F = [[520, 4], [880, 5], [2350, 8]], Fd = [[380, 3], [700, 4], [1900, 6]];
+      var at = [0, 0.2, 0.38, 0.55, 0.71, 0.87, 1.04];
+      at.forEach(function (o, i) {
+        var last = i === at.length - 1, tt = t + o, f = 112 - i * 3, d = last ? 0.62 : 0.16, v = 0.26 + i * 0.025;
+        voice(tt, f * 1.12, f * 0.8, d, v, F, bus); voice(tt, f * 0.5, f * 0.4, d, v * 0.85, Fd, bus); voice(tt, f * 1.5, f * 1.15, d, v * 0.22, F, bus);
+        noise(tt, 0.05, 0.1, 'bandpass', 1300, 1.2, null, bus);
+      });
+      osc('sawtooth', 50, 36, t, 1.9, 0.15, bus, 0.18); osc('sine', 62, 24, t, 0.9, 0.65, bus, 0.005);
+      noise(t, 1.9, 0.09, 'lowpass', 260, 1, 110, bus); osc('sine', 38, 29, t + 1.04, 1.1, 0.42, bus, 0.04);
     },
     // the bite: a huge chomp and cracking glass
     bite: function () {
