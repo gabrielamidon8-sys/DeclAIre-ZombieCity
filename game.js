@@ -351,7 +351,13 @@ window.addEventListener('keydown', e => {
   if (G.grab && G.mode === 'play' && (k === ' ' || k === 'e' || k === 'enter' || k === 'shift')) { qteHit(); e.preventDefault(); return; }
   if (k === ' ' || k === 'shift') { if (G.mode === 'play') { tryDash(); e.preventDefault(); } }
   if (k === 'q' || k === 'f') { if (G.mode === 'play') callAirstrike(); }
+  // the radio: M mutes, N skips the song, [ and ] change the channel
+  if (G.mode !== 'intro') {
+    if (k === 'm') SFX.fm.mute(); else if (k === 'n') SFX.fm.skip(); else if (k === '[') SFX.fm.step(-1); else if (k === ']') SFX.fm.step(1);
+  }
   if (k === 'escape' || k === 'p') {
+    if (!$('radioPanel').hidden) { closeRadio(); return; }
+    if (!$('hudRadio').hidden && k === 'escape') { toggleHudRadio(false); return; }
     if (!$('blDetail').hidden) { $('blDetail').hidden = true; return; }
     if (!$('bosslog').hidden) { closeBossLog(); return; }
     if (!$('arDetail').hidden) { $('arDetail').hidden = true; return; }
@@ -368,6 +374,8 @@ window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 // App bridge: the Android app calls these for its back button and when it goes to the background.
 window.zcBack = function () {
   if (typeof INTRO !== 'undefined' && INTRO.on) return introSkip();
+  if (!$('radioPanel').hidden) { closeRadio(); return true; }
+  if (!$('hudRadio').hidden) { toggleHudRadio(false); return true; }
   if (!$('blDetail').hidden) { $('blDetail').hidden = true; return true; }
   if (!$('bosslog').hidden) { closeBossLog(); return true; }
   if (G.mode === 'cine') return true;
@@ -1047,8 +1055,6 @@ function startWave(n) {
   banner('Wave ' + n, G.bossPending ? (n % 10 === 5 ? 'The Snatcher is coming' : 'An Alpha is coming') : unk ? unk + ' unidentified mutation' + (unk > 1 ? 's' : '') + ' sighted' : 'Hold the line');
   G.mode = 'play';
   if (G.p) { const nc = NEON[(n - 1) % NEON.length]; ring(G.p.x, G.p.y, 20, 520, 0.9, rgbOf(nc), 5); ring(G.p.x, G.p.y, 10, 300, 0.7, rgbOf(nc), 3); }
-  const sg = SFX.songInfo(n);
-  if (sg && AUD.music === 'builtin') { clearTimeout(startWave.t); startWave.t = setTimeout(() => { if (G.mode === 'play' && G.wave === n) toast('Now playing · ' + sg.genre + ' · ' + sg.bpm + ' BPM', '♪ ' + sg.name, NEON[(n - 1) % NEON.length]); }, 1100); }
 }
 function spawner(dt) {
   if (G.spawnQ <= 0 && !G.bossPending) return;
@@ -1117,7 +1123,15 @@ function newRun() {
   G.mode = 'play'; showOv(null); startWave(1);
   try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* not allowed */ }
 }
-function pauseGame() { if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · ' + G.score.toLocaleString() + ' points'; showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio(); }
+function pauseGame() {
+  if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · run in progress';
+  const st = $('pauseStats'); st.textContent = '';
+  const tm = Math.floor(G.time || 0);
+  [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', Math.floor(tm / 60) + ':' + String(tm % 60).padStart(2, '0')]].forEach(([k, v]) => {
+    const d = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; d.append(dt, dd); st.append(d);
+  });
+  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio();
+}
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
 function toTitle() { G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
 function die() {

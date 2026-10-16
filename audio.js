@@ -1,21 +1,16 @@
-/* Zombie City — sound. Everything is synthesized live with the Web Audio API, so there are no audio files.
-   The soundtrack is a set of songs, one per wave, each in a different and more intense style: synthwave, house,
-   big-room EDM, dubstep, heavy metal, drum & bass, trance, industrial, hardstyle, orchestral metal, breakcore,
-   thrash, gabber, black metal, speedcore, gothic metal, chiptune, deathcore and an apocalyptic finale.
-   Every boss remixes the current song its own way (key, tempo and extra instruments), the Overlord has its own
-   two-phase song, and its grab has its own music. SFX.viz() reports beats and spectrum for the light show. */
+/* Zombie City — sound. Everything is synthesized with the Web Audio API, so there are no audio files.
+   Two separate engines: the game's effects (gunfire, kills, bosses, the studio intro) on one AudioContext, and
+   the music on another — the radio, FM 66.6 (see the radio section): 7 channels of 35 generated songs each, or
+   "Bluetooth", the player's own songs. The music never reacts to the game, so a heavy moment can't make it skip
+   or go quiet. SFX.viz() reports the music's beats and spectrum for the light show. */
 var SFX = (function () {
   'use strict';
-  var ac = null, master = null, comp = null, sfxBus = null, musBus = null, customGain = null, noiseBuf = null;
+  var ac = null, master = null, sfxBus = null, musBus = null, noiseBuf = null;
   var onAn = null, onSpec = null, onPrev = null, BANK = {}, BAKING = false, sfxComp = null, musComp = null;
-  var musFilter = null, vizAn = null, synthBus = null, drumBus = null, revIn = null, dlyIn = null, dly = null, distIn = null, bellBus = null;
+  var synthBus = null, drumBus = null, revIn = null, dlyIn = null, dly = null, distIn = null, bellBus = null;
   var gtrIn = null, leadIn = null, pulse25 = null;
   var SHAPERS = [], AQ = 2, HB = { ct: -1, stuck: 0 }, rebuilds = 0;   // audio quality level and the self-repair heartbeat
-  var sfxOn = true, musicMode = 'builtin', customEl = null, customSrc = null, customUrl = null;
-  var last = {}, seqTimer = null, nextT = 0, stepI = 0, barN = 0, lateN = 0;
-  var scene = 'title', mWave = 0, BPM = 84, STEP = 60 / BPM / 4, TR = 0, impactPending = false;
-  var song = null, pendingSong = null, bossMod = null, pendingMod = null, modDirty = false, qteOn = false, overlordPhase = 0;
-  var PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31];
+  var sfxOn = true, last = {}, lateN = 0, scene = 'title', BPM = 120, STEP = 60 / BPM / 4, TR = 0, song = null;
 
   // what the music is doing right now, for the visualizer
   var evq = [], spec = null, lastKick = -9, lastKickEv = -9, lastSnare = -9, lastHat = -9, lastBeat = -9, lastBar = -9, lastImpact = -9, bi = 0, onsetAvg = 0, lastOnset = -9;
@@ -28,28 +23,27 @@ var SFX = (function () {
   function throttle(k, ms) { var t = performance.now(); if (last[k] && t - last[k] < ms) return false; last[k] = t; return true; }
 
   function init() {
-    if (ac) { if (ac.state === 'suspended') ac.resume().catch(function () {}); return; }
+    // every tap and key press comes through here: it wakes both engines if the phone put them to sleep
+    if (ac) {
+      if (ac.state === 'suspended') ac.resume().catch(function () {});
+      if (!RD.ctx) { rCreate(); if (RD.on) rStart(); } else if (RD.ctx.state === 'suspended' && !document.hidden) RD.ctx.resume().catch(function () {});
+      return;
+    }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     try { ac = new AC(); } catch (e) { ac = null; return; }
-    // music and effects each get their own compressor, so a loud gunshot never squashes the song;
-    // both meet in a soft clipper that rounds off peaks instead of pumping the volume
+    // effects and the intro's score each get their own compressor; both meet in a soft clipper that rounds off peaks
     sfxComp = ac.createDynamicsCompressor(); musComp = ac.createDynamicsCompressor();
     sfxComp.threshold.value = -14; sfxComp.knee.value = 8; sfxComp.ratio.value = 6; sfxComp.attack.value = 0.002; sfxComp.release.value = 0.12;
     musComp.threshold.value = -15; musComp.knee.value = 10; musComp.ratio.value = 3; musComp.attack.value = 0.006; musComp.release.value = 0.2;
     var mix = ac.createGain(); mix.gain.value = 0.5;
     var clip = ac.createWaveShaper(); clip.curve = softClip(); clip.oversample = AQ >= 1 ? '2x' : 'none'; SHAPERS = [clip];
-    master = ac.createGain(); master.gain.value = 0.95;
+    // the phone adds this engine and the radio together, so this one leaves the radio some headroom
+    master = ac.createGain(); master.gain.value = 0.86;
     sfxBus = ac.createGain(); sfxBus.gain.value = 0.85;
     musBus = ac.createGain(); musBus.gain.value = 0;
-    customGain = ac.createGain(); customGain.gain.value = 0.75;
-    musFilter = ac.createBiquadFilter(); musFilter.type = 'lowpass'; musFilter.frequency.value = 3000; musFilter.Q.value = 0.9;
-    vizAn = ac.createAnalyser(); vizAn.fftSize = 1024; vizAn.smoothingTimeConstant = 0.5; spec = new Uint8Array(vizAn.frequencyBinCount); VIZ.spec = spec;
     sfxBus.connect(sfxComp); sfxComp.connect(mix);
-    musBus.connect(musFilter); customGain.connect(musFilter); musFilter.connect(vizAn); vizAn.connect(musComp); musComp.connect(mix);
+    musBus.connect(musComp); musComp.connect(mix);
     mix.connect(clip); clip.connect(master); master.connect(ac.destination);
-    // a separate, unsmoothed analyser on the player's own music finds its beats
-    onAn = ac.createAnalyser(); onAn.fftSize = 1024; onAn.smoothingTimeConstant = 0; onAn.minDecibels = -100; onAn.maxDecibels = 0; onSpec = new Float32Array(onAn.frequencyBinCount); onPrev = new Float32Array(onAn.frequencyBinCount);
-    var mute = ac.createGain(); mute.gain.value = 0; customGain.connect(onAn); onAn.connect(mute); mute.connect(ac.destination);
     noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 1.5), ac.sampleRate);
     var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     synthBus = ac.createGain(); synthBus.connect(musBus);
@@ -71,13 +65,13 @@ var SFX = (function () {
     var n = 32, re = new Float32Array(n), im = new Float32Array(n);
     for (var k = 1; k < n; k++) re[k] = 2 / (k * Math.PI) * Math.sin(k * Math.PI * 0.25);
     pulse25 = ac.createPeriodicWave(re, im);
-    song = pendingSong || songFor(mWave); pendingSong = null; BPM = curBpm(); STEP = 60 / BPM / 4;
-    if (customEl && !customSrc) attachCustom();
-    nextT = ac.currentTime + 0.1;
-    seqTimer = setInterval(sched, 25);
     setTimeout(bakeAll, 60);
-    applyMusic();
+    introLevel();
+    if (!RD.ctx) rCreate();
+    if (RD.on) rStart();
   }
+  // the studio intro's score plays on the effects engine; it follows the radio's mute and off switch
+  function introLevel() { if (!ac) return; musBus.gain.cancelScheduledValues(ac.currentTime); musBus.gain.setTargetAtTime(RD.mode === 'off' || RD.muted ? 0 : 0.5, ac.currentTime, 0.05); }
   function amp(drive, hp, lp, vol, rev, delay) {
     var input = ac.createGain(), pre = ac.createGain(), sh = ac.createWaveShaper(), h = ac.createBiquadFilter(), pk = ac.createBiquadFilter(), l = ac.createBiquadFilter(), out = ac.createGain();
     pre.gain.value = drive; sh.curve = distCurve(90); sh.oversample = AQ >= 1 ? '2x' : 'none'; SHAPERS.push(sh);
@@ -164,6 +158,7 @@ var SFX = (function () {
     var gn = E(t, 0.002, vol, 0, dur, dest, rev ? revIn : null, rev); s.connect(fl); fl.connect(gn); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
   }
   function ev(t, k) {
+    if (RENDER) { RENDER.ev.push([t, k]); return; }
     if (BAKING) return;
     if (k === 'kick') { if (t - lastKickEv < 0.11) return; lastKickEv = t; }
     evq.push([t, k]); if (evq.length > 400) evq.splice(0, 100);
@@ -172,7 +167,7 @@ var SFX = (function () {
   function duck(t, gap) { if (BAKING || !song || !song.duck) return; var p = synthBus.gain; p.cancelScheduledValues(t); p.setValueAtTime(0.28, t); p.linearRampToValueAtTime(1, t + Math.min(0.24, gap * 0.85)); }
 
   // drums: each one is rendered once into a sample at startup and replayed; the live versions are the fallback
-  function play(name, t, vol, rate, dest, stopAt, send) {
+  function play(name, t, vol, rate, dest, stopAt, send, ret) {
     var b = BANK[name]; if (!b || BAKING) return false;
     var src = ac.createBufferSource(), g = ac.createGain(), v = vol == null ? 1 : vol; src.buffer = b;
     if (rate && rate !== 1) src.playbackRate.value = rate;
@@ -180,7 +175,14 @@ var SFX = (function () {
     if (send && revIn) { var sg = ac.createGain(); sg.gain.value = send; g.connect(sg); sg.connect(revIn); }
     src.start(t);
     if (stopAt) { g.gain.setValueAtTime(v, Math.max(t, stopAt - 0.015)); g.gain.linearRampToValueAtTime(0.0001, stopAt); src.stop(stopAt + 0.02); }
-    return true;
+    return ret ? { s: src, g: g } : true;
+  }
+  // kill sounds that are still ringing: past 14, the oldest fades out
+  var KQ = [];
+  function kq(v) {
+    if (!v || v === true) return; KQ.push(v);
+    v.s.onended = function () { var i = KQ.indexOf(v); if (i >= 0) KQ.splice(i, 1); try { v.g.disconnect(); } catch (e) { } };
+    while (KQ.length > 14) { var o = KQ.shift(), t = ac.currentTime; try { o.g.gain.cancelScheduledValues(t); o.g.gain.setValueAtTime(o.g.gain.value, t); o.g.gain.linearRampToValueAtTime(0.0001, t + 0.12); o.s.stop(t + 0.15); } catch (e) { } }
   }
   function lKick(t, len) {
     O('sine', 165, t, t + len + 0.05, E(t, 0.002, 0.95, 0, len, drumBus)).frequency.exponentialRampToValueAtTime(46, t + Math.min(0.12, len * 0.6));
@@ -349,413 +351,12 @@ var SFX = (function () {
     if (dur > 0.22) { var lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 6.2; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(28, t + Math.min(0.3, dur * 0.6)); lfo.connect(lg); lg.connect(o.detune); lfo.start(t); lfo.stop(t + dur + 0.15); }
   }
 
-  // ---------- songs ----------
-  // H: pattern hit ('.' is a rest; 16 or 32 steps). mel: "74 - - 72 . ..." where '-' holds the previous note.
-  function H(p, s, b) { var c = p.charAt((b * 16 + s) % p.length); return c !== '.' ? c : ''; }
-  function mel(str) { var a = str.trim().split(/\s+/), out = { n: a.length }; for (var i = 0; i < a.length; i++) { var tk = a[i]; if (tk === '.' || tk === '-') continue; var len = 1; while (a[i + len] === '-') len++; out[i] = [+tk, len]; } return out; }
-  function M(mm, s, b) { return mm[(b * 16 + s) % mm.n]; }
-  function up(c, n) { return [c[0] + n, c[1] + n, c[2] + n]; }
-  function roll(t, s, from) { var f = (s - from) / (16 - from); vSnare(t, 0.1 + f * 0.24, 0.85 + f * 0.6); }
-
-  var P_EPIC = [{ r: 38, c: [62, 65, 69] }, { r: 34, c: [62, 65, 70] }, { r: 41, c: [60, 65, 69] }, { r: 36, c: [60, 64, 67] }];
-  var P_HARM = [{ r: 38, c: [62, 65, 69] }, { r: 34, c: [62, 65, 70] }, { r: 43, c: [62, 67, 70] }, { r: 45, c: [61, 64, 69] }];
-  var P_SYN = [{ r: 45, c: [69, 72, 76] }, { r: 41, c: [65, 69, 72] }, { r: 36, c: [64, 67, 72] }, { r: 43, c: [62, 67, 71] }];
-  var P_TRANCE = [{ r: 41, c: [65, 68, 72] }, { r: 37, c: [65, 68, 73] }, { r: 44, c: [63, 68, 72] }, { r: 39, c: [63, 67, 70] }];
-  var P_DNB = [{ r: 36, c: [63, 67, 72] }, { r: 32, c: [63, 68, 72] }, { r: 39, c: [63, 67, 70] }, { r: 34, c: [62, 65, 70] }];
-  var P_METAL = [{ r: 40, c: [64, 67, 71] }, { r: 36, c: [64, 67, 72] }, { r: 38, c: [62, 66, 69] }, { r: 35, c: [63, 66, 71] }];
-  var P_PHRY = [{ r: 40, c: [64, 67, 71] }, { r: 41, c: [65, 69, 72] }, { r: 40, c: [64, 67, 71] }, { r: 38, c: [62, 65, 69] }];
-  var P_CHIP = [{ r: 36, c: [64, 67, 72] }, { r: 43, c: [62, 67, 71] }, { r: 45, c: [64, 69, 72] }, { r: 41, c: [65, 69, 72] }];
-  var P_DOOM = [{ r: 38, c: [62, 65, 69] }, { r: 39, c: [63, 67, 70] }, { r: 38, c: [62, 65, 69] }, { r: 34, c: [62, 65, 70] }];
+  // ---------- patterns the radio styles borrow ----------
   var ACID = [0, null, 12, 0, null, 3, 0, 10, 0, null, 7, 12, 0, 3, null, 5];
   var ACC = [1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1];
   var WOB = [2, 3, 4, 6];
+/*__RADIO__*/
 
-  var L_EPIC = mel('74 - - 72 - - 69 - 74 - 76 - 77 - 76 -  74 - - 72 - - 70 - 69 - 70 - 72 - - -  72 - - 69 - - 65 - 69 - 72 - 77 - 76 -  76 - - 74 - - 72 - 67 - 72 - 74 - 76 -');
-  var L_SYN = mel('76 - - 74 - - 72 - 74 - - - 69 - - -  72 - - 71 - - 69 - 67 - - - 64 - - -  72 - - 74 - - 76 - 79 - - - 76 - - -  74 - - 72 - - 71 - 67 - - - - - - -');
-  var L_METAL = mel('76 - - 74 - - 71 - 76 - - - 79 - 78 -  76 - - 72 - - 76 - 79 - - - 81 - 79 -  78 - - 74 - - 78 - 81 - - - 83 - 81 -  79 - 78 - 75 - 71 - 78 - - - - - - -');
-  var L_DNB = mel('79 - - 77 - - 75 - 72 - - - 75 - 77 -  80 - - 79 - - 77 - 75 - - - 72 - 75 -  79 - - 82 - - 79 - 77 - - - 75 - 74 -  74 - - 77 - - 74 - 70 - - - - - - -');
-  var L_TRANCE = mel('77 - 80 - 84 - 82 - 80 - - - 77 - 75 -  77 - 80 - 85 - 84 - 80 - - - 77 - 80 -  84 - 82 - 80 - 79 - 80 - - - 84 - 87 -  82 - - - 79 - - - 75 - - - 77 - - -');
-  var L_HARD = mel('74 - - 77 - - 76 - 74 - - - 72 - 69 -  70 - - 74 - - 72 - 70 - - - 69 - 70 -  74 - - 79 - - 77 - 74 - - - 70 - 74 -  73 - - 76 - - 81 - 79 - 77 - 76 - 73 -');
-  var L_REQ = mel('74 - - - 77 - 76 - 74 - 72 - 70 - 69 -  70 - - - 74 - 72 - 70 - 69 - 67 - 65 -  67 - - - 70 - 74 - 79 - 77 - 74 - 70 -  69 - - - 73 - 76 - 81 - - - 79 - 76 -');
-  var L_GOTH = mel('74 - - - 75 - 74 - 72 - 70 - 69 - - -  75 - - - 79 - 77 - 75 - 74 - 72 - - -  74 - 77 - 81 - 79 - 77 - 74 - 72 - 69 -  70 - - - 74 - - - 77 - - - 82 - - -');
-  var L_CHIP = mel('76 - 79 - 84 - 83 - 79 - 76 - 79 - 81 -  79 - 74 - 79 - 83 - 86 - 83 - 79 - 74 -  76 - 81 - 84 - 81 - 76 - 72 - 76 - 79 -  77 - 81 - 84 - 81 - 77 - 74 - 72 - 71 -');
-  var L_OVER = mel('76 - - - 77 - 76 - 74 - 72 - 71 - - -  77 - - - 81 - 79 - 77 - 76 - 74 - - -  76 - 79 - 83 - 81 - 79 - 77 - 76 - 74 -  74 - - - 77 - - - 81 - - - 86 - - -');
-  var RUN = [76, 74, 72, 71, 72, 74, 76, 79, 78, 76, 74, 72, 71, 69, 67, 64];
-  var GALLOP = 'x.xxx.xxx.xxx.xx';
-
-  function mkSong(id, name, genre, bpm, prog, duck, play) { return { id: id, name: name, genre: genre, bpm: bpm, prog: prog, duck: duck, play: play }; }
-  var SONGS = {
-    title: mkSong('title', 'Dead City', 'Ambient', 84, P_HARM, false, function (X, s, b, t, ch) {
-      if (s === 0) { vPad(ch.c, t, STEP * 16, 1100, 0.05); vSub(ch.r + 12, t, STEP * 14, 0.12); }
-      if (s % 2 === 0) vPiano(ch.c[[0, 1, 2, 1][(s / 2) % 4]] + (s >= 8 ? 12 : 0), t, 0.04);
-      if (s === 12 && b % 2) bell(t, mf(ch.c[2] + 24), 0.03, 1.6, bellBus);
-    })
-  };
-  var WAVES = [
-    mkSong('w1', 'Dead Signal', 'Synthwave', 108, P_SYN, true, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (s % 4 === 0) vKick(t, 0.32);
-      if (s === 4 || s === 12) vSnareG(t, 0.26);
-      vHat(t, false, s % 2 ? 0.018 : 0.032);
-      if (s % 2 === 0) vBass(ch.r + (s % 4 === 2 ? 12 : 0), t, STEP * 1.6, 0.16);
-      if (s === 0) vPad(ch.c, t, STEP * 16, 1500, 0.034);
-      vArp(ch.c[s % 3] + 12 + (s % 6 >= 3 ? 12 : 0), t, STEP * 1.4, 0.026);
-      if (ph >= 4 || X.drop) { var m = M(L_SYN, s, b); if (m) vLead(m[0], t, STEP * m[1], 0.044); }
-      if (X.drop && s === 0 && b % 4 === 0) vCrash(t);
-    }),
-    mkSong('w2', 'Night Shift', 'House', 124, P_EPIC, true, function (X, s, b, t, ch) {
-      if (s % 4 === 0) vKick(t, 0.42);
-      if (s === 4 || s === 12) vClap(t, 0.3);
-      if (s % 4 === 2) vHat(t, true, 0.075); else if (s % 2) vHat(t, false, 0.03);
-      vShaker(t, s % 2 ? 0.02 : 0.032);
-      if (s % 4 === 2) vBass(ch.r, t, STEP * 1.7);
-      if (H('x..x..x...x..x..', s, b) && b % 4 !== 3) vPianoCh(ch.c, t, 0.032);
-      if (b % 4 === 3 && (s === 12 || s === 14)) vPianoCh(up(ch.c, 12), t, 0.028);
-      if (s === 0) vPad(ch.c, t, STEP * 16, 1200, 0.024);
-      if (X.drop) { var m = M(L_EPIC, s, b); if (m) vLead(m[0], t, STEP * m[1], 0.045); }
-    }),
-    mkSong('w3', 'Quarantine Zone', 'Big room EDM', 128, P_EPIC, true, function (X, s, b, t, ch) {
-      var ph = b % 8, build = ph >= 6;
-      if (ph === 0 && s === 0) vCrash(t);
-      if (ph === 6 && s === 0) vRiser(t, STEP * 32);
-      if (!build || (ph === 6 && s < 8)) { if (s % 4 === 0) vKick(t, 0.42); }
-      if (build) { if (ph === 6 ? s % 2 === 0 : true) roll(t, ph === 6 ? s / 2 : 8 + s / 2, 0); }
-      else {
-        if (s === 4 || s === 12) vClap(t, 0.3);
-        if (s % 4 === 2) vHat(t, true, 0.08);
-        if (s % 4 === 2) vBass(ch.r, t, STEP * 1.7); if (s === 15) vBass(ch.r + 12, t, STEP * 0.9);
-        var m = M(L_EPIC, s, b); if (m) { vLead(m[0], t, STEP * m[1], 0.05); if (X.drop) vLead(m[0] + 12, t, STEP * m[1], 0.024); }
-        if (s % 2 === 0) vSawArp(ch.c[(s / 2) % 3] + 12, t, STEP * 1.3);
-      }
-      if (s === 0) vPad(ch.c, t, STEP * 16, 1800, 0.03);
-    }),
-    mkSong('w4', 'Biohazard', 'Dubstep', 140, P_HARM, true, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (s === 0 || (s === 10 && b % 2) || (s === 3 && b % 4 === 2)) vKick(t, 0.45, STEP * 8);
-      if (s === 8) { vSnare(t, 0.32); vClap(t, 0.18); }
-      if (ph === 7 && s >= 10) roll(t, s, 10);
-      if (s % 2 === 0) vHat(t, false, 0.03); if (s === 6 || s === 14) vHat(t, true, 0.05);
-      if (s === 0 || s === 8) vWobble(ch.r, t, STEP * 8, BPM / 60 * WOB[(b * 2 + (s >> 3)) % 4]);
-      if (s === 12 && b % 2) vHoover(ch.r + 24, t, STEP * 3);
-      if (s === 0) vSub(ch.r, t, STEP * 15, 0.1);
-      if (s === 0 && b % 2 === 0) vPad(ch.c, t, STEP * 32, 900, 0.024);
-    }),
-    mkSong('w5', 'Iron Lung', 'Heavy metal', 150, P_METAL, false, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (H(GALLOP, s, b)) { vKMetal(t, 0.68); if (s !== 0) vChug(ch.r, t, STEP * 0.9); }
-      if (s === 0) vPower(ch.r, t, STEP * 2);
-      if (s === 4 || s === 12) vSnareA(t, 0.32);
-      if (s % 2 === 0) vRide(t, 0.05);
-      if (s === 0 && ph % 4 === 0) vCrash(t, 0.12);
-      if (s % 2 === 0) vBassGtr(ch.r + 12, t, STEP * 1.6);
-      if (ph >= 4 || X.drop) { var m = M(L_METAL, s, b); if (m) vLeadG(m[0], t, STEP * m[1]); }
-    }),
-    mkSong('w6', 'Liquid Rot', 'Drum & bass', 174, P_DNB, false, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (s === 0 || s === 10 || (s === 13 && b % 2)) vKick(t, 0.3);
-      if (s === 4 || s === 12) vSnare(t, 0.3);
-      if ((s === 7 || s === 15) && b % 2) vSnare(t, 0.06, 1.1);
-      if (s % 2 === 0) vHat(t, false, 0.034); else if (s % 4 === 3) vHat(t, false, 0.02);
-      if (s % 4 === 2) vRide(t, 0.035);
-      if (s === 0 || s === 8) vReese(ch.r, t, STEP * 8);
-      if (s === 0) vPad(ch.c, t, STEP * 16, 1700, 0.03);
-      if (s === 0 && b % 2 === 0) vPianoCh(up(ch.c, 12), t, 0.024);
-      if (ph >= 4) { var m = M(L_DNB, s, b); if (m) vPluck(m[0], t, 0.055); }
-      if (X.drop && s === 6 && b % 2) bell(t, mf(ch.c[1] + 24), 0.03, 1.2, bellBus);
-    }),
-    mkSong('w7', 'Ascension', 'Trance', 138, P_TRANCE, true, function (X, s, b, t, ch) {
-      var ph = b % 8, build = ph === 7;
-      if (ph === 0 && s === 0) vCrash(t);
-      if (build && s === 0) vRiser(t, STEP * 16);
-      if (!build || s < 8) { if (s % 4 === 0) vKick(t, 0.4); } else roll(t, s, 8);
-      if (s % 4 !== 0) vBass(ch.r, t, STEP * 0.9, 0.16);
-      if (!build && (s === 4 || s === 12)) vClap(t, 0.26);
-      if (s % 4 === 2) vHat(t, true, 0.07); else if (s % 2) vHat(t, false, 0.026);
-      if (H('x.xx.xx.x.xx.xx.', s, b)) vGate(ch.c, t, STEP * 0.8, 0.032);
-      vSawArp([ch.c[0], ch.c[1], ch.c[2], ch.c[1] + 12][s % 4] + 12, t, STEP * 1.2);
-      if (ph >= 4 || X.drop) { var m = M(L_TRANCE, s, b); if (m) vLead(m[0], t, STEP * m[1], 0.046); }
-    }),
-    mkSong('w8', 'Rust Belt', 'Industrial', 128, P_DOOM, true, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (s % 4 === 0 || (s === 14 && b % 2)) vKHard(t, 0.22);
-      if (s === 4 || s === 12) { vSnareA(t, 0.3); vAnvil(t, 0.04); }
-      if (H('..x...x..x....x.', s, b)) vAnvil(t, 0.03);
-      vBass(ch.r, t, STEP * 0.8, s % 4 === 0 ? 0.18 : 0.11);
-      if (b % 2 && s % 2 === 0) vChug(ch.r, t, STEP * 0.8, 0.2);
-      if (s % 2) vHat(t, false, 0.04);
-      if (ph === 4 && s === 0) vSiren(t, STEP * 32);
-      if (s === 0 && ph % 2 === 0) vPad(ch.c, t, STEP * 32, 800, 0.022);
-    }),
-    mkSong('w9', 'Overdrive', 'Hardstyle', 150, P_HARM, true, function (X, s, b, t, ch) {
-      var ph = b % 8, build = ph === 7;
-      if (ph === 0 && s === 0) vCrash(t);
-      if (build && s === 0) vRiser(t, STEP * 16);
-      if (!build || s < 8) { if (s % 4 === 0) vKHard(t, STEP * 3.5); } else roll(t, s, 8);
-      if (s % 4 === 2 && !build) vBassDist(ch.r, t, STEP * 1.6);
-      if (!build && (s === 4 || s === 12)) vClap(t, 0.26);
-      if (s % 4 === 2) vHat(t, true, 0.07); else vHat(t, false, 0.022);
-      if (ph >= 4 || X.drop) { var m = M(L_HARD, s, b); if (m) vScreech(m[0], t, STEP * m[1]); }
-      if (s === 0) vPad(ch.c, t, STEP * 16, 2000, 0.026);
-    }),
-    mkSong('w10', 'Requiem for the Living', 'Orchestral metal', 140, P_HARM, false, function (X, s, b, t, ch) {
-      var ph = b % 8, big = ph >= 4 || X.drop;
-      if (big) vKMetal(t, 0.55); else if (H('x.x...x.x.x...x.', s, b)) vKMetal(t, 0.7);
-      if (s === 4 || s === 12) vSnareA(t, 0.33);
-      if (s === 0 && ph % 2 === 0) vCrash(t, 0.12); else if (!big && s % 2 === 0) vRide(t, 0.04);
-      if (s === 0 || s === 8) vTimp(t, ch.r + 12); if (ph === 3 && s >= 12) vTimp(t, ch.r + 12, 0.3);
-      if (s === 0) vPower(ch.r, t, STEP * 6); else if (s % 2 === 0 && (big || s >= 8)) vChug(ch.r, t, STEP * 0.9);
-      if (s % 2 === 0) vBassGtr(ch.r + 12, t, STEP * 1.6);
-      if (s === 0) vStrings(ch.c, t, STEP * 16, 0.028);
-      if (!big && s % 2 === 0) vStac(up(ch.c, 12), t, 0.024);
-      if ((ph % 4 >= 2) && (s === 0 || s === 6 || s === 12)) vBrass(ch.c, t, STEP * 2);
-      if (big && s === 0) vChoir(up(ch.c, 12), t, STEP * 16, 0.045);
-      if (big) { var m = M(L_REQ, s, b); if (m) vLeadG(m[0], t, STEP * m[1]); }
-    }),
-    mkSong('w11', 'Neural Decay', 'Breakcore', 170, P_DNB, false, function (X, s, b, t, ch) {
-      if (H('x.x.......xx....x.x......x......', s, b)) vKick(t, 0.3);
-      if (H('....x..x.x..x..x....x..x.x....x.', s, b)) vSnare(t, s % 4 === 0 ? 0.3 : 0.15, 1.05);
-      if (b % 2 && s >= 12) vSnare(t + STEP / 2, 0.12, 1.25);
-      if (s % 2 === 0) vHat(t, false, 0.035);
-      if ((s === 14 && b % 2 === 0) || (s === 6 && b % 4 === 3)) vGlitch(ch.c, t);
-      if (s === 0 || s === 8) vReese(ch.r, t, STEP * 8);
-      if (s === 0) vPad(ch.c, t, STEP * 16, 1400, 0.026);
-      if (H('x.....x...x.....', s, b)) vPianoCh(up(ch.c, 12), t, 0.024);
-      if (X.drop) { var a = ACID[s]; if (a != null) vAcid(ch.r + 12 + a, t, STEP * 0.9, ACC[s]); }
-    }),
-    mkSong('w12', 'Thrash Lord', 'Thrash metal', 200, P_METAL, false, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (s % 4 === 0) vKMetal(t, 0.7); if (s % 4 === 2) vSnareA(t, 0.28);
-      if (s % 2 === 0) vHat(t, false, 0.045);
-      if (s === 0 && ph % 2 === 0) vCrash(t, 0.12);
-      if (s === 0 || s === 8) vPower(ch.r, t, STEP * 1.5);
-      else vChug(ch.r + ((s === 6 || s === 14) ? (b % 2 ? 3 : 1) : 0), t, STEP * 0.85, s % 4 === 0 ? 0.3 : 0.22);
-      if (s % 2 === 0) vBassGtr(ch.r + 12, t, STEP * 1.6);
-      if (ph >= 6 || (X.drop && ph >= 4)) vLeadG(RUN[s], t, STEP * 0.95, 0.24);
-    }),
-    mkSong('w13', 'Gabba Horde', 'Gabber', 190, P_EPIC, true, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (s % 4 === 0 || (ph === 7 && s >= 12)) vGabber(t, 0.3, ph === 7 && s >= 12 ? STEP : STEP * 4);
-      if ((s === 0 && b % 2 === 0) || s === 10) vHoover(ch.r + 24, t, STEP * (s === 0 ? 6 : 3));
-      if (s === 4 || s === 12) vClap(t, 0.26);
-      if (s % 4 === 2) vHat(t, true, 0.08); else vHat(t, false, 0.028);
-      var a = ACID[s]; if (a != null) vAcid(ch.r + 12 + a, t, STEP * 0.9, ACC[s]);
-      if (ph === 0 && s === 0) vSiren(t, STEP * 32);
-      if (ph >= 4) { var m = M(L_EPIC, s, b); if (m) vLead(m[0] + 12, t, STEP * m[1], 0.036); }
-    }),
-    mkSong('w14', 'Black Mass', 'Symphonic black metal', 180, P_PHRY, false, function (X, s, b, t, ch) {
-      var ph = b % 8, bd = ph === 7;
-      if (!bd) { vKMetal(t, 0.5); if (s % 2) vSnareA(t, 0.17); }
-      else { if (s === 0 || s === 6 || s === 10) vKMetal(t, 0.8); if (s === 8) { vSnareA(t, 0.36); vChina(t); } }
-      if (s === 0) vCrash(t, 0.1);
-      vTrem(ch.c[(s >> 2) % 3] + (b % 2 ? 12 : 0), t, 0.2);
-      if (s % 2 === 0) vBassGtr(ch.r + 12, t, STEP * 1.6);
-      if (s === 0) { vOrgan(ch.c, t, STEP * 16, 0.02); vChoir(up(ch.c, 12), t, STEP * 16, 0.045); }
-      vTremStr(ch.c[2] + 12, t, 0.016);
-    }),
-    mkSong('w15', 'Terminal Velocity', 'Speedcore', 250, P_EPIC, true, function (X, s, b, t, ch) {
-      var ph = b % 8, blast = ph === 6;
-      if (s % 2 === 0 || s >= 12) vGabber(t, 0.3, s >= 12 && !blast ? STEP : STEP * 2);
-      if (blast && s % 2) vSnare(t, 0.15, 1.1);
-      if ((s === 0 && b % 2 === 0) || s === 10) vHoover(ch.r + 24, t, STEP * (s === 0 ? 6 : 3));
-      if (s === 4 || s === 12) vClap(t, 0.24);
-      vHat(t, s % 4 === 2, s % 4 === 2 ? 0.07 : 0.026);
-      var a = ACID[s]; if (a != null) vAcid(ch.r + 12 + a, t, STEP * 0.9, ACC[s]);
-      if (ph >= 4) { var m = M(L_HARD, s, b); if (m) vScreech(m[0], t, STEP * m[1]); }
-      if (ph === 0 && s === 0) vSiren(t, STEP * 32);
-      if (b % 2 && s === 14) vGlitch(ch.c, t);
-    }),
-    mkSong('w16', 'Cathedral of Teeth', 'Gothic metal', 200, P_DOOM, false, function (X, s, b, t, ch) {
-      var ph = b % 8, big = ph >= 4 || X.drop;
-      if (big || s % 2 === 0) vKMetal(t, big ? 0.55 : 0.7);
-      if (s === 4 || s === 12) vSnareA(t, 0.33);
-      if (s === 0 && ph % 2 === 0) vCrash(t, 0.12); if (s === 12 && ph % 4 === 3) vChina(t);
-      if (s === 0) { vOrgan(ch.c, t, STEP * 16, 0.026); bell(t, mf(ch.c[0] + 12), 0.04, 2, bellBus); }
-      if (s === 8) bell(t, mf(ch.c[2] + 12), 0.03, 1.6, bellBus);
-      if (s === 0) vPower(ch.r, t, STEP * 4); else if (s % 2 === 0 && s >= 4) vChug(ch.r, t, STEP * 0.9);
-      if (s % 2 === 0) vBassGtr(ch.r + 12, t, STEP * 1.6);
-      if (big && s === 0) vChoir(up(ch.c, 12), t, STEP * 16, 0.045);
-      if (ph === 0 && s === 0) vGong(t, ch.r);
-      if (big) { var m = M(L_GOTH, s, b); if (m) vLeadG(m[0], t, STEP * m[1]); }
-    }),
-    mkSong('w17', 'Pixel Plague', 'Chiptune', 180, P_CHIP, false, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (s % 4 === 0 || s === 10) vChipNoise(t, false);
-      if (s === 4 || s === 12) vChipNoise(t, true);
-      if (s % 2) N(t, 0.02, 0.05, 'highpass', 8000, 0.7, null, drumBus);
-      if (s % 2 === 0) vChipTri(ch.r + 12 + (s % 4 === 2 ? 12 : 0), t, STEP * 0.9);
-      var m = M(L_CHIP, s, b); if (m) vChip(m[0], t, STEP * m[1] * 0.9, 0.05);
-      if (ph < 4 || X.drop) vChip(ch.c[s % 3] + 24, t, STEP * 0.5, 0.02);
-    }),
-    mkSong('w18', 'Gravedigger', 'Deathcore', 160, P_PHRY, false, function (X, s, b, t, ch) {
-      var ph = b % 8, bd = ph >= 4;
-      if (!bd) { vKMetal(t, 0.55); if (s % 2) vSnareA(t, 0.18); if (s === 0) vCrash(t, 0.1); vTrem(ch.r + 12 + (s % 4 === 3 ? 1 : 0), t, 0.2); }
-      else {
-        if (H('x..x..x.x..x.x..', s, b)) { vChug(ch.r, t, STEP * 1.2, 0.32); vKMetal(t, 0.8); }
-        if (s === 4 || s === 12) vChina(t);
-        if (s === 8) vSnareA(t, 0.36);
-        if (s === 0) vK808(t, ch.r - 12, STEP * 12);
-      }
-      if (s === 0) vPad(ch.c, t, STEP * 16, 700, 0.024);
-      if (s % 2 === 0) vBassGtr(ch.r + 12, t, STEP * 1.6);
-    }),
-    mkSong('w19', 'Extinction Event', 'Orchestral speedcore', 280, P_HARM, true, function (X, s, b, t, ch) {
-      var ph = b % 8;
-      if (s % 2 === 0 || s >= 12) vGabber(t, 0.28, s >= 12 ? STEP : STEP * 2);
-      vStac([ch.c[s % 3] + 12], t, 0.02);
-      if (s === 0 || s === 6 || s === 12) vBrass(ch.c, t, STEP * 2);
-      if (s === 0) vChoir(up(ch.c, 12), t, STEP * 16, 0.045);
-      if (s === 0 || s === 8) vTimp(t, ch.r + 12, 0.4);
-      if (s === 4 || s === 12) vClap(t, 0.24);
-      vHat(t, false, 0.024);
-      if (s === 10) vHoover(ch.r + 24, t, STEP * 3);
-      if (ph === 0 && s === 0) vSiren(t, STEP * 32);
-    }),
-    mkSong('w20', 'Apocalypse Symphony', 'Orchestral metal finale', 220, P_HARM, false, function (X, s, b, t, ch) {
-      var ph = b % 8, blast = ph >= 4;
-      vKMetal(t, 0.5); if (blast ? s % 2 === 1 : (s === 4 || s === 12)) vSnareA(t, blast ? 0.17 : 0.33);
-      if (s === 0) vCrash(t, 0.12); if (s === 12) vChina(t);
-      if (s === 0 || s === 8) vPower(ch.r, t, STEP * 1.5); else vChug(ch.r, t, STEP * 0.85, 0.22);
-      if (s === 0) { vStrings(ch.c, t, STEP * 16, 0.026); vChoir(up(ch.c, 12), t, STEP * 16, 0.045); vOrgan(ch.c, t, STEP * 16, 0.016); bell(t, mf(ch.c[0] + 24), 0.035, 2, bellBus); }
-      vTremStr(ch.c[2] + 12, t, 0.015);
-      if (s === 0 || s === 6 || s === 12) vBrass(ch.c, t, STEP * 2);
-      if (s % 8 === 0) vTimp(t, ch.r + 12, 0.45);
-      if (ph === 0 && s === 0) vGong(t, ch.r);
-      if (blast) { var m = M(L_REQ, s, b); if (m) vLeadG(m[0] + 12, t, STEP * m[1]); }
-    })
-  ];
-  [1.35, 1.1, 1.3, 1, 1, 1.1, 1.15, 1, 1, 1, 1.05, 1, 1.05, 1, 1.05, 1, 1.45, 1, 1, 1.05].forEach(function (v, i) { WAVES[i].vol = v; });
-  SONGS.over1 = mkSong('over1', 'The Overlord', 'Orchestral heavy metal', 160, P_PHRY, false, function (X, s, b, t, ch) {
-    var ph = b % 8;
-    if (H(GALLOP, s, b)) { vKMetal(t, 0.7); if (s !== 0) vChug(ch.r, t, STEP * 0.9); }
-    if (s === 0) vPower(ch.r, t, STEP * 2);
-    if (s === 4 || s === 12) vSnareA(t, 0.34);
-    if (s === 0) { vCrash(t, 0.12); vChoir(up(ch.c, 12), t, STEP * 16, 0.055); vOrgan(ch.c, t, STEP * 16, 0.02); }
-    if (s === 0 || s === 10) vBrass(ch.c, t, STEP * 2, 0.04);
-    if (s === 0 || s === 8) vTimp(t, ch.r + 12, 0.5);
-    if (ph === 0 && s === 0) vGong(t, ch.r);
-    if (s % 2 === 0) vBassGtr(ch.r + 12, t, STEP * 1.6);
-    if (ph >= 4) { var m = M(L_OVER, s, b); if (m) vLeadG(m[0], t, STEP * m[1]); }
-  });
-  SONGS.over2 = mkSong('over2', 'Overlord Unchained', 'Orchestral speedcore', 270, P_PHRY, true, function (X, s, b, t, ch) {
-    var ph = b % 8;
-    if (s % 2 === 0 || s >= 12) vGabber(t, 0.28, s >= 12 ? STEP : STEP * 2);
-    if (ph === 6 && s % 2) vSnareA(t, 0.16);
-    if (s === 0) { vChoir(up(ch.c, 12), t, STEP * 16, 0.055); vCrash(t, 0.12); }
-    if (s % 4 === 0) vBrass(ch.c, t, STEP * 1.5, 0.035);
-    vTremStr(ch.c[s % 3] + 12, t, 0.02);
-    var m = M(L_OVER, s, b); if (m) vScreech(m[0], t, STEP * m[1]);
-    if (ph % 4 === 0 && s === 0) vSiren(t, STEP * 32);
-    if (ph === 0 && s === 0) vGong(t, ch.r);
-    if (s === 10) vHoover(ch.r + 24, t, STEP * 3);
-  });
-  SONGS.qte = mkSong('qte', 'Death Grip', 'Panic', 300, P_PHRY, false, function (X, s, b, t, ch) {
-    if (s % 4 === 0) vHeart(t, 0.8);
-    vArp(64 + (stepI % 12) + 12, t, STEP * 0.9, 0.045);
-    if (s % 4 === 0) vChoir(up(ch.c, 12), t, STEP * 2, 0.05);
-    if (s === 0 || s === 8) vTimp(t, ch.r + 12, 0.5);
-    if (b % 2 === 0 && s === 0) vSiren(t, STEP * 32);
-  });
-  // boss remix layers: any boss can add these on top of whatever song is playing
-  var LAYERS = {
-    choir: function (s, b, t, ch) { if (s === 0) vChoir(up(ch.c, 12), t, STEP * 16, 0.04); },
-    brass: function (s, b, t, ch) { if (((s === 0 || s === 10) && b % 2 === 0) || (s === 6 && b % 2)) vBrass(ch.c, t, STEP * 2, 0.03); },
-    organ: function (s, b, t, ch) { if (s === 0) vOrgan(ch.c, t, STEP * 16, 0.018); },
-    timpani: function (s, b, t, ch) { if (s % 8 === 0) vTimp(t, ch.r + 12, 0.42); if (b % 4 === 3 && s >= 12) vTimp(t, ch.r + 12, 0.24); },
-    bells: function (s, b, t, ch) { if (s === 0) bell(t, mf(ch.c[0] + 24), 0.04, 2, bellBus); if (s === 8) bell(t, mf(ch.c[2] + 24), 0.03, 1.6, bellBus); },
-    siren: function (s, b, t) { if (b % 8 === 0 && s === 0) vSiren(t, STEP * 32); },
-    guitar: function (s, b, t, ch) { if (s === 0) vPower(ch.r, t, STEP * 3, 0.2); else if (s % 2 === 0 && s >= 4) vChug(ch.r, t, STEP * 0.9, 0.18); },
-    blast: function (s, b, t) { vKMetal(t, 0.42); if (s % 2 === 1) vSnareA(t, 0.1); },
-    arp: function (s, b, t, ch) { vArp(ch.c[s % 3] + 24, t, STEP * 0.9, 0.024); },
-    glitch: function (s, b, t, ch) { if (s === 14 && b % 2) vGlitch(ch.c, t); },
-    heartbeat: function (s, b, t) { if (s === 0 || s === 8) vHeart(t, 0.5); },
-    strings: function (s, b, t, ch) { if (s === 0) vStrings(ch.c, t, STEP * 16, 0.022); if (s % 2 === 0) vStac(up(ch.c, 12), t, 0.016); },
-    gong: function (s, b, t, ch) { if (b % 4 === 0 && s === 0) vGong(t, ch.r); },
-    reese: function (s, b, t, ch) { if (s === 0 || s === 8) vReese(ch.r, t, STEP * 8); },
-    screech: function (s, b, t, ch) { if (b % 2 && (s === 0 || s === 3 || s === 6)) vScreech(ch.c[0] + 12, t, STEP * 2); },
-    hoover: function (s, b, t, ch) { if ((s === 0 && b % 2 === 0) || s === 10) vHoover(ch.r + 24, t, STEP * 3); },
-    acid: function (s, b, t, ch) { var a = ACID[s]; if (a != null) vAcid(ch.r + 12 + a, t, STEP * 0.9, ACC[s]); }
-  };
-  // every wave song gets distorted power chords, palm-muted chugs, double kick in the drops, choir, brass, timpani
-  // and gongs on top of its own style, skipping what the song already has. Early waves get a light touch.
-  var HAS = { gtr: { w5: 1, w8: 1, w10: 1, w12: 1, w16: 1, w18: 1, w20: 1 }, choir: { w10: 1, w14: 1, w16: 1, w19: 1, w20: 1 },
-    brass: { w10: 1, w19: 1, w20: 1 }, dk: { w5: 1, w10: 1, w12: 1, w14: 1, w16: 1, w18: 1, w20: 1 } };
-  var FORGE = {
-    power: function (s, b, t, ch) { if (s === 0) vPower(ch.r, t, STEP * 3, 0.16); else if (s === 8 && b % 2) vPower(ch.r, t, STEP * 2, 0.13); },
-    chug: function (s, b, t, ch, X) { if (s === 0 || s === 8) return; if (BPM > 175 ? s % 4 === 0 : (X.drop || s % 2 === 0)) vChug(ch.r, t, STEP * 0.9, X.drop ? 0.15 : 0.12); },
-    dkick: function (s, b, t, ch, X) { if (X.drop && (BPM <= 165 || s % 2 === 0)) vKMetal(t, 0.3); },
-    choir: function (s, b, t, ch) { if (s === 0 && b % 4 === 0) vChoir(up(ch.c, 12), t, STEP * 32, 0.034); },
-    brass: function (s, b, t, ch) { if (s === 0 && b % 2 === 0) vBrass(ch.c, t, STEP * 3, 0.026); else if (s === 12 && b % 4 === 3) vBrass(ch.c, t, STEP * 4, 0.03); },
-    timp: function (s, b, t, ch) { if (s === 0 && b % 4 === 0) vTimp(t, ch.r + 12, 0.36); else if (b % 4 === 3 && (s === 12 || s === 14)) vTimp(t, ch.r + 12, 0.22); },
-    gong: function (s, b, t, ch) { if (s === 0 && b % 8 === 0) vGong(t, ch.r); }
-  };
-  // a boss remix layer that already plays the same part (so it isn't doubled during a boss fight)
-  var FCOVER = { power: 'guitar', chug: 'guitar', dkick: 'blast', choir: 'choir', brass: 'brass', timp: 'timpani', gong: 'gong' };
-  function forgeFor(sg, w) {
-    var id = sg.id, L = [];
-    if (id.charAt(0) !== 'w') return L;
-    if (!HAS.gtr[id]) L.push('power'); if (!HAS.choir[id]) L.push('choir');
-    if (w >= 4) { if (!HAS.gtr[id]) L.push('chug'); if (!HAS.brass[id]) L.push('brass'); L.push('timp'); }
-    if (w >= 8 && !HAS.dk[id]) L.push('dkick');
-    if (w >= 12) L.push('gong');
-    return AQ < 1 ? L.slice(0, 2) : L;
-  }
-  function songFor(w) { if (overlordPhase) return overlordPhase === 2 ? SONGS.over2 : SONGS.over1; if (w <= 0) return SONGS.title; return w <= 20 ? WAVES[w - 1] : WAVES[5 + (w - 21) % 15]; }
-  function curBpm() {
-    var bpm = song.bpm;
-    if (song.id.charAt(0) === 'w' && mWave > 20) bpm *= Math.min(1.3, 1 + 0.06 * (Math.floor((mWave - 21) / 15) + 1));
-    if (bossMod && bossMod.tempo) bpm *= bossMod.tempo;
-    return Math.min(330, Math.round(bpm));
-  }
-
-  // ---------- sequencer ----------
-  var X = { drop: false, boss: false }, forceBar = false, FG = { song: null, w: -1, q: -1, L: [] };
-  function sched() {
-    if (!ready()) return;
-    if (nextT < ac.currentTime) { nextT = ac.currentTime + 0.05; lateN++; }
-    while (nextT < ac.currentTime + 0.3) {
-      if (forceBar) { forceBar = false; if (stepI % 16) { stepI = (Math.floor(stepI / 16) + 1) * 16; barN++; } }
-      if (stepI % 16 === 0) {
-        var ch = false;
-        if (pendingSong) { song = pendingSong; pendingSong = null; ch = true; }
-        if (modDirty) { bossMod = pendingMod; TR = bossMod ? bossMod.tr || 0 : 0; modDirty = false; ch = true; }
-        if (ch) { BPM = curBpm(); STEP = 60 / BPM / 4; dly.delayTime.setTargetAtTime(Math.min(1.4, STEP * 3), nextT, 0.05); applyMusic(); }
-      }
-      playStep(stepI, nextT); nextT += STEP; stepI++; if (stepI % 16 === 0) barN++;
-    }
-  }
-  function playStep(i, t) {
-    if (musicMode !== 'builtin' || !song || scene === 'intro') return;   // the intro has its own score
-    var s = i % 16, b = barN, ch = song.prog[b % song.prog.length];
-    if (BPM > 180 ? s % 8 === 0 : s % 4 === 0) ev(t, 'beat');
-    if (s === 0) ev(t, 'bar');
-    if (impactPending) { impactPending = false; if (song.id !== 'title') { vImpact(t); ev(t, 'impact'); } }
-    X.drop = scene === 'drop' || scene === 'cine'; X.boss = !!bossMod;
-    song.play(X, s, b, t, ch);
-    if (song !== FG.song || mWave !== FG.w || AQ !== FG.q) { FG.song = song; FG.w = mWave; FG.q = AQ; FG.L = forgeFor(song, mWave); }
-    for (var fi = 0; fi < FG.L.length; fi++) { var fn = FG.L[fi]; if (!(bossMod && bossMod.add && bossMod.add.indexOf(FCOVER[fn]) >= 0)) FORGE[fn](s, b, t, ch, X); }
-    // on weak devices a boss remix keeps its two most important extra layers
-    if (bossMod && bossMod.add && song.id !== 'qte') for (var k = 0, nL = AQ < 1 ? Math.min(2, bossMod.add.length) : bossMod.add.length; k < nL; k++) { var L = LAYERS[bossMod.add[k]]; if (L) L(s, b, t, ch); }
-  }
-
-  // scenes: the song keeps playing between waves, muffled; the filter sweeps open into each wave like a drop
-  var SCN = {
-    intro: [20000, 0.5], title: [3000, 0.42], play: [16000, 0.4], drop: [20000, 0.46], cine: [20000, 0.44], 'break': [700, 0.36],
-    pause: [450, 0.24], skull: [220, 0.26], over: [380, 0.26]
-  };
-  function applyMusic() {
-    if (!ac) return;
-    var t = ac.currentTime, sc = SCN[scene] || SCN.title, vol = sc[1] * (song && song.vol || 1);
-    var intro = scene === 'intro';   // the intro score plays even when the player's own music is selected
-    musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(musicMode === 'builtin' || (intro && musicMode === 'custom') ? vol : 0, t, intro ? 0.05 : 0.3);
-    musFilter.frequency.cancelScheduledValues(t); musFilter.frequency.setTargetAtTime(qteOn ? 20000 : sc[0], t, scene === 'play' || scene === 'drop' ? 0.28 : 0.12);
-    if (customEl) {
-      if (musicMode === 'custom' && !intro) { var pr = customEl.play(); if (pr && pr.catch) pr.catch(function () {}); }
-      else customEl.pause();
-    }
-  }
-  function attachCustom() {
-    try { customSrc = ac.createMediaElementSource(customEl); customSrc.connect(customGain); } catch (e) { customSrc = null; }
-  }
   function envf(dt, k) { return dt < 0 ? 0 : Math.exp(-dt * k); }
   // ---------- custom-track beat tracking ----------
   // Loud, heavily-limited songs peg a plain level meter, so the old detector rarely fired. This one watches each
@@ -800,8 +401,8 @@ var SFX = (function () {
     }
   }
   function viz() {
-    if (!ac) return VIZ;
-    var now = ac.currentTime - (ac.outputLatency || 0.015), B = VIZ.beats;
+    var c = RD.ctx; if (!c) return VIZ;
+    var now = c.currentTime - (c.outputLatency || c.baseLatency || 0.02), B = VIZ.beats;
     VIZ.now = now;
     while (evq.length && evq[0][0] <= now) {
       var e = evq.shift(), et = e[0];
@@ -814,40 +415,66 @@ var SFX = (function () {
         case 'impact': lastImpact = et; break;
       }
     }
-    if (ac.state === 'running') {
-      vizAn.getByteFrequencyData(spec);
+    var live = c.state === 'running' && !RD.muted && RD.on && (RD.mode === 'bt' ? RD.bt.cur >= 0 : RD.mode === 'radio');
+    if (live) {
+      RD.an.getByteFrequencyData(spec);
       var b = 0, m = 0, h = 0, i;
       for (i = 1; i <= 5; i++) b += spec[i];
       for (i = 6; i < 48; i++) m += spec[i];
       for (i = 48; i < 200; i++) h += spec[i];
       b /= 5 * 255; m /= 42 * 255; h /= 152 * 255;
       VIZ.bass = b; VIZ.mid = m; VIZ.high = h;
-      if (musicMode === 'custom' && onAn) onsets(now, B);
-    }
-    VIZ.kick = envf(now - lastKick, BPM > 200 && musicMode === 'builtin' ? 3.5 : 8); VIZ.snare = envf(now - lastSnare, 7); VIZ.hat = envf(now - lastHat, 12);
+      if (RD.mode === 'bt' && onAn) onsets(now, B);
+    } else VIZ.bass = VIZ.mid = VIZ.high = 0;
+    var cur = RD.mode === 'radio' ? rCur() : null, bpm = cur ? cur.song.bpm : 0;
+    VIZ.kick = envf(now - lastKick, bpm > 200 ? 3.5 : 8); VIZ.snare = envf(now - lastSnare, 7); VIZ.hat = envf(now - lastHat, 12);
     VIZ.beat = envf(now - lastBeat, 5); VIZ.bar = envf(now - lastBar, 2.5); VIZ.impact = envf(now - lastImpact, 1.5);
     VIZ.tBar = now - lastBar; VIZ.tImpact = now - lastImpact;
-    VIZ.bpm = musicMode === 'builtin' ? BPM : 0; VIZ.live = musicMode !== 'off' && ready();
+    VIZ.bpm = bpm; VIZ.live = live;
     return VIZ;
   }
-  function info(sg, bpm) { return sg ? { name: sg.name, genre: sg.genre, bpm: bpm || sg.bpm } : null; }
 
   // ---------- pre-rendered effects ----------
   // Frequent sounds are rendered once into samples and replayed (2 audio nodes per sound instead of 10-20),
   // which keeps phones from overloading the audio thread when gunfire, kills and a fast song all overlap.
+  // a reverb for one baked sound: returns its input (the dry signal goes straight through, the wet into a fresh hall)
+  function verbBus(sec, wet) {
+    if (!BAKING) return sfxBus;   // the live fallback (before the samples are ready) skips the hall
+    var input = ac.createGain(), cv = ac.createConvolver(), wg = ac.createGain();
+    cv.buffer = impulse(sec); wg.gain.value = wet; input.connect(sfxBus); input.connect(cv); cv.connect(wg); wg.connect(sfxBus);
+    return input;
+  }
   var FX = {
-    // the kill pop: a punchy 8-bit "bang" that drops in pitch. Every 25 chained kills is a new tier and it grows:
-    // tier 1 a square-wave retro bass thump, 2 an 808 sub boom, 3 a crushed noise burst, 4 a distorted power-chord
-    // stab, 5 a huge retro explosion. Each tier's bass sits deeper than the last.
-    killBase: function (t, tier) {
-      var k = tier, f = 560 / (1 + k * 0.32), dz = BAKING ? distIn : null;
-      osc('square', f * 1.7, f * 0.45, t, 0.05, 0.15); osc('triangle', f, f * 0.3, t, 0.075, 0.32);
-      noise(t, 0.028, 0.42, 'bandpass', 2600 / (1 + k * 0.3), 1.2); noise(t, 0.05, 0.14, 'highpass', 5200, 0.7);
-      if (k >= 1) { var bf = 110 / Math.pow(1.42, k - 1); osc('square', bf * 2, bf, t, 0.12 + k * 0.035, 0.17 + k * 0.015); osc('sine', bf, bf * 0.5, t, 0.2 + k * 0.05, 0.42); }
-      if (k >= 2) osc('sine', 72, 27, t, 0.34 + k * 0.05, 0.55);
-      if (k >= 3) noise(t, 0.2, 0.24, 'lowpass', 1900, 0.8, 260);
-      if (k >= 4) [82.4, 123.5, 164.8].forEach(function (pf, i) { osc('sawtooth', pf, pf * 0.98, t, 0.26, [0.16, 0.12, 0.07][i], dz); });
-      if (k >= 5) { noise(t, 0.45, 0.3, 'lowpass', 950, 0.8, 110); osc('square', 55, 27.5, t, 0.5, 0.18); osc('sine', 41, 30, t, 0.6, 0.4); }
+    // the kill: three parts, one after another — dog tags clinking on their chain, a ping, then a deep pop in a big
+    // reverb. The ping climbs with each kill in a tier; every 25 chained kills is a new tier and the whole thing gets
+    // more epic: a sub thump, a fifth over the ping, a longer hall, rumble, an octave under, and at the top a choir swell.
+    killTags: function (t, v) {
+      var parts = [[3150, 1], [4720, 0.7], [6890, 0.48], [8370, 0.32], [10900, 0.18]], sh = [1, 1.045, 0.962][v % 3];
+      [0, 0.026 + v * 0.007].forEach(function (dt, h) {      // tag against tag, then the bounce back
+        var tt = t + dt, g = h ? 0.5 : 1, s2 = sh * (h ? 1.06 : 1);
+        parts.forEach(function (p) { var f = p[0] * s2; osc('sine', f, f, tt, 0.04 + 0.1 * Math.sqrt(3150 / f), 0.075 * p[1] * g, null, 0.0007); });
+        noise(tt, 0.01, 0.22 * g, 'highpass', 6500, 0.7);
+      });
+      for (var i = 0; i < 6; i++) noise(t + 0.05 + i * 0.014 + i * i * 0.0025, 0.006, 0.08 * (1 - i / 7), 'bandpass', 6800 + i * 350 + v * 200, 3);   // the ball chain rattles
+    },
+    killPing: function (t, k) {
+      var bus = verbBus(1 + k * 0.25, 0.3 + k * 0.04), f = 1568;
+      osc('sine', f, f, t, 0.55 + k * 0.08, 0.15, bus, 0.001); osc('sine', f * 2.005, f * 2.005, t, 0.2, 0.035, bus, 0.001); osc('sine', f * 3.01, f * 3.01, t, 0.08, 0.02, bus, 0.001);
+      if (k >= 2) osc('sine', f * 1.5, f * 1.5, t + 0.012, 0.5, 0.055, bus, 0.002);       // a fifth above joins
+      if (k >= 4) osc('triangle', f / 2, f / 2, t, 0.8, 0.06, bus, 0.002);              // then an octave below
+    },
+    killPop: function (t, k) {
+      var bus = verbBus(1.3 + k * 0.38, 0.32 + k * 0.07), dz = BAKING ? distIn : null;
+      osc('sine', 160 / (1 + k * 0.13), 44 / (1 + k * 0.1), t, 0.2 + k * 0.035, 0.62, bus, 0.002);   // the deep pop
+      osc('triangle', 360, 95, t, 0.05, 0.22, bus); noise(t, 0.028, 0.3, 'bandpass', 950, 1.1, null, bus);
+      if (k >= 1) osc('sine', 64, 30, t, 0.42 + k * 0.08, 0.36 + k * 0.03, bus, 0.003);   // sub thump
+      if (k >= 2) noise(t, 0.09, 0.14, 'lowpass', 1600, 0.8, 300, bus);
+      if (k >= 3) { noise(t, 0.4, 0.16, 'lowpass', 650, 0.8, 90, bus); bell(t, 98, 0.07, 1.6, bus); }   // rumble and a low bell
+      if (k >= 4) [82.4, 123.5, 164.8].forEach(function (pf, i) { osc('sawtooth', pf, pf * 0.985, t, 0.3, [0.13, 0.09, 0.05][i], dz); });
+      if (k >= 5) {                                                                   // the top tier: a boom and a choir swell
+        osc('sine', 46, 27, t, 0.8, 0.5, bus, 0.004);
+        [220, 261.6, 329.6].forEach(function (cf) { [0.996, 1.004].forEach(function (d) { osc('sawtooth', cf * d, cf * d, t + 0.02, 0.9, 0.022, bus, 0.12); }); });
+      }
     },
     shot: function (t, kind) {
       switch (kind) {
@@ -917,7 +544,11 @@ var SFX = (function () {
     bake('heart', 0.5, function (t) { lHeart(t, 1); });
     bake('chipK', 0.1, function (t) { lChip(t, false); });
     bake('chipS', 0.12, function (t) { lChip(t, true); });
-    for (var k = 0; k <= 5; k++) (function (k) { bake('kb' + k, 0.32 + k * 0.08, function (t) { FX.killBase(t, k); }, 0.75 + k * 0.1); })(k);
+    for (var v = 0; v < 3; v++) (function (v) { bake('kt' + v, 0.26, function (t) { FX.killTags(t, v); }, 0.5); })(v);
+    for (var k = 0; k <= 5; k++) (function (k) {
+      bake('kp' + k, 1.4 + k * 0.3, function (t) { FX.killPing(t, k); }, 0.42 + k * 0.03);
+      bake('kb' + k, 1.8 + k * 0.42, function (t) { FX.killPop(t, k); }, 0.62 + k * 0.08);
+    })(k);
     SHOTS.forEach(function (sh) { bake('s_' + sh, 0.4, function (t) { FX.shot(t, sh); }); });
     bake('boom0', 0.45, function (t) { FX.boom(t, false); }); bake('boom1', 0.85, function (t) { FX.boom(t, true); });
     Object.keys(FXDUR).forEach(function (n) { bake('x_' + n, FXDUR[n], function (t) { FX[n](t); }); });
@@ -961,95 +592,69 @@ var SFX = (function () {
   }
 
   // ---------- self-repair ----------
-  // Phones sometimes leave the audio clock frozen (a Bluetooth headset switch, a call, the OS reclaiming the device).
-  // heal() runs every couple of seconds: it resumes a suspended context and rebuilds a frozen one from scratch.
-  function rebuild() {
-    try { clearInterval(seqTimer); } catch (e) { }
-    var old = ac; ac = null; BANK = {}; customSrc = null; HB.ct = -1; HB.stuck = 0; rebuilds++;
-    // the new engine's clock starts at zero, so beat history from the old clock is cleared
+  // Phones sometimes leave an audio clock frozen (a Bluetooth headset switch, a call, the OS reclaiming the device).
+  // heal() runs every couple of seconds for both engines: it resumes a suspended one and rebuilds a frozen one.
+  function vizReset() {
     evq.length = 0; lastKick = lastKickEv = lastSnare = lastHat = lastBeat = lastBar = lastImpact = -9;
     for (var b = 0; b < 4; b++) VIZ.beats[b] = -9;
     onT = -1; OH.length = 0; for (var j = 0; j < OB.length; j++) OB[j].t = -9;
-    if (customEl) {
-      var src = customEl.src, at = customEl.currentTime || 0;
-      try { customEl.pause(); } catch (e) { }
-      customEl = new Audio(); customEl.loop = true; customEl.src = src;
-      try { customEl.currentTime = at; } catch (e) { }
-    }
+  }
+  function rebuild() {
+    var old = ac; ac = null; BANK = {}; IB = null; HB.ct = -1; HB.stuck = 0; rebuilds++;
     try { if (old) old.close(); } catch (e) { }
     init();
   }
   function selfHeal(visible) {
-    if (!ac || !visible) { HB.ct = -1; HB.stuck = 0; return ''; }
+    var r = rHeal(visible);
+    if (!ac || !visible) { HB.ct = -1; HB.stuck = 0; return r; }
     if (ac.state === 'closed') { rebuild(); return 'rebuilt'; }
-    if (ac.state !== 'running') { ac.resume().catch(function () { }); return 'resumed'; }
+    if (ac.state !== 'running') { ac.resume().catch(function () { }); return r || 'resumed'; }
     if (HB.ct >= 0 && ac.currentTime === HB.ct) { if (++HB.stuck >= 2) { rebuild(); return 'rebuilt'; } }
     else HB.stuck = 0;
     HB.ct = ac.currentTime;
-    return '';
+    return r;
   }
   function setQuality(q) {
-    AQ = q;
+    AQ = q; RSR = q >= 2 ? 44100 : 32000;
     for (var i = 0; i < SHAPERS.length; i++) { try { SHAPERS[i].oversample = q >= 1 ? '2x' : 'none'; } catch (e) { } }
   }
 
   var api = {
-    tick: sched,
+    tick: function () { rPump(); },
     selfHeal: selfHeal, rebuild: rebuild, setQuality: setQuality,
-    health: function () { return { state: ac ? ac.state : 'off', rebuilds: rebuilds, late: lateN, quality: AQ }; },
+    health: function () { return { state: ac ? ac.state : 'off', rebuilds: rebuilds, late: lateN, quality: AQ, radio: RD.ctx ? RD.ctx.state : 'off', radioRebuilds: RD.heal.rebuilds, radioLate: RD.late, radioErrors: RD.errs }; },
     init: init,
     unlocked: function () { return ready(); },
     setSfx: function (on) { sfxOn = !!on; },
     sfxOn: function () { return sfxOn; },
-    setMusicMode: function (m) { musicMode = m; applyMusic(); },
-    musicMode: function () { return musicMode; },
-    hasCustom: function () { return !!customEl; },
-    // scene: title | play | drop | break | pause | skull | over | cine; w: the wave, which picks the song
-    setScene: function (sc, w) {
-      if (w !== mWave) {
-        mWave = w;
-        if (!overlordPhase) { var ns = songFor(w); if (!ac) { song = ns; BPM = curBpm(); STEP = 60 / BPM / 4; } else if (ns !== song) pendingSong = ns; }
-      }
-      if (sc !== scene) {
-        var prev = scene; scene = sc;
-        if ((sc === 'play' || sc === 'drop') && prev !== 'play' && prev !== 'drop' && prev !== 'pause' && prev !== 'cine') impactPending = true;
-        else if (sc === 'drop' && prev === 'play') impactPending = true;
-        applyMusic();
-      }
+    // the radio, FM 66.6: see radioApi in the radio section
+    fm: radioApi,
+    setMusicMode: function (m) { rSetMode(m === 'builtin' ? 'radio' : m === 'custom' ? 'bt' : m); },
+    musicMode: function () { return RD.mode; },
+    hasCustom: function () { return RD.bt.list.length > 0; },
+    // the game tells the sound which screen it is on; the music only cares that the studio intro is over
+    setScene: function (sc) {
+      if (sc !== 'intro' && !RD.on && !RD.startT) RD.startT = setTimeout(rStart, scene === 'intro' ? 1400 : 200);
+      scene = sc;
     },
-    // a boss remixes the song: { tr: semitones, tempo: multiplier, add: [layers] }, or { song: 'overlord', phase: 1|2 }
-    setBoss: function (mod) {
-      if (mod && mod.song === 'overlord') {
-        var ph = mod.phase || 1; if (ph === overlordPhase) return;
-        overlordPhase = ph; pendingSong = ph === 2 ? SONGS.over2 : SONGS.over1; pendingMod = null; modDirty = true; forceBar = true; impactPending = true;
-        if (!ac) { song = pendingSong; pendingSong = null; }
-        return;
-      }
-      if (overlordPhase) { overlordPhase = 0; pendingSong = songFor(mWave); }
-      pendingMod = mod || null; modDirty = true;
-    },
-    // the Overlord's grab gets its own music
-    setQte: function (on) {
-      on = !!on; if (on === qteOn) return; qteOn = on;
-      pendingSong = on ? SONGS.qte : songFor(mWave); forceBar = true; applyMusic();
-    },
-    songInfo: function (w) { var sg = songFor(w); return info(sg); },
-    nowPlaying: function () { return info(song, BPM); },
-    songCount: function () { return WAVES.length; },
+    // the old boss remixes and fight music are gone: the radio plays on through everything
+    setBoss: function () { },
+    setQte: function () { },
+    songInfo: function () { return null; },
+    nowPlaying: function () { var i = rInfo(); return { name: i.song, genre: i.genre, bpm: i.bpm }; },
     viz: viz,
-    _dbg: function () { return { late: lateN, ac: ac, master: master, musOut: musComp, sfxOut: sfxComp, bpm: BPM, wave: mWave, scene: scene, step: stepI, song: song && song.id, tr: TR, mod: bossMod, bank: BANK, lastShot: LASTSHOT, forge: FG.L.slice() }; },
-    suspend: function () { if (ac && ac.state === 'running') ac.suspend().catch(function () {}); if (customEl) customEl.pause(); },
-    resume: function () { if (ac && ac.state === 'suspended') ac.resume().catch(function () {}); applyMusic(); },
-    loadCustom: function (blob) {
-      try {
-        if (customUrl) URL.revokeObjectURL(customUrl);
-        customUrl = URL.createObjectURL(blob);
-        if (!customEl) { customEl = new Audio(); customEl.loop = true; }
-        customEl.src = customUrl;
-        if (ac && !customSrc) attachCustom();
-        return true;
-      } catch (e) { return false; }
+    _dbg: function () { return { late: lateN, ac: ac, master: master, musOut: musComp, sfxOut: sfxComp, scene: scene, bank: BANK, lastShot: LASTSHOT, radio: radioApi._dbg() }; },
+    suspend: function () {
+      if (ac && ac.state === 'running') ac.suspend().catch(function () {});
+      if (RD.ctx && RD.ctx.state === 'running') RD.ctx.suspend().catch(function () {});
+      RD.bt.els.forEach(function (el) { try { el.pause(); } catch (e) { } });
     },
+    resume: function () {
+      if (ac && ac.state === 'suspended') ac.resume().catch(function () {});
+      if (RD.ctx && RD.ctx.state === 'suspended') RD.ctx.resume().catch(function () {});
+      var B = RD.bt; if (RD.mode === 'bt' && B.cur >= 0 && B.els[B.cur]) { var pr = B.els[B.cur].play(); if (pr && pr.catch) pr.catch(function () { }); }
+    },
+    loadCustom: function (list) { radioApi.btSet(list); return true; },
 
     // ---------- studio intro ----------
     // a chunky block being set into the road: low thock, body knock and a bright click
@@ -1148,14 +753,17 @@ var SFX = (function () {
     },
 
     // ---------- effects ----------
-    // crack + pop + ching. Every 25 chained kills is a new tier: the ching drops lower and heavier layers join in.
+    // dog tags, a ping, a deep pop. The ping climbs through each tier of 25 kills (about two thirds of an octave);
+    // the next tier starts it over, bigger. Old tails fade out once too many are ringing at once.
     kill: function (chain) {
       if (!ok() || !throttle('kill', 40)) return; var t = ac.currentTime;
-      var tier = Math.floor(chain / 25), inTier = chain % 25, tb = Math.min(5, tier);
-      // the pop climbs in pitch through each tier (about half an octave), then the next tier drops it deeper and heavier
-      var rate = 0.94 + inTier * 0.016;
-      if (!sfx('kb' + tb, rate)) FX.killBase(t, tb);
-      if (inTier >= 10 && inTier % 5 === 0) { var r2 = rate * 1.5; setTimeout(function () { if (ok()) sfx('kb' + tb, r2); }, 70); }
+      var tier = Math.floor(chain / 25), inTier = chain % 25, tb = Math.min(5, tier), rate = Math.pow(2, inTier * 0.65 / 24);
+      if (!BANK['kp' + tb]) { FX.killTags(t, 0); FX.killPing(t + 0.03, tb); FX.killPop(t + 0.06, tb); return; }
+      var lv = 0.62 + tb * 0.08;   // the whole sound gets louder as well as bigger with each tier
+      kq(play('kt' + Math.floor(Math.random() * 3), t, 0.85, jit(), sfxBus, 0, 0, true));
+      kq(play('kp' + tb, t + 0.03, 0.75, rate, sfxBus, 0, 0, true));
+      kq(play('kb' + tb, t + 0.06, lv, 0.97 + Math.random() * 0.06, sfxBus, 0, 0, true));
+      if (inTier >= 10 && inTier % 5 === 0) kq(play('kp' + tb, t + 0.1, 0.55, rate * 1.5, sfxBus, 0, 0, true));   // a double ping every 5th kill late in a tier
     },
     tierUp: function (tier) {
       if (!ok()) return; var t = ac.currentTime, low = 1 + Math.min(tier, 6) * 0.12;

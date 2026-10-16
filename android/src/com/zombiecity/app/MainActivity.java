@@ -176,20 +176,22 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Lets "Use my own music" open the phone's file picker. */
+    /** Lets the radio's Bluetooth option open the phone's file picker (several songs at once). */
     class Chrome extends WebChromeClient {
         @Override
         public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
             if (pendingPick != null) pendingPick.onReceiveValue(null);
             pendingPick = callback;
+            boolean many = params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
             try {
-                startActivityForResult(params.createIntent(), PICK_FILE);
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("audio/*");
+                i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, many);
+                startActivityForResult(Intent.createChooser(i, "Choose songs"), PICK_FILE);
             } catch (Exception e) {
                 try {
-                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-                    i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType("audio/*");
-                    startActivityForResult(i, PICK_FILE);
+                    startActivityForResult(params.createIntent(), PICK_FILE);
                 } catch (Exception e2) {
                     pendingPick = null;
                     callback.onReceiveValue(null);
@@ -203,7 +205,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == PICK_FILE && pendingPick != null) {
-            pendingPick.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+            Uri[] out = null;
+            if (resultCode == RESULT_OK && data != null) {
+                android.content.ClipData clip = data.getClipData();
+                if (clip != null && clip.getItemCount() > 0) {
+                    out = new Uri[clip.getItemCount()];
+                    for (int k = 0; k < out.length; k++) out[k] = clip.getItemAt(k).getUri();
+                } else if (data.getData() != null) {
+                    out = new Uri[] { data.getData() };
+                }
+            }
+            pendingPick.onReceiveValue(out);
             pendingPick = null;
             return;
         }

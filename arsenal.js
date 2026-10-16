@@ -502,8 +502,20 @@ function renderBuild() {
 /* ---------- armory ---------- */
 let arFrame = 0, arSpoil = false, arCur = null;
 const W_MAX = { dmg: Math.max(...WEAPONS.map(w => w.dmg * w.pellets * w.burst)), rof: Math.max(...WEAPONS.map(w => w.rof)), range: Math.max(...WEAPONS.map(w => w.range)), dps: Math.max(...WEAPONS.map(w => w.dps)) };
-function openArmory() { $('armory').hidden = false; $('armory').scrollTop = 0; renderArmory(); }
-function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true; refreshTitle(); }
+// The keeper sits in his cage cleaning a rifle. Once in a hundred thousand visits (0.001%), his head turns into the skull.
+let kpT = 0;
+function keeperSkull() {
+  const k = $('keeper'); if (!k) return;
+  k.classList.remove('skulled'); void k.getBoundingClientRect(); k.classList.add('skulled');
+  setTimeout(() => SFX.laugh(), 450);
+  store.set('zc_keeper', (store.get('zc_keeper', 0) | 0) + 1);
+  clearTimeout(kpT); kpT = setTimeout(() => k.classList.remove('skulled'), 4300);
+}
+function openArmory() {
+  $('armory').hidden = false; $('armory').scrollTop = 0; renderArmory();
+  if (Math.random() < 0.00001) setTimeout(keeperSkull, 1200 + Math.random() * 2500);
+}
+function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true; clearTimeout(kpT); $('keeper').classList.remove('skulled'); refreshTitle(); }
 function renderArmory() {
   $('arCount').textContent = guns.size + ' / 250';
   const lw = WEAPONS[loadoutId()], ld = $('arLoadout'); ld.textContent = '';
@@ -545,11 +557,13 @@ $('awClose').addEventListener('click', () => { $('arDetail').hidden = true; });
 $('armoryBtn').addEventListener('click', openArmory); $('arClose').addEventListener('click', closeArmory);
 $('arSpoil').addEventListener('change', e => { arSpoil = e.target.checked; renderArmory(); });
 
-/* ---------- sound settings ---------- */
+/* ---------- sound settings and the radio, FM 66.6 ---------- */
 const AUD = store.get('zc_audio', { sfx: true, music: 'builtin' });
 if (!AUD.vis) AUD.vis = RM ? 'low' : 'full';
-SFX.setSfx(AUD.sfx); SFX.setMusicMode(AUD.music === 'custom' ? 'builtin' : AUD.music);
-function idb(op, val) {
+SFX.setSfx(AUD.sfx);
+// the radio remembers its source, channel, the song on each channel and mute between visits
+SFX.fm.setState(Object.assign({ mode: AUD.music === 'off' ? 'off' : AUD.music === 'custom' ? 'bt' : 'radio' }, store.get('zc_radio', null) || {}));
+function idb(op, key, val) {
   return new Promise(res => {
     try {
       const rq = indexedDB.open('zombiecity', 1);
@@ -558,44 +572,218 @@ function idb(op, val) {
       rq.onsuccess = () => {
         try {
           const tx = rq.result.transaction('kv', op === 'get' ? 'readonly' : 'readwrite'), st = tx.objectStore('kv');
-          const r = op === 'get' ? st.get('music') : op === 'del' ? st.delete('music') : st.put(val, 'music');
+          const r = op === 'get' ? st.get(key) : op === 'del' ? st.delete(key) : st.put(val, key);
           r.onsuccess = () => res(r.result || null); r.onerror = () => res(null);
         } catch (e) { res(null); }
       };
     } catch (e) { res(null); }
   });
 }
-idb('get').then(v => {
-  if (v && v.blob && SFX.loadCustom(v.blob)) { G.customName = v.name || 'your music'; if (AUD.music === 'custom') SFX.setMusicMode('custom'); }
-  else if (AUD.music === 'custom') { AUD.music = 'builtin'; store.set('zc_audio', AUD); }
-  renderAudio();
+// Bluetooth: the player's own songs, kept on the device (the single song from older versions moves into the playlist)
+let BT = [];
+idb('get', 'playlist').then(async list => {
+  if (!Array.isArray(list)) {
+    const old = await idb('get', 'music');
+    list = old && old.blob ? [{ name: old.name || 'Your music', blob: old.blob }] : [];
+    if (list.length) { idb('put', 'playlist', list); idb('del', 'music'); }
+  }
+  BT = list.filter(x => x && x.blob);
+  SFX.fm.btSet(BT); renderAudio();
 });
-function setMusic(m) { AUD.music = m; store.set('zc_audio', AUD); SFX.setMusicMode(m); renderAudio(); }
-function renderAudio() {
-  ['titleAudio', 'pauseAudio'].forEach(id => {
-    const box = $(id); if (!box) return; box.textContent = '';
-    const s = el('button', 'btn small', 'Sound: ' + (AUD.sfx ? 'On' : 'Off')); s.type = 'button'; s.setAttribute('aria-pressed', AUD.sfx);
-    s.addEventListener('click', () => { AUD.sfx = !AUD.sfx; store.set('zc_audio', AUD); SFX.setSfx(AUD.sfx); SFX.click(); renderAudio(); });
-    const label = AUD.music === 'off' ? 'Off' : AUD.music === 'custom' ? 'Yours' : 'Built-in';
-    const m = el('button', 'btn small', 'Music: ' + label); m.type = 'button';
-    m.addEventListener('click', () => { const order = SFX.hasCustom() ? ['builtin', 'custom', 'off'] : ['builtin', 'off']; setMusic(order[(order.indexOf(AUD.music) + 1) % order.length]); });
-    const vl = { full: 'Full', low: 'Low', off: 'Off' }[AUD.vis];
-    const v = el('button', 'btn small', 'Light show: ' + vl); v.type = 'button';
-    v.addEventListener('click', () => { const o = ['full', 'low', 'off']; AUD.vis = o[(o.indexOf(AUD.vis) + 1) % 3]; store.set('zc_audio', AUD); SFX.click(); renderAudio(); });
-    const f = el('button', 'btn small ghost', SFX.hasCustom() ? 'Change my music' : 'Use my own music'); f.type = 'button';
-    f.addEventListener('click', () => $('musicFile').click());
-    box.append(s, m, v, f);
-    if (SFX.hasCustom() && G.customName) box.append(el('span', 'aud-note', 'Your track: ' + G.customName));
-  });
+function saveBT() { if (BT.length) idb('put', 'playlist', BT.filter(x => x.blob.size < 60e6).slice(-40)); else idb('del', 'playlist'); }
+
+const IC = {
+  prev: '<svg viewBox="0 0 24 24"><path d="M15 5 L8 12 L15 19"/></svg>',
+  next: '<svg viewBox="0 0 24 24"><path d="M9 5 L16 12 L9 19"/></svg>',
+  skip: '<svg viewBox="0 0 24 24"><path class="fill" d="M5 5.5 L14.5 12 L5 18.5 Z"/><path d="M18 5.5 V18.5"/></svg>',
+  vol: '<svg viewBox="0 0 24 24"><path class="fill" d="M3 9 H7 L12 5 V19 L7 15 H3 Z"/><path d="M15.5 9 Q17.5 12 15.5 15 M18.5 6.5 Q22 12 18.5 17.5"/></svg>',
+  mute: '<svg viewBox="0 0 24 24"><path class="fill" d="M3 9 H7 L12 5 V19 L7 15 H3 Z"/><path d="M16 9.5 L21 14.5 M21 9.5 L16 14.5"/></svg>',
+  radio: '<svg viewBox="0 0 24 24"><path d="M5 9 L18 3.5"/><rect x="2.5" y="9" width="19" height="12" rx="2"/><circle cx="8.5" cy="15" r="3"/><path d="M14.5 13 H19 M14.5 16.5 H19"/></svg>',
+  bt: '<svg viewBox="0 0 24 24"><path d="M7 7.5 L17 16 L12 20.5 V3.5 L17 8 L7 16.5"/></svg>',
+  off: '<svg viewBox="0 0 24 24"><path d="M12 3 V11"/><path d="M6.5 6.5 A8 8 0 1 0 17.5 6.5"/></svg>'
+};
+const STRIPS = [];
+function radioStrip(box, mini, onLcd) {
+  const r = el('div', 'radio' + (mini ? ' mini' : ''));
+  const lcd = el(onLcd ? 'button' : 'div', 'lcd');
+  if (onLcd) { lcd.type = 'button'; lcd.setAttribute('aria-label', 'Open the radio'); lcd.addEventListener('click', () => { SFX.click(); onLcd(); }); }
+  const fq = el('div', 'lcd-freq'), fs = el('small', null, 'FM'), fb = el('b', null, '66.6'); fq.append(fs, fb);
+  const ch = el('div', 'lcd-ch'), chn = el('span'), tag = el('i', 'lcd-tag', 'ST'); ch.append(chn, tag);
+  const song = el('div', 'lcd-song'), ss = el('span'); song.append(ss);
+  const eq = document.createElement('canvas'); eq.className = 'lcd-eq'; eq.width = 180; eq.height = 24; eq.setAttribute('aria-hidden', 'true');
+  lcd.append(fq, ch, song, eq);
+  const keys = el('div', 'radio-keys');
+  const mk = (label, svg, fn) => {
+    const b = el('button', 'rkey'); b.type = 'button'; b.setAttribute('aria-label', label); b.innerHTML = svg;
+    b.addEventListener('click', e => { e.stopPropagation(); SFX.init(); fn(); SFX.click(); hudRadioPoke(); }); keys.append(b); return b;
+  };
+  const S = { r, lcd, fs, fb, chn, tag, song, ss, eq, key: '', col: '#7dffb0', vis: false };
+  S.kPrev = mk('Previous channel', IC.prev, () => SFX.fm.step(-1));
+  S.kNext = mk('Next channel', IC.next, () => SFX.fm.step(1));
+  S.kSkip = mk('Next song', IC.skip, () => SFX.fm.skip());
+  S.kMute = mk('Mute the radio', IC.vol, () => { SFX.fm.mute(); });
+  r.append(lcd, keys); box.append(r); STRIPS.push(S);
+  paintStrip(S, SFX.fm.info()); eqKick();
+  return S;
 }
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function paintStrip(S, i) {
+  const bt = i.mode === 'bt', off = i.mode === 'off';
+  S.r.classList.toggle('bt', bt); S.r.classList.toggle('off', off); S.r.classList.toggle('muted', i.muted && !off);
+  S.lcd.classList.toggle('tuning', i.tuning);
+  S.col = off || i.muted ? '#ff8a7a' : bt ? '#7cc4ff' : '#7dffb0';
+  let line;
+  if (off) { S.fs.textContent = 'FM'; S.fb.textContent = '--.-'; S.chn.textContent = 'Radio off'; line = 'Press a button to tune in'; }
+  else if (bt) { S.fs.textContent = 'SRC'; S.fb.textContent = 'BT'; S.chn.textContent = 'Bluetooth'; line = i.bt.count ? i.bt.name : 'No songs yet'; }
+  else { S.fs.textContent = 'FM'; S.fb.textContent = '66.6'; S.chn.textContent = 'CH' + (i.ch + 1) + ' ' + i.chName; line = i.tuning ? 'Tuning ...' : i.song + '  ·  ' + pad2(i.n) + '/' + i.total; }
+  S.tag.textContent = i.muted ? 'Mute' : bt ? (i.bt.count ? (i.bt.i + 1) + '/' + i.bt.count : '0') : off ? 'Off' : 'ST';
+  S.tag.classList.toggle('lit', !off && (i.muted || !i.tuning));
+  if (S.ss.textContent !== line) { S.ss.textContent = line; S.song.classList.remove('scroll'); requestAnimationFrame(() => marquee(S)); }
+  S.kMute.innerHTML = i.muted ? IC.mute : IC.vol; S.kMute.classList.toggle('on', i.muted);
+  S.kMute.setAttribute('aria-label', i.muted ? 'Unmute the radio' : 'Mute the radio'); S.kMute.setAttribute('aria-pressed', String(i.muted));
+  S.kPrev.setAttribute('aria-label', bt ? 'Previous song' : 'Previous channel'); S.kNext.setAttribute('aria-label', bt ? 'Next song' : 'Next channel');
+}
+function marquee(S) {
+  const over = S.ss.scrollWidth - S.song.clientWidth;
+  if (over > 4) { S.song.style.setProperty('--w', -(over + 8) + 'px'); S.song.style.setProperty('--dur', Math.max(6, over / 18 + 4) + 's'); S.song.classList.add('scroll'); }
+}
+// the little spectrum on every visible radio display
+let eqOn = false, eqN = 0;
+function eqKick() { if (!eqOn) { eqOn = true; requestAnimationFrame(eqLoop); } }
+function eqLoop() {
+  eqN++;
+  if (eqN % 20 === 1) for (const S of STRIPS) S.vis = !!(S.r.isConnected && S.r.offsetParent);
+  const live = STRIPS.filter(S => S.vis);
+  if (!live.length && eqN % 20 !== 0) { requestAnimationFrame(eqLoop); return; }
+  const v = SFX.viz(), sp = v.spec, on = v.live && sp;
+  for (const S of live) {
+    const g = S.eq.getContext('2d'), w = S.eq.width, h = S.eq.height, n = 18, bw = w / n;
+    g.clearRect(0, 0, w, h); g.fillStyle = S.col;
+    for (let k = 0; k < n; k++) {
+      const b0 = Math.floor(1.5 * Math.pow(1.27, k)), b1 = Math.max(b0 + 1, Math.floor(1.5 * Math.pow(1.27, k + 1)));
+      let a = 0; if (on) { for (let j = b0; j < b1 && j < sp.length; j++) a += sp[j]; a /= (b1 - b0) * 255; }
+      const lv = Math.max(on ? 0.06 : 0.04, Math.min(1, a * 1.15));
+      const segs = Math.round(lv * 6);
+      for (let q = 0; q < 6; q++) { g.globalAlpha = q < segs ? 0.95 : 0.12; g.fillRect(k * bw + 1, h - (q + 1) * (h / 6) + 1, bw - 2, h / 6 - 1.5); }
+    }
+    g.globalAlpha = 1;
+  }
+  requestAnimationFrame(eqLoop);
+}
+// "now playing": a slip that slides in whenever a new song starts
+let tkKey = '', tkT = 0;
+function fmTicker(i) {
+  if (i.mode === 'off' || (i.mode === 'radio' && i.tuning)) return;
+  const key = i.mode + '|' + (i.mode === 'bt' ? i.bt.name : i.ch + '|' + i.song);
+  if (key === tkKey) return; tkKey = key;
+  if (G.mode === 'intro' || !$('radioPanel').hidden || (i.mode === 'bt' && !i.bt.count)) return;
+  const t = $('fmTicker'); t.textContent = '';
+  const fq = el('div', 'tk-freq'); fq.append(el('span', null, i.mode === 'bt' ? 'SRC' : 'FM'), el('b', null, i.mode === 'bt' ? 'BT' : '66.6'));
+  const tx = el('div', 'tk-txt'); tx.append(el('small', null, i.mode === 'bt' ? 'Bluetooth · your music' : 'CH' + (i.ch + 1) + ' · ' + i.chName + ' · ' + i.genre), el('strong', null, i.mode === 'bt' ? i.bt.name : i.song));
+  const bars = el('div', 'tk-bars'); for (let k = 0; k < 4; k++) bars.append(el('i'));
+  t.append(fq, tx, bars);
+  t.classList.toggle('bt', i.mode === 'bt'); t.classList.toggle('hud', !$('hud').hidden); t.classList.toggle('boss', !!(G.boss && !G.boss.dead));
+  t.classList.remove('out'); t.hidden = true; void t.offsetWidth; t.hidden = false;
+  clearTimeout(tkT); tkT = setTimeout(() => { t.classList.add('out'); tkT = setTimeout(() => { t.hidden = true; }, 450); }, 3800);
+}
+// the radio panel
+function openRadio() { SFX.init(); renderRadioPanel(); $('radioPanel').hidden = false; $('fmTicker').hidden = true; SFX.click(); }
+function closeRadio() { $('radioPanel').hidden = true; }
+let RP = null;
+function renderRadioPanel() {
+  if (!RP) {
+    RP = { strip: radioStrip($('rpStrip'), false, null), src: {}, pre: [] };
+    const srcBox = $('rpSource');
+    [['radio', 'Radio', IC.radio], ['bt', 'Bluetooth', IC.bt], ['off', 'Off', IC.off]].forEach(([m, label, ic]) => {
+      const b = el('button'); b.type = 'button'; b.innerHTML = ic; b.append(label);
+      b.addEventListener('click', () => {
+        SFX.init(); SFX.click();
+        if (m === 'bt' && !BT.length) { $('musicFile').click(); return; }
+        if (m === 'radio' && SFX.fm.muted()) SFX.fm.mute(false);
+        SFX.fm.mode(m);
+      });
+      srcBox.append(b); RP.src[m] = b;
+    });
+    SFX.fm.info().channels.forEach((c, k) => {
+      const b = el('button', 'preset'); b.type = 'button';
+      b.append(el('kbd', null, String(k + 1)), el('b', null, c.name), el('small', null, c.genre));
+      b.addEventListener('click', () => { SFX.init(); SFX.click(); if (SFX.fm.muted()) SFX.fm.mute(false); SFX.fm.channel(k); });
+      $('rpPresets').append(b); RP.pre.push(b);
+    });
+    $('rpClose').addEventListener('click', closeRadio);
+    $('radioPanel').addEventListener('click', e => { if (e.target === $('radioPanel')) closeRadio(); });
+  }
+  paintRadioPanel(SFX.fm.info());
+}
+function paintRadioPanel(i) {
+  if (!RP) return;
+  for (const m in RP.src) { RP.src[m].classList.toggle('on', i.mode === m); RP.src[m].setAttribute('aria-pressed', String(i.mode === m)); }
+  RP.pre.forEach((b, k) => { b.classList.toggle('on', i.mode === 'radio' && i.ch === k); b.setAttribute('aria-pressed', String(i.mode === 'radio' && i.ch === k)); });
+  const box = $('rpBt'); box.hidden = i.mode !== 'bt' && !BT.length; box.textContent = '';
+  box.append(el('p', 'sub-eyebrow', BT.length ? 'Bluetooth · ' + BT.length + ' song' + (BT.length > 1 ? 's' : '') + ' on this device' : 'Bluetooth · your music'));
+  if (BT.length) {
+    const ol = el('ol');
+    BT.forEach((s, k) => {
+      const li = el('li'), b = el('button', i.mode === 'bt' && i.bt.i === k ? 'on' : ''); b.type = 'button';
+      b.append(el('em', null, pad2(k + 1)), el('span', null, s.name));
+      b.addEventListener('click', () => { SFX.init(); SFX.click(); if (SFX.fm.muted()) SFX.fm.mute(false); SFX.fm.btPick(k); });
+      li.append(b); ol.append(li);
+    });
+    box.append(ol);
+  }
+  const row = el('div', 'btns');
+  const add = el('button', 'btn small', BT.length ? 'Add songs' : 'Choose songs'); add.type = 'button'; add.addEventListener('click', () => $('musicFile').click());
+  row.append(add);
+  if (BT.length) { const clr = el('button', 'btn small ghost', 'Remove all'); clr.type = 'button'; clr.addEventListener('click', () => { BT = []; saveBT(); SFX.fm.btSet(BT); SFX.click(); }); row.append(clr); }
+  box.append(row);
+  const more = $('rpMore'); more.textContent = ''; audioToggles(more);
+}
+function audioToggles(box) {
+  const s = el('button', 'btn small', 'Sound effects: ' + (AUD.sfx ? 'On' : 'Off')); s.type = 'button'; s.setAttribute('aria-pressed', AUD.sfx);
+  s.addEventListener('click', () => { AUD.sfx = !AUD.sfx; store.set('zc_audio', AUD); SFX.setSfx(AUD.sfx); SFX.click(); renderAudio(); });
+  const vl = { full: 'Full', low: 'Low', off: 'Off' }[AUD.vis];
+  const v = el('button', 'btn small', 'Light show: ' + vl); v.type = 'button';
+  v.addEventListener('click', () => { const o = ['full', 'low', 'off']; AUD.vis = o[(o.indexOf(AUD.vis) + 1) % 3]; store.set('zc_audio', AUD); SFX.click(); renderAudio(); });
+  box.append(s, v);
+}
+// the HUD: a radio button next to pause that drops down a small radio
+let hudStrip = null, hudT = 0;
+function toggleHudRadio(open) {
+  const d = $('hudRadio'), b = $('radioBtn'); open = open == null ? d.hidden : open;
+  if (open && !hudStrip) hudStrip = radioStrip(d, true, null);
+  d.hidden = !open; b.setAttribute('aria-expanded', String(open));
+  if (open) { SFX.init(); hudRadioPoke(); eqKick(); }
+}
+function hudRadioPoke() { clearTimeout(hudT); if (!$('hudRadio').hidden) hudT = setTimeout(() => toggleHudRadio(false), 6000); }
+$('radioBtn').addEventListener('click', e => { e.stopPropagation(); SFX.click(); toggleHudRadio(); });
+$('cv').addEventListener('pointerdown', () => { if (!$('hudRadio').hidden) toggleHudRadio(false); });
+function paintHudBtn(i) { const b = $('radioBtn'); b.classList.toggle('bt', i.mode === 'bt'); b.classList.toggle('off', i.mode === 'off'); b.classList.toggle('muted', i.muted); b.setAttribute('aria-label', 'Radio: ' + (i.mode === 'off' ? 'off' : i.mode === 'bt' ? 'Bluetooth' : i.chName) + (i.muted ? ', muted' : '')); }
+let fmSave = 0;
+SFX.fm.onChange(i => {
+  for (const S of STRIPS) paintStrip(S, i);
+  paintRadioPanel(i); paintHudBtn(i); fmTicker(i);
+  AUD.music = i.mode === 'off' ? 'off' : i.mode === 'bt' ? 'custom' : 'builtin';
+  clearTimeout(fmSave); fmSave = setTimeout(() => { store.set('zc_radio', SFX.fm.state()); store.set('zc_audio', AUD); }, 400);
+});
+function renderAudio() {
+  if (!$('titleAudio').firstChild) radioStrip($('titleAudio'), true, openRadio);
+  if (!$('pauseAudio').firstChild) radioStrip($('pauseAudio'), true, openRadio);
+  const i = SFX.fm.info(); for (const S of STRIPS) paintStrip(S, i); paintHudBtn(i);
+  if (RP && !$('radioPanel').hidden) paintRadioPanel(i);
+  eqKick();
+}
+$('titleRadioBtn').addEventListener('click', openRadio);
+$('pauseRadioBtn').addEventListener('click', openRadio);
 $('musicFile').addEventListener('change', e => {
-  const file = e.target.files && e.target.files[0]; e.target.value = '';
-  if (!file) return;
+  const ok = f => /^audio\//.test(f.type) || /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|webm)$/i.test(f.name);
+  const files = [...(e.target.files || [])].filter(ok); e.target.value = '';
+  if (!files.length) { if (e.target.files && e.target.files.length) toast('Bluetooth', 'Those files are not songs this device can play.', '#e5484d'); return; }
   SFX.init();
-  if (!SFX.loadCustom(file)) { toast('Music', 'That file could not be played.', '#e5484d'); return; }
-  G.customName = file.name.replace(/\.[^.]+$/, '').slice(0, 40);
-  if (file.size < 40e6) idb('put', { blob: file, name: G.customName });
-  setMusic('custom'); toast('Now playing', G.customName, '#f2cc3a');
+  const first = BT.length;
+  for (const f of files) BT.push({ name: f.name.replace(/\.[^.]+$/, '').slice(0, 60) || 'Song', blob: f });
+  if (BT.length > 40) BT = BT.slice(-40);
+  saveBT(); SFX.fm.btSet(BT, Math.min(first, BT.length - 1)); if (SFX.fm.muted()) SFX.fm.mute(false);
+  if (!$('radioPanel').hidden) paintRadioPanel(SFX.fm.info());
 });
 function unlockAudio() { SFX.init(); }
 document.addEventListener('pointerdown', unlockAudio, true);
