@@ -700,7 +700,7 @@ var SFX = (function () {
     }
   }
   function playStep(i, t) {
-    if (musicMode !== 'builtin' || !song) return;
+    if (musicMode !== 'builtin' || !song || scene === 'intro') return;   // the intro has its own score
     var s = i % 16, b = barN, ch = song.prog[b % song.prog.length];
     if (BPM > 180 ? s % 8 === 0 : s % 4 === 0) ev(t, 'beat');
     if (s === 0) ev(t, 'bar');
@@ -713,16 +713,17 @@ var SFX = (function () {
 
   // scenes: the song keeps playing between waves, muffled; the filter sweeps open into each wave like a drop
   var SCN = {
-    title: [3000, 0.42], play: [16000, 0.4], drop: [20000, 0.46], cine: [20000, 0.44], 'break': [700, 0.36],
+    intro: [20000, 0.5], title: [3000, 0.42], play: [16000, 0.4], drop: [20000, 0.46], cine: [20000, 0.44], 'break': [700, 0.36],
     pause: [450, 0.24], skull: [220, 0.26], over: [380, 0.26]
   };
   function applyMusic() {
     if (!ac) return;
     var t = ac.currentTime, sc = SCN[scene] || SCN.title, vol = sc[1] * (song && song.vol || 1);
-    musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(musicMode === 'builtin' ? vol : 0, t, 0.3);
+    var intro = scene === 'intro';   // the intro score plays even when the player's own music is selected
+    musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(musicMode === 'builtin' || (intro && musicMode === 'custom') ? vol : 0, t, intro ? 0.05 : 0.3);
     musFilter.frequency.cancelScheduledValues(t); musFilter.frequency.setTargetAtTime(qteOn ? 20000 : sc[0], t, scene === 'play' || scene === 'drop' ? 0.28 : 0.12);
     if (customEl) {
-      if (musicMode === 'custom') { var pr = customEl.play(); if (pr && pr.catch) pr.catch(function () {}); }
+      if (musicMode === 'custom' && !intro) { var pr = customEl.play(); if (pr && pr.catch) pr.catch(function () {}); }
       else customEl.pause();
     }
   }
@@ -892,6 +893,26 @@ var SFX = (function () {
   function fx(n, rate) { if (!sfx('x_' + n, rate)) FX[n](ac.currentTime); }
   function bell2(t, f, vol, dur) { osc('sine', f, f, t, dur, vol, null, 0.002); osc('sine', f * 2.76, f * 2.76, t, dur * 0.7, vol * 0.45, null, 0.002); }
 
+  // ---------- intro routing ----------
+  var IB = null;
+  function introBus() {
+    if (!IB) {
+      IB = { sfx: ac.createGain(), mus: ac.createGain(), synth: ac.createGain(), drum: ac.createGain() };
+      IB.sfx.connect(sfxBus); IB.mus.connect(musBus); IB.synth.connect(IB.mus); IB.drum.gain.value = 0.9; IB.drum.connect(IB.mus);
+    }
+    return IB;
+  }
+  function viaIntro(fn) {
+    var b = introBus(), sv = [sfxBus, musBus, synthBus, drumBus, bellBus];
+    sfxBus = b.sfx; musBus = b.mus; synthBus = b.synth; drumBus = b.drum; bellBus = b.mus;
+    try { return fn(); } finally { sfxBus = sv[0]; musBus = sv[1]; synthBus = sv[2]; drumBus = sv[3]; bellBus = sv[4]; }
+  }
+  function introCut() {
+    if (!IB || !ac) return; var b = IB, t = ac.currentTime; IB = null;
+    b.sfx.gain.setTargetAtTime(0, t, 0.04); b.mus.gain.setTargetAtTime(0, t, 0.04);
+    setTimeout(function () { try { b.sfx.disconnect(); b.mus.disconnect(); } catch (e) { } }, 600);
+  }
+
   // ---------- self-repair ----------
   // Phones sometimes leave the audio clock frozen (a Bluetooth headset switch, a call, the OS reclaiming the device).
   // heal() runs every couple of seconds: it resumes a suspended context and rebuilds a frozen one from scratch.
@@ -982,6 +1003,62 @@ var SFX = (function () {
         return true;
       } catch (e) { return false; }
     },
+
+    // ---------- studio intro ----------
+    // a chunky block being set into the road: low thock, body knock and a bright click
+    introBlock: function (k) {
+      if (!ok()) return; return viaIntro(function () { var t = ac.currentTime, p = [1, 1.12, 1.26, 1.5, 1.68][k % 5] * (0.96 + Math.random() * 0.08);
+      osc('sine', 230 * p, 95 * p, t, 0.09, 0.5); osc('square', 460 * p, 300 * p, t, 0.025, 0.06);
+      noise(t, 0.05, 0.35, 'lowpass', 1400 * p, 0.8); noise(t, 0.012, 0.16, 'highpass', 4200, 0.7);
+      if (k % 6 === 5) { osc('sine', 120, 50, t, 0.2, 0.45); noise(t, 0.12, 0.2, 'lowpass', 500); }
+      });
+    },
+    introSettle: function () { if (!ok()) return; return viaIntro(function () { var t = ac.currentTime; osc('sine', 90, 34, t, 0.5, 0.7); noise(t, 0.4, 0.3, 'lowpass', 700, 0.7, 120); noise(t, 0.06, 0.2, 'bandpass', 2400, 2);  }); },
+    introPaint: function () { if (!ok()) return; return viaIntro(function () { var t = ac.currentTime; noise(t, 0.55, 0.12, 'highpass', 2600, 0.7, 7000); noise(t + 0.05, 0.4, 0.06, 'bandpass', 5200, 3);  }); },
+    // the stampede: rolling low rumble with footfalls and a crowd of groans, swelling and passing
+    introStampede: function (dur) {
+      if (!ok()) return; return viaIntro(function () { var t = ac.currentTime; dur = dur || 3.2;
+      var src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+      src.buffer = noiseBuf; src.loop = true; fl.type = 'lowpass'; fl.frequency.value = 260; fl.Q.value = 0.9;
+      lfo.frequency.value = 9; lg.gain.value = 0.45; lfo.connect(lg); lg.connect(am.gain); am.gain.value = 0.55;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + dur * 0.35); g.gain.setValueAtTime(0.9, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(fl); fl.connect(am); am.connect(g); g.connect(sfxBus); src.start(t); src.stop(t + dur + 0.1); lfo.start(t); lfo.stop(t + dur + 0.1);
+      osc('sine', 46, 38, t, dur, 0.35, null, dur * 0.3);
+      var F = [[600, 6], [1000, 7], [2400, 9]];
+      for (var i = 0; i < 22; i++) { var tt = t + dur * (0.12 + Math.random() * 0.7), f = 95 + Math.random() * 80; voice(tt, f * 1.15, f * 0.7, 0.4 + Math.random() * 0.5, 0.05 + Math.random() * 0.05, F); }
+      for (var j = 0; j < 26; j++) { var ft = t + dur * (0.15 + j / 26 * 0.65); drum(ft, 46 + Math.random() * 12, 0.12 + Math.random() * 0.1); }
+      });
+    },
+    // the freeze: impact, a low brass and choir stab, a ringing gong
+    introSting: function () {
+      if (!ok()) return; return viaIntro(function () { var t = ac.currentTime;
+      vImpact(t); vGong(t, 31); vBrass([38, 45, 50, 53], t, 1.6, 0.06); vChoir([62, 65, 69], t, 1.8, 0.05); vTimp(t, 38, 0.9);
+      osc('sawtooth', 55, 41, t, 1.6, 0.12, null, 0.01); noise(t, 1.6, 0.14, 'highpass', 6000, 0.7);
+      });
+    },
+    // "made with" card: an orchestral cue in D minor that resolves to D major. Returns its length in seconds.
+    introScore: function () {
+      if (!ok()) return 0; return viaIntro(function () { var t = ac.currentTime + 0.05, i;
+      vStrings([38, 45, 50], t, 2.3, 0.032); vSub(26, t, 2.2, 0.14);
+      for (i = 0; i < 16; i++) vTimp(t + i * (0.14 - i * 0.004), 38, 0.18 + i * 0.028);   // timpani roll, crescendo
+      vRiser(t + 0.7, 1.45); vChoir([62, 65, 69], t + 0.9, 1.3, 0.035);
+      var h = t + 2.2;   // the reveal
+      vImpact(h); vGong(h, 38); vTimp(h, 38, 0.95); vSub(26, h, 1.4, 0.18);
+      vBrass([50, 57, 62, 65], h, 1.3, 0.055); vStrings([50, 57, 62, 65, 69], h, 1.4, 0.036); vChoir([62, 65, 69, 74], h, 1.5, 0.05);
+      var seq = [[3.6, [46, 53, 58, 62], [58, 62, 65, 70], 34], [4.7, [48, 55, 60, 64], [60, 64, 67, 72], 36]];
+      seq.forEach(function (c) {
+        var s0 = t + c[0]; vBrass(c[1], s0, 1.0, 0.05); vStrings(c[2], s0, 1.1, 0.034); vTimp(s0, c[3], 0.7); vTimp(s0 + 0.55, c[3], 0.45);
+        for (var k = 0; k < 4; k++) vStac([c[2][1] + 12, c[2][2] + 12], s0 + k * 0.275, 0.026);
+      });
+      var f = t + 5.8;   // the final chord turns major
+      vImpact(f); vGong(f, 38); vTimp(f, 38, 1); vSub(26, f, 2.4, 0.18);
+      vBrass([50, 57, 62, 66, 69], f, 2.2, 0.06); vStrings([62, 66, 69, 74, 78], f, 2.4, 0.04); vChoir([62, 66, 69, 74], f, 2.4, 0.055);
+      [62, 66, 69, 74, 78, 81].forEach(function (m, k) { vHarp(m, f + 0.05 + k * 0.07); });
+      return 8.4;
+      });
+    },
+
+    introCut: introCut,
 
     // ---------- effects ----------
     // crack + pop + ching. Every 25 chained kills is a new tier: the ching drops lower and heavier layers join in.

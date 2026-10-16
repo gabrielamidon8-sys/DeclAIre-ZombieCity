@@ -367,6 +367,7 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 // App bridge: the Android app calls these for its back button and when it goes to the background.
 window.zcBack = function () {
+  if (typeof INTRO !== 'undefined' && INTRO.on) return introSkip();
   if (!$('blDetail').hidden) { $('blDetail').hidden = true; return true; }
   if (!$('bosslog').hidden) { closeBossLog(); return true; }
   if (G.mode === 'cine') return true;
@@ -1894,9 +1895,10 @@ function frame(now) {
     else if (G.mode === 'cine') updCine(dt);
     else if (G.mode === 'title') { G.time += dt; updAttract(dt); }
     else if (G.mode === 'over') { G.time += dt; updFx(dt); }
-    render();
+    else if (G.mode === 'intro') introFrame(rdt);
+    if (G.mode !== 'intro') render();
     if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'skull' || G.mode === 'cine') { updHud(); bossMusic(); }
-    SFX.setScene(G.mode === 'skull' ? 'skull' : G.mode === 'cine' ? 'cine' : G.mode === 'play' ? ((G.boss && !G.boss.dead) || G.chain >= 25 ? 'drop' : 'play') : G.mode === 'upgrade' ? 'break' : G.mode === 'pause' ? 'pause' : G.mode === 'over' ? 'over' : 'title', G.mode === 'title' ? 0 : G.wave);
+    SFX.setScene(G.mode === 'intro' ? 'intro' : G.mode === 'skull' ? 'skull' : G.mode === 'cine' ? 'cine' : G.mode === 'play' ? ((G.boss && !G.boss.dead) || G.chain >= 25 ? 'drop' : 'play') : G.mode === 'upgrade' ? 'break' : G.mode === 'pause' ? 'pause' : G.mode === 'over' ? 'over' : 'title', G.mode === 'title' ? 0 : G.wave);
     if (frameNo % 120 === 0 && G.mode === 'title') $('seasonLeft').textContent = seasonLeft();
   } catch (err) { perfError(err); }
   perfFrame(now, iv, performance.now() - t0);
@@ -1907,7 +1909,8 @@ function frame(now) {
 resize();
 initAttract();
 refreshTitle();
-showOv('title');
+// every launch opens with the studio intro (tests and ?nointro links go straight to the title)
+if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) showOv('title'); else startIntro();
 requestAnimationFrame(frame);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { sprites.clear(); });
 /*__TESTHOOK__*/

@@ -1,0 +1,347 @@
+/* ================= intro: DeclAIre Studios, then "Made with Claude" =================
+   Card 1: a road is laid block by block, the player sprints across it with a stampede of the game's zombies behind,
+   the skull rises laughing and bites the road, and that frame freezes red and black under the studio name.
+   Card 2: an orchestral cue under a gold title card, then the overlay fades into the title screen.
+   Tap (or Space/Enter/Esc, or Android Back) skips the current card. */
+const INTRO = { on: false, card: 0, t: 0, gate: false, frozen: false, evI: 0, shake: 0, w: 1, h: 1, d: 1,
+  blocks: [], cols: 0, B: 40, roadY: 0, RH: 120, runners: [], dust: [], debris: [], embers: [], sk: null, bite: null, dustT: 0 };
+const IV = $('introCv'), IG = IV.getContext('2d'), INTRO_EL = $('intro');
+const T1 = { build0: 0.35, build1: 2.25, paint: 2.4, rumble: 2.55, run: 3.0, skull: 6.0, laugh: 6.85, lunge: 8.3, bite: 8.6, studioOut: 10.7, end: 11.3 };
+const T2 = { made: 0.9, hit: 2.25, final: 5.85, fade: 6.9, end: 8.0 };
+
+/* ---------- skull art: the game's own skull, rasterised in three layers so the jaw can move ---------- */
+function introSkullArt() {
+  const svg = $('skullArt'), ser = new XMLSerializer(), out = {};
+  const mk = (keep, eyes) => {
+    const c = svg.cloneNode(true);
+    c.removeAttribute('class'); c.removeAttribute('id'); c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', '400'); c.setAttribute('height', '472');
+    for (const sel of ['.sk-maw', '.sk-jaw', '.sk-head']) if (sel !== keep) { const n = c.querySelector(sel); if (n) n.remove(); }
+    c.querySelectorAll('.sk-eye').forEach(e => { if (eyes) e.setAttribute('opacity', '1'); else e.remove(); });
+    const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ser.serializeToString(c));
+    return img;
+  };
+  out.maw = mk('.sk-maw'); out.jaw = mk('.sk-jaw'); out.head = mk('.sk-head', false); out.headLit = mk('.sk-head', true);
+  return out;
+}
+
+/* ---------- set-up ---------- */
+function introLayout() {
+  const r = IV.getBoundingClientRect();
+  INTRO.w = Math.max(1, r.width || W); INTRO.h = Math.max(1, r.height || H);
+  INTRO.d = Math.max(0.6, Math.min(window.devicePixelRatio || 1, Q.dpr) * RES_STEPS[PERF.res]);
+  IV.width = Math.round(INTRO.w * INTRO.d); IV.height = Math.round(INTRO.h * INTRO.d);
+  const w = INTRO.w, h = INTRO.h, u = Math.min(w, h);
+  INTRO.RH = clamp(u * 0.46, 140, 250); INTRO.B = INTRO.RH / 4; INTRO.roadY = h * 0.56;
+  INTRO.cols = Math.ceil(w / INTRO.B) + 1;
+}
+function introBuild() {
+  introLayout();
+  const w = INTRO.w, B = INTRO.B, cols = INTRO.cols, span = T1.build1 - T1.build0 - 0.25, u = Math.min(INTRO.w, INTRO.h) / 480;
+  INTRO.blocks = [];
+  for (let c = 0; c < cols; c++) for (let r = -1; r < 5; r++) {
+    INTRO.blocks.push({ c: c, r: r, ta: T1.build0 + c / cols * span + (r + 1) * 0.03, rot: rand(-0.5, 0.5), sh: rand(-6, 6) | 0, walk: r < 0 || r > 3 });
+  }
+  // the stampede: the player first, then a pack of the game's own mutations
+  const n = Math.round(clamp(w / 7, 40, 72)), sp = (w + 160) / 1.55, s = clamp(Math.min(INTRO.w, INTRO.h) / 390, 1, 1.7);
+  INTRO.runners = [{ kind: 'player', x: -40, y: INTRO.roadY, v: sp * 1.08, t0: T1.run, r: 17 * s, walk: 0 }];
+  const pool = []; for (let i = 0; i < 1000; i += 7) if (!MUTS[i].unique) pool.push(MUTS[i]);
+  for (let i = 0; i < n; i++) {
+    const big = i % 13 === 6, m = pool[(i * 37 + 11) % pool.length];
+    INTRO.runners.push({ kind: 'z', m: m, x: -60 - rand(0, 40), y: INTRO.roadY + (Math.random() < 0.15 ? rand(-0.72, 0.72) : rand(-0.44, 0.44)) * INTRO.RH, v: sp * rand(0.88, 1.18), t0: T1.run + 0.32 + Math.pow(i / n, 0.8) * 1.15,
+      r: (big ? 30 : rand(12, 19)) * s, bob: rand(TAU), walk: 0 });
+  }
+  INTRO.dust = []; INTRO.debris = []; INTRO.embers = []; INTRO.bite = null; INTRO.shake = 0;
+  INTRO.sk = { art: introSkullArt(), x: w / 2, y: INTRO.roadY - INTRO.RH * 0.8, s: 0, jaw: 0, lit: 0, open: 0 };
+}
+
+/* ---------- timeline events ---------- */
+function introEvents(card) {
+  const E = [];
+  if (card === 1) {
+    const cols = INTRO.cols, span = T1.build1 - T1.build0 - 0.25;
+    for (let c = 0; c < cols; c++) E.push([T1.build0 + c / cols * span + 0.18, () => SFX.introBlock(c)]);
+    E.push([T1.build1, () => SFX.introSettle()]);
+    E.push([T1.paint, () => SFX.introPaint()]);
+    E.push([T1.rumble, () => SFX.introStampede(3.4)]);
+    E.push([T1.laugh, () => SFX.laugh()]);
+    E.push([T1.bite, () => { SFX.bite(); introBite(); }]);
+    E.push([T1.bite + 0.07, () => introFreeze()]);
+    E.push([T1.studioOut, () => INTRO_EL.classList.add('studio-out')]);
+    E.push([T1.end, () => introCard(2)]);
+  } else {
+    E.push([0.05, () => { INTRO.scoreLen = SFX.introScore(); }]);
+    E.push([T2.made, () => INTRO_EL.classList.add('made1')]);
+    E.push([T2.hit, () => INTRO_EL.classList.add('made2')]);
+    E.push([T2.final, () => INTRO_EL.classList.add('made3')]);
+    E.push([T2.fade, () => INTRO_EL.classList.add('made-out')]);
+    E.push([T2.end, () => introFinish()]);
+  }
+  return E;
+}
+function introCard(n) {
+  INTRO.card = n; INTRO.t = 0; INTRO.evI = 0; INTRO.ev = introEvents(n); INTRO.frozen = false;
+  INTRO_EL.classList.remove('frozen', 'studio', 'studio-out', 'made1', 'made2', 'made3', 'made-out');
+  INTRO_EL.classList.add('card' + n); INTRO_EL.classList.remove('card' + (3 - n));
+  if (n === 2) { INTRO.embers = []; const k = Math.round(30 + Q.parts / 10); for (let i = 0; i < k; i++) INTRO.embers.push(newEmber(true)); }
+}
+function introBite() {
+  const sk = INTRO.sk, bx = sk.x, by = INTRO.roadY;
+  INTRO.bite = { x: bx, y: by, r: INTRO.RH * 0.62 };
+  for (let i = 0; i < 46; i++) {
+    const a = rand(-Math.PI, 0) + (Math.random() < 0.3 ? Math.PI : 0), s = rand(160, 620);
+    INTRO.debris.push({ x: bx + rand(-30, 30), y: by + rand(-10, 20), vx: Math.cos(a) * s, vy: Math.sin(a) * s, sz: rand(3, 10), rot: rand(TAU), vr: rand(-12, 12), c: Math.random() < 0.7 ? '#2a2d33' : '#d6b450' });
+  }
+  INTRO.shake = 22; INTRO.flash = 1;
+}
+function introFreeze() {
+  // draw one more frame so the debris is caught mid-air, then hold it and switch to red and black
+  INTRO.flash = 0; drawIntro1(0.016);
+  INTRO.frozen = true;
+  INTRO_EL.classList.add('frozen', 'studio');
+  SFX.introSting();
+}
+
+/* ---------- drawing helpers ---------- */
+function easeOutBack(k) { const c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); }
+function drawRunner(g, x, y, r, walk) {
+  const k = r / 13;
+  g.save(); g.translate(x, y); g.scale(k, k);
+  g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(2, 4, 13, 12, 0, 0, TAU); g.fill();
+  const sw = Math.sin(walk) * 4;
+  g.fillStyle = '#2b2f2a'; g.fillRect(-12, -7, 7, 14);
+  g.fillStyle = '#3e4a3a'; g.beginPath(); g.ellipse(0, 0, 9, 13, 0, 0, TAU); g.fill();
+  g.fillStyle = '#f2cc3a'; g.fillRect(-4, -12, 3, 24); g.fillRect(2, -11, 2, 22);
+  g.strokeStyle = '#c9a27e'; g.lineWidth = 4.5; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(2, -8); g.lineTo(9 + sw, -11); g.moveTo(2, 8); g.lineTo(9 - sw, 11); g.stroke();
+  g.fillStyle = '#c9a27e'; g.beginPath(); g.arc(2, 0, 6.5, 0, TAU); g.fill();
+  g.fillStyle = '#2d332b'; g.beginPath(); g.arc(0.5, 0, 6.6, Math.PI * 0.5, Math.PI * 1.5); g.fill(); g.fillRect(2, -6.6, 4, 2.4);
+  g.restore();
+}
+function drawRoadBlocks(g, t) {
+  const B = INTRO.B, top = INTRO.roadY - INTRO.RH / 2, built = clamp((t - T1.build1) / 0.35, 0, 1);
+  if (built > 0) { g.fillStyle = '#24272c'; g.fillRect(0, top, INTRO.w, INTRO.RH); g.fillStyle = '#34383f'; g.fillRect(0, top - B, INTRO.w, B); g.fillRect(0, top + INTRO.RH, INTRO.w, B); }
+  for (const b of INTRO.blocks) {
+    const k = clamp((t - b.ta) / 0.22, 0, 1); if (k <= 0) continue;
+    const e = easeOutBack(k), sc = 1 + (1 - e) * 0.7, x = b.c * B + B / 2, y = top + b.r * B + B / 2;
+    g.save(); g.translate(x, y); g.rotate(b.rot * (1 - e)); g.scale(sc, sc); g.globalAlpha = Math.min(1, k * 2.2);
+    const v = (b.walk ? 52 : 36) + b.sh;
+    g.fillStyle = 'rgb(' + v + ',' + (v + 4) + ',' + (v + 10) + ')'; g.fillRect(-B / 2, -B / 2, B, B);
+    if (b.walk) { g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 1.5; g.strokeRect(-B / 2 + 3, -B / 2 + 3, B - 6, B - 6); }
+    const gr = 1 - built;
+    if (gr > 0) {
+      g.globalAlpha *= gr;
+      g.fillStyle = 'rgba(255,255,255,0.09)'; g.fillRect(-B / 2, -B / 2, B, 2.5); g.fillRect(-B / 2, -B / 2, 2.5, B);
+      g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(-B / 2, B / 2 - 3, B, 3); g.fillRect(B / 2 - 3, -B / 2, 3, B);
+    }
+    g.restore();
+  }
+  g.globalAlpha = 1;
+  if (built > 0) {   // curbs wipe in, then the lane paint is sprayed left to right
+    const cw = INTRO.w * built, ch = Math.max(5, B * 0.16);
+    g.fillStyle = '#4a4e55'; g.fillRect(0, top - ch, cw, ch); g.fillRect(0, top + INTRO.RH, cw, ch);
+    g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(0, top - 2, cw, 2); g.fillRect(0, top + INTRO.RH + ch, cw, 2);
+  }
+  const pk = clamp((t - T1.paint) / 0.45, 0, 1);
+  if (pk > 0) {
+    const px = INTRO.w * pk;
+    g.fillStyle = 'rgba(214,180,80,0.85)';
+    for (let x = 14; x < px; x += 52) g.fillRect(x, INTRO.roadY - 3, Math.min(30, px - x), 6);
+    g.fillStyle = 'rgba(230,226,214,0.55)'; g.fillRect(0, top + 9, px, 3.5); g.fillRect(0, top + INTRO.RH - 12.5, px, 3.5);
+  }
+}
+function drawBite(g) {
+  const b = INTRO.bite; if (!b) return;
+  // a bite taken out of the road: a dark hole with a toothed rim, and cracks running out of it
+  g.fillStyle = '#050405'; g.beginPath();
+  const n = 14;
+  for (let i = 0; i <= n; i++) {
+    const a = Math.PI + i / n * Math.PI, rr = b.r * (i % 2 ? 0.86 : 1.02);
+    const x = b.x + Math.cos(a) * rr * 1.25, y = b.y + 6 + Math.sin(a) * rr * 0.62;
+    if (i) g.lineTo(x, y); else g.moveTo(x, y);
+  }
+  for (let i = 0; i <= n; i++) {
+    const a = i / n * Math.PI, rr = b.r * (i % 2 ? 0.86 : 1.02);
+    g.lineTo(b.x - Math.cos(a) * rr * 1.25 + 0, b.y + 6 + Math.sin(a) * rr * 0.52);
+  }
+  g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(230,226,214,0.7)'; g.lineWidth = 2; g.lineCap = 'round';
+  const seeds = [[-1, -0.2], [1, -0.3], [-0.6, 0.9], [0.7, 0.85], [-1.2, 0.4], [1.3, 0.3]];
+  for (const s of seeds) {
+    let x = b.x + s[0] * b.r * 1.2, y = b.y + s[1] * b.r * 0.6; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 4; k++) { x += s[0] * b.r * 0.32 + (k % 2 ? 8 : -8); y += s[1] * b.r * 0.22 + (k % 2 ? -6 : 6); g.lineTo(x, y); }
+    g.stroke();
+  }
+}
+function drawSkull(g, t) {
+  const sk = INTRO.sk, A = sk.art; if (!A || !A.head.complete) return;
+  if (t < T1.skull) return;
+  // rise, laugh, lunge
+  let s = 1, y = sk.y, jaw = 0, lit = 0, rot = 0;
+  const rk = clamp((t - T1.skull) / 0.85, 0, 1);
+  s = rk < 1 ? 0.2 + 0.95 * easeOutBack(rk) : 1.0;
+  y = sk.y + (1 - rk) * INTRO.RH * 0.9;
+  lit = clamp((t - T1.skull - 0.5) / 0.3, 0, 1);
+  if (t >= T1.laugh && t < T1.lunge) { const lt = t - T1.laugh; jaw = 0.5 + 0.5 * Math.sin(lt * 44); rot = Math.sin(lt * 9) * 0.06; y += Math.sin(lt * 18) * 3; }
+  const base = Math.min(INTRO.w * 0.62, INTRO.h * 0.36), BS = 1.4, biteY = INTRO.roadY - 48 * base * BS / 200;
+  if (t >= T1.lunge) {
+    const lk = clamp((t - T1.lunge) / (T1.bite - T1.lunge), 0, 1), e = lk * lk;
+    s = 1 + e * (BS - 1); y = sk.y + (biteY - sk.y) * e; jaw = lk < 0.85 ? 1 : 0; rot = 0;
+  }
+  if (t >= T1.bite) { jaw = 0; s = BS; y = biteY; }
+  const size = base * s, k = size / 200;
+  g.save(); g.translate(sk.x, y); g.rotate(rot); g.scale(k, k); g.translate(-100, -118);
+  const jy = jaw * 34;
+  if (jaw > 0.05) { g.globalAlpha = jaw; g.drawImage(A.maw, 0, 0, 200, 236); g.globalAlpha = 1; }
+  g.save(); g.translate(100, 166); g.rotate(jaw * 0.05); g.translate(-100, -166 + jy); g.drawImage(A.jaw, 0, 0, 200, 236); g.restore();
+  g.save(); g.translate(0, -jaw * 6); g.drawImage(A.head, 0, 0, 200, 236);
+  if (lit > 0 && A.headLit.complete) { g.globalAlpha = lit * (0.75 + 0.25 * Math.sin(t * 14)); g.drawImage(A.headLit, 0, 0, 200, 236); g.globalAlpha = 1; }
+  g.restore();
+  if (lit > 0) {   // eye glow
+    g.globalCompositeOperation = 'lighter'; g.globalAlpha = lit * 0.55;
+    for (const ex of [68, 132]) { const gr = g.createRadialGradient(ex, 106 - jaw * 6, 2, ex, 106 - jaw * 6, 40); gr.addColorStop(0, 'rgba(255,60,80,0.9)'); gr.addColorStop(1, 'rgba(255,60,80,0)'); g.fillStyle = gr; g.fillRect(ex - 40, 66 - jaw * 6, 80, 80); }
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  }
+  g.restore();
+}
+
+/* ---------- card 1 ---------- */
+function drawIntro1(dt) {
+  const g = IG, t = INTRO.t, w = INTRO.w, h = INTRO.h, d = INTRO.d;
+  g.setTransform(d, 0, 0, d, 0, 0);
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+  let sx = 0, sy = 0;
+  if (INTRO.shake > 0.2 && !RM) { sx = rand(-0.5, 0.5) * INTRO.shake; sy = rand(-0.5, 0.5) * INTRO.shake; }
+  INTRO.shake *= Math.exp(-dt * 6);
+  g.setTransform(d, 0, 0, d, sx * d, sy * d);
+  const amb = clamp((t - T1.build1) / 0.8, 0, 1);
+  if (amb > 0) { g.globalAlpha = amb; g.fillStyle = '#0d1014'; g.fillRect(-30, -30, w + 60, h + 60); g.globalAlpha = 1; }
+  // build the stampede's sprites a few per frame while the road is laid, so nothing hitches when they arrive
+  if (t < T1.run) { let k = 0; for (const r of INTRO.runners) { if (r.kind === 'z' && !r.warm) { getSprite(r.m, r.r, true); r.warm = 1; if (++k >= 4) break; } } }
+  drawRoadBlocks(g, t);
+  drawBite(g);
+  // runners, dust behind them
+  let onScreen = 0;
+  for (const q of INTRO.dust) { q.life -= dt; q.r += dt * 30; q.x += q.vx * dt; }
+  INTRO.dust = INTRO.dust.filter(q => q.life > 0);
+  for (const q of INTRO.dust) { g.globalAlpha = clamp(q.life / q.max, 0, 1) * 0.35; g.fillStyle = '#6a6052'; g.beginPath(); g.arc(q.x, q.y, q.r, 0, TAU); g.fill(); }
+  g.globalAlpha = 1;
+  INTRO.dustT -= dt;
+  const puff = INTRO.dustT <= 0; if (puff) INTRO.dustT = 0.05;
+  const byY = INTRO.runners.slice().sort((a, b) => a.y - b.y);
+  for (const r of byY) {
+    if (t < r.t0) continue;
+    if (!INTRO.frozen) { r.x += r.v * dt; r.walk += dt * 18; }
+    if (r.x < -80 || r.x > w + 80) continue;
+    onScreen++;
+    const bob = r.kind === 'z' ? Math.sin(r.walk + r.bob) * 2 : 0;
+    if (puff && r.kind === 'z' && Math.random() < 0.35 && INTRO.dust.length < 120) INTRO.dust.push({ x: r.x - r.r, y: r.y + r.r * 0.5, r: r.r * 0.5, vx: -40, life: 0.7, max: 0.7 });
+    if (r.kind === 'player') drawRunner(g, r.x, r.y + bob, r.r, r.walk);
+    else {
+      const spr = getSprite(r.m, r.r, true), kk = r.r / spr.rq, hs = spr.half * kk;
+      g.save(); g.translate(r.x, r.y + bob); g.rotate(Math.sin(r.walk * 0.5 + r.bob) * 0.12); g.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); g.restore();
+    }
+  }
+  if (onScreen > 3 && t < T1.skull) INTRO.shake = Math.max(INTRO.shake, Math.min(9, onScreen * 0.22));
+  drawSkull(g, t);
+  for (const q of INTRO.debris) { if (!INTRO.frozen) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 900 * dt; q.rot += q.vr * dt; } g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillStyle = q.c; g.fillRect(-q.sz / 2, -q.sz / 2, q.sz, q.sz * 0.7); g.restore(); }
+  if (INTRO.flash > 0) { g.setTransform(d, 0, 0, d, 0, 0); g.fillStyle = 'rgba(255,240,230,' + Math.min(0.8, INTRO.flash) + ')'; g.fillRect(0, 0, w, h); INTRO.flash -= dt * 6; }
+  g.setTransform(d, 0, 0, d, 0, 0);
+  const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.hypot(w, h) * 0.6);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)'); g.fillStyle = vg; g.fillRect(0, 0, w, h);
+}
+
+/* ---------- card 2 ---------- */
+function newEmber(any) {
+  const w = INTRO.w, h = INTRO.h;
+  return { x: rand(0, w), y: any ? rand(0, h) : h + rand(0, 40), vy: -rand(18, 60), vx: rand(-8, 8), r: rand(0.8, 2.6), ph: rand(TAU), life: rand(3, 7) };
+}
+function drawIntro2(dt) {
+  const g = IG, t = INTRO.t, w = INTRO.w, h = INTRO.h, d = INTRO.d, cx = w / 2, cy = h * 0.46;
+  g.setTransform(d, 0, 0, d, 0, 0); g.globalCompositeOperation = 'source-over';
+  g.fillStyle = '#020203'; g.fillRect(0, 0, w, h);
+  const fadeOut = clamp((t - T2.fade) / 0.9, 0, 1), fadeIn = clamp(t / 0.8, 0, 1);
+  const hit = t >= T2.hit ? Math.exp(-(t - T2.hit) * 2.2) : 0, fin = t >= T2.final ? Math.exp(-(t - T2.final) * 1.6) : 0;
+  let I = (0.18 + 0.5 * clamp((t - T2.hit) / 0.2, 0, 1) + hit * 0.6 + fin * 0.5) * fadeIn * (1 - fadeOut);
+  // light rays behind the title: one pre-rendered fan, slowly turning (cheaper than ten gradients a frame)
+  g.globalCompositeOperation = 'lighter';
+  const R = Math.hypot(w, h) * 0.7;
+  if (!INTRO.rays || INTRO.raysR !== R) {
+    const sz = Math.ceil(R), c = document.createElement('canvas'); c.width = c.height = sz; const rg = c.getContext('2d'), m = sz / 2;
+    rg.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 10; i++) {
+      const a = i / 10 * TAU + Math.sin(i * 2.3) * 0.2, wd = 0.07 + 0.04 * Math.sin(i * 1.7);
+      const gr = rg.createRadialGradient(m, m, 0, m, m, m);
+      gr.addColorStop(0, 'rgba(255,196,110,0.22)'); gr.addColorStop(0.45, 'rgba(255,150,60,0.07)'); gr.addColorStop(1, 'rgba(255,120,40,0)');
+      rg.fillStyle = gr; rg.beginPath(); rg.moveTo(m, m); rg.arc(m, m, m, a - wd, a + wd); rg.closePath(); rg.fill();
+    }
+    const core = rg.createRadialGradient(m, m, 0, m, m, m * 0.8);
+    core.addColorStop(0, 'rgba(255,200,120,0.28)'); core.addColorStop(1, 'rgba(255,160,80,0)'); rg.fillStyle = core; rg.fillRect(0, 0, sz, sz);
+    INTRO.rays = c; INTRO.raysR = R;
+  }
+  g.save(); g.translate(cx, cy); g.rotate(t * 0.07); g.globalAlpha = Math.min(1, I); g.drawImage(INTRO.rays, -R, -R, R * 2, R * 2); g.restore(); g.globalAlpha = 1;
+  // anamorphic streak at the reveal and the final chord
+  const st = Math.max(hit, fin * 0.8);
+  if (st > 0.02) {
+    const sw = w * (0.4 + (1 - st) * 0.9), sh = 3 + st * 5;
+    const lg = g.createLinearGradient(cx - sw / 2, 0, cx + sw / 2, 0);
+    lg.addColorStop(0, 'rgba(255,190,110,0)'); lg.addColorStop(0.5, 'rgba(255,236,200,' + st * 0.9 + ')'); lg.addColorStop(1, 'rgba(255,190,110,0)');
+    g.fillStyle = lg; g.fillRect(cx - sw / 2, cy - sh / 2, sw, sh);
+  }
+  // embers drifting up
+  for (const e of INTRO.embers) {
+    e.y += e.vy * dt; e.x += (e.vx + Math.sin(t * 1.3 + e.ph) * 10) * dt; e.life -= dt;
+    if (e.y < -10 || e.life <= 0) Object.assign(e, newEmber(false));
+    const f = 0.5 + 0.5 * Math.sin(t * 6 + e.ph), a = (0.35 + 0.65 * f) * fadeIn * (1 - fadeOut) * (0.7 + I * 0.6);
+    g.globalAlpha = Math.min(1, a); g.fillStyle = f > 0.7 ? '#ffe2a0' : '#ff9a3a'; g.beginPath(); g.arc(e.x, e.y, e.r * (1 + hit), 0, TAU); g.fill();
+  }
+  g.globalAlpha = 1;
+  if (hit > 0.3 || fin > 0.4) { g.fillStyle = 'rgba(255,230,190,' + Math.max(hit - 0.3, fin - 0.4) * 0.55 + ')'; g.fillRect(0, 0, w, h); }
+  g.globalCompositeOperation = 'source-over';
+  g.drawImage(screenGrad('introVig', 0.28, 0.62, '0,0,0', 0.85), 0, 0, w, h);
+  if (fadeOut > 0) { g.fillStyle = 'rgba(0,0,0,' + fadeOut + ')'; g.fillRect(0, 0, w, h); }
+}
+
+/* ---------- loop, skipping, finishing ---------- */
+function introFrame(dt) {
+  if (!INTRO.on || INTRO.gate || !INTRO.ev) return;
+  INTRO.t += dt;
+  const E = INTRO.ev;
+  while (INTRO.evI < E.length && INTRO.t >= E[INTRO.evI][0]) { const f = E[INTRO.evI++][1]; try { f(); } catch (e) { perfError(e); } if (!INTRO.on) return; }
+  if (!INTRO.on) return;
+  if (INTRO.card === 1) { if (!INTRO.frozen) drawIntro1(dt); }
+  else drawIntro2(dt);
+}
+function introSkip() {
+  if (!INTRO.on) return false;
+  if (INTRO.gate) { introBegin(); return true; }
+  SFX.introCut();
+  if (INTRO.card === 1) introCard(2); else introFinish();
+  return true;
+}
+function introFinish() {
+  if (!INTRO.on) return;
+  INTRO.on = false; SFX.introCut();
+  G.mode = 'title'; initAttract(); showOv('title'); refreshTitle();
+  INTRO_EL.classList.add('out');
+  setTimeout(() => { INTRO_EL.hidden = true; INTRO_EL.className = ''; IV.width = IV.height = 1; INTRO.blocks = []; INTRO.runners = []; INTRO.sk = null; INTRO.rays = null; }, 950);
+}
+function introBegin() {
+  INTRO.gate = false; INTRO_EL.querySelector('.in-gate').hidden = true;
+  SFX.init(); introCard(1);
+}
+function startIntro() {
+  G.mode = 'intro'; INTRO.on = true;
+  showOv(null); INTRO_EL.hidden = false; INTRO_EL.className = '';
+  introBuild();
+  // browsers only allow sound after a tap: if the audio engine can't start on its own, wait for one
+  SFX.init();
+  setTimeout(() => {
+    if (!INTRO.on) return;
+    const st = SFX.health().state;
+    if (st === 'running') introBegin();
+    else { INTRO.gate = true; INTRO_EL.querySelector('.in-gate').hidden = false; }
+  }, 120);
+}
+INTRO_EL.addEventListener('pointerdown', e => { e.preventDefault(); introSkip(); });
+window.addEventListener('keydown', e => { if (INTRO.on && (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); introSkip(); } });
+window.addEventListener('resize', () => { if (INTRO.on && !(INTRO.card === 1 && INTRO.frozen)) introLayout(); });

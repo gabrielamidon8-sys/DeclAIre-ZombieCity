@@ -377,6 +377,43 @@ p{margin:0}
 .detail-art{width:180px;height:180px;background:radial-gradient(circle at 50% 50%, #232831 0%, #12151a 70%);border:1px solid var(--line);border-radius:2px}
 .detail-text{display:flex;flex-direction:column;gap:10px;min-width:0}
 .detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+/* studio intro */
+#intro{position:absolute;inset:0;z-index:70;background:#000;overflow:hidden;transition:opacity .9s ease;touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none}
+#intro.out{opacity:0;pointer-events:none}
+#introCv{position:absolute;inset:0;width:100%;height:100%;display:block;transform-origin:50% 56%}
+#intro.frozen #introCv{filter:grayscale(1) contrast(2.4) brightness(1.08);animation:inzoom 2.8s ease-out forwards}
+@keyframes inzoom{to{transform:scale(1.06)}}
+.in-red{position:absolute;inset:0;background:#e3122b;mix-blend-mode:multiply;opacity:0;pointer-events:none}
+#intro.frozen .in-red{opacity:1}
+.in-studio,.in-made{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;text-align:center;pointer-events:none;opacity:0}
+.in-studio{top:9%;gap:4px}
+.in-studio b{font-family:var(--f-display);font-weight:400;font-size:clamp(52px, 16vw, 124px);line-height:.9;color:#fff3ef;text-shadow:0 0 18px rgba(255,30,50,.9), 0 0 54px rgba(255,0,30,.55), 0 6px 0 #000}
+.in-studio b span{color:#120206;-webkit-text-stroke:2px #fff3ef;text-shadow:0 0 22px rgba(255,40,60,1), 0 6px 0 #000}
+.in-studio em{font-style:normal;font-family:var(--f-num);font-size:clamp(14px, 4.4vw, 26px);letter-spacing:.6em;padding-left:.6em;text-transform:uppercase;color:#ffe1e1;text-shadow:0 0 12px rgba(255,40,60,.9), 0 2px 0 #000}
+#intro.studio .in-studio{animation:instudio .55s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes instudio{0%{opacity:0;transform:scale(1.7)}55%{opacity:1}100%{opacity:1;transform:scale(1)}}
+#intro.studio-out .in-studio{opacity:0!important;transition:opacity .5s;animation:none}
+.in-made{top:46%;transform:translateY(-50%);gap:12px}
+.in-made em{font-style:normal;font-family:var(--f-num);font-size:clamp(13px, 3.8vw, 20px);letter-spacing:.7em;padding-left:.7em;text-transform:uppercase;color:#ecdcb0;opacity:0}
+.in-made b{font-family:var(--f-display);font-weight:400;font-size:clamp(66px, 21vw, 170px);line-height:.95;padding:0 .08em;opacity:0;color:transparent;
+  background:linear-gradient(100deg, #7a4c17 0%, #e9bf6a 28%, #fff6dc 42%, #f2cf86 50%, #b97a2b 72%, #6e4314 100%);background-size:260% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;
+  filter:drop-shadow(0 0 22px rgba(255,170,70,.4)) drop-shadow(0 8px 14px rgba(0,0,0,.9))}
+#intro.card2 .in-made{opacity:1}
+#intro.made1 .in-made em{animation:inmade 1.3s ease-out forwards}
+@keyframes inmade{from{opacity:0;letter-spacing:1.5em}to{opacity:1;letter-spacing:.7em}}
+#intro.made2 .in-made b{animation:inname 1s cubic-bezier(.15,.9,.25,1) forwards, ingleam 2.4s ease-in-out .35s forwards}
+#intro.made3 .in-made b{animation:inname2 .1s linear forwards, ingleam2 2s ease-in-out forwards}
+@keyframes inname{0%{opacity:0;transform:scale(1.4)}100%{opacity:1;transform:scale(1)}}
+@keyframes inname2{from{opacity:1}to{opacity:1}}
+@keyframes ingleam{from{background-position:100% 0}to{background-position:0 0}}
+@keyframes ingleam2{from{background-position:0 0}to{background-position:100% 0}}
+#intro.made2 .in-made{animation:inpush 5s linear forwards}
+@keyframes inpush{from{transform:translateY(-50%) scale(1)}to{transform:translateY(-50%) scale(1.07)}}
+#intro.made-out .in-made{opacity:0;transition:opacity .9s ease}
+.in-gate{position:absolute;left:0;right:0;top:50%;margin:0;text-align:center;font-family:var(--f-num);font-size:14px;letter-spacing:.35em;padding-left:.35em;text-transform:uppercase;color:#d8d2c4;animation:gatepulse 1.4s ease-in-out infinite}
+@keyframes gatepulse{50%{opacity:.35}}
+.in-skip{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:max(16px, env(safe-area-inset-bottom, 0px));margin:0;font-family:var(--f-num);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(235,229,214,.4)}
+#intro.out .in-skip,#intro.made-out .in-skip{opacity:0}
 .pf-in{grid-template-columns:minmax(0, 1fr);width:min(560px, 100%)}
 #perfPanel{--rc:var(--tape)}
 .pf-device{font-family:var(--f-num);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
@@ -415,6 +452,7 @@ p{margin:0}
 .empty{padding:22px 14px;border:1px dashed var(--line);color:var(--muted);font-size:14px;text-align:center}
 
 @media (prefers-reduced-motion:reduce){
+  #intro.frozen #introCv,#intro.made2 .in-made{animation:none}
   .wave b{transform:none}
   #airBtn.ready,.wheel-result.ddup,.skull-art.laugh .sk-jaw,.skull-art.laugh .sk-eye{animation:none}
   .skull-art.lunge{animation:none;opacity:0}
@@ -705,6 +743,14 @@ p{margin:0}
       </div>
     </div>
   </div>
+  <section id="intro" hidden role="img" aria-label="DeclAIre Studios. Made with Claude.">
+    <canvas id="introCv"></canvas>
+    <div class="in-red"></div>
+    <div class="in-studio"><b>Decl<span>AI</span>re</b><em>Studios</em></div>
+    <div class="in-made"><em>Made with</em><b>Claude</b></div>
+    <p class="in-gate" hidden>Tap to start</p>
+    <p class="in-skip">Tap to skip</p>
+  </section>
   <input type="file" id="musicFile" accept="audio/*" hidden>
 
   <section id="lb" class="ov sheet" hidden aria-label="Leaderboard">
@@ -2215,7 +2261,7 @@ var SFX = (function () {
     }
   }
   function playStep(i, t) {
-    if (musicMode !== 'builtin' || !song) return;
+    if (musicMode !== 'builtin' || !song || scene === 'intro') return;   // the intro has its own score
     var s = i % 16, b = barN, ch = song.prog[b % song.prog.length];
     if (BPM > 180 ? s % 8 === 0 : s % 4 === 0) ev(t, 'beat');
     if (s === 0) ev(t, 'bar');
@@ -2228,16 +2274,17 @@ var SFX = (function () {
 
   // scenes: the song keeps playing between waves, muffled; the filter sweeps open into each wave like a drop
   var SCN = {
-    title: [3000, 0.42], play: [16000, 0.4], drop: [20000, 0.46], cine: [20000, 0.44], 'break': [700, 0.36],
+    intro: [20000, 0.5], title: [3000, 0.42], play: [16000, 0.4], drop: [20000, 0.46], cine: [20000, 0.44], 'break': [700, 0.36],
     pause: [450, 0.24], skull: [220, 0.26], over: [380, 0.26]
   };
   function applyMusic() {
     if (!ac) return;
     var t = ac.currentTime, sc = SCN[scene] || SCN.title, vol = sc[1] * (song && song.vol || 1);
-    musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(musicMode === 'builtin' ? vol : 0, t, 0.3);
+    var intro = scene === 'intro';   // the intro score plays even when the player's own music is selected
+    musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(musicMode === 'builtin' || (intro && musicMode === 'custom') ? vol : 0, t, intro ? 0.05 : 0.3);
     musFilter.frequency.cancelScheduledValues(t); musFilter.frequency.setTargetAtTime(qteOn ? 20000 : sc[0], t, scene === 'play' || scene === 'drop' ? 0.28 : 0.12);
     if (customEl) {
-      if (musicMode === 'custom') { var pr = customEl.play(); if (pr && pr.catch) pr.catch(function () {}); }
+      if (musicMode === 'custom' && !intro) { var pr = customEl.play(); if (pr && pr.catch) pr.catch(function () {}); }
       else customEl.pause();
     }
   }
@@ -2407,6 +2454,26 @@ var SFX = (function () {
   function fx(n, rate) { if (!sfx('x_' + n, rate)) FX[n](ac.currentTime); }
   function bell2(t, f, vol, dur) { osc('sine', f, f, t, dur, vol, null, 0.002); osc('sine', f * 2.76, f * 2.76, t, dur * 0.7, vol * 0.45, null, 0.002); }
 
+  // ---------- intro routing ----------
+  var IB = null;
+  function introBus() {
+    if (!IB) {
+      IB = { sfx: ac.createGain(), mus: ac.createGain(), synth: ac.createGain(), drum: ac.createGain() };
+      IB.sfx.connect(sfxBus); IB.mus.connect(musBus); IB.synth.connect(IB.mus); IB.drum.gain.value = 0.9; IB.drum.connect(IB.mus);
+    }
+    return IB;
+  }
+  function viaIntro(fn) {
+    var b = introBus(), sv = [sfxBus, musBus, synthBus, drumBus, bellBus];
+    sfxBus = b.sfx; musBus = b.mus; synthBus = b.synth; drumBus = b.drum; bellBus = b.mus;
+    try { return fn(); } finally { sfxBus = sv[0]; musBus = sv[1]; synthBus = sv[2]; drumBus = sv[3]; bellBus = sv[4]; }
+  }
+  function introCut() {
+    if (!IB || !ac) return; var b = IB, t = ac.currentTime; IB = null;
+    b.sfx.gain.setTargetAtTime(0, t, 0.04); b.mus.gain.setTargetAtTime(0, t, 0.04);
+    setTimeout(function () { try { b.sfx.disconnect(); b.mus.disconnect(); } catch (e) { } }, 600);
+  }
+
   // ---------- self-repair ----------
   // Phones sometimes leave the audio clock frozen (a Bluetooth headset switch, a call, the OS reclaiming the device).
   // heal() runs every couple of seconds: it resumes a suspended context and rebuilds a frozen one from scratch.
@@ -2497,6 +2564,62 @@ var SFX = (function () {
         return true;
       } catch (e) { return false; }
     },
+
+    // ---------- studio intro ----------
+    // a chunky block being set into the road: low thock, body knock and a bright click
+    introBlock: function (k) {
+      if (!ok()) return; return viaIntro(function () { var t = ac.currentTime, p = [1, 1.12, 1.26, 1.5, 1.68][k % 5] * (0.96 + Math.random() * 0.08);
+      osc('sine', 230 * p, 95 * p, t, 0.09, 0.5); osc('square', 460 * p, 300 * p, t, 0.025, 0.06);
+      noise(t, 0.05, 0.35, 'lowpass', 1400 * p, 0.8); noise(t, 0.012, 0.16, 'highpass', 4200, 0.7);
+      if (k % 6 === 5) { osc('sine', 120, 50, t, 0.2, 0.45); noise(t, 0.12, 0.2, 'lowpass', 500); }
+      });
+    },
+    introSettle: function () { if (!ok()) return; return viaIntro(function () { var t = ac.currentTime; osc('sine', 90, 34, t, 0.5, 0.7); noise(t, 0.4, 0.3, 'lowpass', 700, 0.7, 120); noise(t, 0.06, 0.2, 'bandpass', 2400, 2);  }); },
+    introPaint: function () { if (!ok()) return; return viaIntro(function () { var t = ac.currentTime; noise(t, 0.55, 0.12, 'highpass', 2600, 0.7, 7000); noise(t + 0.05, 0.4, 0.06, 'bandpass', 5200, 3);  }); },
+    // the stampede: rolling low rumble with footfalls and a crowd of groans, swelling and passing
+    introStampede: function (dur) {
+      if (!ok()) return; return viaIntro(function () { var t = ac.currentTime; dur = dur || 3.2;
+      var src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+      src.buffer = noiseBuf; src.loop = true; fl.type = 'lowpass'; fl.frequency.value = 260; fl.Q.value = 0.9;
+      lfo.frequency.value = 9; lg.gain.value = 0.45; lfo.connect(lg); lg.connect(am.gain); am.gain.value = 0.55;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + dur * 0.35); g.gain.setValueAtTime(0.9, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(fl); fl.connect(am); am.connect(g); g.connect(sfxBus); src.start(t); src.stop(t + dur + 0.1); lfo.start(t); lfo.stop(t + dur + 0.1);
+      osc('sine', 46, 38, t, dur, 0.35, null, dur * 0.3);
+      var F = [[600, 6], [1000, 7], [2400, 9]];
+      for (var i = 0; i < 22; i++) { var tt = t + dur * (0.12 + Math.random() * 0.7), f = 95 + Math.random() * 80; voice(tt, f * 1.15, f * 0.7, 0.4 + Math.random() * 0.5, 0.05 + Math.random() * 0.05, F); }
+      for (var j = 0; j < 26; j++) { var ft = t + dur * (0.15 + j / 26 * 0.65); drum(ft, 46 + Math.random() * 12, 0.12 + Math.random() * 0.1); }
+      });
+    },
+    // the freeze: impact, a low brass and choir stab, a ringing gong
+    introSting: function () {
+      if (!ok()) return; return viaIntro(function () { var t = ac.currentTime;
+      vImpact(t); vGong(t, 31); vBrass([38, 45, 50, 53], t, 1.6, 0.06); vChoir([62, 65, 69], t, 1.8, 0.05); vTimp(t, 38, 0.9);
+      osc('sawtooth', 55, 41, t, 1.6, 0.12, null, 0.01); noise(t, 1.6, 0.14, 'highpass', 6000, 0.7);
+      });
+    },
+    // "made with" card: an orchestral cue in D minor that resolves to D major. Returns its length in seconds.
+    introScore: function () {
+      if (!ok()) return 0; return viaIntro(function () { var t = ac.currentTime + 0.05, i;
+      vStrings([38, 45, 50], t, 2.3, 0.032); vSub(26, t, 2.2, 0.14);
+      for (i = 0; i < 16; i++) vTimp(t + i * (0.14 - i * 0.004), 38, 0.18 + i * 0.028);   // timpani roll, crescendo
+      vRiser(t + 0.7, 1.45); vChoir([62, 65, 69], t + 0.9, 1.3, 0.035);
+      var h = t + 2.2;   // the reveal
+      vImpact(h); vGong(h, 38); vTimp(h, 38, 0.95); vSub(26, h, 1.4, 0.18);
+      vBrass([50, 57, 62, 65], h, 1.3, 0.055); vStrings([50, 57, 62, 65, 69], h, 1.4, 0.036); vChoir([62, 65, 69, 74], h, 1.5, 0.05);
+      var seq = [[3.6, [46, 53, 58, 62], [58, 62, 65, 70], 34], [4.7, [48, 55, 60, 64], [60, 64, 67, 72], 36]];
+      seq.forEach(function (c) {
+        var s0 = t + c[0]; vBrass(c[1], s0, 1.0, 0.05); vStrings(c[2], s0, 1.1, 0.034); vTimp(s0, c[3], 0.7); vTimp(s0 + 0.55, c[3], 0.45);
+        for (var k = 0; k < 4; k++) vStac([c[2][1] + 12, c[2][2] + 12], s0 + k * 0.275, 0.026);
+      });
+      var f = t + 5.8;   // the final chord turns major
+      vImpact(f); vGong(f, 38); vTimp(f, 38, 1); vSub(26, f, 2.4, 0.18);
+      vBrass([50, 57, 62, 66, 69], f, 2.2, 0.06); vStrings([62, 66, 69, 74, 78], f, 2.4, 0.04); vChoir([62, 66, 69, 74], f, 2.4, 0.055);
+      [62, 66, 69, 74, 78, 81].forEach(function (m, k) { vHarp(m, f + 0.05 + k * 0.07); });
+      return 8.4;
+      });
+    },
+
+    introCut: introCut,
 
     // ---------- effects ----------
     // crack + pop + ching. Every 25 chained kills is a new tier: the ching drops lower and heavier layers join in.
@@ -3644,6 +3767,7 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 // App bridge: the Android app calls these for its back button and when it goes to the background.
 window.zcBack = function () {
+  if (typeof INTRO !== 'undefined' && INTRO.on) return introSkip();
   if (!$('blDetail').hidden) { $('blDetail').hidden = true; return true; }
   if (!$('bosslog').hidden) { closeBossLog(); return true; }
   if (G.mode === 'cine') return true;
@@ -5171,9 +5295,10 @@ function frame(now) {
     else if (G.mode === 'cine') updCine(dt);
     else if (G.mode === 'title') { G.time += dt; updAttract(dt); }
     else if (G.mode === 'over') { G.time += dt; updFx(dt); }
-    render();
+    else if (G.mode === 'intro') introFrame(rdt);
+    if (G.mode !== 'intro') render();
     if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'skull' || G.mode === 'cine') { updHud(); bossMusic(); }
-    SFX.setScene(G.mode === 'skull' ? 'skull' : G.mode === 'cine' ? 'cine' : G.mode === 'play' ? ((G.boss && !G.boss.dead) || G.chain >= 25 ? 'drop' : 'play') : G.mode === 'upgrade' ? 'break' : G.mode === 'pause' ? 'pause' : G.mode === 'over' ? 'over' : 'title', G.mode === 'title' ? 0 : G.wave);
+    SFX.setScene(G.mode === 'intro' ? 'intro' : G.mode === 'skull' ? 'skull' : G.mode === 'cine' ? 'cine' : G.mode === 'play' ? ((G.boss && !G.boss.dead) || G.chain >= 25 ? 'drop' : 'play') : G.mode === 'upgrade' ? 'break' : G.mode === 'pause' ? 'pause' : G.mode === 'over' ? 'over' : 'title', G.mode === 'title' ? 0 : G.wave);
     if (frameNo % 120 === 0 && G.mode === 'title') $('seasonLeft').textContent = seasonLeft();
   } catch (err) { perfError(err); }
   perfFrame(now, iv, performance.now() - t0);
@@ -6575,7 +6700,8 @@ function perfInit() {
   const r = LADDER[rung]; PERF.rung = rung; PERF.tier = r[0]; PERF.res = r[1]; Object.assign(Q, TIER_Q[r[0]]);
   ZB.setDetail(Q.boss); SFX.setQuality(Q.audio);
   // a first launch also runs a short benchmark once things settle, then re-picks the starting tier
-  if (!(PS.learned && PS.learned.key === PERF.key) || !PS.bench) setTimeout(() => {
+  if (!(PS.learned && PS.learned.key === PERF.key) || !PS.bench) setTimeout(function benchSoon() {
+    if (G.mode === 'intro') { setTimeout(benchSoon, 1000); return; }   // never hitch the intro
     try {
       const b = PERF.bench = benchmark(), sc2 = scoreTier(p, b);
       PS.bench = b; savePerf();
@@ -6645,10 +6771,359 @@ for (const id of ['titlePerf', 'pausePerf']) { const b = $(id); if (b) b.addEven
 perfInit();
 renderPerfBtn();
 
+/* ================= intro: DeclAIre Studios, then "Made with Claude" =================
+   Card 1: a road is laid block by block, the player sprints across it with a stampede of the game's zombies behind,
+   the skull rises laughing and bites the road, and that frame freezes red and black under the studio name.
+   Card 2: an orchestral cue under a gold title card, then the overlay fades into the title screen.
+   Tap (or Space/Enter/Esc, or Android Back) skips the current card. */
+const INTRO = { on: false, card: 0, t: 0, gate: false, frozen: false, evI: 0, shake: 0, w: 1, h: 1, d: 1,
+  blocks: [], cols: 0, B: 40, roadY: 0, RH: 120, runners: [], dust: [], debris: [], embers: [], sk: null, bite: null, dustT: 0 };
+const IV = $('introCv'), IG = IV.getContext('2d'), INTRO_EL = $('intro');
+const T1 = { build0: 0.35, build1: 2.25, paint: 2.4, rumble: 2.55, run: 3.0, skull: 6.0, laugh: 6.85, lunge: 8.3, bite: 8.6, studioOut: 10.7, end: 11.3 };
+const T2 = { made: 0.9, hit: 2.25, final: 5.85, fade: 6.9, end: 8.0 };
+
+/* ---------- skull art: the game's own skull, rasterised in three layers so the jaw can move ---------- */
+function introSkullArt() {
+  const svg = $('skullArt'), ser = new XMLSerializer(), out = {};
+  const mk = (keep, eyes) => {
+    const c = svg.cloneNode(true);
+    c.removeAttribute('class'); c.removeAttribute('id'); c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', '400'); c.setAttribute('height', '472');
+    for (const sel of ['.sk-maw', '.sk-jaw', '.sk-head']) if (sel !== keep) { const n = c.querySelector(sel); if (n) n.remove(); }
+    c.querySelectorAll('.sk-eye').forEach(e => { if (eyes) e.setAttribute('opacity', '1'); else e.remove(); });
+    const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ser.serializeToString(c));
+    return img;
+  };
+  out.maw = mk('.sk-maw'); out.jaw = mk('.sk-jaw'); out.head = mk('.sk-head', false); out.headLit = mk('.sk-head', true);
+  return out;
+}
+
+/* ---------- set-up ---------- */
+function introLayout() {
+  const r = IV.getBoundingClientRect();
+  INTRO.w = Math.max(1, r.width || W); INTRO.h = Math.max(1, r.height || H);
+  INTRO.d = Math.max(0.6, Math.min(window.devicePixelRatio || 1, Q.dpr) * RES_STEPS[PERF.res]);
+  IV.width = Math.round(INTRO.w * INTRO.d); IV.height = Math.round(INTRO.h * INTRO.d);
+  const w = INTRO.w, h = INTRO.h, u = Math.min(w, h);
+  INTRO.RH = clamp(u * 0.46, 140, 250); INTRO.B = INTRO.RH / 4; INTRO.roadY = h * 0.56;
+  INTRO.cols = Math.ceil(w / INTRO.B) + 1;
+}
+function introBuild() {
+  introLayout();
+  const w = INTRO.w, B = INTRO.B, cols = INTRO.cols, span = T1.build1 - T1.build0 - 0.25, u = Math.min(INTRO.w, INTRO.h) / 480;
+  INTRO.blocks = [];
+  for (let c = 0; c < cols; c++) for (let r = -1; r < 5; r++) {
+    INTRO.blocks.push({ c: c, r: r, ta: T1.build0 + c / cols * span + (r + 1) * 0.03, rot: rand(-0.5, 0.5), sh: rand(-6, 6) | 0, walk: r < 0 || r > 3 });
+  }
+  // the stampede: the player first, then a pack of the game's own mutations
+  const n = Math.round(clamp(w / 7, 40, 72)), sp = (w + 160) / 1.55, s = clamp(Math.min(INTRO.w, INTRO.h) / 390, 1, 1.7);
+  INTRO.runners = [{ kind: 'player', x: -40, y: INTRO.roadY, v: sp * 1.08, t0: T1.run, r: 17 * s, walk: 0 }];
+  const pool = []; for (let i = 0; i < 1000; i += 7) if (!MUTS[i].unique) pool.push(MUTS[i]);
+  for (let i = 0; i < n; i++) {
+    const big = i % 13 === 6, m = pool[(i * 37 + 11) % pool.length];
+    INTRO.runners.push({ kind: 'z', m: m, x: -60 - rand(0, 40), y: INTRO.roadY + (Math.random() < 0.15 ? rand(-0.72, 0.72) : rand(-0.44, 0.44)) * INTRO.RH, v: sp * rand(0.88, 1.18), t0: T1.run + 0.32 + Math.pow(i / n, 0.8) * 1.15,
+      r: (big ? 30 : rand(12, 19)) * s, bob: rand(TAU), walk: 0 });
+  }
+  INTRO.dust = []; INTRO.debris = []; INTRO.embers = []; INTRO.bite = null; INTRO.shake = 0;
+  INTRO.sk = { art: introSkullArt(), x: w / 2, y: INTRO.roadY - INTRO.RH * 0.8, s: 0, jaw: 0, lit: 0, open: 0 };
+}
+
+/* ---------- timeline events ---------- */
+function introEvents(card) {
+  const E = [];
+  if (card === 1) {
+    const cols = INTRO.cols, span = T1.build1 - T1.build0 - 0.25;
+    for (let c = 0; c < cols; c++) E.push([T1.build0 + c / cols * span + 0.18, () => SFX.introBlock(c)]);
+    E.push([T1.build1, () => SFX.introSettle()]);
+    E.push([T1.paint, () => SFX.introPaint()]);
+    E.push([T1.rumble, () => SFX.introStampede(3.4)]);
+    E.push([T1.laugh, () => SFX.laugh()]);
+    E.push([T1.bite, () => { SFX.bite(); introBite(); }]);
+    E.push([T1.bite + 0.07, () => introFreeze()]);
+    E.push([T1.studioOut, () => INTRO_EL.classList.add('studio-out')]);
+    E.push([T1.end, () => introCard(2)]);
+  } else {
+    E.push([0.05, () => { INTRO.scoreLen = SFX.introScore(); }]);
+    E.push([T2.made, () => INTRO_EL.classList.add('made1')]);
+    E.push([T2.hit, () => INTRO_EL.classList.add('made2')]);
+    E.push([T2.final, () => INTRO_EL.classList.add('made3')]);
+    E.push([T2.fade, () => INTRO_EL.classList.add('made-out')]);
+    E.push([T2.end, () => introFinish()]);
+  }
+  return E;
+}
+function introCard(n) {
+  INTRO.card = n; INTRO.t = 0; INTRO.evI = 0; INTRO.ev = introEvents(n); INTRO.frozen = false;
+  INTRO_EL.classList.remove('frozen', 'studio', 'studio-out', 'made1', 'made2', 'made3', 'made-out');
+  INTRO_EL.classList.add('card' + n); INTRO_EL.classList.remove('card' + (3 - n));
+  if (n === 2) { INTRO.embers = []; const k = Math.round(30 + Q.parts / 10); for (let i = 0; i < k; i++) INTRO.embers.push(newEmber(true)); }
+}
+function introBite() {
+  const sk = INTRO.sk, bx = sk.x, by = INTRO.roadY;
+  INTRO.bite = { x: bx, y: by, r: INTRO.RH * 0.62 };
+  for (let i = 0; i < 46; i++) {
+    const a = rand(-Math.PI, 0) + (Math.random() < 0.3 ? Math.PI : 0), s = rand(160, 620);
+    INTRO.debris.push({ x: bx + rand(-30, 30), y: by + rand(-10, 20), vx: Math.cos(a) * s, vy: Math.sin(a) * s, sz: rand(3, 10), rot: rand(TAU), vr: rand(-12, 12), c: Math.random() < 0.7 ? '#2a2d33' : '#d6b450' });
+  }
+  INTRO.shake = 22; INTRO.flash = 1;
+}
+function introFreeze() {
+  // draw one more frame so the debris is caught mid-air, then hold it and switch to red and black
+  INTRO.flash = 0; drawIntro1(0.016);
+  INTRO.frozen = true;
+  INTRO_EL.classList.add('frozen', 'studio');
+  SFX.introSting();
+}
+
+/* ---------- drawing helpers ---------- */
+function easeOutBack(k) { const c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); }
+function drawRunner(g, x, y, r, walk) {
+  const k = r / 13;
+  g.save(); g.translate(x, y); g.scale(k, k);
+  g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(2, 4, 13, 12, 0, 0, TAU); g.fill();
+  const sw = Math.sin(walk) * 4;
+  g.fillStyle = '#2b2f2a'; g.fillRect(-12, -7, 7, 14);
+  g.fillStyle = '#3e4a3a'; g.beginPath(); g.ellipse(0, 0, 9, 13, 0, 0, TAU); g.fill();
+  g.fillStyle = '#f2cc3a'; g.fillRect(-4, -12, 3, 24); g.fillRect(2, -11, 2, 22);
+  g.strokeStyle = '#c9a27e'; g.lineWidth = 4.5; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(2, -8); g.lineTo(9 + sw, -11); g.moveTo(2, 8); g.lineTo(9 - sw, 11); g.stroke();
+  g.fillStyle = '#c9a27e'; g.beginPath(); g.arc(2, 0, 6.5, 0, TAU); g.fill();
+  g.fillStyle = '#2d332b'; g.beginPath(); g.arc(0.5, 0, 6.6, Math.PI * 0.5, Math.PI * 1.5); g.fill(); g.fillRect(2, -6.6, 4, 2.4);
+  g.restore();
+}
+function drawRoadBlocks(g, t) {
+  const B = INTRO.B, top = INTRO.roadY - INTRO.RH / 2, built = clamp((t - T1.build1) / 0.35, 0, 1);
+  if (built > 0) { g.fillStyle = '#24272c'; g.fillRect(0, top, INTRO.w, INTRO.RH); g.fillStyle = '#34383f'; g.fillRect(0, top - B, INTRO.w, B); g.fillRect(0, top + INTRO.RH, INTRO.w, B); }
+  for (const b of INTRO.blocks) {
+    const k = clamp((t - b.ta) / 0.22, 0, 1); if (k <= 0) continue;
+    const e = easeOutBack(k), sc = 1 + (1 - e) * 0.7, x = b.c * B + B / 2, y = top + b.r * B + B / 2;
+    g.save(); g.translate(x, y); g.rotate(b.rot * (1 - e)); g.scale(sc, sc); g.globalAlpha = Math.min(1, k * 2.2);
+    const v = (b.walk ? 52 : 36) + b.sh;
+    g.fillStyle = 'rgb(' + v + ',' + (v + 4) + ',' + (v + 10) + ')'; g.fillRect(-B / 2, -B / 2, B, B);
+    if (b.walk) { g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 1.5; g.strokeRect(-B / 2 + 3, -B / 2 + 3, B - 6, B - 6); }
+    const gr = 1 - built;
+    if (gr > 0) {
+      g.globalAlpha *= gr;
+      g.fillStyle = 'rgba(255,255,255,0.09)'; g.fillRect(-B / 2, -B / 2, B, 2.5); g.fillRect(-B / 2, -B / 2, 2.5, B);
+      g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(-B / 2, B / 2 - 3, B, 3); g.fillRect(B / 2 - 3, -B / 2, 3, B);
+    }
+    g.restore();
+  }
+  g.globalAlpha = 1;
+  if (built > 0) {   // curbs wipe in, then the lane paint is sprayed left to right
+    const cw = INTRO.w * built, ch = Math.max(5, B * 0.16);
+    g.fillStyle = '#4a4e55'; g.fillRect(0, top - ch, cw, ch); g.fillRect(0, top + INTRO.RH, cw, ch);
+    g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(0, top - 2, cw, 2); g.fillRect(0, top + INTRO.RH + ch, cw, 2);
+  }
+  const pk = clamp((t - T1.paint) / 0.45, 0, 1);
+  if (pk > 0) {
+    const px = INTRO.w * pk;
+    g.fillStyle = 'rgba(214,180,80,0.85)';
+    for (let x = 14; x < px; x += 52) g.fillRect(x, INTRO.roadY - 3, Math.min(30, px - x), 6);
+    g.fillStyle = 'rgba(230,226,214,0.55)'; g.fillRect(0, top + 9, px, 3.5); g.fillRect(0, top + INTRO.RH - 12.5, px, 3.5);
+  }
+}
+function drawBite(g) {
+  const b = INTRO.bite; if (!b) return;
+  // a bite taken out of the road: a dark hole with a toothed rim, and cracks running out of it
+  g.fillStyle = '#050405'; g.beginPath();
+  const n = 14;
+  for (let i = 0; i <= n; i++) {
+    const a = Math.PI + i / n * Math.PI, rr = b.r * (i % 2 ? 0.86 : 1.02);
+    const x = b.x + Math.cos(a) * rr * 1.25, y = b.y + 6 + Math.sin(a) * rr * 0.62;
+    if (i) g.lineTo(x, y); else g.moveTo(x, y);
+  }
+  for (let i = 0; i <= n; i++) {
+    const a = i / n * Math.PI, rr = b.r * (i % 2 ? 0.86 : 1.02);
+    g.lineTo(b.x - Math.cos(a) * rr * 1.25 + 0, b.y + 6 + Math.sin(a) * rr * 0.52);
+  }
+  g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(230,226,214,0.7)'; g.lineWidth = 2; g.lineCap = 'round';
+  const seeds = [[-1, -0.2], [1, -0.3], [-0.6, 0.9], [0.7, 0.85], [-1.2, 0.4], [1.3, 0.3]];
+  for (const s of seeds) {
+    let x = b.x + s[0] * b.r * 1.2, y = b.y + s[1] * b.r * 0.6; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 4; k++) { x += s[0] * b.r * 0.32 + (k % 2 ? 8 : -8); y += s[1] * b.r * 0.22 + (k % 2 ? -6 : 6); g.lineTo(x, y); }
+    g.stroke();
+  }
+}
+function drawSkull(g, t) {
+  const sk = INTRO.sk, A = sk.art; if (!A || !A.head.complete) return;
+  if (t < T1.skull) return;
+  // rise, laugh, lunge
+  let s = 1, y = sk.y, jaw = 0, lit = 0, rot = 0;
+  const rk = clamp((t - T1.skull) / 0.85, 0, 1);
+  s = rk < 1 ? 0.2 + 0.95 * easeOutBack(rk) : 1.0;
+  y = sk.y + (1 - rk) * INTRO.RH * 0.9;
+  lit = clamp((t - T1.skull - 0.5) / 0.3, 0, 1);
+  if (t >= T1.laugh && t < T1.lunge) { const lt = t - T1.laugh; jaw = 0.5 + 0.5 * Math.sin(lt * 44); rot = Math.sin(lt * 9) * 0.06; y += Math.sin(lt * 18) * 3; }
+  const base = Math.min(INTRO.w * 0.62, INTRO.h * 0.36), BS = 1.4, biteY = INTRO.roadY - 48 * base * BS / 200;
+  if (t >= T1.lunge) {
+    const lk = clamp((t - T1.lunge) / (T1.bite - T1.lunge), 0, 1), e = lk * lk;
+    s = 1 + e * (BS - 1); y = sk.y + (biteY - sk.y) * e; jaw = lk < 0.85 ? 1 : 0; rot = 0;
+  }
+  if (t >= T1.bite) { jaw = 0; s = BS; y = biteY; }
+  const size = base * s, k = size / 200;
+  g.save(); g.translate(sk.x, y); g.rotate(rot); g.scale(k, k); g.translate(-100, -118);
+  const jy = jaw * 34;
+  if (jaw > 0.05) { g.globalAlpha = jaw; g.drawImage(A.maw, 0, 0, 200, 236); g.globalAlpha = 1; }
+  g.save(); g.translate(100, 166); g.rotate(jaw * 0.05); g.translate(-100, -166 + jy); g.drawImage(A.jaw, 0, 0, 200, 236); g.restore();
+  g.save(); g.translate(0, -jaw * 6); g.drawImage(A.head, 0, 0, 200, 236);
+  if (lit > 0 && A.headLit.complete) { g.globalAlpha = lit * (0.75 + 0.25 * Math.sin(t * 14)); g.drawImage(A.headLit, 0, 0, 200, 236); g.globalAlpha = 1; }
+  g.restore();
+  if (lit > 0) {   // eye glow
+    g.globalCompositeOperation = 'lighter'; g.globalAlpha = lit * 0.55;
+    for (const ex of [68, 132]) { const gr = g.createRadialGradient(ex, 106 - jaw * 6, 2, ex, 106 - jaw * 6, 40); gr.addColorStop(0, 'rgba(255,60,80,0.9)'); gr.addColorStop(1, 'rgba(255,60,80,0)'); g.fillStyle = gr; g.fillRect(ex - 40, 66 - jaw * 6, 80, 80); }
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  }
+  g.restore();
+}
+
+/* ---------- card 1 ---------- */
+function drawIntro1(dt) {
+  const g = IG, t = INTRO.t, w = INTRO.w, h = INTRO.h, d = INTRO.d;
+  g.setTransform(d, 0, 0, d, 0, 0);
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+  let sx = 0, sy = 0;
+  if (INTRO.shake > 0.2 && !RM) { sx = rand(-0.5, 0.5) * INTRO.shake; sy = rand(-0.5, 0.5) * INTRO.shake; }
+  INTRO.shake *= Math.exp(-dt * 6);
+  g.setTransform(d, 0, 0, d, sx * d, sy * d);
+  const amb = clamp((t - T1.build1) / 0.8, 0, 1);
+  if (amb > 0) { g.globalAlpha = amb; g.fillStyle = '#0d1014'; g.fillRect(-30, -30, w + 60, h + 60); g.globalAlpha = 1; }
+  // build the stampede's sprites a few per frame while the road is laid, so nothing hitches when they arrive
+  if (t < T1.run) { let k = 0; for (const r of INTRO.runners) { if (r.kind === 'z' && !r.warm) { getSprite(r.m, r.r, true); r.warm = 1; if (++k >= 4) break; } } }
+  drawRoadBlocks(g, t);
+  drawBite(g);
+  // runners, dust behind them
+  let onScreen = 0;
+  for (const q of INTRO.dust) { q.life -= dt; q.r += dt * 30; q.x += q.vx * dt; }
+  INTRO.dust = INTRO.dust.filter(q => q.life > 0);
+  for (const q of INTRO.dust) { g.globalAlpha = clamp(q.life / q.max, 0, 1) * 0.35; g.fillStyle = '#6a6052'; g.beginPath(); g.arc(q.x, q.y, q.r, 0, TAU); g.fill(); }
+  g.globalAlpha = 1;
+  INTRO.dustT -= dt;
+  const puff = INTRO.dustT <= 0; if (puff) INTRO.dustT = 0.05;
+  const byY = INTRO.runners.slice().sort((a, b) => a.y - b.y);
+  for (const r of byY) {
+    if (t < r.t0) continue;
+    if (!INTRO.frozen) { r.x += r.v * dt; r.walk += dt * 18; }
+    if (r.x < -80 || r.x > w + 80) continue;
+    onScreen++;
+    const bob = r.kind === 'z' ? Math.sin(r.walk + r.bob) * 2 : 0;
+    if (puff && r.kind === 'z' && Math.random() < 0.35 && INTRO.dust.length < 120) INTRO.dust.push({ x: r.x - r.r, y: r.y + r.r * 0.5, r: r.r * 0.5, vx: -40, life: 0.7, max: 0.7 });
+    if (r.kind === 'player') drawRunner(g, r.x, r.y + bob, r.r, r.walk);
+    else {
+      const spr = getSprite(r.m, r.r, true), kk = r.r / spr.rq, hs = spr.half * kk;
+      g.save(); g.translate(r.x, r.y + bob); g.rotate(Math.sin(r.walk * 0.5 + r.bob) * 0.12); g.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); g.restore();
+    }
+  }
+  if (onScreen > 3 && t < T1.skull) INTRO.shake = Math.max(INTRO.shake, Math.min(9, onScreen * 0.22));
+  drawSkull(g, t);
+  for (const q of INTRO.debris) { if (!INTRO.frozen) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 900 * dt; q.rot += q.vr * dt; } g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillStyle = q.c; g.fillRect(-q.sz / 2, -q.sz / 2, q.sz, q.sz * 0.7); g.restore(); }
+  if (INTRO.flash > 0) { g.setTransform(d, 0, 0, d, 0, 0); g.fillStyle = 'rgba(255,240,230,' + Math.min(0.8, INTRO.flash) + ')'; g.fillRect(0, 0, w, h); INTRO.flash -= dt * 6; }
+  g.setTransform(d, 0, 0, d, 0, 0);
+  const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.hypot(w, h) * 0.6);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)'); g.fillStyle = vg; g.fillRect(0, 0, w, h);
+}
+
+/* ---------- card 2 ---------- */
+function newEmber(any) {
+  const w = INTRO.w, h = INTRO.h;
+  return { x: rand(0, w), y: any ? rand(0, h) : h + rand(0, 40), vy: -rand(18, 60), vx: rand(-8, 8), r: rand(0.8, 2.6), ph: rand(TAU), life: rand(3, 7) };
+}
+function drawIntro2(dt) {
+  const g = IG, t = INTRO.t, w = INTRO.w, h = INTRO.h, d = INTRO.d, cx = w / 2, cy = h * 0.46;
+  g.setTransform(d, 0, 0, d, 0, 0); g.globalCompositeOperation = 'source-over';
+  g.fillStyle = '#020203'; g.fillRect(0, 0, w, h);
+  const fadeOut = clamp((t - T2.fade) / 0.9, 0, 1), fadeIn = clamp(t / 0.8, 0, 1);
+  const hit = t >= T2.hit ? Math.exp(-(t - T2.hit) * 2.2) : 0, fin = t >= T2.final ? Math.exp(-(t - T2.final) * 1.6) : 0;
+  let I = (0.18 + 0.5 * clamp((t - T2.hit) / 0.2, 0, 1) + hit * 0.6 + fin * 0.5) * fadeIn * (1 - fadeOut);
+  // light rays behind the title: one pre-rendered fan, slowly turning (cheaper than ten gradients a frame)
+  g.globalCompositeOperation = 'lighter';
+  const R = Math.hypot(w, h) * 0.7;
+  if (!INTRO.rays || INTRO.raysR !== R) {
+    const sz = Math.ceil(R), c = document.createElement('canvas'); c.width = c.height = sz; const rg = c.getContext('2d'), m = sz / 2;
+    rg.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 10; i++) {
+      const a = i / 10 * TAU + Math.sin(i * 2.3) * 0.2, wd = 0.07 + 0.04 * Math.sin(i * 1.7);
+      const gr = rg.createRadialGradient(m, m, 0, m, m, m);
+      gr.addColorStop(0, 'rgba(255,196,110,0.22)'); gr.addColorStop(0.45, 'rgba(255,150,60,0.07)'); gr.addColorStop(1, 'rgba(255,120,40,0)');
+      rg.fillStyle = gr; rg.beginPath(); rg.moveTo(m, m); rg.arc(m, m, m, a - wd, a + wd); rg.closePath(); rg.fill();
+    }
+    const core = rg.createRadialGradient(m, m, 0, m, m, m * 0.8);
+    core.addColorStop(0, 'rgba(255,200,120,0.28)'); core.addColorStop(1, 'rgba(255,160,80,0)'); rg.fillStyle = core; rg.fillRect(0, 0, sz, sz);
+    INTRO.rays = c; INTRO.raysR = R;
+  }
+  g.save(); g.translate(cx, cy); g.rotate(t * 0.07); g.globalAlpha = Math.min(1, I); g.drawImage(INTRO.rays, -R, -R, R * 2, R * 2); g.restore(); g.globalAlpha = 1;
+  // anamorphic streak at the reveal and the final chord
+  const st = Math.max(hit, fin * 0.8);
+  if (st > 0.02) {
+    const sw = w * (0.4 + (1 - st) * 0.9), sh = 3 + st * 5;
+    const lg = g.createLinearGradient(cx - sw / 2, 0, cx + sw / 2, 0);
+    lg.addColorStop(0, 'rgba(255,190,110,0)'); lg.addColorStop(0.5, 'rgba(255,236,200,' + st * 0.9 + ')'); lg.addColorStop(1, 'rgba(255,190,110,0)');
+    g.fillStyle = lg; g.fillRect(cx - sw / 2, cy - sh / 2, sw, sh);
+  }
+  // embers drifting up
+  for (const e of INTRO.embers) {
+    e.y += e.vy * dt; e.x += (e.vx + Math.sin(t * 1.3 + e.ph) * 10) * dt; e.life -= dt;
+    if (e.y < -10 || e.life <= 0) Object.assign(e, newEmber(false));
+    const f = 0.5 + 0.5 * Math.sin(t * 6 + e.ph), a = (0.35 + 0.65 * f) * fadeIn * (1 - fadeOut) * (0.7 + I * 0.6);
+    g.globalAlpha = Math.min(1, a); g.fillStyle = f > 0.7 ? '#ffe2a0' : '#ff9a3a'; g.beginPath(); g.arc(e.x, e.y, e.r * (1 + hit), 0, TAU); g.fill();
+  }
+  g.globalAlpha = 1;
+  if (hit > 0.3 || fin > 0.4) { g.fillStyle = 'rgba(255,230,190,' + Math.max(hit - 0.3, fin - 0.4) * 0.55 + ')'; g.fillRect(0, 0, w, h); }
+  g.globalCompositeOperation = 'source-over';
+  g.drawImage(screenGrad('introVig', 0.28, 0.62, '0,0,0', 0.85), 0, 0, w, h);
+  if (fadeOut > 0) { g.fillStyle = 'rgba(0,0,0,' + fadeOut + ')'; g.fillRect(0, 0, w, h); }
+}
+
+/* ---------- loop, skipping, finishing ---------- */
+function introFrame(dt) {
+  if (!INTRO.on || INTRO.gate || !INTRO.ev) return;
+  INTRO.t += dt;
+  const E = INTRO.ev;
+  while (INTRO.evI < E.length && INTRO.t >= E[INTRO.evI][0]) { const f = E[INTRO.evI++][1]; try { f(); } catch (e) { perfError(e); } if (!INTRO.on) return; }
+  if (!INTRO.on) return;
+  if (INTRO.card === 1) { if (!INTRO.frozen) drawIntro1(dt); }
+  else drawIntro2(dt);
+}
+function introSkip() {
+  if (!INTRO.on) return false;
+  if (INTRO.gate) { introBegin(); return true; }
+  SFX.introCut();
+  if (INTRO.card === 1) introCard(2); else introFinish();
+  return true;
+}
+function introFinish() {
+  if (!INTRO.on) return;
+  INTRO.on = false; SFX.introCut();
+  G.mode = 'title'; initAttract(); showOv('title'); refreshTitle();
+  INTRO_EL.classList.add('out');
+  setTimeout(() => { INTRO_EL.hidden = true; INTRO_EL.className = ''; IV.width = IV.height = 1; INTRO.blocks = []; INTRO.runners = []; INTRO.sk = null; INTRO.rays = null; }, 950);
+}
+function introBegin() {
+  INTRO.gate = false; INTRO_EL.querySelector('.in-gate').hidden = true;
+  SFX.init(); introCard(1);
+}
+function startIntro() {
+  G.mode = 'intro'; INTRO.on = true;
+  showOv(null); INTRO_EL.hidden = false; INTRO_EL.className = '';
+  introBuild();
+  // browsers only allow sound after a tap: if the audio engine can't start on its own, wait for one
+  SFX.init();
+  setTimeout(() => {
+    if (!INTRO.on) return;
+    const st = SFX.health().state;
+    if (st === 'running') introBegin();
+    else { INTRO.gate = true; INTRO_EL.querySelector('.in-gate').hidden = false; }
+  }, 120);
+}
+INTRO_EL.addEventListener('pointerdown', e => { e.preventDefault(); introSkip(); });
+window.addEventListener('keydown', e => { if (INTRO.on && (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); introSkip(); } });
+window.addEventListener('resize', () => { if (INTRO.on && !(INTRO.card === 1 && INTRO.frozen)) introLayout(); });
+
 resize();
 initAttract();
 refreshTitle();
-showOv('title');
+// every launch opens with the studio intro (tests and ?nointro links go straight to the title)
+if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) showOv('title'); else startIntro();
 requestAnimationFrame(frame);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { sprites.clear(); });
 

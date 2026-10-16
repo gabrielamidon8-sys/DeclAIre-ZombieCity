@@ -300,7 +300,8 @@ function perfInit() {
   const r = LADDER[rung]; PERF.rung = rung; PERF.tier = r[0]; PERF.res = r[1]; Object.assign(Q, TIER_Q[r[0]]);
   ZB.setDetail(Q.boss); SFX.setQuality(Q.audio);
   // a first launch also runs a short benchmark once things settle, then re-picks the starting tier
-  if (!(PS.learned && PS.learned.key === PERF.key) || !PS.bench) setTimeout(() => {
+  if (!(PS.learned && PS.learned.key === PERF.key) || !PS.bench) setTimeout(function benchSoon() {
+    if (G.mode === 'intro') { setTimeout(benchSoon, 1000); return; }   // never hitch the intro
     try {
       const b = PERF.bench = benchmark(), sc2 = scoreTier(p, b);
       PS.bench = b; savePerf();
