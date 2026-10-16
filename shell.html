@@ -580,40 +580,7 @@ button.lcd{cursor:pointer}
   .pause-stats{grid-template-columns:repeat(2, minmax(0, 1fr))}
 }
 
-/* ---------- 1.9: the armory keeper ---------- */
-.keeper{position:relative;height:clamp(150px, 20vw, 210px);margin-inline:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));overflow:hidden;border-block:1px solid var(--line);background:#1b1f25}
-.keeper-art{display:block;width:100%;height:100%}
-.keeper::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 30%, transparent 40%, rgba(8,10,13,.75) 100%)}
-.kp-bulb{transform-origin:180px 0;animation:kpsway 5.6s ease-in-out infinite}
-@keyframes kpsway{0%,100%{transform:rotate(-2.6deg)}50%{transform:rotate(2.6deg)}}
-.kp-cone{animation:kpflick 8s steps(1) infinite}
-@keyframes kpflick{0%,61%,65%,100%{opacity:1}62%{opacity:.45}63%{opacity:.9}64%{opacity:.6}}
-.kp-torso{transform-origin:180px 126px;animation:kpbreathe 3.8s ease-in-out infinite}
-@keyframes kpbreathe{50%{transform:scaleY(1.03)}}
-.kp-head{transform-origin:180px 84px;animation:kphead 11s ease-in-out infinite}
-@keyframes kphead{0%,28%,100%{transform:rotate(0) translateY(0)}34%,50%{transform:rotate(-7deg) translateY(-1px)}56%,64%{transform:rotate(4deg)}72%{transform:translateY(2px)}}
-.kp-eyes{transform-origin:180px 60px;animation:kpblink 4.7s infinite}
-@keyframes kpblink{0%,45%,49%,100%{transform:scaleY(1)}47%{transform:scaleY(.1)}}
-.kp-arm{transform-origin:202px 100px;animation:kprub 1.6s ease-in-out infinite}
-@keyframes kprub{0%,100%{transform:rotate(-34deg)}50%{transform:rotate(14deg)}}
-.kp-steam path{animation:kpsteam 2.8s ease-out infinite}
-.kp-steam path:nth-child(2){animation-delay:-1.4s}
-@keyframes kpsteam{0%{opacity:0;transform:translateY(5px)}30%{opacity:.75}100%{opacity:0;transform:translateY(-12px)}}
-.kp-skull{opacity:0}
-.keeper.skulled .kp-face{animation:kpface 4.2s steps(1) forwards}
-.keeper.skulled .kp-skull{animation:kpskull 4.2s steps(1) forwards}
-.keeper.skulled .kp-head{animation:kpshake 4.2s linear forwards}
-.keeper.skulled .kp-jaw{animation:kpjaw .14s ease-in-out .7s 14 alternate}
-.keeper.skulled .kp-sk-eye{animation:kpeye .5s ease-in-out .5s 6 alternate}
-.keeper.skulled .kp-red{animation:kpred 4.2s ease-out forwards}
-.keeper.skulled .kp-lamp{fill:#ff2d4a}
-.keeper.skulled .kp-arm,.keeper.skulled .kp-torso{animation-play-state:paused}
-@keyframes kpface{0%{opacity:1}8%{opacity:0}10%{opacity:1}13%,88%{opacity:0}91%{opacity:1}93%{opacity:0}96%,100%{opacity:1}}
-@keyframes kpskull{0%{opacity:0}8%{opacity:1}10%{opacity:0}13%,88%{opacity:1}91%{opacity:0}93%{opacity:1}96%,100%{opacity:0}}
-@keyframes kpshake{0%,12%,90%,100%{transform:none}14%{transform:translate(-2px, 0) rotate(-4deg)}16%{transform:translate(2px, -1px) rotate(4deg)}18%{transform:translate(-1px, 0) rotate(-2deg)}20%,84%{transform:translateY(-3px) scale(1.08)}}
-@keyframes kpjaw{to{transform:translateY(16px)}}
-@keyframes kpeye{to{opacity:.35}}
-@keyframes kpred{0%{opacity:0}12%{opacity:.32}20%{opacity:.12}50%{opacity:.2}88%{opacity:.16}100%{opacity:0}}
+/*__KEEPERCSS__*/
 
 /* ---------- 1.9: more motion ---------- */
 @keyframes pin{from{opacity:0;transform:translateY(16px) scale(.97)}}
@@ -679,7 +646,7 @@ button.lcd{cursor:pointer}
   .pause-btns .btn{min-height:40px;padding:6px 10px;font-size:12px}
   .sheet-head{padding-block:8px 6px}
   .sheet-head h2{font-size:22px}
-  .keeper{height:clamp(110px, 30vh, 150px)}
+  .keeper{height:clamp(150px, 42vh, 190px)}
   .cards-title{font-size:clamp(24px, 8vh, 36px)}
   .card-row{gap:8px}
   .gcard{padding:8px 10px 10px;gap:4px}
@@ -709,9 +676,8 @@ button.lcd{cursor:pointer}
   .skull-art.rise{opacity:1}
   .sk-eye{opacity:1}
   .sk-jaw,.sk-head,.skull-stage{transition:none}
-  .kp-bulb,.kp-cone,.kp-torso,.kp-head,.kp-eyes,.kp-arm,.kp-steam path,.lcd-song.scroll span,.tk-bars i,.pause-tape span,.pause-title h2::after,.btn.primary::after,.title-body h1 span{animation:none}
+  .lcd-song.scroll span,.tk-bars i,.pause-tape span,.pause-title h2::after,.btn.primary::after,.title-body h1 span{animation:none}
   .radio-drop,#fmTicker,.radio-panel,.pause-card,.pause-stats div,.sheet .sheet-inner,.title-body .btns .btn,.title-radio,.ar-grid .wcard,.ov > .panel{animation:none}
-  .keeper.skulled .kp-head,.keeper.skulled .kp-jaw,.keeper.skulled .kp-red{animation:none}
 }
 </style>
 
@@ -936,94 +902,7 @@ button.lcd{cursor:pointer}
         <div><p class="eyebrow">Armory</p><h2><span id="arCount">1 / 250</span> unlocked</h2></div>
         <button class="icon-btn" id="arClose" aria-label="Close armory">&#215;</button>
       </header>
-      <div class="keeper" id="keeper" aria-hidden="true">
-        <svg class="keeper-art" viewBox="-360 0 1080 190" preserveAspectRatio="xMidYMax slice">
-          <defs>
-            <pattern id="kpPeg" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="1.1" fill="#0c0e11"/></pattern>
-            <pattern id="kpMesh" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="16" height="16" fill="none" stroke="#8b919a" stroke-width="1.3"/></pattern>
-            <radialGradient id="kpCone" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#ffd27a" stop-opacity=".42"/><stop offset=".7" stop-color="#ffb347" stop-opacity=".08"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
-            <radialGradient id="kpGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff4d6"/><stop offset=".4" stop-color="#ff3b4f"/><stop offset="1" stop-color="#ff3b4f" stop-opacity="0"/></radialGradient>
-            <linearGradient id="kpBone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3ecdc"/><stop offset="1" stop-color="#a99d84"/></linearGradient>
-          </defs>
-          <rect x="-360" width="1080" height="190" fill="#1b1f25"/>
-          <rect x="-360" width="1080" height="150" fill="url(#kpPeg)"/>
-          <!-- guns on the wall -->
-          <use href="#kpRack" x="-360"/><use href="#kpRack" x="360"/>
-          <g fill="#3a2c1e" stroke="#120d08" stroke-width="1.5"><rect x="-330" y="120" width="60" height="30"/><rect x="-262" y="128" width="40" height="22"/><rect x="430" y="118" width="58" height="32"/><rect x="496" y="130" width="40" height="20"/><rect x="600" y="122" width="48" height="28"/></g>
-          <g fill="#f2cc3a" font-family="Share Tech Mono, monospace" font-size="8" letter-spacing="1"><text x="-326" y="138">AMMO</text><text x="436" y="137">7.62</text><text x="606" y="139">HE</text></g>
-          <g fill="#4a5640" stroke="#0e110c" stroke-width="1.2"><ellipse cx="-200" cy="145" rx="7" ry="5"/><ellipse cx="-186" cy="146" rx="7" ry="5"/><ellipse cx="-193" cy="138" rx="7" ry="5"/></g>
-          <g id="kpRack" fill="#2b3038" stroke="#0b0d10" stroke-width="1.2">
-            <path d="M18 40 h70 l6 4 h18 v5 h-22 l-6 9 h-8 l3 -9 h-61 z"/><path d="M22 70 h56 l10 -3 h26 v6 h-30 l-4 10 h-9 l2 -10 h-51 z"/>
-            <path d="M16 100 h86 v5 h-60 l-8 12 h-8 l4 -12 h-14 z"/>
-            <path d="M262 38 h66 l8 5 h12 v5 h-20 l-5 10 h-9 l3 -10 h-55 z"/><path d="M256 70 h84 v6 h-40 l-6 11 h-9 l4 -11 h-33 z"/>
-            <path d="M266 102 h50 l12 -4 h16 v7 h-26 l-5 9 h-8 l2 -9 h-41 z"/>
-          </g>
-          <g fill="#0b0d10"><circle cx="24" cy="38" r="2"/><circle cx="90" cy="38" r="2"/><circle cx="268" cy="36" r="2"/><circle cx="334" cy="36" r="2"/><circle cx="26" cy="68" r="2"/><circle cx="98" cy="68" r="2"/></g>
-          <rect x="-360" y="150" width="1080" height="40" fill="#121418"/>
-          <path d="M-360 150 H720" stroke="#2a2f37" stroke-width="2"/>
-          <!-- the light -->
-          <g class="kp-bulb">
-            <path d="M180 0 V22" stroke="#0b0d10" stroke-width="1.5"/>
-            <path class="kp-cone" d="M174 26 L92 190 H268 L186 26 Z" fill="url(#kpCone)"/>
-            <path d="M175 22 h10 v5 h-10 z" fill="#3a3f47"/><circle class="kp-lamp" cx="180" cy="31" r="5" fill="#ffe2a0"/>
-          </g>
-          <!-- crate, mug and steam -->
-          <rect x="246" y="128" width="44" height="34" fill="#4a3826" stroke="#1c140c" stroke-width="2"/><path d="M246 140 H290 M246 151 H290" stroke="#2e2216" stroke-width="1.5"/>
-          <rect x="262" y="116" width="11" height="12" rx="1.5" fill="#c9c2b2" stroke="#1c140c" stroke-width="1.5"/><path d="M273 119 q5 0 5 4 q0 4 -5 4" fill="none" stroke="#1c140c" stroke-width="1.5"/>
-          <g class="kp-steam" fill="none" stroke="#d9d4c8" stroke-width="1.6" stroke-linecap="round"><path d="M265 112 q-3 -5 0 -9 q3 -4 0 -9"/><path d="M270 111 q3 -5 0 -10 q-3 -4 0 -8"/></g>
-          <!-- the chair -->
-          <g fill="#5a4330" stroke="#1c140c" stroke-width="2"><rect x="146" y="66" width="68" height="60" rx="4"/><rect x="150" y="122" width="6" height="40"/><rect x="204" y="122" width="6" height="40"/></g>
-          <!-- the keeper -->
-          <g class="kp-body">
-            <path d="M160 122 L156 160 h14 l4 -34 M200 122 L204 160 h-14 l-4 -34" fill="#2f3a2a" stroke="#0e110c" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M150 164 q0 -7 8 -7 h12 v9 h-20 z M210 164 q0 -7 -8 -7 h-12 v9 h20 z" fill="#17191c"/>
-            <g class="kp-torso">
-              <path d="M154 126 C150 104 152 88 164 82 L196 82 C208 88 210 104 206 126 Z" fill="#4c5a3a" stroke="#0e110c" stroke-width="2"/>
-              <path d="M170 82 L180 100 L190 82" fill="#2a3221" stroke="#0e110c" stroke-width="1.5"/>
-              <path d="M163 96 h10 v8 h-10 z" fill="#3b4730" stroke="#0e110c" stroke-width="1.2"/>
-              <rect x="186" y="96" width="12" height="4" fill="#f2cc3a"/>
-            </g>
-            <!-- the rifle across his lap, being cleaned -->
-            <g class="kp-rifle"><path d="M132 118 h44 l8 -3 h26 l6 4 h30 v4 h-30 l-4 3 h-28 l-6 8 h-8 l3 -8 h-41 z" fill="#2c3036" stroke="#0b0d10" stroke-width="1.6"/></g>
-            <path d="M158 100 C150 108 150 116 160 121" fill="none" stroke="#4c5a3a" stroke-width="9" stroke-linecap="round"/>
-            <circle cx="162" cy="121" r="5" fill="#c79a74" stroke="#2a1c12" stroke-width="1.5"/>
-            <g class="kp-arm">
-              <path d="M202 100 C212 108 212 114 204 119" fill="none" stroke="#4c5a3a" stroke-width="9" stroke-linecap="round"/>
-              <g class="kp-rag"><path d="M196 113 l12 -2 l3 9 l-12 3 z" fill="#b8402f" stroke="#3a120c" stroke-width="1.2"/><circle cx="203" cy="119" r="5" fill="#c79a74" stroke="#2a1c12" stroke-width="1.5"/></g>
-            </g>
-            <!-- head: the human one, and the one that almost never shows -->
-            <g class="kp-head">
-              <g class="kp-face">
-                <rect x="174" y="72" width="12" height="10" fill="#b5876a"/>
-                <ellipse cx="180" cy="60" rx="16" ry="18" fill="#c79a74" stroke="#2a1c12" stroke-width="2"/>
-                <path d="M164 62 C164 82 172 86 180 86 C188 86 196 82 196 62 C192 70 186 72 180 72 C174 72 168 70 164 62 Z" fill="#5b3a26" stroke="#2a1c12" stroke-width="1.5"/>
-                <path d="M174 70 q6 3 12 0" fill="none" stroke="#2a1c12" stroke-width="1.6" stroke-linecap="round"/>
-                <path d="M164 52 C164 34 196 34 196 52 L198 54 H162 Z" fill="#7a2a24" stroke="#2a1c12" stroke-width="2"/>
-                <path d="M162 50 H198 V55 H162 Z" fill="#5d1f1a"/>
-                <g class="kp-eyes" fill="#14100c"><ellipse cx="174" cy="60" rx="2.2" ry="2.4"/><ellipse cx="186" cy="60" rx="2.2" ry="2.4"/></g>
-                <path d="M170 56 l7 1 M190 56 l-7 1" stroke="#2a1c12" stroke-width="2" stroke-linecap="round"/>
-                <path d="M181 62 l-2 5 h4" fill="none" stroke="#8a5d42" stroke-width="1.4" stroke-linejoin="round"/>
-                <path d="M186 71 l9 -3" stroke="#d8c6a0" stroke-width="1.4" stroke-linecap="round"/>
-              </g>
-              <g class="kp-skull">
-                <g transform="translate(156 33) scale(.24)">
-                  <g class="kp-jaw"><path d="M46 166 L154 166 L150 194 C142 214 124 226 100 226 C76 226 58 214 50 194 Z" fill="url(#kpBone)" stroke="#1a1210" stroke-width="5"/><g fill="#efe6d2" stroke="#1a1210" stroke-width="2.5"><rect x="61" y="166" width="13" height="16"/><rect x="76" y="166" width="13" height="17"/><rect x="91" y="166" width="17" height="17"/><rect x="110" y="166" width="13" height="17"/><rect x="125" y="166" width="13" height="16"/></g></g>
-                  <path d="M100 10 C50 10 20 48 20 98 C20 124 30 142 44 152 L46 174 L154 174 L156 152 C170 142 180 124 180 98 C180 48 150 10 100 10 Z" fill="url(#kpBone)" stroke="#1a1210" stroke-width="5"/>
-                  <path d="M42 94 C46 80 70 76 90 90 C94 108 86 126 68 128 C50 126 40 110 42 94 Z M158 94 C154 80 130 76 110 90 C106 108 114 126 132 128 C150 126 160 110 158 94 Z" fill="#0d0607"/>
-                  <circle class="kp-sk-eye" cx="68" cy="106" r="18" fill="url(#kpGlow)"/><circle class="kp-sk-eye" cx="132" cy="106" r="18" fill="url(#kpGlow)"/>
-                  <path d="M100 126 L90 148 L100 144 L110 148 Z" fill="#0d0607"/>
-                  <g fill="#f3ead6" stroke="#1a1210" stroke-width="2.5"><rect x="57" y="156" width="14" height="19"/><rect x="73" y="155" width="14" height="21"/><rect x="89" y="155" width="22" height="23"/><rect x="113" y="155" width="14" height="21"/><rect x="129" y="156" width="14" height="19"/></g>
-                </g>
-              </g>
-            </g>
-          </g>
-          <!-- the cage -->
-          <rect class="kp-red" x="-360" width="1080" height="190" fill="#ff1e3c" opacity="0"/>
-          <rect x="-360" width="1080" height="190" fill="url(#kpMesh)" opacity=".42"/>
-          <g fill="none" stroke="#5c626b" stroke-width="5"><path d="M-240 0 V190 M-120 0 V190 M2 0 V190 M120 0 V190 M240 0 V190 M358 0 V190 M480 0 V190 M600 0 V190 M-360 3 H720 M-360 186 H720"/></g>
-          <g transform="translate(14 162) rotate(-4)"><rect width="112" height="18" fill="#f2cc3a" stroke="#17140b" stroke-width="1.5"/><text x="56" y="13" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="11" letter-spacing="1.5" fill="#17140b">NO REFUNDS</text></g>
-        </svg>
-      </div>
+<!--__KEEPER__-->
       <p class="strain-note" id="arLoadout"></p>
       <div class="cx-tools"><label class="toggle"><input type="checkbox" id="arSpoil"> Show locked weapons</label></div>
       <div class="chips" id="arFrames" role="tablist" aria-label="Weapon types"></div>

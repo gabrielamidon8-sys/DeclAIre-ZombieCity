@@ -1,0 +1,357 @@
+/* ---------- the armory keeper (1.9.01) ----------
+   Five stacked layers share one coordinate system: the back room, the moving ambience, the keeper, the cage and the
+   effects. Only the keeper and ambience layers repaint while he moves. Every act is a data-act value: CSS moves the
+   rig (shoulders, elbows, head, props); keeper.js times the faces, speech, sounds and the order of acts. */
+.keeper{position:relative;height:clamp(200px, 50vw, 280px);margin-inline:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));overflow:hidden;border-block:1px solid var(--line);background:#14171c;contain:paint;isolation:isolate}
+.keeper::after{content:"";position:absolute;inset:0;z-index:6;pointer-events:none;background:radial-gradient(ellipse at 50% 34%, transparent 42%, rgba(6,8,10,.78) 100%), linear-gradient(transparent 85%, rgba(6,8,10,.6))}
+.kp-l{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.kp-amb,.kp-actor{will-change:transform}
+.kp-front,.kp-back{transform:translateZ(0)}
+.kp-dark{position:absolute;inset:0;background:#030405;opacity:0;pointer-events:none}
+.kp-poke{position:absolute;left:50%;top:14%;width:min(30%, 190px);height:66%;transform:translateX(-50%);z-index:7;background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.kp-poke:focus-visible{outline:2px solid var(--tape);outline-offset:-2px}
+
+/* the speech bubble, typed out letter by letter */
+.kp-say{position:absolute;z-index:8;max-width:min(250px, 46%);padding:7px 11px 8px;background:#f4efe2;color:#1a1d22;border:2px solid #17140b;border-radius:10px;box-shadow:0 6px 16px rgba(0,0,0,.5);font-size:13.5px;font-weight:600;line-height:1.3;pointer-events:none;transform-origin:0 50%;animation:kpsay .22s cubic-bezier(.2,.9,.3,1.4)}
+.kp-say::before{content:"";position:absolute;left:-10px;top:50%;margin-top:-7px;border:7px solid transparent;border-right:10px solid #17140b;border-left:0}
+.kp-say::after{content:"";position:absolute;left:-6px;top:50%;margin-top:-5px;border:5px solid transparent;border-right:7px solid #f4efe2;border-left:0}
+.kp-say.left{transform-origin:100% 50%}
+.kp-say.left::before{left:auto;right:-10px;border-right:0;border-left:10px solid #17140b}
+.kp-say.left::after{left:auto;right:-6px;border-right:0;border-left:7px solid #f4efe2}
+.kp-say.verse{font-style:italic;font-family:var(--f-ui);background:#fbf3d9}
+.kp-say.verse::after{border-right-color:#fbf3d9}
+.kp-say.verse.left::after{border-left-color:#fbf3d9}
+.kp-say p{margin:0}
+@keyframes kpsay{from{opacity:0;transform:scale(.6)}}
+
+/* the glitch, for the rarest event in the game */
+.kp-glitch{position:absolute;inset:0;z-index:5;pointer-events:none;display:none}
+.keeper[data-act="skull"] .kp-glitch{display:block}
+.kp-glitch i{position:absolute;left:0;right:0;height:6px;opacity:0;mix-blend-mode:screen}
+.kp-glitch b{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);font-family:var(--f-num);font-weight:400;font-size:12px;letter-spacing:.18em;color:#ff3b4f;text-shadow:2px 0 #00e5ff, -2px 0 #ff00c8;white-space:nowrap;opacity:0}
+.keeper.glitching .kp-actor{filter:url(#kpGlitchF)}
+.keeper.glitching .kp-l{transform:translateX(var(--gx, 0))}
+.keeper.glitching::before{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;opacity:.22;mix-blend-mode:overlay;background:repeating-linear-gradient(0deg, rgba(255,255,255,.18) 0 1px, transparent 1px 3px);animation:kpscan .12s steps(2) infinite}
+@keyframes kpscan{50%{transform:translateY(2px)}}
+
+/* faces and props: one of each is shown at a time */
+.kp-m,.kp-e{display:none}
+.keeper:not([data-mouth]) .kp-m-flat,.keeper[data-mouth="flat"] .kp-m-flat,.keeper[data-mouth="smile"] .kp-m-smile,.keeper[data-mouth="grin"] .kp-m-grin,.keeper[data-mouth="o"] .kp-m-o,.keeper[data-mouth="talk"] .kp-m-talk{display:inline}
+.keeper:not([data-eyes]) .kp-e-open,.keeper[data-eyes="open"] .kp-e-open,.keeper[data-eyes="shut"] .kp-e-shut,.keeper[data-eyes="wide"] .kp-e-wide,.keeper[data-eyes="wink"] .kp-e-wink{display:inline}
+.kp-m-talk{transform-origin:180px 73px;animation:kptalk .16s ease-in-out infinite alternate}
+@keyframes kptalk{to{transform:scaleY(.35)}}
+.kp-skull,.kp-ruff,.kp-paper,.kp-gunfront,.kp-yorick,.kp-machete,.kp-newmag,.kp-hmug,.kp-stone,.kp-thumb,.kp-rag{display:none}
+.keeper[data-head="skull"] .kp-face{display:none}
+.keeper[data-head="skull"] .kp-skull{display:inline}
+.keeper[data-cup="hand"] .kp-hmug{display:inline}
+.keeper[data-cup="hand"] .kp-cmug,.keeper[data-cup="hand"] .kp-csteam{display:none}
+.keeper[data-mag="hand"] .kp-newmag{display:inline}
+.keeper[data-brows="up"] .kp-brows{transform:translateY(-2.5px)}
+.keeper[data-brows="cross"] .kp-browA{transform:rotate(14deg);transform-origin:173px 54px}
+.keeper[data-brows="cross"] .kp-browB{transform:rotate(-14deg);transform-origin:187px 54px}
+.kp-brows,.kp-browA,.kp-browB{transition:transform .2s}
+.kp-fx > *{opacity:0}
+
+/* ---------- always on: the room ---------- */
+.kp-bulb{transform-origin:180px 0;animation:kpsway 5.6s ease-in-out infinite}
+@keyframes kpsway{0%,100%{transform:rotate(-2.6deg)}50%{transform:rotate(2.6deg)}}
+.kp-cone{animation:kpflick 9s steps(1) infinite}
+@keyframes kpflick{0%,61%,65%,100%{opacity:1}62%{opacity:.4}63%{opacity:.9}64%{opacity:.55}}
+.kp-motes circle{animation:kpmote 7s ease-in-out infinite alternate}
+.kp-motes circle:nth-child(2n){animation-duration:9s;animation-delay:-3s}
+.kp-motes circle:nth-child(3n){animation-duration:11s;animation-delay:-5s}
+@keyframes kpmote{0%{transform:translate(0, 0);opacity:.2}50%{opacity:.9}100%{transform:translate(6px, -14px);opacity:.3}}
+.kp-neon{animation:kpneon 6s steps(1) infinite}
+@keyframes kpneon{0%,40%,44%,72%,100%{opacity:1}41%,43%{opacity:.25}42%{opacity:.8}73%{opacity:.5}}
+.kp-neon-glow{opacity:calc(.55 + var(--beat, 0) * .45)}
+.kp-clk-s{transform-origin:0 0;animation:kpclock 60s steps(60) infinite}
+.kp-clk-m{transform-origin:0 0;transform:rotate(130deg);animation:kpclock 3600s linear infinite}
+.kp-clk-h{transform-origin:0 0;transform:rotate(300deg)}
+@keyframes kpclock{from{transform:rotate(var(--r0, 0deg))}to{transform:rotate(calc(var(--r0, 0deg) + 360deg))}}
+.kp-spk{transform-box:fill-box;transform-origin:50% 50%;transform:scale(calc(1 + var(--beat, 0) * .22))}
+.kp-led{animation:kpled 1.2s steps(1) infinite}
+@keyframes kpled{50%{opacity:.3}}
+.kp-steam circle{animation:kpstm 3.4s ease-out infinite;opacity:0}
+.kp-steam circle:nth-child(2){animation-delay:-1.1s}.kp-steam circle:nth-child(3){animation-delay:-2.2s}
+@keyframes kpstm{0%{transform:translate(0, 0) scale(.4);opacity:0}20%{opacity:.4}100%{transform:translate(10px, 18px) scale(1.8);opacity:0}}
+.kp-drip{animation:kpdrip 3.2s ease-in infinite}
+@keyframes kpdrip{0%,60%{transform:translateY(0);opacity:1}97%{transform:translateY(62px);opacity:1}100%{transform:translateY(62px);opacity:0}}
+.kp-splash{transform-box:fill-box;transform-origin:50% 50%;animation:kpsplash 3.2s linear infinite;opacity:0}
+@keyframes kpsplash{0%,96%{opacity:0;transform:scale(.3)}97%{opacity:.9}100%{opacity:0;transform:scale(2.4)}}
+.kp-lampg{animation:kplamp 5s ease-in-out infinite alternate}
+@keyframes kplamp{to{opacity:.7}}
+.kp-rat{transform:translate(-420px, 167px);animation:kprat 31s linear infinite}
+@keyframes kprat{0%{transform:translate(-420px, 167px)}14%{transform:translate(760px, 167px)}100%{transform:translate(760px, 167px)}}
+.kp-csteam path{animation:kpcst 2.8s ease-out infinite;opacity:0}
+.kp-csteam path:nth-child(2){animation-delay:-1.4s}
+@keyframes kpcst{0%{opacity:0;transform:translateY(4px)}30%{opacity:.75}100%{opacity:0;transform:translateY(-12px)}}
+.fx-padlock{opacity:1 !important;transform-origin:123px 118px;animation:kplock 3.8s ease-in-out infinite}
+@keyframes kplock{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+
+/* ---------- the rig ---------- */
+.kp-upper{transform-origin:180px 128px;animation:kpbreathe 3.8s ease-in-out infinite}
+@keyframes kpbreathe{50%{transform:translateY(-.9px)}}
+.kp-head{transform-origin:180px 80px;animation:kphead 11s ease-in-out infinite}
+@keyframes kphead{0%,26%,100%{transform:rotate(0) translateY(0)}32%,46%{transform:rotate(-7deg) translateY(-1px)}52%,62%{transform:rotate(5deg)}70%{transform:translateY(1.5px)}}
+.kp-e-open{transform-origin:180px 59px;animation:kpblink 4.7s infinite}
+@keyframes kpblink{0%,45%,49%,100%{transform:scaleY(1)}47%{transform:scaleY(.1)}}
+.kp-armA{transform-origin:156px 92px}.kp-foreA{transform-origin:150px 110px}
+.kp-armB{transform-origin:204px 92px}.kp-foreB{transform-origin:210px 110px}
+.kp-rifle{transform-origin:175px 121px}
+.kp-footA{transform-origin:152px 168px}
+.kp-paper{transform-origin:180px 103px}
+.kp-yorick{transform-origin:163px 121px}
+.kp-thumb{transform-origin:197px 121px}
+.kp-hmug{transform-origin:197px 121px}
+.kp-tags{transform-origin:180px 84px;animation:kptags 3.8s ease-in-out infinite}
+@keyframes kptags{50%{transform:rotate(3deg)}}
+.keeper[data-act] .kp-head{animation:none}
+
+/* 1. cleaning the rifle */
+.keeper[data-act="clean"] .kp-rag{display:inline}
+.keeper[data-act="clean"] .kp-armB{animation:kpCleanA 1.2s ease-in-out 5}
+.keeper[data-act="clean"] .kp-foreB{animation:kpCleanF 1.2s ease-in-out 5}
+.keeper[data-act="clean"] .kp-head{animation:kpLookDown 6s ease-in-out both}
+.keeper[data-act="clean"] .kp-pupils{transform:translateY(1.2px)}
+@keyframes kpCleanA{0%,100%{transform:rotate(0)}30%{transform:rotate(18deg)}75%{transform:rotate(-42deg)}}
+@keyframes kpCleanF{0%,100%{transform:rotate(0)}30%{transform:rotate(-8deg)}75%{transform:rotate(-13deg)}}
+@keyframes kpLookDown{0%,100%{transform:none}10%,90%{transform:rotate(5deg) translateY(1.5px)}}
+
+/* 2. sleeping */
+.keeper[data-act="sleep"] .kp-head{animation:kpSleepH 9.5s ease-in-out both}
+.keeper[data-act="sleep"] .kp-upper{animation:kpSleepB 9.5s ease-in-out both}
+.keeper[data-act="sleep"] .kp-armA{animation:kpSleepAA 9.5s ease-in-out both}
+.keeper[data-act="sleep"] .kp-armB{animation:kpSleepAB 9.5s ease-in-out both}
+.keeper[data-act="sleep"] .fx-zzz text{animation:kpZ 2.4s ease-out 1s 3 backwards}
+.keeper[data-act="sleep"] .fx-zzz{opacity:1}
+.keeper[data-act="sleep"] .fx-zzz .z2{animation-delay:1.8s}
+.keeper[data-act="sleep"] .fx-zzz .z3{animation-delay:2.6s}
+.keeper[data-act="sleep"] .fx-bang{animation:kpBang 1.4s ease-out 8.1s both}
+@keyframes kpSleepH{0%,100%{transform:none}10%{transform:rotate(15deg) translateY(4px)}30%{transform:rotate(17deg) translateY(5px)}48%{transform:rotate(13deg) translateY(4px)}66%{transform:rotate(17deg) translateY(5px)}84%{transform:rotate(16deg) translateY(5px)}87%{transform:rotate(-6deg) translateY(-3px)}91%{transform:rotate(3deg)}}
+@keyframes kpSleepB{0%,100%{transform:none}12%,84%{transform:translateY(1.5px)}24%,48%,72%{transform:translateY(.2px)}36%,60%{transform:translateY(2px)}87%{transform:translateY(-2px)}}
+@keyframes kpSleepAA{0%,100%{transform:none}12%,84%{transform:rotate(-7deg)}87%{transform:rotate(14deg)}}
+@keyframes kpSleepAB{0%,100%{transform:none}12%,84%{transform:rotate(7deg)}87%{transform:rotate(-14deg)}}
+@keyframes kpZ{0%{opacity:0;transform:translate(0, 0) scale(.5)}20%{opacity:1}100%{opacity:0;transform:translate(18px, -26px) scale(1.15)}}
+@keyframes kpBang{0%{opacity:0;transform:translateY(6px) scale(.4)}15%{opacity:1;transform:translateY(-2px) scale(1.2)}30%{transform:none}80%{opacity:1}100%{opacity:0}}
+
+/* 3. the bard: a funny poem, then a bow */
+.keeper[data-act="bard"] .kp-ruff,.keeper[data-act="bardbow"] .kp-ruff,.keeper[data-act="bard"] .kp-yorick,.keeper[data-act="bardbow"] .kp-yorick{display:inline}
+.keeper[data-act="bard"] .kp-armA{animation:kpBardAA var(--dur, 15s) ease-in-out both}
+.keeper[data-act="bard"] .kp-foreA{animation:kpBardFA var(--dur, 15s) ease-in-out both}
+.keeper[data-act="bard"] .kp-yorick{animation:kpBardY var(--dur, 15s) ease-in-out both}
+.keeper[data-act="bard"] .kp-armB{animation:kpBardAB var(--dur, 15s) ease-in-out both}
+.keeper[data-act="bard"] .kp-foreB{animation:kpBardFB 3s ease-in-out infinite}
+.keeper[data-act="bard"] .kp-head{animation:kpBardH 5s ease-in-out infinite}
+.keeper[data-act="bard"] .kp-rifle,.keeper[data-act="bardbow"] .kp-rifle{opacity:0;transition:opacity .4s}
+@keyframes kpBardAA{0%{transform:none}8%,100%{transform:rotate(58deg)}}
+@keyframes kpBardFA{0%{transform:none}8%,100%{transform:rotate(119deg)}}
+@keyframes kpBardY{0%{transform:none}8%,100%{transform:rotate(-177deg)}}
+@keyframes kpBardAB{0%{transform:none}8%,100%{transform:rotate(-136deg)}}
+@keyframes kpBardFB{0%,100%{transform:rotate(-70deg)}50%{transform:rotate(-52deg)}}
+@keyframes kpBardH{0%,100%{transform:rotate(-6deg) translateY(-1px)}50%{transform:rotate(4deg)}}
+.keeper[data-act="bardbow"] .kp-armA{animation:kpBowAA 2.6s ease-in-out both}
+.keeper[data-act="bardbow"] .kp-foreA{animation:kpBowFA 2.6s ease-in-out both}
+.keeper[data-act="bardbow"] .kp-yorick{animation:kpBowY 2.6s ease-in-out both}
+.keeper[data-act="bardbow"] .kp-armB{animation:kpBowAB 2.6s ease-in-out both}
+.keeper[data-act="bardbow"] .kp-foreB{animation:kpBowFB 2.6s ease-in-out both}
+.keeper[data-act="bardbow"] .kp-upper{animation:kpBow 2.6s ease-in-out both}
+@keyframes kpBowAA{0%{transform:rotate(58deg)}35%,65%{transform:rotate(-10deg)}100%{transform:none}}
+@keyframes kpBowFA{0%{transform:rotate(119deg)}35%,65%{transform:rotate(-40deg)}100%{transform:none}}
+@keyframes kpBowY{0%{transform:rotate(-177deg)}35%,65%{transform:rotate(50deg)}100%{transform:none}}
+@keyframes kpBowAB{0%{transform:rotate(-136deg)}35%,65%{transform:rotate(10deg)}100%{transform:none}}
+@keyframes kpBowFB{0%{transform:rotate(-70deg)}35%,65%{transform:rotate(40deg)}100%{transform:none}}
+@keyframes kpBow{0%,100%{transform:none}35%,65%{transform:rotate(16deg) translateY(2px)}}
+
+/* 4. coffee */
+.keeper[data-act="coffee"] .kp-armB{animation:kpCofA 5.5s ease-in-out both}
+.keeper[data-act="coffee"] .kp-foreB{animation:kpCofF 5.5s ease-in-out both}
+.keeper[data-act="coffee"] .kp-hmug{animation:kpCofM 5.5s ease-in-out both}
+.keeper[data-act="coffee"] .kp-head{animation:kpCofH 5.5s ease-in-out both}
+@keyframes kpCofA{0%,100%{transform:none}16%,24%{transform:rotate(-68deg)}42%,66%{transform:rotate(106deg)}82%,88%{transform:rotate(-68deg)}}
+@keyframes kpCofF{0%,100%{transform:none}16%,24%{transform:rotate(12deg)}42%,66%{transform:rotate(34deg)}82%,88%{transform:rotate(12deg)}}
+@keyframes kpCofM{0%,24%{transform:none}42%,66%{transform:rotate(-140deg)}82%,100%{transform:none}}
+@keyframes kpCofH{0%,30%,78%,100%{transform:none}46%,64%{transform:rotate(-5deg) translateY(-1px)}}
+
+/* 5. aiming down the sights, straight at you */
+.keeper[data-act="aim"] .kp-gunfront{display:inline;animation:kpShow 5.2s ease-in-out both}
+.keeper[data-act="aim"] .kp-rifle{animation:kpHide 5.2s ease-in-out both}
+.keeper[data-act="aim"] .kp-armA{animation:kpAimAA 5.2s ease-in-out both}
+.keeper[data-act="aim"] .kp-foreA{animation:kpAimFA 5.2s ease-in-out both}
+.keeper[data-act="aim"] .kp-armB{animation:kpAimAB 5.2s ease-in-out both}
+.keeper[data-act="aim"] .kp-foreB{animation:kpAimFB 5.2s ease-in-out both}
+.keeper[data-act="aim"] .fx-glint{animation:kpGlint 1s ease-out 1.9s both;transform-origin:188px 59px}
+.keeper[data-act="aim"] .fx-laser{animation:kpLaser 5.2s linear both}
+@keyframes kpShow{0%,12%{opacity:0;transform:translateY(16px) scale(.8)}20%,80%{opacity:1;transform:none}88%,100%{opacity:0;transform:translateY(16px) scale(.8)}}
+@keyframes kpHide{0%,10%,90%,100%{opacity:1}18%,82%{opacity:0}}
+@keyframes kpAimAA{0%,100%{transform:none}18%,82%{transform:rotate(-66deg)}}
+@keyframes kpAimFA{0%,100%{transform:none}18%,82%{transform:rotate(-58deg)}}
+@keyframes kpAimAB{0%,100%{transform:none}18%,82%{transform:rotate(73deg)}}
+@keyframes kpAimFB{0%,100%{transform:none}18%,82%{transform:rotate(55deg)}}
+@keyframes kpGlint{0%{opacity:0;transform:scale(.2) rotate(0)}30%{opacity:1;transform:scale(1.3) rotate(45deg)}100%{opacity:0;transform:scale(.4) rotate(90deg)}}
+@keyframes kpLaser{0%,24%{opacity:0;transform:translate(300px, 60px)}30%{opacity:1;transform:translate(260px, 70px)}50%{transform:translate(120px, 150px)}62%{transform:translate(170px, 110px)}70%,80%{opacity:1;transform:translate(180px, 128px)}84%,100%{opacity:0;transform:translate(180px, 128px)}}
+
+/* 6. flipping a bullet like a coin */
+.keeper[data-act="coin"] .kp-armB{animation:kpCoinA 4.2s ease-in-out both}
+.keeper[data-act="coin"] .kp-foreB{animation:kpCoinF 4.2s ease-in-out both}
+.keeper[data-act="coin"] .kp-head{animation:kpCoinH 4.2s ease-in-out both}
+.keeper[data-act="coin"] .fx-bullet{animation:kpBullet 4.2s ease-in-out both}
+@keyframes kpCoinA{0%,100%{transform:none}14%,22%{transform:rotate(-33deg)}26%{transform:rotate(-66deg)}34%,60%{transform:rotate(-40deg)}66%,80%{transform:rotate(-33deg)}}
+@keyframes kpCoinF{0%,100%{transform:none}14%,22%{transform:rotate(66deg)}26%{transform:rotate(99deg)}34%,60%{transform:rotate(70deg)}66%,80%{transform:rotate(66deg)}}
+@keyframes kpCoinH{0%,18%,76%,100%{transform:none}30%,52%{transform:rotate(-9deg) translateY(-1.5px)}62%{transform:rotate(3deg)}}
+@keyframes kpBullet{0%,22%{opacity:0;transform:translate(203px, 102px) rotate(0)}24%{opacity:1;transform:translate(204px, 98px) rotate(0)}43%{transform:translate(206px, 28px) rotate(900deg);animation-timing-function:ease-in}64%{opacity:1;transform:translate(204px, 102px) rotate(1800deg)}68%,100%{opacity:0;transform:translate(204px, 104px) rotate(1800deg)}}
+
+/* 7. reloading */
+.keeper[data-act="reload"] .kp-rifle{animation:kpRelR 4.6s ease-in-out both}
+.keeper[data-act="reload"] .kp-mag{animation:kpRelMag 4.6s ease-in both}
+.keeper[data-act="reload"] .kp-armA{animation:kpRelAA 4.6s ease-in-out both}
+.keeper[data-act="reload"] .kp-foreA{animation:kpRelFA 4.6s ease-in-out both}
+.keeper[data-act="reload"] .kp-armB{animation:kpRelAB 4.6s ease-in-out both}
+.keeper[data-act="reload"] .fx-click{animation:kpClick .9s ease-out 2.6s both;transform-origin:226px 108px}
+.keeper[data-act="reload"] .kp-head{animation:kpLookDown 4.6s ease-in-out both}
+@keyframes kpRelR{0%,100%{transform:none}10%,80%{transform:rotate(-16deg) translateY(-3px)}57%{transform:rotate(-13deg) translateY(-1px)}}
+@keyframes kpRelMag{0%,20%{opacity:1;transform:none}32%{opacity:0;transform:translateY(34px) rotate(25deg)}55%{opacity:0;transform:none}57%,100%{opacity:1;transform:none}}
+@keyframes kpRelAA{0%,100%{transform:none}30%,36%{transform:rotate(14deg)}55%,60%{transform:rotate(-45deg)}63%{transform:rotate(-40deg)}76%{transform:none}}
+@keyframes kpRelFA{0%,100%{transform:none}30%,36%{transform:rotate(15deg)}55%,60%{transform:rotate(66deg)}63%{transform:rotate(58deg)}76%{transform:none}}
+@keyframes kpRelAB{0%,100%{transform:none}10%,80%{transform:rotate(-8deg)}}
+@keyframes kpClick{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1.25)}40%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
+
+/* 8. reading the paper */
+.keeper[data-act="paper"] .kp-paper{display:inline;animation:kpPaper 7.5s ease-in-out both}
+.keeper[data-act="paper"] .kp-paper-sheet{animation:kpFlip 7.5s ease-in-out both;transform-origin:180px 103px}
+.keeper[data-act="paper"] .kp-rifle{animation:kpHide 7.5s ease-in-out both}
+.keeper[data-act="paper"] .kp-armA{animation:kpPapAA 7.5s ease-in-out both}
+.keeper[data-act="paper"] .kp-foreA{animation:kpPapFA 7.5s ease-in-out both}
+.keeper[data-act="paper"] .kp-armB{animation:kpPapAB 7.5s ease-in-out both}
+.keeper[data-act="paper"] .kp-foreB{animation:kpPapFB 7.5s ease-in-out both}
+.keeper[data-act="paper"] .kp-head{animation:kpPapH 7.5s ease-in-out both}
+@keyframes kpPaper{0%,6%{opacity:0;transform:translateY(20px) scale(.7)}14%,58%{opacity:1;transform:none}64%,76%{opacity:1;transform:translateY(9px)}82%{opacity:1;transform:none}90%,100%{opacity:0;transform:translateY(20px) scale(.7)}}
+@keyframes kpFlip{0%,38%,48%,100%{transform:none}43%{transform:scaleX(.04)}}
+@keyframes kpPapAA{0%,100%{transform:none}14%,58%,82%{transform:rotate(-3deg)}64%,76%{transform:rotate(-3deg) translateY(8px)}}
+@keyframes kpPapFA{0%,100%{transform:none}14%,82%{transform:rotate(-144deg)}}
+@keyframes kpPapAB{0%,100%{transform:none}14%,58%,82%{transform:rotate(3deg)}64%,76%{transform:rotate(3deg) translateY(8px)}}
+@keyframes kpPapFB{0%,100%{transform:none}14%,82%{transform:rotate(144deg)}}
+@keyframes kpPapH{0%,58%,84%,100%{transform:none}64%,76%{transform:translateY(-1px) rotate(-4deg)}}
+
+/* 9. waving hello */
+.keeper[data-act="wave"] .kp-armB{animation:kpWaveA 3.6s ease-in-out both}
+.keeper[data-act="wave"] .kp-foreB{animation:kpWaveF 3.6s ease-in-out both}
+.keeper[data-act="wave"] .kp-head{animation:kpTilt 3.6s ease-in-out both}
+@keyframes kpWaveA{0%,100%{transform:none}18%,82%{transform:rotate(-118deg)}}
+@keyframes kpWaveF{0%,100%{transform:none}18%{transform:rotate(-95deg)}28%,48%,68%{transform:rotate(-120deg)}38%,58%,78%{transform:rotate(-72deg)}88%{transform:rotate(-40deg)}}
+@keyframes kpTilt{0%,100%{transform:none}15%,85%{transform:rotate(-6deg)}}
+
+/* 10. humming along to the radio */
+.keeper[data-act="tunes"] .kp-head{animation:kpBob .5s ease-in-out 14}
+.keeper[data-act="tunes"] .kp-footA{animation:kpTap .5s ease-in-out 14}
+.keeper[data-act="tunes"] .kp-armB{animation:kpFinger .5s ease-in-out 14}
+.keeper[data-act="tunes"] .fx-notes{opacity:1}
+.keeper[data-act="tunes"] .fx-notes path{animation:kpNote 2.1s ease-out 3 backwards;opacity:0}
+.keeper[data-act="tunes"] .fx-notes .n2{animation-delay:.7s}
+.keeper[data-act="tunes"] .fx-notes .n3{animation-delay:1.4s}
+@keyframes kpBob{0%,100%{transform:none}50%{transform:rotate(4deg) translateY(1.5px)}}
+@keyframes kpTap{0%,100%{transform:none}50%{transform:rotate(-14deg)}}
+@keyframes kpFinger{0%,100%{transform:none}50%{transform:rotate(-4deg)}}
+@keyframes kpNote{0%{opacity:0;transform:translate(0, 0) rotate(0)}20%{opacity:1}100%{opacity:0;transform:translate(22px, -30px) rotate(18deg)}}
+
+/* 11. sharpening a machete */
+.keeper[data-act="sharpen"] .kp-machete,.keeper[data-act="sharpen"] .kp-stone{display:inline}
+.keeper[data-act="sharpen"] .kp-rifle{animation:kpHide 6.2s ease-in-out both}
+.keeper[data-act="sharpen"] .kp-armA{animation:kpShA 6.2s ease-in-out both}
+.keeper[data-act="sharpen"] .kp-foreA{animation:kpShF 6.2s ease-in-out both}
+.keeper[data-act="sharpen"] .kp-armB{animation:kpStoneA 6.2s ease-in-out both}
+.keeper[data-act="sharpen"] .kp-foreB{animation:kpStoneF 6.2s ease-in-out both}
+.keeper[data-act="sharpen"] .kp-head{animation:kpLookDown 6.2s ease-in-out both}
+.keeper[data-act="sharpen"] .fx-sparks{animation:kpSparkOn 6.2s linear both}
+.keeper[data-act="sharpen"] .fx-sparks path{animation:kpSpark .9s ease-out 1.25s 5 backwards}
+.keeper[data-act="sharpen"] .fx-sparks .s2,.keeper[data-act="sharpen"] .fx-sparks .s5{animation-delay:1.3s}
+.keeper[data-act="sharpen"] .fx-sparks .s3,.keeper[data-act="sharpen"] .fx-sparks .s6{animation-delay:1.35s}
+@keyframes kpShA{0%,100%{transform:none}14%,86%{transform:rotate(25deg)}}
+@keyframes kpShF{0%,100%{transform:none}14%,86%{transform:rotate(-64deg)}}
+@keyframes kpStoneA{0%,100%{transform:none}14%{transform:rotate(58deg)}21%,35%,49%,63%,77%{transform:rotate(57deg)}28%,42%,56%,70%,84%{transform:rotate(59deg)}}
+@keyframes kpStoneF{0%,100%{transform:none}14%,28%,42%,56%,70%,84%{transform:rotate(4deg)}21%,35%,49%,63%,77%{transform:rotate(64deg)}}
+@keyframes kpSparkOn{0%,18%,88%,100%{opacity:0}20%,86%{opacity:1}}
+@keyframes kpSpark{0%,70%{opacity:0;transform:none}74%{opacity:1}100%{opacity:0;transform:translate(4px, -6px) scale(1.6)}}
+
+/* 12. swatting a fly (and his own face) */
+.keeper[data-act="fly"] .fx-fly{animation:kpFly 7.4s linear both}
+.keeper[data-act="fly"] .fx-fly .fw{animation:kpWing .05s linear infinite alternate}
+.keeper[data-act="fly"] .kp-pupils{animation:kpFollow 7.4s linear both}
+.keeper[data-act="fly"] .kp-armB{animation:kpSlapA 7.4s ease-in-out both}
+.keeper[data-act="fly"] .kp-foreB{animation:kpSlapF 7.4s ease-in-out both}
+.keeper[data-act="fly"] .kp-head{animation:kpSlapH 7.4s ease-in-out both}
+.keeper[data-act="fly"] .kp-slapmark{animation:kpMark 7.4s linear both}
+.keeper[data-act="fly"] .fx-stars{animation:kpStarsOn 7.4s linear both}
+.keeper[data-act="fly"] .fx-stars path{animation:kpOrbit 1s linear infinite}
+.keeper[data-act="fly"] .fx-stars .st2{animation-delay:-.33s}
+.keeper[data-act="fly"] .fx-stars .st3{animation-delay:-.66s}
+@keyframes kpFly{0%{opacity:0;transform:translate(120px, 30px)}4%{opacity:1}12%{transform:translate(150px, 42px)}20%{transform:translate(214px, 50px)}28%{transform:translate(196px, 30px)}36%{transform:translate(160px, 58px)}44%{transform:translate(208px, 40px)}52%{transform:translate(170px, 36px)}60%{transform:translate(194px, 64px)}63%{transform:translate(194px, 64px)}72%{opacity:1;transform:translate(300px, 10px)}74%,100%{opacity:0;transform:translate(320px, 0)}}
+@keyframes kpWing{to{transform:scaleY(.3)}}
+@keyframes kpFollow{0%,4%{transform:none}12%{transform:translate(-1.4px, -1px)}20%{transform:translate(1.4px, -.6px)}28%{transform:translate(.8px, -1.4px)}36%{transform:translate(-1.2px, 0)}44%{transform:translate(1.2px, -1px)}52%{transform:translate(-.6px, -1.4px)}60%,66%{transform:translate(1.2px, .4px)}70%,100%{transform:none}}
+@keyframes kpSlapA{0%,50%,100%{transform:none}57%{transform:rotate(-118deg)}62%,68%{transform:rotate(-148deg)}80%{transform:none}}
+@keyframes kpSlapF{0%,50%,100%{transform:none}57%{transform:rotate(-96deg)}62%,68%{transform:rotate(-145deg)}80%{transform:none}}
+@keyframes kpSlapH{0%,61%,96%,100%{transform:none}63%{transform:rotate(-10deg) translateX(-2px)}70%,90%{transform:rotate(-4deg)}}
+@keyframes kpMark{0%,62%{opacity:0}64%,86%{opacity:.85}100%{opacity:0}}
+@keyframes kpStarsOn{0%,64%{opacity:0}66%,92%{opacity:1}100%{opacity:0}}
+@keyframes kpOrbit{0%{transform:translate(166px, 42px) scale(.7)}25%{transform:translate(180px, 37px) scale(1)}50%{transform:translate(194px, 42px) scale(.7)}75%{transform:translate(180px, 47px) scale(.5)}100%{transform:translate(166px, 42px) scale(.7)}}
+
+/* 13. juggling grenades */
+.keeper[data-act="juggle"] .kp-rifle{animation:kpHide 7s ease-in-out both}
+.keeper[data-act="juggle"] .kp-armA{animation:kpJugAA .75s ease-in-out 9 .2s both}
+.keeper[data-act="juggle"] .kp-foreA{animation:kpJugFA .75s ease-in-out 9 .2s both}
+.keeper[data-act="juggle"] .kp-armB{animation:kpJugAB .75s ease-in-out 9 .575s both}
+.keeper[data-act="juggle"] .kp-foreB{animation:kpJugFB .75s ease-in-out 9 .575s both}
+.keeper[data-act="juggle"] .kp-head{animation:kpJugH 1.5s ease-in-out 4 .3s both}
+.keeper[data-act="juggle"] .fx-gren{opacity:1}
+.keeper[data-act="juggle"] .fx-gren > g{animation:kpCascade 1.5s linear 4 .3s both}
+.keeper[data-act="juggle"] .fx-gren .g2{animation-delay:.8s}
+.keeper[data-act="juggle"] .fx-gren .g3{animation-delay:1.3s}
+@keyframes kpJugAA{0%,100%{transform:rotate(15deg)}50%{transform:rotate(26deg)}}
+@keyframes kpJugFA{0%,100%{transform:rotate(-41deg)}50%{transform:rotate(-92deg)}}
+@keyframes kpJugAB{0%,100%{transform:rotate(-15deg)}50%{transform:rotate(-26deg)}}
+@keyframes kpJugFB{0%,100%{transform:rotate(41deg)}50%{transform:rotate(92deg)}}
+@keyframes kpJugH{0%,100%{transform:rotate(-3deg) translateY(-1px)}50%{transform:rotate(3deg) translateY(-1px)}}
+@keyframes kpCascade{0%{opacity:1;transform:translate(160px, 104px) rotate(0)}25%{transform:translate(172px, 48px) rotate(120deg)}50%{transform:translate(200px, 104px) rotate(240deg)}75%{transform:translate(188px, 64px) rotate(300deg)}100%{opacity:1;transform:translate(160px, 104px) rotate(360deg)}}
+
+/* 14. blackout */
+.keeper[data-act="blackout"] .kp-dark{animation:kpDark 4.8s linear both}
+.keeper[data-act="blackout"] .fx-eyes{animation:kpEyes 4.8s linear both}
+.keeper[data-act="blackout"] .kp-lamp-glow,.keeper[data-act="blackout"] .kp-cone{animation:kpLampOff 4.8s steps(1) both}
+@keyframes kpDark{0%{opacity:0}3%{opacity:.6}5%{opacity:.1}8%,70%{opacity:.95}72%{opacity:.3}74%{opacity:.9}78%{opacity:.2}80%{opacity:.85}84%,100%{opacity:0}}
+@keyframes kpEyes{0%,14%{opacity:0}18%,36%,44%,68%{opacity:1}40%{opacity:0}72%,100%{opacity:0}}
+@keyframes kpLampOff{0%,2%{opacity:1}3%,82%{opacity:0}84%,100%{opacity:1}}
+
+/* 15. thumbs up (also when you equip a weapon) */
+.keeper[data-act="thumbs"] .kp-fist{display:none}
+.keeper[data-act="thumbs"] .kp-thumb{display:inline;animation:kpThumbR 3.2s ease-in-out both}
+.keeper[data-act="thumbs"] .kp-armB{animation:kpThA 3.2s ease-in-out both}
+.keeper[data-act="thumbs"] .kp-foreB{animation:kpThF 3.2s ease-in-out both}
+.keeper[data-act="thumbs"] .kp-head{animation:kpTilt 3.2s ease-in-out both}
+@keyframes kpThA{0%,100%{transform:none}22%,78%{transform:rotate(-57deg)}}
+@keyframes kpThF{0%,100%{transform:none}22%{transform:rotate(158deg)}30%{transform:rotate(150deg)}38%,78%{transform:rotate(158deg)}}
+@keyframes kpThumbR{0%,100%{transform:none}22%,78%{transform:rotate(-101deg)}30%{transform:rotate(-93deg)}}
+
+/* the skull, with its glitch */
+.keeper[data-act="skull"] .kp-jaw{animation:kpjaw .14s ease-in-out infinite alternate}
+.keeper[data-act="skull"] .kp-sk-eye{animation:kpeye .45s ease-in-out infinite alternate}
+.keeper[data-act="skull"] .kp-head{animation:kpSkH 5.6s linear both}
+.keeper[data-act="skull"] .kp-lamp{fill:#ff2d4a}
+.keeper[data-act="skull"] .kp-neon,.keeper[data-act="skull"] .kp-arm,.keeper[data-act="skull"] .kp-upper{animation-play-state:paused}
+@keyframes kpjaw{to{transform:translateY(16px)}}
+@keyframes kpeye{to{opacity:.35}}
+@keyframes kpSkH{0%,16%,82%,100%{transform:none}20%,78%{transform:translateY(-3px) scale(1.06)}}
+
+/* the cards in the armory get some life too */
+.wcard{transition:transform .18s ease, box-shadow .2s, border-color .2s}
+.wcard:hover{transform:translateY(-3px)}
+.wcard:active{transform:scale(.97)}
+.wcard.known.wr-2{box-shadow:inset 0 0 18px color-mix(in srgb, var(--rc) 18%, transparent)}
+.wcard.known.wr-3,.wcard.known.wr-4{overflow:hidden;animation:rise .35s ease-out both, wcglow 2.6s ease-in-out .4s infinite}
+.wcard.known.wr-3::after,.wcard.known.wr-4::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(110deg, transparent 35%, color-mix(in srgb, var(--rc) 40%, transparent) 50%, transparent 65%);background-size:260% 100%;animation:shine 3.2s linear infinite}
+@keyframes wcglow{50%{box-shadow:0 0 16px color-mix(in srgb, var(--rc) 55%, transparent), inset 0 0 14px color-mix(in srgb, var(--rc) 25%, transparent)}}
+.wcard.unknown canvas{transition:filter .2s}
+.wcard.unknown:hover canvas{filter:drop-shadow(0 0 6px rgba(255,255,255,.25))}
+
+@media (prefers-reduced-motion:reduce){
+  .kp-bulb,.kp-cone,.kp-motes circle,.kp-neon,.kp-steam circle,.kp-drip,.kp-splash,.kp-lampg,.kp-rat,.kp-csteam path,.fx-padlock,.kp-upper,.kp-head,.kp-e-open,.kp-tags,.kp-clk-s{animation:none}
+  .wcard.known.wr-3,.wcard.known.wr-4,.wcard.known.wr-3::after,.wcard.known.wr-4::after{animation:none}
+}

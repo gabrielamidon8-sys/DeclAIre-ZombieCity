@@ -927,6 +927,28 @@ var SFX = (function () {
       noise(t, 0.6, 0.5, 'highpass', 3000, 0.7); for (var i = 0; i < 10; i++) osc('square', 1800 + Math.random() * 4000, 700, t + i * 0.025, 0.04, 0.05);
       drum(t, 36, 1.2); [[146.8, 174.6, 220], [155.6, 196, 233]].forEach(function (c, k) { horn(t + 0.4 + k * 0.6, c, 1.2, 0.4); });
     },
+    // the armory keeper's little noises
+    keeper: function (k) {
+      if (!ok()) return; var t = ac.currentTime, i;
+      switch (k) {
+        case 'snore': noise(t, 1.2, 0.1, 'lowpass', 420, 2.5, 220); osc('sawtooth', 64, 52, t + 0.1, 1, 0.035, null, 0.4); break;
+        case 'jolt': osc('square', 280, 920, t, 0.12, 0.05); noise(t, 0.05, 0.12, 'bandpass', 1500, 1); break;
+        case 'flick': osc('sine', 2300, 3100, t, 0.05, 0.07); noise(t, 0.02, 0.1, 'highpass', 6000); break;
+        case 'catch': noise(t, 0.04, 0.2, 'lowpass', 1200); bell(t, 2800, 0.025, 0.25); break;
+        case 'click': osc('square', 1500, 600, t, 0.02, 0.1); noise(t, 0.03, 0.2, 'bandpass', 2500, 2); osc('square', 1100, 500, t + 0.07, 0.02, 0.09); noise(t + 0.07, 0.04, 0.25, 'bandpass', 1800, 2); break;
+        case 'shing': bell(t, 3300, 0.035, 0.45); noise(t, 0.22, 0.07, 'highpass', 5000, 0.7, 9000); break;
+        case 'slap': noise(t, 0.07, 0.55, 'bandpass', 1700, 0.8); osc('sine', 190, 80, t, 0.08, 0.3); break;
+        case 'bell': bell(t, 2093, 0.1, 1.4); bell(t + 0.004, 3136, 0.035, 1); break;
+        case 'flicker': for (i = 0; i < 4; i++) noise(t + i * 0.07 + Math.random() * 0.03, 0.03, 0.1, 'bandpass', 900, 3); osc('square', 120, 120, t, 0.32, 0.015); break;
+        case 'applause': for (i = 0; i < 34; i++) noise(t + Math.random() * 1.9, 0.03, 0.05 + Math.random() * 0.05, 'bandpass', 1400 + Math.random() * 1400, 1.4); break;
+        case 'glitch': for (i = 0; i < 12; i++) { var tt = t + i * 0.035 + Math.random() * 0.02; osc('square', 200 + Math.random() * 2400, 100 + Math.random() * 600, tt, 0.03, 0.05); } noise(t, 0.45, 0.16, 'bandpass', 3000, 0.6, 400); break;
+        case 'buzz':
+          var o = ac.createOscillator(), g = ac.createGain(), lf = ac.createOscillator(), lg = ac.createGain();
+          o.type = 'sawtooth'; o.frequency.value = 230; lf.frequency.value = 7; lg.gain.value = 40; lf.connect(lg); lg.connect(o.frequency);
+          g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.012, t + 0.3); g.gain.setValueAtTime(0.012, t + 4); g.gain.linearRampToValueAtTime(0.0001, t + 4.4);
+          o.connect(g); g.connect(sfxBus); o.start(t); lf.start(t); o.stop(t + 4.5); lf.stop(t + 4.5); break;
+      }
+    },
     bossIntro: function () { if (!ok()) return; var t = ac.currentTime; drum(t, 44, 1); drum(t + 0.25, 40, 1); horn(t, [55, 82.4, 110], 2, 0.4); bell(t, 110, 0.1, 2.5); }
 
   };

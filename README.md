@@ -21,6 +21,7 @@ A top-down zombie survival shooter for phones and browsers. You hold the streets
 
 | Version | Highlights |
 |---|---|
+| **1.9.01** | The armory is now a full back room behind a chain-link cage: gun racks, a workbench, a neon ARMORY sign, a wall clock that shows the real time, a shelf radio that pulses with FM 66.6, dripping pipes and a rat. The keeper has 15 animations: cleaning his rifle, sleeping, reciting funny Shakespeare, a coffee break, aiming at you, flipping a bullet, reloading, reading the paper, waving, humming to the radio, sharpening a machete, swatting a fly, juggling grenades, a blackout and a thumbs up when you equip a weapon. Ring the bell to get his attention. The rare skull moment (still 0.001%) now tears in with a glitch. Epic and legendary weapons glow in the armory. |
 | **1.9** | The music is now a radio, FM 66.6, that runs apart from the game, so heavy fights can't make it skip or go silent. It has 7 channels with 35 songs each, and one song ends before the next fades in. Bluetooth plays a playlist of your own songs. Mute, change the channel or skip from the HUD, the title screen or the pause menu (or press M, N, [ and ]). Kills now clink like dog tags, ping, then hit with a deep echoing pop that grows more epic every 25 kills. A new pause screen, more animation across the menus, better landscape layouts, and the armory has a keeper sitting in his cage. |
 | **1.8** | Chain kills now hit with a punchy 8-bit pop that turns into deeper retro bass every 25 kills, adding an 808 boom, a crushed burst, a distorted power-chord stab and finally a full retro explosion. Each gunshot cuts off the one before it, so rapid fire stays clean. Every wave song has a heavy metal and orchestral layer that gets heavier as the waves climb. Bullets now leave from the muzzle of the gun you're holding. |
 | **1.7** | The intro is the first thing on screen (no flash of the menu) and flows straight through: the skull's bite punches red and black, everything sinks into darkness except its red eyes, and the studio name slams in below them. The letters of CLAUDE then orbit in 3D and lock into the word on the music's hit, with a light ring and beat shockwaves, and the card crossfades into the title screen. |
@@ -46,6 +47,7 @@ The game is plain JavaScript split into modules that `build.js` joins into one p
 | `mutations.js` | The mutation list |
 | `weapons.js` | The weapon list |
 | `audio.js` | Sound effects, the intro's score and the instruments the radio plays |
+| `keeper.html`, `keeper.css`, `keeper.js` | The armory keeper: his room, his 15 animations and the glitch |
 | `radio.js` | FM 66.6: the song generator, the seven channels, offline rendering and the Bluetooth player |
 | `perf.js` | Device detection, the quality governor, LOD settings, cache refresher and self-repair |
 | `intro.js` | The DeclAIre Studios intro and the "Made with Claude" card |

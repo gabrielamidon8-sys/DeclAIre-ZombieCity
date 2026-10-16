@@ -1,0 +1,312 @@
+      <div class="keeper" id="keeper">
+        <!-- the back room: brick, pegboards of guns, a workbench, lockers, crates (nothing here moves) -->
+        <svg class="kp-l kp-back" viewBox="-360 0 1080 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <defs>
+            <pattern id="kpBrick" width="40" height="16" patternUnits="userSpaceOnUse"><rect width="40" height="16" fill="#1c2027"/><path d="M0 .5 H40 M0 8.5 H40 M10 0 V8 M30 8 V16" stroke="#121519" stroke-width="1.2"/><rect x="12" y="2" width="6" height="2" fill="#20252d"/><rect x="32" y="10" width="5" height="2" fill="#181b21"/></pattern>
+            <pattern id="kpPeg" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#3b2e1f"/><circle cx="5" cy="5" r="1.2" fill="#18120b"/></pattern>
+            <pattern id="kpMesh" width="15" height="15" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="15" height="15" fill="none" stroke="#9aa1aa" stroke-width="1.25"/></pattern>
+            <pattern id="kpVent" width="6" height="4" patternUnits="userSpaceOnUse"><rect width="6" height="2" fill="#15181c"/></pattern>
+            <radialGradient id="kpWall" cx="50%" cy="35%" r="55%"><stop offset="0" stop-color="#ffcf7a" stop-opacity=".2"/><stop offset=".6" stop-color="#ffb347" stop-opacity=".05"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+            <radialGradient id="kpCone" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#ffd98a" stop-opacity=".46"/><stop offset=".65" stop-color="#ffb347" stop-opacity=".08"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+            <radialGradient id="kpLampG" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#b9ffcf" stop-opacity=".5"/><stop offset="1" stop-color="#7dffb0" stop-opacity="0"/></radialGradient>
+            <radialGradient id="kpGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff4d6"/><stop offset=".4" stop-color="#ff3b4f"/><stop offset="1" stop-color="#ff3b4f" stop-opacity="0"/></radialGradient>
+            <radialGradient id="kpEyeG" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fffbe6"/><stop offset=".35" stop-color="#ffe066"/><stop offset="1" stop-color="#ffb000" stop-opacity="0"/></radialGradient>
+            <linearGradient id="kpBone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3ecdc"/><stop offset="1" stop-color="#a99d84"/></linearGradient>
+            <linearGradient id="kpSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7d858f"/><stop offset=".5" stop-color="#4a5059"/><stop offset="1" stop-color="#2c3036"/></linearGradient>
+            <linearGradient id="kpBlade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c9d1da"/><stop offset=".6" stop-color="#8b939d"/><stop offset="1" stop-color="#eef3f8"/></linearGradient>
+            <filter id="kpBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2"/></filter>
+            <filter id="kpGlitchF" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+              <feTurbulence id="kpGT" type="fractalNoise" baseFrequency="0.001 0.5" numOctaves="1" seed="2" result="n"/>
+              <feDisplacementMap id="kpGD" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="B" result="d"/>
+              <feColorMatrix in="d" type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" result="r"/>
+              <feOffset id="kpGR" in="r" dx="0" dy="0" result="ro"/>
+              <feColorMatrix in="d" type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0" result="gb"/>
+              <feOffset id="kpGB" in="gb" dx="0" dy="0" result="gbo"/>
+              <feBlend in="ro" in2="gbo" mode="screen"/>
+            </filter>
+            <g id="kpRack">
+              <g fill="#2c3139" stroke="#0b0d10" stroke-width="1.2">
+                <path d="M14 38 h72 l6 4 h20 v5 h-24 l-6 9 h-8 l3 -9 h-63 z"/><path d="M20 66 h56 l10 -3 h28 v6 h-32 l-4 10 h-9 l2 -10 h-51 z"/>
+                <path d="M12 96 h88 v5 h-60 l-8 12 h-8 l4 -12 h-16 z"/>
+                <path d="M152 36 h18 l4 -6 h8 l-2 6 h30 v8 h-48 l-4 10 h-8 l2 -10 h-0 z"/><path d="M150 66 h66 l4 4 v4 h-30 l-5 10 h-9 l3 -10 h-29 z"/>
+                <path d="M156 98 h40 l12 -4 h18 v7 h-26 l-5 9 h-8 l2 -9 h-33 z"/>
+              </g>
+              <g fill="#11141a"><circle cx="20" cy="36" r="2"/><circle cx="92" cy="36" r="2"/><circle cx="24" cy="64" r="2"/><circle cx="104" cy="64" r="2"/><circle cx="160" cy="34" r="2"/><circle cx="206" cy="34" r="2"/><circle cx="156" cy="64" r="2"/><circle cx="212" cy="64" r="2"/></g>
+              <g fill="none" stroke="#9aa3ae" stroke-width="1" opacity=".35"><path d="M18 39 h60"/><path d="M24 67 h46"/><path d="M16 97 h70"/><path d="M156 67 h50"/></g>
+            </g>
+          </defs>
+          <rect x="-360" width="1080" height="200" fill="url(#kpBrick)"/>
+          <rect x="-360" width="1080" height="200" fill="#0a0c10" opacity=".25"/>
+          <ellipse cx="180" cy="74" rx="200" ry="120" fill="url(#kpWall)"/>
+          <!-- ceiling and pipes -->
+          <rect x="-360" width="1080" height="11" fill="#0d0f13"/>
+          <path d="M-360 15 H720" stroke="#2c3238" stroke-width="7"/><path d="M-360 13 H720" stroke="#59616b" stroke-width="1.5" opacity=".7"/>
+          <g fill="#22272d" stroke="#0b0d10" stroke-width="1"><rect x="-200" y="10" width="8" height="10"/><rect x="40" y="10" width="8" height="10"/><rect x="296" y="10" width="8" height="10"/><rect x="520" y="10" width="8" height="10"/></g>
+          <path d="M346 18 V96" stroke="#2c3238" stroke-width="6"/><path d="M344.5 18 V96" stroke="#59616b" stroke-width="1.2" opacity=".7"/>
+          <g transform="translate(346 70)"><circle r="7" fill="none" stroke="#a3342c" stroke-width="2.2"/><path d="M-7 0 H7 M0 -7 V7" stroke="#a3342c" stroke-width="1.6"/><circle r="1.8" fill="#a3342c"/></g>
+          <!-- pegboards -->
+          <rect x="-350" y="24" width="334" height="98" fill="url(#kpPeg)" stroke="#120e09" stroke-width="2"/>
+          <rect x="374" y="24" width="334" height="98" fill="url(#kpPeg)" stroke="#120e09" stroke-width="2"/>
+          <use href="#kpRack" x="-344"/><use href="#kpRack" x="-232" y="0"/><use href="#kpRack" x="380"/><use href="#kpRack" x="492"/>
+          <!-- tool board over the workbench -->
+          <rect x="22" y="72" width="96" height="44" fill="url(#kpPeg)" stroke="#120e09" stroke-width="2"/>
+          <g fill="#59616b" stroke="#0b0d10" stroke-width="1"><path d="M32 80 l4 0 l0 18 l3 3 l-10 0 l3 -3 z"/><path d="M48 78 h12 v6 h-4 v20 h-4 v-20 h-4 z"/><path d="M70 80 l18 0 l0 4 l-6 0 l0 4 l-6 0 l0 -4 l-6 0 z"/><rect x="72" y="88" width="3" height="16"/><path d="M96 78 a6 6 0 1 1 0.1 0 m0 6 v20" fill="none" stroke="#59616b" stroke-width="2.4"/></g>
+          <!-- workbench, vise, a stripped pistol, a desk lamp -->
+          <rect x="16" y="116" width="108" height="7" fill="#5a4330" stroke="#1c140c" stroke-width="1.5"/>
+          <rect x="22" y="123" width="6" height="40" fill="#3f2f20"/><rect x="112" y="123" width="6" height="40" fill="#3f2f20"/><rect x="22" y="140" width="96" height="4" fill="#3f2f20"/>
+          <g fill="#3a4048" stroke="#0b0d10" stroke-width="1"><rect x="30" y="106" width="16" height="10"/><rect x="26" y="102" width="24" height="4"/><rect x="36" y="98" width="4" height="4"/></g>
+          <g fill="#2c3139" stroke="#0b0d10" stroke-width="1"><rect x="58" y="110" width="22" height="5" rx="1"/><path d="M84 111 h10 v4 h-10 z"/><circle cx="100" cy="113" r="2"/><circle cx="106" cy="113" r="1.5"/><path d="M60 106 l6 0 l0 4 l-6 0 z"/></g>
+          <path d="M112 116 l-6 -22 l10 -10" fill="none" stroke="#2c3139" stroke-width="2.4"/><path d="M110 84 l14 -4 l2 8 z" fill="#2f6b4a" stroke="#0b0d10" stroke-width="1"/>
+          <!-- WANTED poster, calendar -->
+          <g transform="translate(46 24) rotate(-3)">
+            <rect width="44" height="54" fill="#d9c9a3" stroke="#6b5a3c" stroke-width="1"/>
+            <text x="22" y="10" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8.5" letter-spacing="1" fill="#3a2a16">WANTED</text>
+            <ellipse cx="22" cy="28" rx="10" ry="12" fill="#8fa36a" stroke="#3a2a16" stroke-width="1"/>
+            <circle cx="18" cy="26" r="2.4" fill="#3a2a16"/><circle cx="26" cy="27" r="1.6" fill="#c33"/><path d="M16 34 q6 -3 12 1" fill="none" stroke="#3a2a16" stroke-width="1.2"/>
+            <text x="22" y="49" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="7" fill="#7a1d1d">$500 EACH</text>
+            <circle cx="4" cy="4" r="1.6" fill="#a3342c"/>
+          </g>
+          <g transform="translate(244 58)">
+            <rect width="26" height="30" fill="#e9e3d4" stroke="#6b6250" stroke-width="1"/><rect width="26" height="8" fill="#a3342c"/>
+            <text x="13" y="6.5" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="6" fill="#fff">OCT</text>
+            <g stroke="#a3342c" stroke-width="1"><path d="M3 12 l4 4 m0 -4 l-4 4 M10 12 l4 4 m0 -4 l-4 4 M17 12 l4 4 m0 -4 l-4 4 M3 19 l4 4 m0 -4 l-4 4 M10 19 l4 4 m0 -4 l-4 4"/></g>
+          </g>
+          <!-- shelf with grenades and a jar -->
+          <rect x="276" y="96" width="60" height="4" fill="#5a4330" stroke="#1c140c" stroke-width="1"/>
+          <g fill="#4a5640" stroke="#0e110c" stroke-width="1"><ellipse cx="312" cy="91" rx="4" ry="5"/><ellipse cx="321" cy="91" rx="4" ry="5"/><rect x="310" y="84" width="4" height="3"/><rect x="319" y="84" width="4" height="3"/></g>
+          <rect x="328" y="84" width="7" height="12" rx="1.5" fill="#8fbf7a" fill-opacity=".35" stroke="#a9c9a0" stroke-width="1"/>
+          <!-- lockers -->
+          <g transform="translate(386 126)"><rect width="0" height="0"/></g>
+          <g fill="#3a4a52" stroke="#11171b" stroke-width="1.5">
+            <rect x="590" y="40" width="34" height="120"/><rect x="624" y="40" width="34" height="120"/><rect x="658" y="40" width="34" height="120"/>
+          </g>
+          <g fill="url(#kpVent)"><rect x="596" y="48" width="22" height="12"/><rect x="630" y="48" width="22" height="12"/><rect x="664" y="48" width="22" height="12"/></g>
+          <path d="M658 40 l-10 4 v112 l10 4 z" fill="#2c3a40" stroke="#11171b" stroke-width="1"/>
+          <!-- crates and ammo -->
+          <g fill="#4a3826" stroke="#1c140c" stroke-width="1.5">
+            <rect x="-330" y="126" width="62" height="34"/><rect x="-262" y="134" width="44" height="26"/><rect x="-300" y="104" width="40" height="22"/>
+            <rect x="420" y="124" width="60" height="36"/><rect x="486" y="136" width="42" height="24"/><rect x="430" y="104" width="40" height="20"/>
+          </g>
+          <g stroke="#2e2216" stroke-width="1.2"><path d="M-330 138 H-268 M-330 149 H-268 M420 136 H480 M420 148 H480"/></g>
+          <g fill="#f2cc3a" font-family="Share Tech Mono, monospace" font-size="8" letter-spacing="1"><text x="-324" y="146">AMMO</text><text x="-256" y="150">HE</text><text x="426" y="145">7.62</text><text x="492" y="152">.50</text></g>
+          <g fill="#4a5640" stroke="#0e110c" stroke-width="1.2"><ellipse cx="-200" cy="156" rx="7" ry="5"/><ellipse cx="-186" cy="157" rx="7" ry="5"/><ellipse cx="-193" cy="149" rx="7" ry="5"/></g>
+          <!-- floor -->
+          <rect x="-360" y="160" width="1080" height="40" fill="#14161a"/>
+          <path d="M-360 160 H720" stroke="#2a2f37" stroke-width="2"/>
+          <g fill="#0c0d10" opacity=".7"><ellipse cx="120" cy="178" rx="26" ry="4"/><ellipse cx="250" cy="186" rx="18" ry="3"/><ellipse cx="-80" cy="182" rx="30" ry="4"/></g>
+          <g fill="#c99a3a"><rect x="140" y="174" width="5" height="2" rx="1" transform="rotate(20 142 175)"/><rect x="226" y="178" width="5" height="2" rx="1" transform="rotate(-30 228 179)"/><rect x="98" y="170" width="5" height="2" rx="1"/><rect x="262" y="172" width="5" height="2" rx="1" transform="rotate(60 264 173)"/></g>
+          <rect x="300" y="172" width="22" height="10" fill="url(#kpVent)" stroke="#2a2f37" stroke-width="1"/>
+        </svg>
+
+        <!-- things that move on their own: the light, dust, the neon, the clock, steam, the radio, a rat -->
+        <svg class="kp-l kp-amb" viewBox="-360 0 1080 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <g class="kp-neon">
+            <rect x="252" y="22" width="88" height="26" rx="4" fill="#120a0c" stroke="#2a1418" stroke-width="1.5"/>
+            <text class="kp-neon-glow" x="296" y="41" text-anchor="middle" font-family="Saira Stencil One, Impact, sans-serif" font-size="16" letter-spacing="2" fill="#ff3b4f" filter="url(#kpBlur)">ARMORY</text>
+            <text class="kp-neon-txt" x="296" y="41" text-anchor="middle" font-family="Saira Stencil One, Impact, sans-serif" font-size="16" letter-spacing="2" fill="#ffd0d6" stroke="#ff3b4f" stroke-width=".8">ARMORY</text>
+          </g>
+          <g transform="translate(364 44)">
+            <circle r="13" fill="#e9e3d4" stroke="#2c3139" stroke-width="2.5"/>
+            <g stroke="#2c3139" stroke-width="1.2"><path d="M0 -11 V-9 M0 9 V11 M-11 0 H-9 M9 0 H11"/></g>
+            <path class="kp-clk-h" d="M0 0 V-6" stroke="#1a1d22" stroke-width="2" stroke-linecap="round"/>
+            <path class="kp-clk-m" d="M0 0 V-9" stroke="#1a1d22" stroke-width="1.4" stroke-linecap="round"/>
+            <path class="kp-clk-s" d="M0 2 V-10" stroke="#c33" stroke-width=".8"/>
+            <circle r="1.4" fill="#1a1d22"/>
+          </g>
+          <!-- the shelf radio plays along with FM 66.6 -->
+          <g transform="translate(278 78)">
+            <rect width="28" height="18" rx="3" fill="#6b3a24" stroke="#1c0f08" stroke-width="1.2"/>
+            <circle class="kp-spk" cx="9" cy="10" r="5" fill="#2a1a10" stroke="#c9a46a" stroke-width="1"/>
+            <rect x="17" y="5" width="8" height="4" fill="#f2cc3a" opacity=".85"/><circle class="kp-led" cx="21" cy="13" r="1.6" fill="#7dffb0"/>
+            <path d="M4 0 L-2 -10" stroke="#9aa3ae" stroke-width="1"/>
+          </g>
+          <g class="kp-steam" fill="#d9d4c8"><circle cx="300" cy="18" r="4"/><circle cx="304" cy="16" r="5"/><circle cx="298" cy="14" r="3"/></g>
+          <g class="kp-drip"><path d="M346 97 q-2 3 0 5 q2 -2 0 -5 z" fill="#8fb7c9"/></g>
+          <ellipse class="kp-splash" cx="346" cy="161" rx="4" ry="1.2" fill="none" stroke="#8fb7c9" stroke-width=".8"/>
+          <path class="kp-lampg" d="M112 88 L96 116 H136 L124 86 Z" fill="url(#kpLampG)"/>
+          <g class="kp-rat">
+            <path d="M0 0 q-14 -2 -22 4" fill="none" stroke="#6d5a4c" stroke-width="1.2"/>
+            <ellipse cx="6" cy="-3" rx="9" ry="5" fill="#5a4a3e"/><ellipse cx="15" cy="-4" rx="5" ry="3.5" fill="#5a4a3e"/>
+            <circle cx="13" cy="-8" r="2.2" fill="#7a6656"/><circle cx="18" cy="-5" r=".9" fill="#ff5a5a"/><circle cx="20" cy="-3.5" r=".8" fill="#e7a3a3"/>
+          </g>
+          <g class="kp-bulb">
+            <path d="M180 0 V24" stroke="#0b0d10" stroke-width="1.5"/>
+            <path class="kp-cone" d="M174 28 L84 200 H276 L186 28 Z" fill="url(#kpCone)"/>
+            <path d="M175 22 h10 v6 h-10 z" fill="#3a3f47"/><circle class="kp-lamp" cx="180" cy="33" r="5.5" fill="#ffe2a0"/>
+            <circle class="kp-lamp-glow" cx="180" cy="33" r="13" fill="#ffd98a" opacity=".35" filter="url(#kpBlur)"/>
+          </g>
+          <g class="kp-motes" fill="#fff3d0"><circle cx="160" cy="70" r=".9"/><circle cx="196" cy="96" r=".7"/><circle cx="172" cy="120" r="1"/><circle cx="208" cy="62" r=".7"/><circle cx="150" cy="140" r=".8"/><circle cx="190" cy="150" r=".9"/><circle cx="218" cy="120" r=".7"/><circle cx="140" cy="100" r=".8"/></g>
+        </svg>
+
+        <!-- the keeper himself, rigged: body, head, two arms with elbows, and the props he picks up -->
+        <svg class="kp-l kp-actor" viewBox="-360 0 1080 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <g fill="#5a4330" stroke="#1c140c" stroke-width="2"><rect x="146" y="68" width="68" height="62" rx="5"/><rect x="142" y="126" width="76" height="8" rx="2"/><rect x="146" y="134" width="6" height="34"/><rect x="208" y="134" width="6" height="34"/></g>
+          <path d="M152 82 H208 M152 96 H208" stroke="#3f2f20" stroke-width="3"/>
+          <!-- the up-ended crate beside him, with his coffee -->
+          <g class="kp-side"><rect x="218" y="114" width="30" height="50" fill="#4a3826" stroke="#1c140c" stroke-width="2"/><path d="M218 130 H248 M218 147 H248" stroke="#2e2216" stroke-width="1.5"/><text x="233" y="143" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="6" fill="#c9a46a">FRAGILE</text></g>
+          <g class="kp-cmug"><rect x="223" y="103" width="10" height="11" rx="1.5" fill="#c9c2b2" stroke="#1c140c" stroke-width="1.4"/><path d="M233 106 q4 0 4 3 q0 3 -4 3" fill="none" stroke="#1c140c" stroke-width="1.4"/><text x="228" y="111" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="4" fill="#a3342c">#1</text></g>
+          <g class="kp-csteam" fill="none" stroke="#e6e1d6" stroke-width="1.3" stroke-linecap="round"><path d="M226 100 q-2 -4 0 -7 q2 -3 0 -6"/><path d="M230 99 q2 -4 0 -7 q-2 -3 0 -6"/></g>
+          <g class="kp-man">
+            <!-- legs and boots -->
+            <g class="kp-legs">
+              <path d="M158 126 C150 128 152 136 160 137 L158 160 L170 160 L172 136 C178 134 178 126 172 125 Z" fill="#2f3a2a" stroke="#0e110c" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M202 126 C210 128 208 136 200 137 L202 160 L190 160 L188 136 C182 134 182 126 188 125 Z" fill="#2f3a2a" stroke="#0e110c" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M161 146 h8 M191 146 h8" stroke="#24301f" stroke-width="2"/>
+              <g class="kp-footA"><path d="M150 168 q0 -9 8 -9 h12 v10 h-20 z" fill="#17191c" stroke="#000" stroke-width="1"/><path d="M150 168 h21" stroke="#3a3f47" stroke-width="1.5"/></g>
+              <path d="M210 168 q0 -9 -8 -9 h-12 v10 h20 z" fill="#17191c" stroke="#000" stroke-width="1"/><path d="M189 168 h21" stroke="#3a3f47" stroke-width="1.5"/>
+            </g>
+            <g class="kp-upper">
+              <g class="kp-body">
+                <rect x="174" y="72" width="12" height="13" fill="#a87d5c"/>
+                <path d="M160 128 C155 112 153 99 157 91 Q163 84 174 82 L186 82 Q197 84 203 91 C207 99 205 112 200 128 Z" fill="#4c5a3a" stroke="#0e110c" stroke-width="2"/>
+                <path d="M171 82 L180 98 L189 82" fill="#2a3221" stroke="#0e110c" stroke-width="1.5"/>
+                <path d="M164 88 L168 128 M196 88 L192 128" stroke="#3b4730" stroke-width="5"/>
+                <g fill="#3b4730" stroke="#0e110c" stroke-width="1.1"><rect x="161" y="104" width="12" height="10" rx="1"/><rect x="187" y="104" width="12" height="10" rx="1"/><rect x="163" y="116" width="10" height="8" rx="1"/><rect x="187" y="116" width="10" height="8" rx="1"/></g>
+                <path d="M161 106 h12 M187 106 h12" stroke="#55643f" stroke-width="1"/>
+                <rect x="188" y="96" width="11" height="4" fill="#f2cc3a"/><rect x="162" y="96" width="9" height="5" fill="#2a3221" stroke="#0e110c" stroke-width=".8"/>
+                <g class="kp-tags"><path d="M174 83 L179 99 M186 83 L181 99" stroke="#b9c0c8" stroke-width=".8" fill="none"/><rect x="176.5" y="98" width="5" height="7" rx="1.5" fill="#c9d0d8" stroke="#5c636b" stroke-width=".6"/><rect x="179.5" y="99" width="5" height="7" rx="1.5" fill="#aeb6bf" stroke="#5c636b" stroke-width=".6"/></g>
+                <g class="kp-ruff" fill="#f4f0e6" stroke="#8e887a" stroke-width=".8"><path d="M162 82 l4 -5 l4 4 l4 -5 l3 5 l3 -5 l3 5 l3 -5 l4 5 l4 -4 l4 5 l-2 5 l-4 3 l-4 -3 l-4 3 l-4 -3 l-4 3 l-4 -3 l-4 3 l-4 -3 l-4 3 l-3 -5 z"/></g>
+              </g>
+              <!-- the head and its faces -->
+              <g class="kp-head">
+                <g class="kp-face">
+                  <ellipse cx="164.5" cy="61" rx="3" ry="5" fill="#b5876a" stroke="#2a1c12" stroke-width="1.4"/><ellipse cx="195.5" cy="61" rx="3" ry="5" fill="#b5876a" stroke="#2a1c12" stroke-width="1.4"/>
+                  <ellipse cx="180" cy="60" rx="15" ry="17" fill="#c79a74" stroke="#2a1c12" stroke-width="2"/>
+                  <path d="M166 61 C165 80 172 86 180 86 C188 86 195 80 194 61 C191 68 186 70 180 70 C174 70 169 68 166 61 Z" fill="#5b3a26" stroke="#2a1c12" stroke-width="1.5"/>
+                  <path d="M173 69 Q180 65 187 69 Q180 67.5 173 69 Z" fill="#4a2e1d"/>
+                  <path class="kp-slapmark" d="M188 62 q6 1 5 7 q-5 0 -6 -5 z" fill="#ff5a6a" opacity="0"/>
+                  <path d="M181 57 l-2.5 8 h4" fill="none" stroke="#8a5d42" stroke-width="1.4" stroke-linejoin="round"/>
+                  <path d="M168 66 l3 3" stroke="#9c6b52" stroke-width="1.2" stroke-linecap="round"/>
+                  <!-- mouths -->
+                  <path class="kp-m kp-m-flat" d="M175 72.5 Q180 74 185 72.5" fill="none" stroke="#1f120a" stroke-width="1.7" stroke-linecap="round"/>
+                  <path class="kp-m kp-m-smile" d="M174 71 Q180 76.5 186 71" fill="none" stroke="#1f120a" stroke-width="1.8" stroke-linecap="round"/>
+                  <path class="kp-m kp-m-grin" d="M173.5 70.5 Q180 78.5 186.5 70.5 Z" fill="#f4efe2" stroke="#1f120a" stroke-width="1.4" stroke-linejoin="round"/>
+                  <ellipse class="kp-m kp-m-o" cx="180" cy="73.5" rx="2.6" ry="3.3" fill="#1f120a"/>
+                  <ellipse class="kp-m kp-m-talk" cx="180" cy="73" rx="3.6" ry="2.2" fill="#1f120a"/>
+                  <!-- eyes -->
+                  <g class="kp-e kp-e-open"><g class="kp-pupils" fill="#14100c"><ellipse cx="174" cy="59" rx="2.1" ry="2.5"/><ellipse cx="186" cy="59" rx="2.1" ry="2.5"/></g><circle cx="174.7" cy="58.2" r=".6" fill="#fff"/><circle cx="186.7" cy="58.2" r=".6" fill="#fff"/></g>
+                  <g class="kp-e kp-e-shut" fill="none" stroke="#14100c" stroke-width="1.5" stroke-linecap="round"><path d="M171 59.5 Q174 61.5 177 59.5"/><path d="M183 59.5 Q186 61.5 189 59.5"/></g>
+                  <g class="kp-e kp-e-wide"><circle cx="174" cy="59" r="3.5" fill="#fff" stroke="#14100c" stroke-width="1"/><circle cx="186" cy="59" r="3.5" fill="#fff" stroke="#14100c" stroke-width="1"/><circle cx="174" cy="59" r="1.5" fill="#14100c"/><circle cx="186" cy="59" r="1.5" fill="#14100c"/></g>
+                  <g class="kp-e kp-e-wink"><ellipse cx="174" cy="59" rx="2.1" ry="2.5" fill="#14100c"/><path d="M183 59.5 Q186 61.5 189 59.5" fill="none" stroke="#14100c" stroke-width="1.5" stroke-linecap="round"/></g>
+                  <g class="kp-brows" stroke="#2a1c12" stroke-width="2.3" stroke-linecap="round"><path class="kp-browA" d="M169.5 54 L177 55"/><path class="kp-browB" d="M190.5 54 L183 55"/></g>
+                  <!-- the beanie -->
+                  <path d="M164 50 C164 32 196 32 196 50 Z" fill="#7a2a24" stroke="#2a1c12" stroke-width="2"/>
+                  <path d="M170 38 v10 M176 35 v13 M182 35 v13 M188 37 v11" stroke="#6a221d" stroke-width="1.2"/>
+                  <rect x="161.5" y="47.5" width="37" height="7" rx="2" fill="#5d1f1a" stroke="#2a1c12" stroke-width="1.5"/>
+                  <rect x="185" y="48.5" width="7" height="5" fill="#c9a46a" stroke="#2a1c12" stroke-width=".6"/><path d="M186.5 49.8 h4 l-4 2.6 h4" fill="none" stroke="#2a1c12" stroke-width=".7"/>
+                </g>
+                <!-- the skull: only ever seen once in a hundred thousand visits -->
+                <g class="kp-skull">
+                  <g transform="translate(156 33) scale(.24)">
+                    <g class="kp-jaw"><path d="M46 166 L154 166 L150 194 C142 214 124 226 100 226 C76 226 58 214 50 194 Z" fill="url(#kpBone)" stroke="#1a1210" stroke-width="5"/><g fill="#efe6d2" stroke="#1a1210" stroke-width="2.5"><rect x="61" y="166" width="13" height="16"/><rect x="76" y="166" width="13" height="17"/><rect x="91" y="166" width="17" height="17"/><rect x="110" y="166" width="13" height="17"/><rect x="125" y="166" width="13" height="16"/></g></g>
+                    <path d="M100 10 C50 10 20 48 20 98 C20 124 30 142 44 152 L46 174 L154 174 L156 152 C170 142 180 124 180 98 C180 48 150 10 100 10 Z" fill="url(#kpBone)" stroke="#1a1210" stroke-width="5"/>
+                    <path d="M101 12 L96 32 L107 48 L98 66 L103 76 M156 42 L142 54 L146 68 L136 78" fill="none" stroke="#3b2c20" stroke-width="3"/>
+                    <path d="M42 94 C46 80 70 76 90 90 C94 108 86 126 68 128 C50 126 40 110 42 94 Z M158 94 C154 80 130 76 110 90 C106 108 114 126 132 128 C150 126 160 110 158 94 Z" fill="#0d0607"/>
+                    <circle class="kp-sk-eye" cx="68" cy="106" r="18" fill="url(#kpGlow)"/><circle class="kp-sk-eye" cx="132" cy="106" r="18" fill="url(#kpGlow)"/>
+                    <path d="M100 126 L90 148 L100 144 L110 148 Z" fill="#0d0607"/>
+                    <g fill="#f3ead6" stroke="#1a1210" stroke-width="2.5"><rect x="57" y="156" width="14" height="19"/><rect x="73" y="155" width="14" height="21"/><rect x="89" y="155" width="22" height="23"/><rect x="113" y="155" width="14" height="21"/><rect x="129" y="156" width="14" height="19"/></g>
+                  </g>
+                </g>
+              </g>
+              <!-- the rifle across his lap -->
+              <g class="kp-rifle">
+                <path d="M128 117 l20 -2 l4 4 h26 l4 -4 h16 v8 h-12 l-6 4 h-28 l-6 6 h-8 l3 -6 l-13 0 z" fill="#2c3036" stroke="#0b0d10" stroke-width="1.5" stroke-linejoin="round"/>
+                <rect x="196" y="117" width="42" height="3.5" fill="#2c3036" stroke="#0b0d10" stroke-width="1.2"/><rect x="236" y="116" width="4" height="5.5" fill="#1a1d22"/>
+                <rect x="160" y="111" width="20" height="5" rx="2" fill="#1a1d22" stroke="#0b0d10" stroke-width="1"/><circle cx="180" cy="113.5" r="2.4" fill="#5aa8ff" opacity=".6"/>
+                <g class="kp-mag"><path d="M170 127 h9 l2 12 h-9 z" fill="#3a3f47" stroke="#0b0d10" stroke-width="1.2"/></g>
+                <path d="M152 118 h22" stroke="#59616b" stroke-width="1" opacity=".6"/>
+              </g>
+              <!-- the rifle, aimed straight at you -->
+              <g class="kp-gunfront">
+                <rect x="170" y="66" width="20" height="22" rx="3" fill="#2c3036" stroke="#0b0d10" stroke-width="1.5"/>
+                <circle cx="180" cy="80" r="6.5" fill="#1a1d22" stroke="#0b0d10" stroke-width="1.5"/><circle cx="180" cy="80" r="3" fill="#000"/>
+                <circle cx="186" cy="59" r="5.2" fill="#1a1d22" stroke="#0b0d10" stroke-width="1.2"/><circle cx="186" cy="59" r="3.4" fill="#2f78c8"/><circle class="kp-lens" cx="187.3" cy="57.8" r="1.2" fill="#e8f4ff"/>
+                <rect x="183" y="63" width="6" height="4" fill="#2c3036"/><circle cx="174" cy="88" r="2" fill="#ff2d4a"/>
+              </g>
+              <!-- arm A (his right, on your left) -->
+              <g class="kp-armA">
+                <path d="M156 92 L150 110" stroke="#0e110c" stroke-width="12" stroke-linecap="round"/><path d="M156 92 L150 110" stroke="#4c5a3a" stroke-width="9" stroke-linecap="round"/>
+                <g class="kp-foreA">
+                  <path d="M150 110 L163 121" stroke="#2a1c12" stroke-width="10.5" stroke-linecap="round"/><path d="M150 110 L163 121" stroke="#c08f6a" stroke-width="7.5" stroke-linecap="round"/>
+                  <path d="M152 112 l3 2" stroke="#3a6aa0" stroke-width="1.6" opacity=".8"/>
+                  <g class="kp-handA">
+                    <g class="kp-yorick"><g transform="translate(163 121)">
+                      <path d="M-7 -6 C-7 -14 7 -14 7 -6 C7 -2 5 0 4 1 L4 4 L-4 4 L-4 1 C-5 0 -7 -2 -7 -6 Z" fill="#c9cfa8" stroke="#2a2a1a" stroke-width="1.2"/>
+                      <circle cx="-3" cy="-6" r="2" fill="#1a1d10"/><circle cx="3" cy="-6" r="2" fill="#1a1d10"/><circle cx="3" cy="-6" r=".8" fill="#9bff6a"/><path d="M-2 2 V4 M0 2 V4 M2 2 V4" stroke="#2a2a1a" stroke-width=".8"/>
+                    </g></g>
+                    <g class="kp-machete"><path d="M163 121 l2 -6 l18 -24 q4 -2 3 3 l-17 26 z" fill="url(#kpBlade)" stroke="#2c3036" stroke-width="1"/><rect x="159" y="119" width="7" height="9" rx="1.5" fill="#3a2a1c" transform="rotate(35 163 123)"/></g>
+                    <g class="kp-newmag"><path d="M160 118 h8 l2 12 h-8 z" fill="#3a3f47" stroke="#0b0d10" stroke-width="1.2"/></g>
+                    <circle cx="163" cy="121" r="5" fill="#c79a74" stroke="#2a1c12" stroke-width="1.5"/><path d="M159 119.5 h8" stroke="#22262b" stroke-width="2.4"/>
+                  </g>
+                </g>
+              </g>
+              <!-- arm B (his left, on your right) -->
+              <g class="kp-armB">
+                <path d="M204 92 L210 110" stroke="#0e110c" stroke-width="12" stroke-linecap="round"/><path d="M204 92 L210 110" stroke="#4c5a3a" stroke-width="9" stroke-linecap="round"/>
+                <g class="kp-foreB">
+                  <path d="M210 110 L197 121" stroke="#2a1c12" stroke-width="10.5" stroke-linecap="round"/><path d="M210 110 L197 121" stroke="#c08f6a" stroke-width="7.5" stroke-linecap="round"/>
+                  <g class="kp-handB">
+                    <g class="kp-rag"><path d="M190 115 l13 -2 l3 9 l-13 3 z" fill="#b8402f" stroke="#3a120c" stroke-width="1.1"/><path d="M193 118 l9 -1" stroke="#8a2a1e" stroke-width="1"/></g>
+                    <g class="kp-hmug"><g transform="translate(197 121)"><rect x="-6" y="-14" width="10" height="11" rx="1.5" fill="#c9c2b2" stroke="#1c140c" stroke-width="1.4"/><path d="M4 -11 q4 0 4 3 q0 3 -4 3" fill="none" stroke="#1c140c" stroke-width="1.4"/></g></g>
+                    <g class="kp-stone"><rect x="192" y="116" width="12" height="5" rx="1" fill="#6f6a62" stroke="#2a2620" stroke-width="1" transform="rotate(-20 198 118)"/></g>
+                    <g class="kp-fist"><circle cx="197" cy="121" r="5" fill="#c79a74" stroke="#2a1c12" stroke-width="1.5"/><path d="M193 119.5 h8" stroke="#22262b" stroke-width="2.4"/></g>
+                    <g class="kp-thumb"><g transform="translate(197 121)"><rect x="-5" y="-4" width="10" height="9" rx="3" fill="#c79a74" stroke="#2a1c12" stroke-width="1.5"/><rect x="-2" y="-11" width="4" height="9" rx="2" fill="#c79a74" stroke="#2a1c12" stroke-width="1.5"/><path d="M-5 -1 h10" stroke="#22262b" stroke-width="2"/></g></g>
+                  </g>
+                </g>
+              </g>
+              <!-- the newspaper -->
+              <g class="kp-paper">
+                <g class="kp-paper-sheet">
+                  <rect x="140" y="76" width="80" height="54" fill="#ece6d6" stroke="#6b6250" stroke-width="1"/>
+                  <text x="180" y="85" text-anchor="middle" font-family="Saira Stencil One, Impact, sans-serif" font-size="7.5" fill="#1a1d22">THE DAILY DEAD</text>
+                  <path d="M144 87.5 H216" stroke="#1a1d22" stroke-width=".6"/>
+                  <text x="180" y="96" text-anchor="middle" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="6.2" fill="#1a1d22">ZOMBIES: STILL A PROBLEM</text>
+                  <rect x="145" y="99" width="26" height="20" fill="#9a958a"/><path d="M152 119 q6 -16 12 0" fill="#56524a"/><circle cx="158" cy="105" r="3.5" fill="#56524a"/>
+                  <g stroke="#7d786c" stroke-width="1"><path d="M175 101 H215 M175 104 H213 M175 107 H215 M175 110 H210 M175 113 H215 M175 116 H212 M145 122 H215 M145 125 H200"/></g>
+                </g>
+                <g fill="#c79a74" stroke="#2a1c12" stroke-width="1.5"><circle cx="143" cy="92" r="4.6"/><circle cx="217" cy="92" r="4.6"/></g>
+                <path d="M139 90.5 h8 M213 90.5 h8" stroke="#22262b" stroke-width="2.2"/>
+              </g>
+            </g>
+          </g>
+        </svg>
+
+        <!-- the cage between you and him, with the service window -->
+        <svg class="kp-l kp-front" viewBox="-360 0 1080 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <mask id="kpHatch" maskUnits="userSpaceOnUse" x="-360" y="0" width="1080" height="200"><rect x="-360" width="1080" height="200" fill="#fff"/><rect x="126" y="32" width="108" height="114" rx="2" fill="#000"/></mask>
+          <rect x="-360" width="1080" height="200" fill="url(#kpMesh)" opacity=".48" mask="url(#kpHatch)"/>
+          <g fill="none" stroke="#545a63" stroke-width="5"><path d="M-240 0 V200 M-120 0 V200 M0 0 V200 M360 0 V200 M480 0 V200 M600 0 V200 M-360 3 H720 M-360 197 H720"/></g>
+          <g fill="none" stroke="#3a3f47" stroke-width="1.4" opacity=".8"><path d="M-238 0 V200 M-118 0 V200 M2 0 V200 M362 0 V200 M482 0 V200 M602 0 V200"/></g>
+          <rect x="124" y="30" width="112" height="118" rx="3" fill="none" stroke="#4d535c" stroke-width="7"/>
+          <rect x="124" y="30" width="112" height="118" rx="3" fill="none" stroke="#7a818b" stroke-width="1.4"/>
+          <g fill="#2a2f36" stroke="#0b0d10" stroke-width="1"><circle cx="128" cy="34" r="1.6"/><circle cx="232" cy="34" r="1.6"/><circle cx="128" cy="144" r="1.6"/><circle cx="232" cy="144" r="1.6"/></g>
+          <!-- the counter -->
+          <path d="M116 146 H244 L250 156 H110 Z" fill="url(#kpSteel)" stroke="#0b0d10" stroke-width="1.5"/>
+          <rect x="110" y="156" width="140" height="4" fill="#1d2126"/>
+          <g transform="translate(222 146)"><path d="M-8 0 a8 7 0 0 1 16 0 z" fill="#d9b44a" stroke="#5a4310" stroke-width="1"/><rect x="-10" y="-0.5" width="20" height="2" fill="#8a6a1a"/><circle cy="-7.5" r="1.4" fill="#5a4310"/><path d="M-4 -3 q2 -3 5 -3" fill="none" stroke="#fff3c0" stroke-width=".9" opacity=".8"/></g>
+          <g transform="translate(140 157) rotate(-3)"><rect width="66" height="11" fill="#f2cc3a" stroke="#17140b" stroke-width="1"/><text x="33" y="8.3" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="7" letter-spacing="1" fill="#17140b">NO REFUNDS</text></g>
+          <!-- a cardboard sign wired to the cage -->
+          <g transform="translate(36 112) rotate(4)"><path d="M6 -12 L22 -2 M50 -12 L34 -2" stroke="#8b919a" stroke-width=".8"/><rect y="-2" width="56" height="26" fill="#b88a5a" stroke="#5a3a1a" stroke-width="1"/>
+            <text x="28" y="9" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="6.5" fill="#2a1a0a">CASH ONLY</text><text x="28" y="18" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="6.5" fill="#7a1d1d">NO ZOMBIES</text></g>
+        </svg>
+        <div class="kp-dark" aria-hidden="true"></div>
+        <!-- effects drawn over everything: Zzz, notes, sparks, the fly, grenades, glowing eyes -->
+        <svg class="kp-l kp-fx" viewBox="-360 0 1080 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <g class="fx-zzz" font-family="Saira Stencil One, Impact, sans-serif" fill="#cfe3ff" stroke="#1a2a44" stroke-width=".6"><text class="z1" x="198" y="52" font-size="11">Z</text><text class="z2" x="198" y="52" font-size="15">Z</text><text class="z3" x="198" y="52" font-size="19">Z</text></g>
+          <g class="fx-bang"><text x="200" y="40" font-family="Saira Stencil One, Impact, sans-serif" font-size="18" fill="#f2cc3a" stroke="#17140b" stroke-width="1">!</text></g>
+          <g class="fx-notes" fill="#7dffb0" stroke="#0b2a18" stroke-width=".6"><path class="n1" d="M198 50 v-9 l6 -2 v8 a2.4 2 0 1 1 -1.4 -1.8 v-4.2 l-3.2 1 v6.8 a2.4 2 0 1 1 -1.4 -1.8 z"/><path class="n2" d="M198 50 v-9 a2.4 2 0 1 1 -1.4 -1.8 z M198 41 q4 1 4 5"/><path class="n3" d="M198 50 v-9 l6 -2 v8 a2.4 2 0 1 1 -1.4 -1.8 v-4.2 l-3.2 1 v6.8 a2.4 2 0 1 1 -1.4 -1.8 z"/></g>
+          <g class="fx-sparks" stroke="#ffd36a" stroke-width="1.3" stroke-linecap="round"><path class="s1" d="M182 92 l5 -4"/><path class="s2" d="M182 92 l6 1"/><path class="s3" d="M182 92 l3 5"/><path class="s4" d="M182 92 l-2 -6"/><path class="s5" d="M182 92 l7 -2"/><path class="s6" d="M182 92 l4 4"/></g>
+          <g class="fx-fly"><ellipse cx="0" cy="0" rx="2.2" ry="1.5" fill="#1a1d22"/><ellipse class="fw" cx="-.5" cy="-2" rx="2" ry="1.2" fill="#dfe9f2" opacity=".75"/><ellipse class="fw" cx="1" cy="-2" rx="2" ry="1.2" fill="#dfe9f2" opacity=".75"/></g>
+          <g class="fx-stars" fill="#f2cc3a"><path class="st1" d="M0 -3 L1 -1 L3 0 L1 1 L0 3 L-1 1 L-3 0 L-1 -1 Z"/><path class="st2" d="M0 -3 L1 -1 L3 0 L1 1 L0 3 L-1 1 L-3 0 L-1 -1 Z"/><path class="st3" d="M0 -3 L1 -1 L3 0 L1 1 L0 3 L-1 1 L-3 0 L-1 -1 Z"/></g>
+          <g class="fx-gren"><g class="g1"><ellipse rx="4" ry="5" fill="#4a5640" stroke="#0e110c" stroke-width="1"/><rect x="-2" y="-8" width="4" height="3" fill="#59616b"/></g><g class="g2"><ellipse rx="4" ry="5" fill="#4a5640" stroke="#0e110c" stroke-width="1"/><rect x="-2" y="-8" width="4" height="3" fill="#59616b"/></g><g class="g3"><ellipse rx="4" ry="5" fill="#4a5640" stroke="#0e110c" stroke-width="1"/><rect x="-2" y="-8" width="4" height="3" fill="#59616b"/></g></g>
+          <g class="fx-bullet"><rect x="-1.4" y="-4" width="2.8" height="8" rx="1.3" fill="#d4a53a" stroke="#6a4d10" stroke-width=".6"/><path d="M-1.4 -1 h2.8" stroke="#6a4d10" stroke-width=".6"/></g>
+          <g class="fx-click"><text x="214" y="112" font-family="Saira Stencil One, Impact, sans-serif" font-size="10" fill="#f2cc3a" stroke="#17140b" stroke-width=".8">CLICK</text></g>
+          <g class="fx-glint" fill="#ffffff"><path d="M187 58 l1 -6 l1 6 l6 1 l-6 1 l-1 6 l-1 -6 l-6 -1 z"/></g>
+          <circle class="fx-laser" cx="0" cy="0" r="2.2" fill="#ff2d4a"/>
+          <g class="fx-eyes"><ellipse cx="174" cy="59" rx="6" ry="4" fill="url(#kpEyeG)"/><ellipse cx="186" cy="59" rx="6" ry="4" fill="url(#kpEyeG)"/><ellipse cx="174" cy="59" rx="1.6" ry="1.1" fill="#fff"/><ellipse cx="186" cy="59" rx="1.6" ry="1.1" fill="#fff"/></g>
+          <g class="fx-padlock"><path d="M118 128 v-6 a5 5 0 0 1 10 0 v6" fill="none" stroke="#9aa3ae" stroke-width="2"/><rect x="115" y="127" width="16" height="13" rx="2" fill="#c9a446" stroke="#5a4310" stroke-width="1.2"/><circle cx="123" cy="133" r="1.6" fill="#3a2a0a"/></g>
+        </svg>
+        <div class="kp-glitch" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><b>ERR 0xDEAD // SIGNAL LOST</b></div>
+        <div class="kp-say" hidden aria-live="polite"><p></p></div>
+        <button class="kp-poke" type="button" aria-label="Ring the bell for the keeper"></button>
+      </div>

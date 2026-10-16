@@ -502,20 +502,11 @@ function renderBuild() {
 /* ---------- armory ---------- */
 let arFrame = 0, arSpoil = false, arCur = null;
 const W_MAX = { dmg: Math.max(...WEAPONS.map(w => w.dmg * w.pellets * w.burst)), rof: Math.max(...WEAPONS.map(w => w.rof)), range: Math.max(...WEAPONS.map(w => w.range)), dps: Math.max(...WEAPONS.map(w => w.dps)) };
-// The keeper sits in his cage cleaning a rifle. Once in a hundred thousand visits (0.001%), his head turns into the skull.
-let kpT = 0;
-function keeperSkull() {
-  const k = $('keeper'); if (!k) return;
-  k.classList.remove('skulled'); void k.getBoundingClientRect(); k.classList.add('skulled');
-  setTimeout(() => SFX.laugh(), 450);
-  store.set('zc_keeper', (store.get('zc_keeper', 0) | 0) + 1);
-  clearTimeout(kpT); kpT = setTimeout(() => k.classList.remove('skulled'), 4300);
-}
-function openArmory() {
-  $('armory').hidden = false; $('armory').scrollTop = 0; renderArmory();
-  if (Math.random() < 0.00001) setTimeout(keeperSkull, 1200 + Math.random() * 2500);
-}
-function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true; clearTimeout(kpT); $('keeper').classList.remove('skulled'); refreshTitle(); }
+// The keeper (keeper.js) runs through his acts while the armory is open; 0.001% of visits his head turns into the skull.
+function keeperSkull() { KEEP.skull(); }
+function openArmory() { $('armory').hidden = false; $('armory').scrollTop = 0; renderArmory(); KEEP.start(); }
+function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true; KEEP.stop(); refreshTitle(); }
+$('keeper').querySelector('.kp-poke').addEventListener('click', () => { SFX.init(); KEEP.poke(); });
 function renderArmory() {
   $('arCount').textContent = guns.size + ' / 250';
   const lw = WEAPONS[loadoutId()], ld = $('arLoadout'); ld.textContent = '';
@@ -531,7 +522,7 @@ function renderArmory() {
   const grid = $('arGrid'); grid.textContent = '';
   for (let m = 0; m < 25; m++) {
     const w = WEAPONS[arFrame * 25 + m], have = guns.has(w.id), show = have || arSpoil, R = WRAR[w.rarity];
-    const b = el('button', 'wcard ' + (have ? 'known' : 'unknown') + (w.id === loadoutId() ? ' equipped' : '')); b.type = 'button'; b.style.setProperty('--rc', R.color);
+    const b = el('button', 'wcard wr-' + w.rarity + ' ' + (have ? 'known' : 'unknown') + (w.id === loadoutId() ? ' equipped' : '')); b.type = 'button'; b.style.setProperty('--rc', R.color);
     const c = el('canvas'); c.setAttribute('aria-hidden', 'true');
     b.append(c, el('span', 'num', w.code), el('span', 'nm', show ? w.name : 'Locked'), el('span', 'rar', R.name));
     if (w.id === loadoutId()) b.append(el('span', 'eq', 'Equipped'));
@@ -552,7 +543,7 @@ function openWeaponDetail(w) {
   const eq = $('awEquip'); eq.hidden = !have; eq.disabled = w.id === loadoutId(); eq.textContent = w.id === loadoutId() ? 'Equipped' : 'Start runs with this';
   d.hidden = false; d.scrollTop = 0;
 }
-$('awEquip').addEventListener('click', () => { if (!arCur || !guns.has(arCur.id)) return; store.set('zc_loadout', arCur.id); SFX.click(); openWeaponDetail(arCur); renderArmory(); });
+$('awEquip').addEventListener('click', () => { if (!arCur || !guns.has(arCur.id)) return; store.set('zc_loadout', arCur.id); SFX.click(); openWeaponDetail(arCur); renderArmory(); KEEP.approve(); });
 $('awClose').addEventListener('click', () => { $('arDetail').hidden = true; });
 $('armoryBtn').addEventListener('click', openArmory); $('arClose').addEventListener('click', closeArmory);
 $('arSpoil').addEventListener('change', e => { arSpoil = e.target.checked; renderArmory(); });
