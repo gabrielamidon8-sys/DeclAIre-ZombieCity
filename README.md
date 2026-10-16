@@ -21,6 +21,7 @@ A top-down zombie survival shooter for phones and browsers. You hold the streets
 
 | Version | Highlights |
 |---|---|
+| **1.7** | The intro is the first thing on screen (no flash of the menu) and flows straight through: the skull's bite punches red and black, everything sinks into darkness except its red eyes, and the studio name slams in below them. The letters of CLAUDE then orbit in 3D and lock into the word on the music's hit, with a light ring and beat shockwaves, and the card crossfades into the title screen. |
 | **1.6** | The intro starts on its own (in a browser that blocks sound, the first tap turns the sound on without skipping). The stampede is now heavy stomping footfalls panned with the horde, and the skull's laugh is a deep, layered demonic laugh with a cavernous echo. |
 | **1.5** | The "Made with Claude" card now plays the finale of "gods heaven": the title lands on a beat, the light rays pulse with the music, and the song's hard stop closes the card before the fade into the game. |
 | **1.4** | A studio intro at launch: a road is built block by block, the player sprints across it with a stampede of zombies behind, and the skull bites the road into a red-and-black freeze under the DeclAIre Studios name. Then an orchestral "Made with Claude" title card fades into the game. Tap to skip. |

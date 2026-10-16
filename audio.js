@@ -1055,6 +1055,22 @@ var SFX = (function () {
         setTimeout(function () { try { g.disconnect(); } catch (e) { } }, 900);
       });
     },
+    // the eyes: everything else goes dark with a deep drop and a low choir; then a bright metal "shing" as the name lands
+    introEyes: function () {
+      if (!ok()) return; return viaIntro(function () {
+        var t = ac.currentTime;
+        osc('sine', 88, 26, t, 1.6, 0.7, null, 0.01); noise(t, 1.2, 0.14, 'lowpass', 420, 1, 90);
+        vChoir([38, 45, 50], t, 2.6, 0.045); vStrings([26, 33, 38], t, 2.8, 0.03); vGong(t + 0.05, 26);
+      });
+    },
+    introShing: function () {
+      if (!ok()) return; return viaIntro(function () {
+        var t = ac.currentTime;
+        bell(t, 1318, 0.09, 2.2); bell(t + 0.01, 1975, 0.05, 1.8); osc('sine', 3951, 3951, t, 0.9, 0.025, null, 0.002);
+        noise(t, 0.5, 0.11, 'highpass', 3200, 0.8, 9000); noise(t, 0.08, 0.18, 'bandpass', 2400, 2);
+        osc('sine', 110, 40, t, 0.6, 0.45, null, 0.004); vTimp(t, 38, 0.6);
+      });
+    },
     // the freeze: impact, a low brass and choir stab, a ringing gong
     introSting: function () {
       if (!ok()) return; return viaIntro(function () { var t = ac.currentTime;

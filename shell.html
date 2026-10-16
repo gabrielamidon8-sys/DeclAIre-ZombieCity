@@ -382,41 +382,43 @@ p{margin:0}
 /* studio intro */
 #intro{position:absolute;inset:0;z-index:70;background:#000;overflow:hidden;transition:opacity .9s ease;touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none}
 #intro.out{opacity:0;pointer-events:none}
-#introCv{position:absolute;inset:0;width:100%;height:100%;display:block;transform-origin:50% 56%}
+#introCv{position:absolute;inset:0;width:100%;height:100%;display:block;transform-origin:50% 56%;transition:opacity .6s ease}
+#intro.frozen:not(.eyes) #introCv{transition:none}
 #intro.frozen #introCv{filter:grayscale(1) contrast(2.4) brightness(1.08);animation:inzoom 2.8s ease-out forwards}
 @keyframes inzoom{to{transform:scale(1.06)}}
 .in-red{position:absolute;inset:0;background:#e3122b;mix-blend-mode:multiply;opacity:0;pointer-events:none}
 #intro.frozen .in-red{opacity:1}
-.in-studio,.in-made{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;text-align:center;pointer-events:none;opacity:0}
-.in-studio{top:9%;gap:4px}
+/* after the red punch the frame sinks into darkness; only the eyes stay lit */
+#intro.eyes #introCv,#intro.eyes .in-red{opacity:0;transition:opacity .55s ease}
+.in-eyes{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .8s ease}
+#intro.eyes .in-eyes{opacity:1}
+.in-eyes i{position:absolute;border-radius:50%;background:radial-gradient(circle, #fff6e0 0%, #ff6a74 9%, #ff2238 19%, rgba(255,20,45,.42) 34%, rgba(255,0,30,.12) 55%, rgba(255,0,30,0) 72%)}
+#intro.eyes .in-eyes i{animation:eyeflare .7s cubic-bezier(.2,.9,.3,1) both, eyeglow 1.6s ease-in-out .7s infinite}
+@keyframes eyeflare{0%{transform:scale(.4);opacity:.3}35%{transform:scale(1.5);opacity:1}100%{transform:scale(1)}}
+@keyframes eyeglow{50%{transform:scale(.9);opacity:.8}}
+.in-studio{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;text-align:center;pointer-events:none;opacity:0;transition:opacity .7s ease}
+.in-studio{top:62%;gap:4px}
 .in-studio b{font-family:var(--f-display);font-weight:400;font-size:clamp(52px, 16vw, 124px);line-height:.9;color:#fff3ef;text-shadow:0 0 18px rgba(255,30,50,.9), 0 0 54px rgba(255,0,30,.55), 0 6px 0 #000}
 .in-studio b span{color:#120206;-webkit-text-stroke:2px #fff3ef;text-shadow:0 0 22px rgba(255,40,60,1), 0 6px 0 #000}
 .in-studio em{font-style:normal;font-family:var(--f-num);font-size:clamp(14px, 4.4vw, 26px);letter-spacing:.6em;padding-left:.6em;text-transform:uppercase;color:#ffe1e1;text-shadow:0 0 12px rgba(255,40,60,.9), 0 2px 0 #000}
-#intro.studio .in-studio{animation:instudio .55s cubic-bezier(.2,1.4,.4,1) forwards}
+#intro.studio .in-studio{animation:instudio .6s cubic-bezier(.2,1.4,.4,1) forwards}
 @keyframes instudio{0%{opacity:0;transform:scale(1.7)}55%{opacity:1}100%{opacity:1;transform:scale(1)}}
-#intro.studio-out .in-studio{opacity:0!important;transition:opacity .5s;animation:none}
-.in-made{top:46%;transform:translateY(-50%);gap:12px}
-.in-made em{font-style:normal;font-family:var(--f-num);font-size:clamp(13px, 3.8vw, 20px);letter-spacing:.7em;padding-left:.7em;text-transform:uppercase;color:#ecdcb0;opacity:0}
-.in-made b{font-family:var(--f-display);font-weight:400;font-size:clamp(66px, 21vw, 170px);line-height:.95;padding:0 .08em;opacity:0;color:transparent;
-  background:linear-gradient(100deg, #7a4c17 0%, #e9bf6a 28%, #fff6dc 42%, #f2cf86 50%, #b97a2b 72%, #6e4314 100%);background-size:260% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;
-  filter:drop-shadow(0 0 22px rgba(255,170,70,.4)) drop-shadow(0 8px 14px rgba(0,0,0,.9))}
-#intro.card2 .in-made{opacity:1}
-#intro.made1 .in-made em{animation:inmade 1.3s ease-out forwards}
-@keyframes inmade{from{opacity:0;letter-spacing:1.5em}to{opacity:1;letter-spacing:.7em}}
-#intro.made2 .in-made b{animation:inname 1s cubic-bezier(.15,.9,.25,1) forwards, ingleam 2.4s ease-in-out .35s forwards}
-#intro.made3 .in-made b{animation:inname2 .1s linear forwards, ingleam2 2s ease-in-out forwards}
-@keyframes inname{0%{opacity:0;transform:scale(1.4)}100%{opacity:1;transform:scale(1)}}
-@keyframes inname2{from{opacity:1}to{opacity:1}}
-@keyframes ingleam{from{background-position:100% 0}to{background-position:0 0}}
-@keyframes ingleam2{from{background-position:0 0}to{background-position:100% 0}}
-#intro.made2 .in-made{animation:inpush 5s linear forwards}
-@keyframes inpush{from{transform:translateY(-50%) scale(1)}to{transform:translateY(-50%) scale(1.07)}}
-#intro.made-out .in-made{opacity:0;transition:opacity .9s ease}
+
 .in-gate{position:absolute;left:0;right:0;bottom:max(16px, env(safe-area-inset-bottom, 0px));margin:0;text-align:center;font-family:var(--f-num);font-size:13px;letter-spacing:.3em;padding-left:.3em;text-transform:uppercase;color:#e8e2d4;text-shadow:0 1px 6px #000;animation:gatepulse 1.4s ease-in-out infinite}
 #intro.muted .in-skip{opacity:0}
 @keyframes gatepulse{50%{opacity:.35}}
 .in-skip{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:max(16px, env(safe-area-inset-bottom, 0px));margin:0;font-family:var(--f-num);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(235,229,214,.4)}
-#intro.out .in-skip,#intro.made-out .in-skip{opacity:0}
+#intro.out .in-skip{opacity:0}
+#intro.out{transition:opacity 1.2s ease}
+/* the title screen arrives in a quick stagger as the intro crossfades away */
+#title.reveal .tape{animation:rvtape 1s cubic-bezier(.2,.8,.2,1) both}
+#title.reveal .title-body > *{animation:rvup .9s cubic-bezier(.2,.8,.2,1) both}
+#title.reveal .title-body > :nth-child(2){animation-delay:.08s}
+#title.reveal .title-body > :nth-child(3){animation-delay:.16s}
+#title.reveal .title-body > :nth-child(4){animation-delay:.24s}
+#title.reveal .title-body > :nth-child(n+5){animation-delay:.32s}
+@keyframes rvup{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes rvtape{from{opacity:0;transform:rotate(-5deg) translateX(-12%)}to{opacity:1}}
 .pf-in{grid-template-columns:minmax(0, 1fr);width:min(560px, 100%)}
 #perfPanel{--rc:var(--tape)}
 .pf-device{font-family:var(--f-num);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
@@ -455,7 +457,7 @@ p{margin:0}
 .empty{padding:22px 14px;border:1px dashed var(--line);color:var(--muted);font-size:14px;text-align:center}
 
 @media (prefers-reduced-motion:reduce){
-  #intro.frozen #introCv,#intro.made2 .in-made{animation:none}
+  #intro.frozen #introCv,#title.reveal .tape,#title.reveal .title-body > *,#intro.eyes .in-eyes i{animation:none}
   .wave b{transform:none}
   #airBtn.ready,.wheel-result.ddup,.skull-art.laugh .sk-jaw,.skull-art.laugh .sk-eye{animation:none}
   .skull-art.lunge{animation:none;opacity:0}
@@ -746,11 +748,11 @@ p{margin:0}
       </div>
     </div>
   </div>
-  <section id="intro" hidden role="img" aria-label="DeclAIre Studios. Made with Claude.">
+  <section id="intro" role="img" aria-label="DeclAIre Studios. Made with Claude.">
     <canvas id="introCv"></canvas>
     <div class="in-red"></div>
+    <div class="in-eyes"><i></i><i></i></div>
     <div class="in-studio"><b>Decl<span>AI</span>re</b><em>Studios</em></div>
-    <div class="in-made"><em>Made with</em><b>Claude</b></div>
     <p class="in-gate" hidden>Tap for sound</p>
     <p class="in-skip">Tap to skip</p>
   </section>
