@@ -907,6 +907,19 @@ var SFX = (function () {
     sfxBus = b.sfx; musBus = b.mus; synthBus = b.synth; drumBus = b.drum; bellBus = b.mus;
     try { return fn(); } finally { sfxBus = sv[0]; musBus = sv[1]; synthBus = sv[2]; drumBus = sv[3]; bellBus = sv[4]; }
   }
+  // a recorded track for the "made with" card (decoded once, played through the intro bus)
+  var ITRACK = { b64: '', buf: null, busy: false, gain: 1 };
+  function decodeIntroTrack() {
+    if (!ac || !ITRACK.b64 || ITRACK.buf || ITRACK.busy) return;
+    ITRACK.busy = true;
+    try {
+      var bin = atob(ITRACK.b64), n = bin.length, u = new Uint8Array(n);
+      for (var i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
+      var done = function (b) { ITRACK.buf = b; ITRACK.busy = false; }, fail = function () { ITRACK.busy = false; ITRACK.b64 = ''; };
+      var pr = ac.decodeAudioData(u.buffer, done, fail);
+      if (pr && pr.then) pr.then(done, fail);
+    } catch (e) { ITRACK.busy = false; ITRACK.b64 = ''; }
+  }
   function introCut() {
     if (!IB || !ac) return; var b = IB, t = ac.currentTime; IB = null;
     b.sfx.gain.setTargetAtTime(0, t, 0.04); b.mus.gain.setTargetAtTime(0, t, 0.04);
@@ -1059,6 +1072,16 @@ var SFX = (function () {
     },
 
     introCut: introCut,
+    setIntroTrack: function (b64, gain) { ITRACK.b64 = b64 || ''; ITRACK.gain = gain || 1; decodeIntroTrack(); },
+    introTrackReady: function () { decodeIntroTrack(); return !!ITRACK.buf; },
+    introTrack: function () {
+      if (!ok() || !ITRACK.buf) return 0;
+      return viaIntro(function () {
+        var t = ac.currentTime + 0.03, src = ac.createBufferSource(), g = ac.createGain();
+        src.buffer = ITRACK.buf; g.gain.value = ITRACK.gain; src.connect(g); g.connect(musBus); src.start(t);
+        return ITRACK.buf.duration;
+      });
+    },
 
     // ---------- effects ----------
     // crack + pop + ching. Every 25 chained kills is a new tier: the ching drops lower and heavier layers join in.

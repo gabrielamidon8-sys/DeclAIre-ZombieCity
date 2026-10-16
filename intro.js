@@ -8,6 +8,12 @@ const INTRO = { on: false, card: 0, t: 0, gate: false, frozen: false, evI: 0, sh
 const IV = $('introCv'), IG = IV.getContext('2d'), INTRO_EL = $('intro');
 const T1 = { build0: 0.35, build1: 2.25, paint: 2.4, rumble: 2.55, run: 3.0, skull: 6.0, laugh: 6.85, lunge: 8.3, bite: 8.6, studioOut: 10.7, end: 11.3 };
 const T2 = { made: 0.9, hit: 2.25, final: 5.85, fade: 6.9, end: 8.0 };
+// the "made with" card's music: the finale of "gods heaven" (cut and embedded at build time). The title lands on a
+// beat at 2.22 s, the song's hard stop at 5.9 s closes the card; the light rays pulse on every beat.
+const INTRO_MUSIC = '/*__INTROMUSIC__*/';
+const INTRO_TRACK = { gain: 1.65, hit: 2.22, final: 5.66, fade: 6.6, end: 7.7,
+  beats: [0.06, 0.47, 0.9, 1.34, 1.77, 2.22, 2.64, 3.06, 3.5, 3.93, 4.36, 4.78, 5.23, 5.66, 6.22, 6.76, 7.14, 7.47] };
+const T2_SCORE = Object.assign({}, T2);
 
 /* ---------- skull art: the game's own skull, rasterised in three layers so the jaw can move ---------- */
 function introSkullArt() {
@@ -69,7 +75,7 @@ function introEvents(card) {
     E.push([T1.studioOut, () => INTRO_EL.classList.add('studio-out')]);
     E.push([T1.end, () => introCard(2)]);
   } else {
-    E.push([0.05, () => { INTRO.scoreLen = SFX.introScore(); }]);
+    E.push([0.05, () => { if (!INTRO.track || !SFX.introTrack()) { INTRO.track = false; INTRO.scoreLen = SFX.introScore(); } }]);
     E.push([T2.made, () => INTRO_EL.classList.add('made1')]);
     E.push([T2.hit, () => INTRO_EL.classList.add('made2')]);
     E.push([T2.final, () => INTRO_EL.classList.add('made3')]);
@@ -79,6 +85,10 @@ function introEvents(card) {
   return E;
 }
 function introCard(n) {
+  if (n === 2) {   // use the recorded track when it has decoded, otherwise the built-in orchestral score
+    INTRO.track = !!(INTRO_MUSIC.length > 100 && SFX.introTrackReady());
+    Object.assign(T2, INTRO.track ? { made: T2_SCORE.made, hit: INTRO_TRACK.hit, final: INTRO_TRACK.final, fade: INTRO_TRACK.fade, end: INTRO_TRACK.end } : T2_SCORE);
+  }
   INTRO.card = n; INTRO.t = 0; INTRO.evI = 0; INTRO.ev = introEvents(n); INTRO.frozen = false;
   INTRO_EL.classList.remove('frozen', 'studio', 'studio-out', 'made1', 'made2', 'made3', 'made-out');
   INTRO_EL.classList.add('card' + n); INTRO_EL.classList.remove('card' + (3 - n));
@@ -261,7 +271,9 @@ function drawIntro2(dt) {
   g.fillStyle = '#020203'; g.fillRect(0, 0, w, h);
   const fadeOut = clamp((t - T2.fade) / 0.9, 0, 1), fadeIn = clamp(t / 0.8, 0, 1);
   const hit = t >= T2.hit ? Math.exp(-(t - T2.hit) * 2.2) : 0, fin = t >= T2.final ? Math.exp(-(t - T2.final) * 1.6) : 0;
-  let I = (0.18 + 0.5 * clamp((t - T2.hit) / 0.2, 0, 1) + hit * 0.6 + fin * 0.5) * fadeIn * (1 - fadeOut);
+  let beat = 0;
+  if (INTRO.track) { const B = INTRO_TRACK.beats; for (let i = B.length - 1; i >= 0; i--) if (B[i] <= t) { beat = Math.exp(-(t - B[i]) * 7) * (t < T2.final + 0.3 ? 1 : 0.35); break; } }
+  let I = (0.18 + 0.5 * clamp((t - T2.hit) / 0.2, 0, 1) + hit * 0.6 + fin * 0.5 + beat * 0.32) * fadeIn * (1 - fadeOut);
   // light rays behind the title: one pre-rendered fan, slowly turning (cheaper than ten gradients a frame)
   g.globalCompositeOperation = 'lighter';
   const R = Math.hypot(w, h) * 0.7;
@@ -292,7 +304,7 @@ function drawIntro2(dt) {
     e.y += e.vy * dt; e.x += (e.vx + Math.sin(t * 1.3 + e.ph) * 10) * dt; e.life -= dt;
     if (e.y < -10 || e.life <= 0) Object.assign(e, newEmber(false));
     const f = 0.5 + 0.5 * Math.sin(t * 6 + e.ph), a = (0.35 + 0.65 * f) * fadeIn * (1 - fadeOut) * (0.7 + I * 0.6);
-    g.globalAlpha = Math.min(1, a); g.fillStyle = f > 0.7 ? '#ffe2a0' : '#ff9a3a'; g.beginPath(); g.arc(e.x, e.y, e.r * (1 + hit), 0, TAU); g.fill();
+    g.globalAlpha = Math.min(1, a); g.fillStyle = f > 0.7 ? '#ffe2a0' : '#ff9a3a'; g.beginPath(); g.arc(e.x, e.y, e.r * (1 + hit + beat * 0.6), 0, TAU); g.fill();
   }
   g.globalAlpha = 1;
   if (hit > 0.3 || fin > 0.4) { g.fillStyle = 'rgba(255,230,190,' + Math.max(hit - 0.3, fin - 0.4) * 0.55 + ')'; g.fillRect(0, 0, w, h); }
@@ -327,7 +339,7 @@ function introFinish() {
 }
 function introBegin() {
   INTRO.gate = false; INTRO_EL.querySelector('.in-gate').hidden = true;
-  SFX.init(); introCard(1);
+  SFX.init(); if (INTRO_MUSIC.length > 100) SFX.setIntroTrack(INTRO_MUSIC, INTRO_TRACK.gain); introCard(1);
 }
 function startIntro() {
   G.mode = 'intro'; INTRO.on = true;
@@ -335,6 +347,7 @@ function startIntro() {
   introBuild();
   // browsers only allow sound after a tap: if the audio engine can't start on its own, wait for one
   SFX.init();
+  if (INTRO_MUSIC.length > 100) SFX.setIntroTrack(INTRO_MUSIC, INTRO_TRACK.gain);
   setTimeout(() => {
     if (!INTRO.on) return;
     const st = SFX.health().state;

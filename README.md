@@ -21,6 +21,7 @@ A top-down zombie survival shooter for phones and browsers. You hold the streets
 
 | Version | Highlights |
 |---|---|
+| **1.5** | The "Made with Claude" card now plays the finale of "gods heaven": the title lands on a beat, the light rays pulse with the music, and the song's hard stop closes the card before the fade into the game. |
 | **1.4** | A studio intro at launch: a road is built block by block, the player sprints across it with a stampede of zombies behind, and the skull bites the road into a red-and-black freeze under the DeclAIre Studios name. Then an orchestral "Made with Claude" title card fades into the game. Tap to skip. |
 | **1.3** | The game detects your device and adjusts quality on its own while you play: resolution, effects and level of detail for zombies and bosses. It caps at 60 fps on fast-refresh screens, follows battery saver and phone heat, frees memory when Android asks, and repairs itself if the game loop or audio stalls. A new Performance panel shows what it's doing. Fonts are built in, so nothing loads from the internet. |
 | **1.2** | Sound effects no longer break up the music. The light show now follows the beat of your own songs, even loud ones. Bullets can hit zombies right on top of you. |
@@ -44,6 +45,7 @@ The game is plain JavaScript split into modules that `build.js` joins into one p
 | `perf.js` | Device detection, the quality governor, LOD settings, cache refresher and self-repair |
 | `intro.js` | The DeclAIre Studios intro and the "Made with Claude" card |
 | `fonts/` | The three fonts (embedded into the page at build time) and their licenses |
+| `media/` | The intro card's music clip (embedded into the page at build time) |
 
 ```sh
 node build.js          # browser version -> zombie-city.html (+ zombie-city-offline.html)
