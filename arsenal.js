@@ -54,6 +54,10 @@ function fireWeapon(t) {
 }
 function volley(a, mul) {
   const p = G.p, S = p.S, w = p.weapon, n = S.pellets, kind = S.kind, cone = w.F.key === 'shotgun' || kind === 'flame';
+  // the muzzle: the gun is drawn from 8 px in front of the player and is GUN_LEN long, pointing along p.aim
+  // (if the barrel is poking into a wall, the shot starts from the player so a zombie pinned against the wall still gets hit)
+  let md = 10 + (GUN_LEN[w.F.key] || 20), mx = p.x + Math.cos(p.aim) * md, my = p.y + Math.sin(p.aim) * md;
+  if (pointInRect(mx, my)) { mx = p.x; my = p.y; }
   const gap = 0.11 * Math.min(1, 6 / Math.max(1, n));
   for (let i = 0; i < n; i++) {
     let ang = a;
@@ -61,7 +65,7 @@ function volley(a, mul) {
     ang += rand(-1, 1) * (kind === 'flame' ? S.spread * 0.5 : S.spread * 0.35 + 0.012);
     const crit = Math.random() < S.crit, spd = S.speed * (kind === 'flame' ? rand(0.75, 1.15) : 1), life = S.range / spd;
     G.bullets.push({
-      x: p.x + Math.cos(ang) * 18, y: p.y + Math.sin(ang) * 18, sx: p.x, sy: p.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+      x: mx, y: my, sx: p.x, sy: p.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
       dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
       life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper'
     });
@@ -91,7 +95,7 @@ function updBullets(dt) {
     // swept hit test: check the whole path travelled this frame (from the player on the first frame), so fast
     // bullets can't skip over small zombies and point-blank targets inside the muzzle still get hit
     const sx = b.sx !== undefined ? b.sx : b.x, sy = b.sy !== undefined ? b.sy : b.y; b.sx = b.sy = undefined;
-    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt; b.age = (b.age || 0) + dt;
     if (b.life <= 0) {
       if (b.boom === 1) { b.boom = 2; b.life = b.max * 1.5; b.hit = null; continue; }
       if (b.kind === 'grenade') explodeAt(b.x, b.y, b, null);

@@ -13,7 +13,7 @@ A top-down zombie survival shooter for phones and browsers. You hold the streets
 - 50 bosses that mutate into new forms, plus the Snatcher and the Overlord
 - Cards, curses and forbidden cards from the skull at x100; a prize wheel at x200 and up
 - An A-10 Warthog airstrike earned at chain 75
-- 20 wave songs that get more intense, from synthwave to orchestral speedcore, remixed for each boss
+- 20 wave songs that get more intense, from synthwave to orchestral speedcore, each with a heavy metal and orchestral edge (power chords, double kick, choir, brass, timpani) that grows with the waves, remixed for each boss
 - A light show that reacts to the built-in songs or your own music
 - Tunes itself to your device: it detects the hardware, adjusts resolution and detail as you play, and cleans up its own caches
 
@@ -21,6 +21,7 @@ A top-down zombie survival shooter for phones and browsers. You hold the streets
 
 | Version | Highlights |
 |---|---|
+| **1.8** | Chain kills now hit with a punchy 8-bit pop that turns into deeper retro bass every 25 kills, adding an 808 boom, a crushed burst, a distorted power-chord stab and finally a full retro explosion. Each gunshot cuts off the one before it, so rapid fire stays clean. Every wave song has a heavy metal and orchestral layer that gets heavier as the waves climb. Bullets now leave from the muzzle of the gun you're holding. |
 | **1.7** | The intro is the first thing on screen (no flash of the menu) and flows straight through: the skull's bite punches red and black, everything sinks into darkness except its red eyes, and the studio name slams in below them. The letters of CLAUDE then orbit in 3D and lock into the word on the music's hit, with a light ring and beat shockwaves, and the card crossfades into the title screen. |
 | **1.6** | The intro starts on its own (in a browser that blocks sound, the first tap turns the sound on without skipping). The stampede is now heavy stomping footfalls panned with the horde, and the skull's laugh is a deep, layered demonic laugh with a cavernous echo. |
 | **1.5** | The "Made with Claude" card now plays the finale of "gods heaven": the title lands on a beat, the light rays pulse with the music, and the song's hard stop closes the card before the fade into the game. |

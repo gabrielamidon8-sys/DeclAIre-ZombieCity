@@ -675,6 +675,30 @@ var SFX = (function () {
     hoover: function (s, b, t, ch) { if ((s === 0 && b % 2 === 0) || s === 10) vHoover(ch.r + 24, t, STEP * 3); },
     acid: function (s, b, t, ch) { var a = ACID[s]; if (a != null) vAcid(ch.r + 12 + a, t, STEP * 0.9, ACC[s]); }
   };
+  // every wave song gets distorted power chords, palm-muted chugs, double kick in the drops, choir, brass, timpani
+  // and gongs on top of its own style, skipping what the song already has. Early waves get a light touch.
+  var HAS = { gtr: { w5: 1, w8: 1, w10: 1, w12: 1, w16: 1, w18: 1, w20: 1 }, choir: { w10: 1, w14: 1, w16: 1, w19: 1, w20: 1 },
+    brass: { w10: 1, w19: 1, w20: 1 }, dk: { w5: 1, w10: 1, w12: 1, w14: 1, w16: 1, w18: 1, w20: 1 } };
+  var FORGE = {
+    power: function (s, b, t, ch) { if (s === 0) vPower(ch.r, t, STEP * 3, 0.16); else if (s === 8 && b % 2) vPower(ch.r, t, STEP * 2, 0.13); },
+    chug: function (s, b, t, ch, X) { if (s === 0 || s === 8) return; if (BPM > 175 ? s % 4 === 0 : (X.drop || s % 2 === 0)) vChug(ch.r, t, STEP * 0.9, X.drop ? 0.15 : 0.12); },
+    dkick: function (s, b, t, ch, X) { if (X.drop && (BPM <= 165 || s % 2 === 0)) vKMetal(t, 0.3); },
+    choir: function (s, b, t, ch) { if (s === 0 && b % 4 === 0) vChoir(up(ch.c, 12), t, STEP * 32, 0.034); },
+    brass: function (s, b, t, ch) { if (s === 0 && b % 2 === 0) vBrass(ch.c, t, STEP * 3, 0.026); else if (s === 12 && b % 4 === 3) vBrass(ch.c, t, STEP * 4, 0.03); },
+    timp: function (s, b, t, ch) { if (s === 0 && b % 4 === 0) vTimp(t, ch.r + 12, 0.36); else if (b % 4 === 3 && (s === 12 || s === 14)) vTimp(t, ch.r + 12, 0.22); },
+    gong: function (s, b, t, ch) { if (s === 0 && b % 8 === 0) vGong(t, ch.r); }
+  };
+  // a boss remix layer that already plays the same part (so it isn't doubled during a boss fight)
+  var FCOVER = { power: 'guitar', chug: 'guitar', dkick: 'blast', choir: 'choir', brass: 'brass', timp: 'timpani', gong: 'gong' };
+  function forgeFor(sg, w) {
+    var id = sg.id, L = [];
+    if (id.charAt(0) !== 'w') return L;
+    if (!HAS.gtr[id]) L.push('power'); if (!HAS.choir[id]) L.push('choir');
+    if (w >= 4) { if (!HAS.gtr[id]) L.push('chug'); if (!HAS.brass[id]) L.push('brass'); L.push('timp'); }
+    if (w >= 8 && !HAS.dk[id]) L.push('dkick');
+    if (w >= 12) L.push('gong');
+    return AQ < 1 ? L.slice(0, 2) : L;
+  }
   function songFor(w) { if (overlordPhase) return overlordPhase === 2 ? SONGS.over2 : SONGS.over1; if (w <= 0) return SONGS.title; return w <= 20 ? WAVES[w - 1] : WAVES[5 + (w - 21) % 15]; }
   function curBpm() {
     var bpm = song.bpm;
@@ -684,7 +708,7 @@ var SFX = (function () {
   }
 
   // ---------- sequencer ----------
-  var X = { drop: false, boss: false }, forceBar = false;
+  var X = { drop: false, boss: false }, forceBar = false, FG = { song: null, w: -1, q: -1, L: [] };
   function sched() {
     if (!ready()) return;
     if (nextT < ac.currentTime) { nextT = ac.currentTime + 0.05; lateN++; }
@@ -707,6 +731,8 @@ var SFX = (function () {
     if (impactPending) { impactPending = false; if (song.id !== 'title') { vImpact(t); ev(t, 'impact'); } }
     X.drop = scene === 'drop' || scene === 'cine'; X.boss = !!bossMod;
     song.play(X, s, b, t, ch);
+    if (song !== FG.song || mWave !== FG.w || AQ !== FG.q) { FG.song = song; FG.w = mWave; FG.q = AQ; FG.L = forgeFor(song, mWave); }
+    for (var fi = 0; fi < FG.L.length; fi++) { var fn = FG.L[fi]; if (!(bossMod && bossMod.add && bossMod.add.indexOf(FCOVER[fn]) >= 0)) FORGE[fn](s, b, t, ch, X); }
     // on weak devices a boss remix keeps its two most important extra layers
     if (bossMod && bossMod.add && song.id !== 'qte') for (var k = 0, nL = AQ < 1 ? Math.min(2, bossMod.add.length) : bossMod.add.length; k < nL; k++) { var L = LAYERS[bossMod.add[k]]; if (L) L(s, b, t, ch); }
   }
@@ -810,14 +836,18 @@ var SFX = (function () {
   // Frequent sounds are rendered once into samples and replayed (2 audio nodes per sound instead of 10-20),
   // which keeps phones from overloading the audio thread when gunfire, kills and a fast song all overlap.
   var FX = {
+    // the kill pop: a punchy 8-bit "bang" that drops in pitch. Every 25 chained kills is a new tier and it grows:
+    // tier 1 a square-wave retro bass thump, 2 an 808 sub boom, 3 a crushed noise burst, 4 a distorted power-chord
+    // stab, 5 a huge retro explosion. Each tier's bass sits deeper than the last.
     killBase: function (t, tier) {
-      noise(t, 0.05, 0.5, 'bandpass', 2600 / (1 + tier * 0.25), 0.9);
-      noise(t, 0.1, 0.2, 'highpass', 6500, 0.7);
-      osc('sine', 440 / (1 + tier * 0.2), 70, t, 0.08, 0.42);
-      osc('square', 1900, 280, t, 0.018, 0.07);
-      if (tier >= 1) osc('sine', 120, 38, t, 0.2, 0.42);
-      if (tier >= 2) noise(t, 0.12, 0.1, 'bandpass', 9000, 2);
-      if (tier >= 3) osc('sawtooth', 72, 44, t, 0.16, 0.12);
+      var k = tier, f = 560 / (1 + k * 0.32), dz = BAKING ? distIn : null;
+      osc('square', f * 1.7, f * 0.45, t, 0.05, 0.15); osc('triangle', f, f * 0.3, t, 0.075, 0.32);
+      noise(t, 0.028, 0.42, 'bandpass', 2600 / (1 + k * 0.3), 1.2); noise(t, 0.05, 0.14, 'highpass', 5200, 0.7);
+      if (k >= 1) { var bf = 110 / Math.pow(1.42, k - 1); osc('square', bf * 2, bf, t, 0.12 + k * 0.035, 0.17 + k * 0.015); osc('sine', bf, bf * 0.5, t, 0.2 + k * 0.05, 0.42); }
+      if (k >= 2) osc('sine', 72, 27, t, 0.34 + k * 0.05, 0.55);
+      if (k >= 3) noise(t, 0.2, 0.24, 'lowpass', 1900, 0.8, 260);
+      if (k >= 4) [82.4, 123.5, 164.8].forEach(function (pf, i) { osc('sawtooth', pf, pf * 0.98, t, 0.26, [0.16, 0.12, 0.07][i], dz); });
+      if (k >= 5) { noise(t, 0.45, 0.3, 'lowpass', 950, 0.8, 110); osc('square', 55, 27.5, t, 0.5, 0.18); osc('sine', 41, 30, t, 0.6, 0.4); }
     },
     shot: function (t, kind) {
       switch (kind) {
@@ -850,7 +880,7 @@ var SFX = (function () {
   };
   var FXDUR = { hurt: 0.25, dash: 0.3, zap: 0.15, heal: 0.3, jam: 0.2, alarm: 0.6, grab: 0.45, tap: 0.15, escape: 1.15, crush: 0.6, cardIn: 0.25, cardShot: 1.05, click: 0.06, refuse: 0.55, impacts: 0.2, gulp: 0.2 };
   var SHOTS = ['pistol', 'shotgun', 'sniper', 'revolver', 'launcher', 'flamer', 'smg', 'lmg'];
-  function bake(name, dur, fn) {
+  function bake(name, dur, fn, cap) {
     var sr = ac.sampleRate, off;
     try { off = new OfflineAudioContext(1, Math.ceil(sr * dur), sr); } catch (e) { return; }
     var save = [ac, sfxBus, drumBus, synthBus, musBus, revIn, distIn];
@@ -858,7 +888,11 @@ var SFX = (function () {
     ac = off; sfxBus = drumBus = synthBus = musBus = off.destination; revIn = null; distIn = d; BAKING = true;
     try { fn(0); } catch (e) { /* a sound that fails to bake keeps its live version */ }
     ac = save[0]; sfxBus = save[1]; drumBus = save[2]; synthBus = save[3]; musBus = save[4]; revIn = save[5]; distIn = save[6]; BAKING = false;
-    off.startRendering().then(function (b) { BANK[name] = b; }, function () {});
+    off.startRendering().then(function (b) {
+      // cap: keep a layered sound's peak in check so the heavier versions get bigger without slamming the limiter
+      if (cap) { var d = b.getChannelData(0), pk = 0; for (var i = 0; i < d.length; i++) { var a = d[i] < 0 ? -d[i] : d[i]; if (a > pk) pk = a; } if (pk > cap) { var g = cap / pk; for (var j = 0; j < d.length; j++) d[j] *= g; } }
+      BANK[name] = b;
+    }, function () {});
   }
   function bakeAll() {
     if (!ac || typeof OfflineAudioContext === 'undefined') return;
@@ -883,7 +917,7 @@ var SFX = (function () {
     bake('heart', 0.5, function (t) { lHeart(t, 1); });
     bake('chipK', 0.1, function (t) { lChip(t, false); });
     bake('chipS', 0.12, function (t) { lChip(t, true); });
-    for (var k = 0; k <= 5; k++) (function (k) { bake('kb' + k, 0.3, function (t) { FX.killBase(t, k); }); })(k);
+    for (var k = 0; k <= 5; k++) (function (k) { bake('kb' + k, 0.32 + k * 0.08, function (t) { FX.killBase(t, k); }, 0.75 + k * 0.1); })(k);
     SHOTS.forEach(function (sh) { bake('s_' + sh, 0.4, function (t) { FX.shot(t, sh); }); });
     bake('boom0', 0.45, function (t) { FX.boom(t, false); }); bake('boom1', 0.85, function (t) { FX.boom(t, true); });
     Object.keys(FXDUR).forEach(function (n) { bake('x_' + n, FXDUR[n], function (t) { FX[n](t); }); });
@@ -894,7 +928,7 @@ var SFX = (function () {
   function bell2(t, f, vol, dur) { osc('sine', f, f, t, dur, vol, null, 0.002); osc('sine', f * 2.76, f * 2.76, t, dur * 0.7, vol * 0.45, null, 0.002); }
 
   // ---------- intro routing ----------
-  var IB = null, LAUGH_IR = null;
+  var IB = null, LAUGH_IR = null, LASTSHOT = null;
   function introBus() {
     if (!IB) {
       IB = { sfx: ac.createGain(), mus: ac.createGain(), synth: ac.createGain(), drum: ac.createGain() };
@@ -1003,7 +1037,7 @@ var SFX = (function () {
     nowPlaying: function () { return info(song, BPM); },
     songCount: function () { return WAVES.length; },
     viz: viz,
-    _dbg: function () { return { late: lateN, ac: ac, master: master, musOut: musComp, sfxOut: sfxComp, bpm: BPM, wave: mWave, scene: scene, step: stepI, song: song && song.id, tr: TR, mod: bossMod }; },
+    _dbg: function () { return { late: lateN, ac: ac, master: master, musOut: musComp, sfxOut: sfxComp, bpm: BPM, wave: mWave, scene: scene, step: stepI, song: song && song.id, tr: TR, mod: bossMod, bank: BANK, lastShot: LASTSHOT, forge: FG.L.slice() }; },
     suspend: function () { if (ac && ac.state === 'running') ac.suspend().catch(function () {}); if (customEl) customEl.pause(); },
     resume: function () { if (ac && ac.state === 'suspended') ac.resume().catch(function () {}); applyMusic(); },
     loadCustom: function (blob) {
@@ -1118,13 +1152,10 @@ var SFX = (function () {
     kill: function (chain) {
       if (!ok() || !throttle('kill', 40)) return; var t = ac.currentTime;
       var tier = Math.floor(chain / 25), inTier = chain % 25, tb = Math.min(5, tier);
-      if (!sfx('kb' + tb)) FX.killBase(t, tb);                              // crack + pop + click (+ heavier layers per tier)
-      var st = PENTA[Math.min(PENTA.length - 1, Math.max(0, inTier - 1))];
-      var f = 1046.5 / Math.pow(1.5, Math.min(tier, 5)) * Math.pow(2, st / 12);
-      bell2(t + 0.012, f, chain > 1 ? 0.12 : 0.09, 0.55 + tier * 0.12);  // ching, climbing with the chain
-      if (tier >= 2) bell2(t + 0.03, f * 1.5, 0.05, 0.6);
-      if (tier >= 4) bell2(t + 0.02, f / 2, 0.08, 1.4);
-      if (inTier >= 10 && inTier % 5 === 0) { bell2(t + 0.09, f * 1.5, 0.08, 0.8); bell2(t + 0.18, f * 2, 0.06, 1); }
+      // the pop climbs in pitch through each tier (about half an octave), then the next tier drops it deeper and heavier
+      var rate = 0.94 + inTier * 0.016;
+      if (!sfx('kb' + tb, rate)) FX.killBase(t, tb);
+      if (inTier >= 10 && inTier % 5 === 0) { var r2 = rate * 1.5; setTimeout(function () { if (ok()) sfx('kb' + tb, r2); }, 70); }
     },
     tierUp: function (tier) {
       if (!ok()) return; var t = ac.currentTime, low = 1 + Math.min(tier, 6) * 0.12;
@@ -1157,7 +1188,11 @@ var SFX = (function () {
     refuse: function () { if (!ok()) return; fx('refuse', 1); },
     shot: function (kind) {
       if (!ok() || !throttle('shot', kind === 'smg' || kind === 'lmg' ? 55 : kind === 'flamer' ? 110 : 40)) return;
-      var k = SHOTS.indexOf(kind) >= 0 ? kind : 'pistol'; if (!sfx('s_' + k)) FX.shot(ac.currentTime, k);
+      var k = SHOTS.indexOf(kind) >= 0 ? kind : 'pistol', t = ac.currentTime, buf = BANK['s_' + k];
+      if (LASTSHOT) { var o = LASTSHOT; LASTSHOT = null; try { o.g.gain.cancelScheduledValues(t); o.g.gain.setValueAtTime(o.g.gain.value, t); o.g.gain.linearRampToValueAtTime(0.0001, t + 0.012); o.s.stop(t + 0.02); } catch (e) { } }
+      if (!buf) { FX.shot(t, k); return; }
+      var src = ac.createBufferSource(), g = ac.createGain(); src.buffer = buf; src.playbackRate.value = jit(); src.connect(g); g.connect(sfxBus); src.start(t);
+      var me = { s: src, g: g }; LASTSHOT = me; src.onended = function () { if (LASTSHOT === me) LASTSHOT = null; try { g.disconnect(); } catch (e) { } };
     },
     boom: function (big) { if (!ok() || !throttle('boom', 90)) return; if (!sfx('boom' + (big ? 1 : 0))) FX.boom(ac.currentTime, big); },
     hurt: function () { if (!ok() || !throttle('hurt', 160)) return; fx('hurt'); },

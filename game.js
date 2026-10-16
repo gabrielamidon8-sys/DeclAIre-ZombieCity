@@ -1429,7 +1429,8 @@ function render() {
       ctx.fillStyle = '#2a2d22'; ctx.beginPath(); ctx.arc(b.x, b.y, 5.5, 0, TAU); ctx.fill();
       ctx.fillStyle = Math.floor(G.time * 14) % 2 ? '#ff4a3a' : b.col; ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, TAU); ctx.fill(); continue;
     }
-    const tl = b.heavy ? 0.034 : b.shard ? 0.012 : 0.022;
+    // the tracer never reaches back past where the bullet left the muzzle
+    const tl = Math.min(b.heavy ? 0.034 : b.shard ? 0.012 : 0.022, b.age || 0);
     ctx.strokeStyle = b.crit ? '#ffffff' : b.col; ctx.lineWidth = b.heavy ? 3.4 : b.shard ? 1.6 : b.crit ? 3 : 2.4;
     ctx.beginPath(); ctx.moveTo(b.x - b.vx * tl, b.y - b.vy * tl); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
@@ -1732,7 +1733,7 @@ function drawVizBullets(v) {
   const a = VZ.I * (0.18 + v.kick * 0.4); if (a < 0.02 || !G.bullets.length) return;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, a); ctx.strokeStyle = VZ.col; ctx.lineWidth = 6; ctx.lineCap = 'round';
   ctx.beginPath();
-  for (const b of G.bullets) { if (b.kind === 'flame' || b.kind === 'grenade') continue; ctx.moveTo(b.x - b.vx * 0.03, b.y - b.vy * 0.03); ctx.lineTo(b.x, b.y); }
+  for (const b of G.bullets) { if (b.kind === 'flame' || b.kind === 'grenade') continue; const tl = Math.min(0.03, b.age || 0); ctx.moveTo(b.x - b.vx * tl, b.y - b.vy * tl); ctx.lineTo(b.x, b.y); }
   ctx.stroke(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
 }
 // Screen: a spectrum along the bottom and an edge glow that breathes with the bass.
