@@ -384,14 +384,18 @@ function updCine(dt) {
 }
 
 /* ================= A-10 Warthog airstrike ================= */
+// The GAU-8 fires 30 mm high-explosive rounds: every round bursts where it lands (splash damage), punches a hole in
+// the road and kicks up dust. The jets leave engine smoke and the gun leaves its own grey cloud; the BRRRT reaches
+// you just after the rounds land and echoes off the buildings.
+function airEvery() { return G.p && G.p.dashK === 'warthog' ? 60 : 75; }
 function updAirBtn() {
   const b = $('airBtn'); if (!b) return; const n = G.air || 0;
   b.classList.toggle('ready', n > 0); b.disabled = !(n > 0 && G.mode === 'play');
-  $('airN').textContent = n > 0 ? 'x' + n : 'x75';
+  $('airN').textContent = n > 0 ? 'x' + n : 'x' + airEvery();
 }
 function grantAir() { G.air = Math.min(2, (G.air || 0) + 1); updAirBtn(); SFX.airReady(); toast('Chain x' + G.chain, 'A-10 Warthog ready', '#9fd36a'); }
 function callAirstrike() {
-  if (G.mode !== 'play' || !(G.air > 0) || G.jets.length) return;
+  if (G.mode !== 'play' || !(G.air > 0) || G.jets.some(j => !j.mini)) return;
   G.air--; updAirBtn();
   const p = G.p; let cx = p.x + Math.cos(p.aim) * 160, cy = p.y + Math.sin(p.aim) * 160, n = 0, sx = 0, sy = 0;
   for (const z of G.zs) { if (z.dead || z.fly) continue; const d = Math.hypot(z.x - p.x, z.y - p.y); if (d < 520) { sx += z.x; sy += z.y; n++; } }
@@ -403,45 +407,100 @@ function callAirstrike() {
     if (c > best) { best = c; bestA = a; }
   }
   if (Math.random() < 0.5) bestA += Math.PI;
-  const ux = Math.cos(bestA), uy = Math.sin(bestA), vx = -uy, vy = ux;
-  [[0, 0], [-80, -70], [-80, 70]].forEach((o, i) => G.jets.push({ x: cx - ux * (1000 - o[0]) + vx * o[1], y: cy - uy * (1000 - o[0]) + vy * o[1], ux: ux, uy: uy, t: 0, fireT: 0, tx: cx + vx * o[1] * 0.5, ty: cy + vy * o[1] * 0.5, firing: false, shot: false, k: i }));
-  SFX.radio(); SFX.a10Jet(2.4); banner('A-10 inbound', 'Danger close');
+  launchStrafe(cx, cy, bestA, {});
+  SFX.radio(); SFX.a10Jet(2.8); banner('A-10 inbound', 'Danger close');
 }
+// a gun run along angle a through (cx, cy): three jets, or one for the Warthog Run dash
+function launchStrafe(cx, cy, a, o) {
+  const ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux, mini = !!o.mini;
+  const form = mini ? [[0, 0]] : [[0, 0], [-80, -70], [-80, 70]];
+  form.forEach((f, i) => G.jets.push({ x: cx - ux * (1000 - f[0]) + vx * f[1], y: cy - uy * (1000 - f[0]) + vy * f[1], ux: ux, uy: uy, t: 0, fireT: 0, smT: 0, rounds: 0,
+    tx: cx + vx * f[1] * 0.5, ty: cy + vy * f[1] * 0.5, firing: false, shot: false, k: i, mini: mini, len: mini ? 380 : 840, dmgMul: mini ? 0.6 : 1, tr: [] }));
+  if (mini) SFX.a10Jet(2.2, true);
+}
+function puff(x, y, r0, r1, life, c, vx, vy) { if (!G.smoke) G.smoke = []; if (G.smoke.length > 520) G.smoke.splice(0, 40); G.smoke.push({ x: x, y: y, r0: r0, r1: r1, t: 0, life: life, c: c, vx: vx || 0, vy: vy || 0 }); }
+function hole(x, y, r) { if (!G.holes) G.holes = []; if (G.holes.length > (Q.lod >= 2 ? 180 : 340)) G.holes.shift(); G.holes.push({ x: x, y: y, r: r, rot: rand(TAU), t: 0, hot: 1 }); }
 function updJets(dt) {
   if (!G.jets.length) return;
-  const dmg = 70 + G.wave * 9;
+  const dmg = 70 + G.wave * 9, sm = Q.burst;
   for (const j of G.jets) {
     j.t += dt; j.x += j.ux * 980 * dt; j.y += j.uy * 980 * dt;
-    const along = (j.x - j.tx) * j.ux + (j.y - j.ty) * j.uy;
-    j.firing = along > -720 && along < 120;
+    const along = (j.x - j.tx) * j.ux + (j.y - j.ty) * j.uy, px = -j.uy, py = j.ux;
+    // engine smoke from both pods, drifting and spreading behind the jet
+    j.smT -= dt * sm;
+    while (j.smT <= 0) { j.smT += 0.03; for (const s of [-1, 1]) puff(j.x - j.ux * 26 + px * 9 * s, j.y - j.uy * 26 + py * 9 * s, 3, 16, 1.5, '200,204,210', -j.ux * 60, -j.uy * 60); }
+    j.firing = along > -j.len + 120 && along < 120;
     if (j.firing) {
-      if (!j.shot) { j.shot = true; if (j.k === 0) { SFX.a10Brrt(0.35, 1.0); shakeIt(6); } }
+      if (!j.shot) {
+        j.shot = true;
+        if (j.k === 0) { SFX.a10Brrt(0.3, j.mini ? 0.45 : 1.05, j.mini); shakeIt(j.mini ? 6 : 10); G.flashA = j.mini ? 0.2 : 0.45; if (!j.mini) SFX.fm.duck(2.4); }
+      }
       j.fireT -= dt;
       while (j.fireT <= 0) {
-        j.fireT += 0.016;
-        const ix = j.x + j.ux * 260 + (-j.uy) * rand(-22, 22), iy = j.y + j.uy * 260 + j.ux * rand(-22, 22);
-        burst(ix, iy, 2, Math.random() < 0.5 ? '#c9b48a' : '#ffd27a', 120, 3, 0.35);
-        if (Math.random() < 0.18) { burst(ix, iy, 6, '#ff8a2a', 160, 4, 0.4); G.splats.length < 150 && splat(ix, iy, rand(5, 9), '#2a2622'); }
-        if (Math.random() < 0.25) SFX.impacts();
-        near(ix, iy, 34, o => { if (o.dead) return; if (Math.hypot(o.x - ix, o.y - iy) < 30 + o.r) hurtZombie(o, o.boss ? dmg * 0.35 : dmg, { src: 'a10', kx: j.ux * 60, ky: j.uy * 60 }); });
+        j.fireT += 0.016; j.rounds++;
+        const ix = j.x + j.ux * 260 + px * rand(-24, 24) + j.ux * rand(-16, 16), iy = j.y + j.uy * 260 + py * rand(-24, 24) + j.uy * rand(-16, 16);
+        // every round is high explosive: a small burst with splash damage, stronger in the middle
+        const R = 34, big = j.rounds % 6 === 0;
+        near(ix, iy, R + 50, o => {
+          if (o.dead) return; const d = Math.hypot(o.x - ix, o.y - iy); if (d > (big ? 56 : R) + o.r) return;
+          const f = 1 - Math.min(1, d / (R + o.r)) * 0.5;
+          hurtZombie(o, dmg * j.dmgMul * f * (o.boss ? 0.35 : 1) * (big ? 1.4 : 1), { src: 'a10', kx: j.ux * 70 + (o.x - ix) / (d || 1) * 120, ky: j.uy * 70 + (o.y - iy) / (d || 1) * 120 });
+        });
+        burst(ix, iy, 2, Math.random() < 0.5 ? '#c9b48a' : '#ffd27a', 140, 3, 0.35);
+        burst(ix, iy, 1, '#fff2c0', 220, 2, 0.2);
+        if (big) { burst(ix, iy, 9, '#ff8a2a', 200, 5, 0.45); burst(ix, iy, 5, '#3a2e24', 120, 7, 0.8); G.rings.push({ x: ix, y: iy, r0: 4, r1: 52, t: 0, life: 0.3, c: '255,170,80', w: 3 }); puff(ix, iy, 6, 30, 1.6, '70,62,56', rand(-20, 20), rand(-20, 20)); if (Math.random() < 0.5) SFX.impacts(); }
+        else if (Math.random() < 0.3) puff(ix, iy, 4, 18, 1.1, '150,136,112', rand(-15, 15), rand(-15, 15));
+        hole(ix + rand(-4, 4), iy + rand(-4, 4), rand(3, 5.4) * (big ? 1.5 : 1));
+        if (Math.random() < 0.12 && G.splats.length < 150) splat(ix, iy, rand(6, 10), '#221e1a');
+        j.tr.push({ x: ix, y: iy, t: 0 }); if (j.tr.length > 8) j.tr.shift();
         j.lix = ix; j.liy = iy;
       }
-      if (Math.random() < 0.3) shakeIt(3);
+      // the gun's own smoke cloud, left in the air under the nose
+      if (Math.random() < 0.7 * sm) puff(j.x + j.ux * 46, j.y + j.uy * 46, 5, 30, 2.2, '120,124,130', j.ux * 40, j.uy * 40);
+      if (Math.random() < 0.35) shakeIt(j.mini ? 3 : 5);
     }
-    if (j.t > 2.6) j.dead = true;
+    for (const t of j.tr) t.t += dt;
+    if (j.t > 2.8) j.dead = true;
   }
   G.jets = G.jets.filter(j => !j.dead);
+}
+// smoke, bullet holes and the impact flash keep going after the jets have gone
+function updAirFx(dt) {
+  if (G.smoke && G.smoke.length) { for (const s of G.smoke) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.97; s.vy *= 0.97; } G.smoke = G.smoke.filter(s => s.t < s.life); }
+  if (G.holes && G.holes.length) { for (const h of G.holes) { h.t += dt; if (h.hot > 0) h.hot -= dt * 0.6; } if (G.holes[0].t > 28) G.holes = G.holes.filter(h => h.t < 28); }
+  if (G.flashA > 0) G.flashA -= dt * 1.4;
+}
+function drawHoles(vis) {
+  const H = G.holes; if (!H || !H.length) return;
+  ctx.fillStyle = 'rgba(14,12,10,0.85)';
+  for (const h of H) { if (!vis(h.x, h.y, 10)) continue; ctx.globalAlpha = Math.min(1, (28 - h.t) / 6); ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * 0.8, h.rot, 0, TAU); ctx.fill(); }
+  ctx.strokeStyle = 'rgba(120,108,92,0.55)'; ctx.lineWidth = 1.2;
+  for (const h of H) { if (!vis(h.x, h.y, 10)) continue; ctx.globalAlpha = Math.min(1, (28 - h.t) / 6); ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * 1.5, h.r * 1.25, h.rot, 0, TAU); ctx.stroke(); }
+  ctx.globalCompositeOperation = 'lighter';
+  for (const h of H) { if (h.hot <= 0 || !vis(h.x, h.y, 10)) continue; ctx.globalAlpha = h.hot * 0.8; ctx.fillStyle = h.hot > 0.6 ? '#ffd27a' : '#ff6a2a'; ctx.beginPath(); ctx.arc(h.x, h.y, h.r * 0.6, 0, TAU); ctx.fill(); }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+function drawSmoke(vis) {
+  const S = G.smoke; if (!S || !S.length) return;
+  for (const s of S) { const f = s.t / s.life, r = s.r0 + (s.r1 - s.r0) * Math.sqrt(f); if (!vis(s.x, s.y, r)) continue; ctx.fillStyle = 'rgba(' + s.c + ',' + (0.32 * (1 - f) * Math.min(1, s.t * 8)) + ')'; ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, TAU); ctx.fill(); }
 }
 function drawJets() {
   for (const j of G.jets) {
     const a = Math.atan2(j.uy, j.ux);
     ctx.save(); ctx.translate(j.x + 50, j.y + 80); ctx.rotate(a); ctx.globalAlpha = 0.35; drawA10(true); ctx.restore();
     if (j.firing && j.lix != null) {
-      ctx.strokeStyle = 'rgba(255,220,120,0.55)'; ctx.lineWidth = 2;
-      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(j.x + j.ux * 44, j.y + j.uy * 44); ctx.lineTo(j.lix + rand(-18, 18), j.liy + rand(-18, 18)); ctx.stroke(); }
+      // tracers from the gun to where the rounds are landing
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      for (const t of j.tr) { const al = Math.max(0, 1 - t.t / 0.12); if (al <= 0) continue; ctx.strokeStyle = 'rgba(255,214,120,' + 0.75 * al + ')'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(j.x + j.ux * 48, j.y + j.uy * 48); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = 'rgba(255,250,220,' + 0.9 * al + ')'; ctx.lineWidth = 1; ctx.stroke(); }
+      const g = ctx.createRadialGradient(j.lix, j.liy, 2, j.lix, j.liy, 46); g.addColorStop(0, 'rgba(255,200,110,0.55)'); g.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(j.lix, j.liy, 46, 0, TAU); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
     }
-    ctx.save(); ctx.translate(j.x, j.y); ctx.rotate(a); ctx.globalAlpha = 1; drawA10(false);
-    if (j.firing) { ctx.fillStyle = '#ffe9a0'; ctx.beginPath(); ctx.moveTo(46, 0); ctx.lineTo(62, -5); ctx.lineTo(70, 0); ctx.lineTo(62, 5); ctx.closePath(); ctx.fill(); }
+    ctx.save(); ctx.translate(j.x, j.y); ctx.rotate(a); ctx.globalAlpha = 1;
+    // engine glow
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,170,90,0.5)'; ctx.beginPath(); ctx.arc(-28, -9, 4, 0, TAU); ctx.arc(-28, 9, 4, 0, TAU); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+    drawA10(false);
+    if (j.firing) { ctx.fillStyle = '#ffe9a0'; ctx.beginPath(); ctx.moveTo(46, 0); ctx.lineTo(64, -7); ctx.lineTo(74, 0); ctx.lineTo(64, 7); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(50, 0, 3, 0, TAU); ctx.fill(); }
     ctx.restore();
   }
   ctx.globalAlpha = 1;

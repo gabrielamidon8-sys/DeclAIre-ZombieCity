@@ -436,6 +436,8 @@
     skip: function () { if (RD.mode === 'bt') { btNext(1); return; } RD.idx[RD.ch] = (RD.idx[RD.ch] + 1) % RSONGS; if (RD.mode !== 'radio') rSetMode('radio'); else rTune(); },
     mute: function (on) { RD.muted = on == null ? !RD.muted : !!on; if (RD.vol) { var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(RD.muted ? 0 : 1, t, 0.06); } introLevel(); rNotify(); return RD.muted; },
     muted: function () { return RD.muted; },
+    // the radio dips under something loud (the A-10's cannon), then comes back
+    duck: function (sec) { if (!RD.vol || RD.muted) return; var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(0.4, t, 0.06); RD.vol.gain.setTargetAtTime(1, t + (sec || 2), 0.4); },
     setState: function (s) { if (!s) return; if (s.ch != null) RD.ch = (s.ch % 7 + 7) % 7; if (s.idx && s.idx.length === 7) RD.idx = s.idx.map(function (v) { return ((v | 0) % RSONGS + RSONGS) % RSONGS; }); if (s.muted != null) RD.muted = !!s.muted; if (s.mode) RD.mode = s.mode; },
     state: function () { return { ch: RD.ch, idx: RD.idx.slice(), muted: RD.muted, mode: RD.mode }; },
     btSet: function (list, play) {

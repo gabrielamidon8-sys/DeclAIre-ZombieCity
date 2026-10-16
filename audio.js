@@ -5,7 +5,7 @@
    or go quiet. SFX.viz() reports the music's beats and spectrum for the light show. */
 var SFX = (function () {
   'use strict';
-  var ac = null, master = null, sfxBus = null, musBus = null, noiseBuf = null;
+  var ac = null, master = null, sfxBus = null, musBus = null, noiseBuf = null, loudBus = null;
   var onAn = null, onSpec = null, onPrev = null, BANK = {}, BAKING = false, sfxComp = null, musComp = null;
   var synthBus = null, drumBus = null, revIn = null, dlyIn = null, dly = null, distIn = null, bellBus = null;
   var gtrIn = null, leadIn = null, pulse25 = null;
@@ -43,6 +43,8 @@ var SFX = (function () {
     musBus = ac.createGain(); musBus.gain.value = 0;
     sfxBus.connect(sfxComp); sfxComp.connect(mix);
     musBus.connect(musComp); musComp.connect(mix);
+    // the A-10's cannon and engines skip the effects compressor so they hit at full size (the clipper still rounds them off)
+    loudBus = ac.createGain(); loudBus.gain.value = 0.8; loudBus.connect(mix);
     mix.connect(clip); clip.connect(master); master.connect(ac.destination);
     noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 1.5), ac.sampleRate);
     var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -444,6 +446,41 @@ var SFX = (function () {
     cv.buffer = impulse(sec); wg.gain.value = wet; input.connect(sfxBus); input.connect(cv); cv.connect(wg); wg.connect(sfxBus);
     return input;
   }
+  // the GAU-8 Avenger: 65 rounds a second, each a crack and a thump, over a torn sawtooth growl and a sub, then the
+  // echoes coming back off the buildings and a long distant reverb
+  function gau8(t, fire) {
+    var out = ac.createGain(), mx = ac.createGain(); out.connect(sfxBus); mx.connect(out);
+    [[0.21, 0.42, 2200], [0.47, 0.3, 1400], [0.86, 0.19, 900], [1.32, 0.11, 650]].forEach(function (e) {
+      var dl = ac.createDelay(2), lp = ac.createBiquadFilter(), g = ac.createGain(); dl.delayTime.value = e[0]; lp.type = 'lowpass'; lp.frequency.value = e[2]; g.gain.value = e[1];
+      mx.connect(dl); dl.connect(lp); lp.connect(g); g.connect(out);
+    });
+    var cv = ac.createConvolver(), cl = ac.createBiquadFilter(), cg = ac.createGain(); cv.buffer = impulse(2.8); cl.type = 'lowpass'; cl.frequency.value = 1500; cg.gain.value = 0.34;
+    mx.connect(cv); cv.connect(cl); cl.connect(cg); cg.connect(out);
+    var n = Math.round(fire * 65), k, tk, v;
+    for (k = 0; k < n; k++) {
+      tk = t + k / 65 + (Math.random() - 0.5) * 0.0012; v = 0.75 + Math.random() * 0.25; if (k > n - 8) v *= (n - k) / 8;
+      noise(tk, 0.012, 0.4 * v, 'lowpass', 2400 + Math.random() * 900, 0.7, null, mx);
+      osc('sine', 155, 42, tk, 0.032, 0.5 * v, mx, 0.0008);
+    }
+    var o = ac.createOscillator(), sh = ac.createWaveShaper(), lp2 = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(66, t); o.frequency.setValueAtTime(66, t + fire - 0.15); o.frequency.linearRampToValueAtTime(48, t + fire);
+    sh.curve = distCurve(35); lp2.type = 'lowpass'; lp2.frequency.value = 1500;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.4, t + 0.03); g.gain.setValueAtTime(0.4, t + fire - 0.1); g.gain.exponentialRampToValueAtTime(0.0001, t + fire + 0.12);
+    o.connect(sh); sh.connect(lp2); lp2.connect(g); g.connect(mx); o.start(t); o.stop(t + fire + 0.2);
+    var sb = ac.createOscillator(), sg = ac.createGain(); sb.type = 'sine'; sb.frequency.value = 33;
+    sg.gain.setValueAtTime(0.0001, t); sg.gain.linearRampToValueAtTime(0.5, t + 0.04); sg.gain.setValueAtTime(0.5, t + fire); sg.gain.exponentialRampToValueAtTime(0.0001, t + fire + 0.25);
+    sb.connect(sg); sg.connect(mx); sb.start(t); sb.stop(t + fire + 0.3);
+    var ns = ac.createBufferSource(), bp = ac.createBiquadFilter(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain(), ng = ac.createGain();
+    ns.buffer = noiseBuf; ns.loop = true; bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 0.7;
+    lfo.type = 'square'; lfo.frequency.value = 65; lg.gain.value = 0.5; am.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
+    ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(0.32, t + 0.03); ng.gain.setValueAtTime(0.32, t + fire); ng.gain.exponentialRampToValueAtTime(0.0001, t + fire + 0.2);
+    ns.connect(bp); bp.connect(am); am.connect(ng); ng.connect(mx); ns.start(t); ns.stop(t + fire + 0.3); lfo.start(t); lfo.stop(t + fire + 0.3);
+  }
+  // the rounds landing first: a dense crackle of small explosions in a short reverb
+  function heiHits(t, dur) {
+    var out = ac.createGain(), cv = ac.createConvolver(), cg = ac.createGain(); out.connect(sfxBus); cv.buffer = impulse(1.6); cg.gain.value = 0.3; out.connect(cv); cv.connect(cg); cg.connect(sfxBus);
+    for (var i = 0; i < 150; i++) { var tk = t + Math.random() * dur, v = 0.08 + Math.random() * 0.22; noise(tk, 0.02, v, 'bandpass', 500 + Math.random() * 2600, 1.1, null, out); if (i % 6 === 0) osc('sine', 130, 48, tk, 0.07, 0.32, out, 0.001); }
+  }
   var FX = {
     // the kill: three parts, one after another — dog tags clinking on their chain, a ping, then a deep pop in a big
     // reverb. The ping climbs with each kill in a tier; every 25 chained kills is a new tier and the whole thing gets
@@ -551,6 +588,7 @@ var SFX = (function () {
     })(k);
     SHOTS.forEach(function (sh) { bake('s_' + sh, 0.4, function (t) { FX.shot(t, sh); }); });
     bake('boom0', 0.45, function (t) { FX.boom(t, false); }); bake('boom1', 0.85, function (t) { FX.boom(t, true); });
+    bake('brrt', 3.7, function (t) { gau8(t, 1.05); }, 0.95); bake('brrt2', 2.9, function (t) { gau8(t, 0.45); }, 0.9); bake('hits', 2.6, function (t) { heiHits(t, 1.15); }, 0.8);
     Object.keys(FXDUR).forEach(function (n) { bake('x_' + n, FXDUR[n], function (t) { FX[n](t); }); });
   }
   function jit() { return 0.95 + Math.random() * 0.1; }
@@ -836,31 +874,68 @@ var SFX = (function () {
 ,
     // ---------- new effects ----------
     // A-10 flyover: engine whine and roar sweeping past, with a doppler drop
-    a10Jet: function (dur) {
-      if (!ok()) return; var t = ac.currentTime; dur = dur || 2.6;
+    // A-10 flyover: the roar sweeping past left to right, the TF34 "hog whistle" with a doppler drop, a low rumble at the pass
+    a10Jet: function (dur, mini) {
+      if (!ok()) return; var t = ac.currentTime; dur = dur || 2.8;
+      var bus = ac.createGain(); bus.gain.value = mini ? 0.7 : 1;
+      if (ac.createStereoPanner) { var pn = ac.createStereoPanner(); pn.pan.setValueAtTime(-0.85, t); pn.pan.linearRampToValueAtTime(0.85, t + dur); bus.connect(pn); pn.connect(loudBus); } else bus.connect(loudBus);
       var s = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = noiseBuf; s.loop = true;
-      bp.type = 'bandpass'; bp.Q.value = 0.9; bp.frequency.setValueAtTime(900, t); bp.frequency.exponentialRampToValueAtTime(2600, t + dur * 0.45); bp.frequency.exponentialRampToValueAtTime(380, t + dur);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      s.connect(bp); bp.connect(g); g.connect(sfxBus); s.start(t); s.stop(t + dur + 0.1);
-      var o = ac.createOscillator(), og = ac.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(2300, t); o.frequency.exponentialRampToValueAtTime(2900, t + dur * 0.45); o.frequency.exponentialRampToValueAtTime(1300, t + dur);
-      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.03, t + dur * 0.45); og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(og); og.connect(sfxBus); o.start(t); o.stop(t + dur + 0.1);
-      noise(t + dur * 0.3, dur * 0.7, 0.35, 'lowpass', 500, 0.8, 90);
+      bp.type = 'bandpass'; bp.Q.value = 0.8; bp.frequency.setValueAtTime(800, t); bp.frequency.exponentialRampToValueAtTime(2800, t + dur * 0.45); bp.frequency.exponentialRampToValueAtTime(340, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.62, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(bp); bp.connect(g); g.connect(bus); s.start(t); s.stop(t + dur + 0.1);
+      [3140, 3195].forEach(function (f) {
+        var o = ac.createOscillator(), og = ac.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f * 1.08, t); o.frequency.linearRampToValueAtTime(f, t + dur * 0.45); o.frequency.exponentialRampToValueAtTime(f * 0.72, t + dur);
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.03, t + dur * 0.45); og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(og); og.connect(bus); o.start(t); o.stop(t + dur + 0.1);
+      });
+      var w = ac.createOscillator(), wg = ac.createGain(); w.type = 'sawtooth'; w.frequency.setValueAtTime(2300, t); w.frequency.exponentialRampToValueAtTime(2900, t + dur * 0.45); w.frequency.exponentialRampToValueAtTime(1300, t + dur);
+      wg.gain.setValueAtTime(0.0001, t); wg.gain.exponentialRampToValueAtTime(0.02, t + dur * 0.45); wg.gain.exponentialRampToValueAtTime(0.0001, t + dur); w.connect(wg); wg.connect(bus); w.start(t); w.stop(t + dur + 0.1);
+      noise(t + dur * 0.3, dur * 0.7, 0.45, 'lowpass', 500, 0.8, 80, bus);
+      osc('sine', 52, 38, t + dur * 0.35, dur * 0.5, 0.35, bus, dur * 0.12);
     },
-    // the GAU-8 cannon: a ripping BRRRRT, heard a beat after the rounds land
-    a10Brrt: function (delay, dur) {
+    // the GAU-8: the rounds' crackle lands first, then the BRRRT and its echoes (baked once; a live version until then)
+    a10Brrt: function (delay, dur, mini) {
       if (!ok()) return; var t = ac.currentTime + (delay || 0); dur = dur || 1.1;
+      var b = BANK[mini ? 'brrt2' : 'brrt'];
+      if (b) {
+        var src = ac.createBufferSource(), g0 = ac.createGain(); src.buffer = b; g0.gain.value = mini ? 1.1 : 1.6; src.connect(g0); g0.connect(loudBus); src.start(t);
+        var h = BANK.hits; if (h) { var hs = ac.createBufferSource(), hg = ac.createGain(); hs.buffer = h; hg.gain.value = mini ? 0.5 : 0.9; hs.connect(hg); hg.connect(sfxBus); hs.start(ac.currentTime); }
+        return;
+      }
       var o = ac.createOscillator(), sh = ac.createWaveShaper(), lp = ac.createBiquadFilter(), g = ac.createGain();
       o.type = 'sawtooth'; o.frequency.setValueAtTime(68, t); o.frequency.linearRampToValueAtTime(62, t + dur);
       sh.curve = distCurve(40); lp.type = 'lowpass'; lp.frequency.value = 2200;
       g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.04); g.gain.setValueAtTime(0.5, t + dur); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
-      o.connect(sh); sh.connect(lp); lp.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + dur + 0.3);
-      var s = ac.createBufferSource(), bp = ac.createBiquadFilter(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain(), ng = ac.createGain();
-      s.buffer = noiseBuf; s.loop = true; bp.type = 'bandpass'; bp.frequency.value = 1300; bp.Q.value = 0.7;
-      lfo.type = 'square'; lfo.frequency.value = 65; lg.gain.value = 0.5; am.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
-      ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(0.5, t + 0.03); ng.gain.setValueAtTime(0.5, t + dur); ng.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.3);
-      s.connect(bp); bp.connect(am); am.connect(ng); ng.connect(sfxBus); s.start(t); s.stop(t + dur + 0.35); lfo.start(t); lfo.stop(t + dur + 0.35);
+      o.connect(sh); sh.connect(lp); lp.connect(g); g.connect(loudBus); o.start(t); o.stop(t + dur + 0.3);
       noise(t + dur * 0.2, dur + 0.6, 0.18, 'lowpass', 700, 0.7, 120);
+    },
+    // a different sound for each kind of dash, layered over the usual whoosh
+    dashKind: function (k) {
+      if (!ok()) return; fx('dash'); var t = ac.currentTime, i;
+      switch (k) {
+        case 'shield': drum(t, 70, 0.6); break;
+        case 'slide': noise(t, 0.3, 0.2, 'lowpass', 900, 0.8, 300); break;
+        case 'smoke': noise(t, 0.6, 0.3, 'lowpass', 700, 0.8, 200); break;
+        case 'heart': drum(t, 62, 0.7); drum(t + 0.18, 58, 0.6); break;
+        case 'flake': bell(t, 2637, 0.05, 0.6); bell(t + 0.05, 3520, 0.04, 0.5); noise(t, 0.4, 0.1, 'highpass', 6000, 0.7); break;
+        case 'flame': noise(t, 0.45, 0.32, 'bandpass', 500, 0.7, 2200); osc('sawtooth', 90, 60, t, 0.4, 0.06); break;
+        case 'bolt': case 'storm': osc('sawtooth', 1500, 200, t, 0.15, 0.1); noise(t + 0.05, 0.6, 0.35, 'lowpass', 1600, 0.7, 120); drum(t + 0.06, 45, 0.7); break;
+        case 'drop': for (i = 0; i < 5; i++) osc('sine', 400 + Math.random() * 600, 900 + Math.random() * 600, t + i * 0.05, 0.05, 0.06); break;
+        case 'blink': osc('sine', 300, 2400, t, 0.12, 0.12); osc('sine', 2400, 600, t + 0.12, 0.15, 0.08); break;
+        case 'ghost': noise(t, 0.6, 0.12, 'bandpass', 900, 3, 1800); osc('sine', 440, 330, t, 0.6, 0.04, null, 0.2); break;
+        case 'quake': drum(t + 0.15, 40, 1); noise(t + 0.15, 0.5, 0.3, 'lowpass', 400, 0.8, 90); break;
+        case 'fang': noise(t, 0.12, 0.3, 'bandpass', 3000, 2, 900); break;
+        case 'well': osc('sine', 300, 40, t, 0.7, 0.3); noise(t, 0.7, 0.12, 'bandpass', 2000, 2, 200); break;
+        case 'holo': for (i = 0; i < 4; i++) osc('square', 800 + i * 400, 800 + i * 400, t + i * 0.05, 0.04, 0.04); break;
+        case 'rocket': noise(t, 0.4, 0.45, 'lowpass', 1800, 0.7, 400); osc('sawtooth', 70, 40, t, 0.4, 0.15); break;
+        case 'clock': osc('square', 1800, 1800, t, 0.02, 0.06); osc('square', 1400, 1400, t + 0.16, 0.02, 0.06); osc('sine', 600, 120, t, 0.8, 0.12); break;
+        case 'axe': osc('sawtooth', 110, 70, t, 0.3, 0.14); drum(t, 55, 0.7); break;
+        case 'halo': [523.3, 659.3, 784].forEach(function (f) { bell(t, f, 0.05, 1.2); }); break;
+        case 'star': noise(t, 0.18, 0.25, 'bandpass', 4000, 3, 1500); noise(t + 0.1, 0.5, 0.2, 'lowpass', 600, 0.8, 150); break;
+        case 'meteor': noise(t, 0.4, 0.3, 'bandpass', 300, 0.8, 3000); break;
+        case 'dragon': osc('sawtooth', 180, 70, t + 0.15, 0.6, 0.18); noise(t + 0.15, 0.6, 0.35, 'lowpass', 1400, 0.8, 300); break;
+        case 'rift': osc('sawtooth', 220, 40, t, 0.6, 0.12); noise(t, 0.6, 0.2, 'bandpass', 600, 4, 120); break;
+      }
     },
     impacts: function () { if (!ok() || !throttle('imp', 70)) return; fx('impacts'); },
     airReady: function () { if (!ok()) return; var t = ac.currentTime; [0, 0.12, 0.24].forEach(function (d, i) { osc('square', 1200 + i * 200, 1200 + i * 200, t + d, 0.07, 0.05); }); noise(t, 0.4, 0.05, 'bandpass', 2500, 4); },

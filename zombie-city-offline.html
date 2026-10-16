@@ -114,6 +114,16 @@ p{margin:0}
 #dashBtn{position:absolute;bottom:22px;right:max(20px, calc(env(safe-area-inset-right, 0px) + 12px));width:78px;height:78px;border-radius:50%;border:2px solid var(--tape);background:conic-gradient(rgba(242,204,58,.28) calc(var(--cd,1) * 360deg), rgba(14,17,21,.72) 0);display:grid;place-items:center;font-family:var(--f-num);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--tape);touch-action:none}
 #dashBtn{box-shadow:0 0 calc(var(--beat, 0) * 28px) color-mix(in srgb, var(--neon, #000) 65%, transparent)}
 #dashBtn.cool{border-color:rgba(242,204,58,.35);color:var(--muted)}
+/* each dash colors the button; its name sits under the label */
+#dashBtn{--dash:#f2cc3a;border-color:var(--dash);color:var(--dash);background:conic-gradient(color-mix(in srgb, var(--dash) 30%, transparent) calc(var(--cd,1) * 360deg), rgba(14,17,21,.72) 0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0}
+#dashBtn b{font-weight:400;line-height:1}
+#dashBtn .dname{font-size:8.5px;letter-spacing:.08em;line-height:1;opacity:.8;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dashBtn.cool{border-color:color-mix(in srgb, var(--dash) 35%, transparent);color:var(--muted)}
+.build-dash{display:flex;gap:12px;align-items:center;min-width:0}
+.build-dash canvas{flex:none}
+.build-dash b{display:block;font-size:15px}
+.build-dash p{font-size:13px;color:#cfc9bb;margin-top:2px}
+.dcard canvas{margin:4px 0}
 
 /* ---------- overlays ---------- */
 .ov{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--scrim);overflow-y:auto;padding-block:20px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
@@ -1056,7 +1066,7 @@ button.lcd{cursor:pointer}
     <div id="banner" hidden></div>
     <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
     <div id="chainPop" hidden></div>
-    <button id="dashBtn" aria-label="Dash">Dash</button>
+    <button id="dashBtn" aria-label="Dash"><b>Dash</b><span class="dname">Sprint</span></button>
     <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em></button>
     <div class="wchip" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><span id="wName">Standard Pistol</span></div>
     <div id="qte" hidden>
@@ -1182,6 +1192,7 @@ button.lcd{cursor:pointer}
         <div class="build pause-side">
           <p class="sub-eyebrow">Your build</p>
           <div class="build-w"><canvas id="bwIcon" aria-hidden="true"></canvas><div><b id="bwName"></b><span id="bwRar"></span><p id="bwDesc"></p></div></div>
+          <div class="build-dash" id="bDash"></div>
           <dl class="build-stats" id="bStats"></dl>
           <div class="build-cards" id="bCards"></div>
         </div>
@@ -2472,7 +2483,7 @@ var ZC = (function () {
    or go quiet. SFX.viz() reports the music's beats and spectrum for the light show. */
 var SFX = (function () {
   'use strict';
-  var ac = null, master = null, sfxBus = null, musBus = null, noiseBuf = null;
+  var ac = null, master = null, sfxBus = null, musBus = null, noiseBuf = null, loudBus = null;
   var onAn = null, onSpec = null, onPrev = null, BANK = {}, BAKING = false, sfxComp = null, musComp = null;
   var synthBus = null, drumBus = null, revIn = null, dlyIn = null, dly = null, distIn = null, bellBus = null;
   var gtrIn = null, leadIn = null, pulse25 = null;
@@ -2510,6 +2521,8 @@ var SFX = (function () {
     musBus = ac.createGain(); musBus.gain.value = 0;
     sfxBus.connect(sfxComp); sfxComp.connect(mix);
     musBus.connect(musComp); musComp.connect(mix);
+    // the A-10's cannon and engines skip the effects compressor so they hit at full size (the clipper still rounds them off)
+    loudBus = ac.createGain(); loudBus.gain.value = 0.8; loudBus.connect(mix);
     mix.connect(clip); clip.connect(master); master.connect(ac.destination);
     noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 1.5), ac.sampleRate);
     var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -3260,6 +3273,8 @@ var SFX = (function () {
     skip: function () { if (RD.mode === 'bt') { btNext(1); return; } RD.idx[RD.ch] = (RD.idx[RD.ch] + 1) % RSONGS; if (RD.mode !== 'radio') rSetMode('radio'); else rTune(); },
     mute: function (on) { RD.muted = on == null ? !RD.muted : !!on; if (RD.vol) { var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(RD.muted ? 0 : 1, t, 0.06); } introLevel(); rNotify(); return RD.muted; },
     muted: function () { return RD.muted; },
+    // the radio dips under something loud (the A-10's cannon), then comes back
+    duck: function (sec) { if (!RD.vol || RD.muted) return; var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(0.4, t, 0.06); RD.vol.gain.setTargetAtTime(1, t + (sec || 2), 0.4); },
     setState: function (s) { if (!s) return; if (s.ch != null) RD.ch = (s.ch % 7 + 7) % 7; if (s.idx && s.idx.length === 7) RD.idx = s.idx.map(function (v) { return ((v | 0) % RSONGS + RSONGS) % RSONGS; }); if (s.muted != null) RD.muted = !!s.muted; if (s.mode) RD.mode = s.mode; },
     state: function () { return { ch: RD.ch, idx: RD.idx.slice(), muted: RD.muted, mode: RD.mode }; },
     btSet: function (list, play) {
@@ -3369,6 +3384,41 @@ var SFX = (function () {
     cv.buffer = impulse(sec); wg.gain.value = wet; input.connect(sfxBus); input.connect(cv); cv.connect(wg); wg.connect(sfxBus);
     return input;
   }
+  // the GAU-8 Avenger: 65 rounds a second, each a crack and a thump, over a torn sawtooth growl and a sub, then the
+  // echoes coming back off the buildings and a long distant reverb
+  function gau8(t, fire) {
+    var out = ac.createGain(), mx = ac.createGain(); out.connect(sfxBus); mx.connect(out);
+    [[0.21, 0.42, 2200], [0.47, 0.3, 1400], [0.86, 0.19, 900], [1.32, 0.11, 650]].forEach(function (e) {
+      var dl = ac.createDelay(2), lp = ac.createBiquadFilter(), g = ac.createGain(); dl.delayTime.value = e[0]; lp.type = 'lowpass'; lp.frequency.value = e[2]; g.gain.value = e[1];
+      mx.connect(dl); dl.connect(lp); lp.connect(g); g.connect(out);
+    });
+    var cv = ac.createConvolver(), cl = ac.createBiquadFilter(), cg = ac.createGain(); cv.buffer = impulse(2.8); cl.type = 'lowpass'; cl.frequency.value = 1500; cg.gain.value = 0.34;
+    mx.connect(cv); cv.connect(cl); cl.connect(cg); cg.connect(out);
+    var n = Math.round(fire * 65), k, tk, v;
+    for (k = 0; k < n; k++) {
+      tk = t + k / 65 + (Math.random() - 0.5) * 0.0012; v = 0.75 + Math.random() * 0.25; if (k > n - 8) v *= (n - k) / 8;
+      noise(tk, 0.012, 0.4 * v, 'lowpass', 2400 + Math.random() * 900, 0.7, null, mx);
+      osc('sine', 155, 42, tk, 0.032, 0.5 * v, mx, 0.0008);
+    }
+    var o = ac.createOscillator(), sh = ac.createWaveShaper(), lp2 = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(66, t); o.frequency.setValueAtTime(66, t + fire - 0.15); o.frequency.linearRampToValueAtTime(48, t + fire);
+    sh.curve = distCurve(35); lp2.type = 'lowpass'; lp2.frequency.value = 1500;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.4, t + 0.03); g.gain.setValueAtTime(0.4, t + fire - 0.1); g.gain.exponentialRampToValueAtTime(0.0001, t + fire + 0.12);
+    o.connect(sh); sh.connect(lp2); lp2.connect(g); g.connect(mx); o.start(t); o.stop(t + fire + 0.2);
+    var sb = ac.createOscillator(), sg = ac.createGain(); sb.type = 'sine'; sb.frequency.value = 33;
+    sg.gain.setValueAtTime(0.0001, t); sg.gain.linearRampToValueAtTime(0.5, t + 0.04); sg.gain.setValueAtTime(0.5, t + fire); sg.gain.exponentialRampToValueAtTime(0.0001, t + fire + 0.25);
+    sb.connect(sg); sg.connect(mx); sb.start(t); sb.stop(t + fire + 0.3);
+    var ns = ac.createBufferSource(), bp = ac.createBiquadFilter(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain(), ng = ac.createGain();
+    ns.buffer = noiseBuf; ns.loop = true; bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 0.7;
+    lfo.type = 'square'; lfo.frequency.value = 65; lg.gain.value = 0.5; am.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
+    ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(0.32, t + 0.03); ng.gain.setValueAtTime(0.32, t + fire); ng.gain.exponentialRampToValueAtTime(0.0001, t + fire + 0.2);
+    ns.connect(bp); bp.connect(am); am.connect(ng); ng.connect(mx); ns.start(t); ns.stop(t + fire + 0.3); lfo.start(t); lfo.stop(t + fire + 0.3);
+  }
+  // the rounds landing first: a dense crackle of small explosions in a short reverb
+  function heiHits(t, dur) {
+    var out = ac.createGain(), cv = ac.createConvolver(), cg = ac.createGain(); out.connect(sfxBus); cv.buffer = impulse(1.6); cg.gain.value = 0.3; out.connect(cv); cv.connect(cg); cg.connect(sfxBus);
+    for (var i = 0; i < 150; i++) { var tk = t + Math.random() * dur, v = 0.08 + Math.random() * 0.22; noise(tk, 0.02, v, 'bandpass', 500 + Math.random() * 2600, 1.1, null, out); if (i % 6 === 0) osc('sine', 130, 48, tk, 0.07, 0.32, out, 0.001); }
+  }
   var FX = {
     // the kill: three parts, one after another — dog tags clinking on their chain, a ping, then a deep pop in a big
     // reverb. The ping climbs with each kill in a tier; every 25 chained kills is a new tier and the whole thing gets
@@ -3476,6 +3526,7 @@ var SFX = (function () {
     })(k);
     SHOTS.forEach(function (sh) { bake('s_' + sh, 0.4, function (t) { FX.shot(t, sh); }); });
     bake('boom0', 0.45, function (t) { FX.boom(t, false); }); bake('boom1', 0.85, function (t) { FX.boom(t, true); });
+    bake('brrt', 3.7, function (t) { gau8(t, 1.05); }, 0.95); bake('brrt2', 2.9, function (t) { gau8(t, 0.45); }, 0.9); bake('hits', 2.6, function (t) { heiHits(t, 1.15); }, 0.8);
     Object.keys(FXDUR).forEach(function (n) { bake('x_' + n, FXDUR[n], function (t) { FX[n](t); }); });
   }
   function jit() { return 0.95 + Math.random() * 0.1; }
@@ -3761,31 +3812,68 @@ var SFX = (function () {
 ,
     // ---------- new effects ----------
     // A-10 flyover: engine whine and roar sweeping past, with a doppler drop
-    a10Jet: function (dur) {
-      if (!ok()) return; var t = ac.currentTime; dur = dur || 2.6;
+    // A-10 flyover: the roar sweeping past left to right, the TF34 "hog whistle" with a doppler drop, a low rumble at the pass
+    a10Jet: function (dur, mini) {
+      if (!ok()) return; var t = ac.currentTime; dur = dur || 2.8;
+      var bus = ac.createGain(); bus.gain.value = mini ? 0.7 : 1;
+      if (ac.createStereoPanner) { var pn = ac.createStereoPanner(); pn.pan.setValueAtTime(-0.85, t); pn.pan.linearRampToValueAtTime(0.85, t + dur); bus.connect(pn); pn.connect(loudBus); } else bus.connect(loudBus);
       var s = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = noiseBuf; s.loop = true;
-      bp.type = 'bandpass'; bp.Q.value = 0.9; bp.frequency.setValueAtTime(900, t); bp.frequency.exponentialRampToValueAtTime(2600, t + dur * 0.45); bp.frequency.exponentialRampToValueAtTime(380, t + dur);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      s.connect(bp); bp.connect(g); g.connect(sfxBus); s.start(t); s.stop(t + dur + 0.1);
-      var o = ac.createOscillator(), og = ac.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(2300, t); o.frequency.exponentialRampToValueAtTime(2900, t + dur * 0.45); o.frequency.exponentialRampToValueAtTime(1300, t + dur);
-      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.03, t + dur * 0.45); og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(og); og.connect(sfxBus); o.start(t); o.stop(t + dur + 0.1);
-      noise(t + dur * 0.3, dur * 0.7, 0.35, 'lowpass', 500, 0.8, 90);
+      bp.type = 'bandpass'; bp.Q.value = 0.8; bp.frequency.setValueAtTime(800, t); bp.frequency.exponentialRampToValueAtTime(2800, t + dur * 0.45); bp.frequency.exponentialRampToValueAtTime(340, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.62, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(bp); bp.connect(g); g.connect(bus); s.start(t); s.stop(t + dur + 0.1);
+      [3140, 3195].forEach(function (f) {
+        var o = ac.createOscillator(), og = ac.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f * 1.08, t); o.frequency.linearRampToValueAtTime(f, t + dur * 0.45); o.frequency.exponentialRampToValueAtTime(f * 0.72, t + dur);
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.03, t + dur * 0.45); og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(og); og.connect(bus); o.start(t); o.stop(t + dur + 0.1);
+      });
+      var w = ac.createOscillator(), wg = ac.createGain(); w.type = 'sawtooth'; w.frequency.setValueAtTime(2300, t); w.frequency.exponentialRampToValueAtTime(2900, t + dur * 0.45); w.frequency.exponentialRampToValueAtTime(1300, t + dur);
+      wg.gain.setValueAtTime(0.0001, t); wg.gain.exponentialRampToValueAtTime(0.02, t + dur * 0.45); wg.gain.exponentialRampToValueAtTime(0.0001, t + dur); w.connect(wg); wg.connect(bus); w.start(t); w.stop(t + dur + 0.1);
+      noise(t + dur * 0.3, dur * 0.7, 0.45, 'lowpass', 500, 0.8, 80, bus);
+      osc('sine', 52, 38, t + dur * 0.35, dur * 0.5, 0.35, bus, dur * 0.12);
     },
-    // the GAU-8 cannon: a ripping BRRRRT, heard a beat after the rounds land
-    a10Brrt: function (delay, dur) {
+    // the GAU-8: the rounds' crackle lands first, then the BRRRT and its echoes (baked once; a live version until then)
+    a10Brrt: function (delay, dur, mini) {
       if (!ok()) return; var t = ac.currentTime + (delay || 0); dur = dur || 1.1;
+      var b = BANK[mini ? 'brrt2' : 'brrt'];
+      if (b) {
+        var src = ac.createBufferSource(), g0 = ac.createGain(); src.buffer = b; g0.gain.value = mini ? 1.1 : 1.6; src.connect(g0); g0.connect(loudBus); src.start(t);
+        var h = BANK.hits; if (h) { var hs = ac.createBufferSource(), hg = ac.createGain(); hs.buffer = h; hg.gain.value = mini ? 0.5 : 0.9; hs.connect(hg); hg.connect(sfxBus); hs.start(ac.currentTime); }
+        return;
+      }
       var o = ac.createOscillator(), sh = ac.createWaveShaper(), lp = ac.createBiquadFilter(), g = ac.createGain();
       o.type = 'sawtooth'; o.frequency.setValueAtTime(68, t); o.frequency.linearRampToValueAtTime(62, t + dur);
       sh.curve = distCurve(40); lp.type = 'lowpass'; lp.frequency.value = 2200;
       g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.04); g.gain.setValueAtTime(0.5, t + dur); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
-      o.connect(sh); sh.connect(lp); lp.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + dur + 0.3);
-      var s = ac.createBufferSource(), bp = ac.createBiquadFilter(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain(), ng = ac.createGain();
-      s.buffer = noiseBuf; s.loop = true; bp.type = 'bandpass'; bp.frequency.value = 1300; bp.Q.value = 0.7;
-      lfo.type = 'square'; lfo.frequency.value = 65; lg.gain.value = 0.5; am.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
-      ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(0.5, t + 0.03); ng.gain.setValueAtTime(0.5, t + dur); ng.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.3);
-      s.connect(bp); bp.connect(am); am.connect(ng); ng.connect(sfxBus); s.start(t); s.stop(t + dur + 0.35); lfo.start(t); lfo.stop(t + dur + 0.35);
+      o.connect(sh); sh.connect(lp); lp.connect(g); g.connect(loudBus); o.start(t); o.stop(t + dur + 0.3);
       noise(t + dur * 0.2, dur + 0.6, 0.18, 'lowpass', 700, 0.7, 120);
+    },
+    // a different sound for each kind of dash, layered over the usual whoosh
+    dashKind: function (k) {
+      if (!ok()) return; fx('dash'); var t = ac.currentTime, i;
+      switch (k) {
+        case 'shield': drum(t, 70, 0.6); break;
+        case 'slide': noise(t, 0.3, 0.2, 'lowpass', 900, 0.8, 300); break;
+        case 'smoke': noise(t, 0.6, 0.3, 'lowpass', 700, 0.8, 200); break;
+        case 'heart': drum(t, 62, 0.7); drum(t + 0.18, 58, 0.6); break;
+        case 'flake': bell(t, 2637, 0.05, 0.6); bell(t + 0.05, 3520, 0.04, 0.5); noise(t, 0.4, 0.1, 'highpass', 6000, 0.7); break;
+        case 'flame': noise(t, 0.45, 0.32, 'bandpass', 500, 0.7, 2200); osc('sawtooth', 90, 60, t, 0.4, 0.06); break;
+        case 'bolt': case 'storm': osc('sawtooth', 1500, 200, t, 0.15, 0.1); noise(t + 0.05, 0.6, 0.35, 'lowpass', 1600, 0.7, 120); drum(t + 0.06, 45, 0.7); break;
+        case 'drop': for (i = 0; i < 5; i++) osc('sine', 400 + Math.random() * 600, 900 + Math.random() * 600, t + i * 0.05, 0.05, 0.06); break;
+        case 'blink': osc('sine', 300, 2400, t, 0.12, 0.12); osc('sine', 2400, 600, t + 0.12, 0.15, 0.08); break;
+        case 'ghost': noise(t, 0.6, 0.12, 'bandpass', 900, 3, 1800); osc('sine', 440, 330, t, 0.6, 0.04, null, 0.2); break;
+        case 'quake': drum(t + 0.15, 40, 1); noise(t + 0.15, 0.5, 0.3, 'lowpass', 400, 0.8, 90); break;
+        case 'fang': noise(t, 0.12, 0.3, 'bandpass', 3000, 2, 900); break;
+        case 'well': osc('sine', 300, 40, t, 0.7, 0.3); noise(t, 0.7, 0.12, 'bandpass', 2000, 2, 200); break;
+        case 'holo': for (i = 0; i < 4; i++) osc('square', 800 + i * 400, 800 + i * 400, t + i * 0.05, 0.04, 0.04); break;
+        case 'rocket': noise(t, 0.4, 0.45, 'lowpass', 1800, 0.7, 400); osc('sawtooth', 70, 40, t, 0.4, 0.15); break;
+        case 'clock': osc('square', 1800, 1800, t, 0.02, 0.06); osc('square', 1400, 1400, t + 0.16, 0.02, 0.06); osc('sine', 600, 120, t, 0.8, 0.12); break;
+        case 'axe': osc('sawtooth', 110, 70, t, 0.3, 0.14); drum(t, 55, 0.7); break;
+        case 'halo': [523.3, 659.3, 784].forEach(function (f) { bell(t, f, 0.05, 1.2); }); break;
+        case 'star': noise(t, 0.18, 0.25, 'bandpass', 4000, 3, 1500); noise(t + 0.1, 0.5, 0.2, 'lowpass', 600, 0.8, 150); break;
+        case 'meteor': noise(t, 0.4, 0.3, 'bandpass', 300, 0.8, 3000); break;
+        case 'dragon': osc('sawtooth', 180, 70, t + 0.15, 0.6, 0.18); noise(t + 0.15, 0.6, 0.35, 'lowpass', 1400, 0.8, 300); break;
+        case 'rift': osc('sawtooth', 220, 40, t, 0.6, 0.12); noise(t, 0.6, 0.2, 'bandpass', 600, 4, 120); break;
+      }
     },
     impacts: function () { if (!ok() || !throttle('imp', 70)) return; fx('impacts'); },
     airReady: function () { if (!ok()) return; var t = ac.currentTime; [0, 0.12, 0.24].forEach(function (d, i) { osc('square', 1200 + i * 200, 1200 + i * 200, t + d, 0.07, 0.05); }); noise(t, 0.4, 0.05, 'bandpass', 2500, 4); },
@@ -4831,7 +4919,8 @@ function newPlayer() {
     x: 56, y: 56, r: 12, hp: 100, maxHp: 100, speed: 172, regen: 0, killHeal: 0, dashCd: 2.4, dashCdT: 0, dashT: 0,
     dashDx: 1, dashDy: 0, iframe: 0, fireCd: 0, aim: 0, flashT: 0, slowT: 0, slowMul: 1, poisonT: 0, burnT: 0,
     jamT: 0, weakT: 0, frozenT: 0, rootT: 0, blindT: 0, bleedT: 0, kvx: 0, kvy: 0, extX: 0, extY: 0, ix: 0, iy: 0, walk: 0,
-    shots: 0, queue: [], cards: {}, cs: newCardStats(), weapon: WEAPONS[loadoutId()], taken: 1, healMul: 1, scoreMul: 1, luck: 0, vision: 0
+    shots: 0, queue: [], cards: {}, cs: newCardStats(), weapon: WEAPONS[loadoutId()], taken: 1, healMul: 1, scoreMul: 1, luck: 0, vision: 0,
+    dashK: dashLoadout(), dashCdMax: 2.4, dashDur: 0.18, db: { rofT: 0, dmgT: 0, stealthT: 0, critNext: 0 }, ghosts: []
   };
   recalc(p);
   return p;
@@ -4914,9 +5003,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && G.m
 function tryDash() {
   const p = G.p; if (G.mode !== 'play' || !p || p.dashCdT > 0 || p.frozenT > 0 || G.grab) return;
   let dx = p.ix, dy = p.iy; if (Math.abs(dx) + Math.abs(dy) < 0.05) { dx = Math.cos(p.aim); dy = Math.sin(p.aim); }
-  const l = Math.hypot(dx, dy) || 1; p.dashDx = dx / l; p.dashDy = dy / l; p.dashT = 0.18; p.dashCdT = p.dashCd; p.iframe = Math.max(p.iframe, 0.26);
-  G.rings.push({ x: p.x, y: p.y, r0: 6, r1: 34, t: 0, life: 0.3, c: '242,204,58', w: 3 });
-  SFX.dash();
+  const l = Math.hypot(dx, dy) || 1; p.dashDx = dx / l; p.dashDy = dy / l;
+  dashStart(p);
 }
 
 /* ================= fx helpers ================= */
@@ -5154,14 +5242,16 @@ function updZ(z, dt) {
   if (c.ov) { tvx = c.vx; tvy = c.vy; z.vx = tvx; z.vy = tvy; }
   else {
     let ux = dx / d, uy = dy / d;
-    if (!z.fly && !z.st.under && G.mode === 'play') {
+    const lure = G.mode === 'play' ? dashLure(z, dt) : null;
+    if (lure) { const lx = lure[0] - z.x, ly = lure[1] - z.y, ll = Math.hypot(lx, ly) || 1; ux = lx / ll; uy = ly / ll; if (ll < 14) { ux *= 0.1; uy *= 0.1; } }
+    else if (!z.fly && !z.st.under && G.mode === 'play') {
       z.losT = (z.losT || 0) - dt;
       if (z.losT <= 0) { z.losT = 0.2 + Math.random() * 0.15; z.los = d < 700 && hasLOS(z.x, z.y, p.x, p.y); }
       if (!z.los) { const f = flowDir(z.x, z.y); if (f) { ux = f[0]; uy = f[1]; } }
     }
     if (z.fly) { const a = Math.atan2(uy, ux) + Math.sin(G.time * 9 + z.bob) * 0.9; ux = Math.cos(a); uy = Math.sin(a); }
     if (z.detT > 0) { z.detT -= dt; const a = z.detSide * 1.25, co = Math.cos(a), si = Math.sin(a); const nx = ux * co - uy * si, ny = ux * si + uy * co; ux = nx; uy = ny; }
-    let spd = z.speed * c.move * mul * (z.slowT > 0 ? (z.slowMul || 0.65) : 1) * (z.buffT > 0 ? 1.45 : 1) * G.zsMul;
+    let spd = z.speed * c.move * mul * (z.slowT > 0 ? (z.slowMul || 0.65) : 1) * (z.buffT > 0 ? 1.45 : 1) * G.zsMul * (G.warpT > 0 && !z.boss ? 0.32 : 1);
     let sx = 0, sy = 0, pk = 0;
     if (!z.fly && !z.st.under) near(z.x, z.y, sp.pack ? 80 : z.r + 30, o => {
       if (o === z || o.dead || o.fly || o.st.under) return;
@@ -5254,7 +5344,7 @@ function killZombie(z) {
   const m = z.m, gore = m.S.gore;
   if (z.illusion) { burst(z.x, z.y, 10, '#efe9dc', 120, 4, 0.4); return; }
   if (!z.fly) {
-    G.kills++;
+    G.kills++; dashOnKill();
     const cm = chainKill();
     const pts = Math.round(m.threat * 10 * (1 + G.wave * 0.1) * (z.boss ? 12 : (z.minion || z.child) ? 0.4 : 1) * cm * (G.p ? G.p.scoreMul : 1));
     G.score += pts;
@@ -5416,6 +5506,7 @@ $('qteBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPro
 function hurtPlayer(a) {
   const p = G.p; if (G.mode !== 'play' || !p) return false;
   if (p.iframe > 0 || p.dashT > 0 || G.grab) return false;
+  if (dashDodge(p)) { p.iframe = 0.25; G.texts.push({ x: p.x, y: p.y - 26, t: 0, life: 0.6, s: 'dodge', c: dashDef(p).hex }); return false; }
   p.hp -= a * p.taken; p.iframe = 0.3; G.hurtFlash = 0.35; shakeIt(6); SFX.hurt();
   burst(p.x, p.y, 8, '#9e1c22', 140, 4, 0.5);
   if (p.hp <= 0) die();
@@ -5443,7 +5534,7 @@ function updPlayer(dt) {
   if (p.queue.length) { for (const q of p.queue) q.t -= dt; const due = p.queue.filter(q => q.t <= 0); if (due.length) { p.queue = p.queue.filter(q => q.t > 0); if (p.jamT <= 0 && p.frozenT <= 0 && !G.grab) due.forEach(q => volley(p.aim, q.mul)); } }
   if (G.grab) { updGrab(dt); return; }
   let vx, vy;
-  if (p.dashT > 0) { p.dashT -= dt; vx = p.dashDx * 620; vy = p.dashDy * 620; burst(p.x, p.y, 1, 'rgba(242,204,58,0.6)', 30, 4, 0.3); }
+  if (p.dashT > 0) { const sp = dashVel(p, dt); p.dashT -= dt; vx = p.dashDx * sp; vy = p.dashDy * sp; if (p.dashT <= 0) dashEnd(p); }
   else if (p.frozenT > 0 || p.rootT > 0) { vx = 0; vy = 0; }
   else { const s = p.speed * (p.slowT > 0 ? p.slowMul : 1); vx = ix * s; vy = iy * s; }
   vx += p.extX + p.kvx; vy += p.extY + p.kvy; p.extX = 0; p.extY = 0;
@@ -5463,7 +5554,7 @@ function updPlayer(dt) {
   if (best) p.aim = angLerp(p.aim, Math.atan2(best.y - p.y, best.x - p.x), Math.min(1, dt * 18));
   else if (l > 0.1) p.aim = angLerp(p.aim, Math.atan2(iy, ix), Math.min(1, dt * 10));
   p.fireCd -= dt;
-  if (best && p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0) { fireWeapon(best); p.fireCd = 1 / p.S.rof; }
+  if (best && p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0) { fireWeapon(best); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
 }
 /* ================= projectiles, hazards ================= */
 function pointInRect(x, y) { const rs = rectsNear(x, y, 0.5); for (let i = 0; i < rs.length; i++) { const r = rs[i]; if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return true; } return false; }
@@ -5576,7 +5667,7 @@ function spawnBoss() {
   banner('Alpha ' + m.name, 'Extra mutation: ' + ABILITIES.find(a => a.key === second).name);
 }
 function waveCleared() {
-  G.score += G.wave * 100; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = [];
+  G.score += G.wave * 100; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
   SFX.waveClear();
   openCards();
 }
@@ -5611,9 +5702,9 @@ function showOv(id) { OVS.forEach(o => { $(o).hidden = o !== id; }); $('hud').hi
 function newRun() {
   citySeed = (Math.random() * 1e9) | 0; chunks.clear(); blockCache.clear(); FF.ready = false;
   $('skull').hidden = true;
-  Object.assign(G, { blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
+  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
-  G.p = newPlayer(); cam.x = G.p.x; cam.y = G.p.y; updWeaponChip();
+  G.p = newPlayer(); cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
   $('toasts').textContent = '';
   G.mode = 'play'; showOv(null); startWave(1);
   try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* not allowed */ }
@@ -5886,7 +5977,9 @@ function render() {
     ctx.globalAlpha = 0.42; ctx.fillStyle = p.c; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, p.r * p.sq, p.rot, 0, TAU); ctx.fill();
   }
   ctx.globalAlpha = 1;
+  drawHoles(vis);
   drawHazards(vis);
+  drawDashZones(vis);
   drawBlasts();
   for (const k of G.picks) {
     if (!vis(k.x, k.y, 20)) continue;
@@ -5921,7 +6014,7 @@ function render() {
   }
   LODQ.length = Math.min(LODQ.length, 256);
   for (const z of G.zs) if (!z.dead && z.boss) drawZ(z);
-  if (G.p && G.mode !== 'title') drawPlayer(G.p);
+  if (G.p && G.mode !== 'title') { drawDashActors(G.p); drawPlayer(G.p); }
   // bullets
   ctx.lineCap = 'round';
   ctx.globalCompositeOperation = 'lighter';
@@ -5957,6 +6050,7 @@ function render() {
   for (const q of G.parts) { ctx.globalAlpha = clamp(q.life / q.max, 0, 1); ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s); }
   ctx.globalAlpha = 1;
   for (const r of G.rings) { const t = r.t / r.life; ctx.strokeStyle = 'rgba(' + r.c + ',' + (1 - t) * 0.8 + ')'; ctx.lineWidth = r.w; ctx.beginPath(); ctx.arc(r.x, r.y, Math.max(0.5, r.r0 + (r.r1 - r.r0) * t), 0, TAU); ctx.stroke(); }
+  drawSmoke(vis);
   drawJets();
   for (const b of G.bolts) { ctx.strokeStyle = b.c; ctx.globalAlpha = clamp(b.life / 0.18, 0, 1); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(b.pts[0], b.pts[1]); for (let i = 2; i < b.pts.length; i += 2) ctx.lineTo(b.pts[i], b.pts[i + 1]); ctx.stroke(); }
   ctx.globalAlpha = 1;
@@ -5967,7 +6061,10 @@ function render() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.drawImage(screenGrad('vig', 0.32, 0.62, '4,5,8', 0.74), 0, 0, W, H);
   if (vz) drawVizScreen(vz);
-  if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') drawScreenFx();
+  if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') {
+    drawScreenFx(); drawDashScreen();
+    if (G.flashA > 0) { ctx.globalAlpha = Math.min(0.5, G.flashA); ctx.drawImage(screenGrad('a10', 0.1, 0.8, '255,214,150', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
+  }
 }
 function drawHazards(vis) {
   for (const h of G.haz) {
@@ -6113,6 +6210,8 @@ function drawPlayer(p) {
     ctx.fillStyle = flashGrad; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 300, p.aim - 0.42, p.aim + 0.42); ctx.closePath(); ctx.fill();
   }
   if (p.iframe > 0 && p.dashT <= 0 && Math.floor(G.time * 30) % 2) ctx.globalAlpha = 0.5;
+  if ((p.db && p.db.stealthT > 0) || (p.dashT > 0 && p.dashK === 'phantom')) ctx.globalAlpha = 0.38;
+  if (p.dashT > 0 && p.dashK === 'meteor') { const h = Math.sin((1 - p.dashT / p.dashDur) * Math.PI); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 6, 13, 10, 0, 0, TAU); ctx.fill(); ctx.translate(0, -h * 34); ctx.scale(1 + h * 0.5, 1 + h * 0.5); }
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(2, 4, 13, 12, 0, 0, TAU); ctx.fill();
   ctx.rotate(p.aim);
   const sw = Math.sin(p.walk) * 2.5;
@@ -6349,7 +6448,7 @@ function updHud() {
     $('comboBar').style.width = ((1 - since / CHAIN_WINDOW) * 100).toFixed(1) + '%';
   }
   const ak = (G.air || 0) + G.mode; if (hc.air !== ak) { hc.air = ak; updAirBtn(); }
-  const cd = p.dashCdT > 0 ? 1 - p.dashCdT / p.dashCd : 1, ck = Math.round(cd * 40);
+  const cd = p.dashCdT > 0 ? 1 - p.dashCdT / (p.dashCdMax || p.dashCd) : 1, ck = Math.round(cd * 40);
   if (hc.cd !== ck) { hc.cd = ck; const db = $('dashBtn'); db.style.setProperty('--cd', cd.toFixed(3)); db.classList.toggle('cool', cd < 1); }
 }
 
@@ -6376,7 +6475,7 @@ function update(dt) {
     }
     if (z.lodAcc) { const d = Math.min(0.15, z.lodAcc + dt); z.lodAcc = 0; updZ(z, d); } else updZ(z, dt);
   }
-  updBullets(dt); updEshots(dt); updHaz(dt); updPicks(dt); updBlasts(dt); updJets(dt);
+  updBullets(dt); updEshots(dt); updHaz(dt); updPicks(dt); updBlasts(dt); updJets(dt); updDash(dt); updAirFx(dt);
   G.zs = G.zs.filter(z => !z.dead);
   updFx(dt);
   if (G.boss && G.boss.dead) G.boss = null;
@@ -6428,7 +6527,7 @@ function newCardStats() {
 }
 // Combine the equipped weapon with every card taken so far into the live stats the game uses.
 function recalc(p) {
-  const w = p.weapon, c = p.cs, fx = w.fx;
+  const w = p.weapon, c = dashPassive(p.cs, p), fx = w.fx;
   let jam = fx.jamEvery ? Math.round(fx.jamEvery * (1 + Math.max(0, c.rof))) : 0;
   if (c.jam) jam = jam ? Math.min(jam, c.jam) : c.jam;
   p.S = {
@@ -6436,7 +6535,7 @@ function recalc(p) {
     pellets: Math.max(1, w.pellets + c.multi + c.flame), burst: w.burst + c.burst, spread: w.spread,
     speed: w.speed * (1 + Math.max(0, c.range) * 0.3), range: w.range * Math.max(0.4, 1 + c.range),
     pierce: w.pierce + c.pierce, crit: Math.min(0.95, w.crit + c.crit), critMul: w.critMul + c.critDmg,
-    knock: w.knock, kind: w.kind, blast: w.blast * (1 + c.blast),
+    knock: w.knock * (dashDef(p).knock || 1), kind: w.kind, blast: w.blast * (1 + c.blast),
     burn: (fx.burn || 0) + c.burn, slow: (fx.slow || 0) + c.slow, freeze: Math.min(0.6, (fx.freeze || 0) + c.freeze), shock: (fx.shock || 0) + c.shock,
     splash: (fx.splash || 0) + c.splash, poison: (fx.poison || 0) + c.poison, bounce: (fx.bounce || 0) + c.bounce,
     homing: (fx.homing || 0) + c.homing, lifesteal: (fx.lifesteal || 0) + c.lifesteal, split: (fx.split || 0) + c.split,
@@ -6481,10 +6580,11 @@ function volley(a, mul) {
     let ang = a;
     if (n > 1) ang += cone ? (i / (n - 1) - 0.5) * S.spread : (i - (n - 1) / 2) * gap;
     ang += rand(-1, 1) * (kind === 'flame' ? S.spread * 0.5 : S.spread * 0.35 + 0.012);
-    const crit = Math.random() < S.crit, spd = S.speed * (kind === 'flame' ? rand(0.75, 1.15) : 1), life = S.range / spd;
+    let crit = Math.random() < S.crit; if (p.db.critNext) { p.db.critNext = 0; crit = true; }
+    const spd = S.speed * (kind === 'flame' ? rand(0.75, 1.15) : 1), life = S.range / spd;
     G.bullets.push({
       x: mx, y: my, sx: p.x, sy: p.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
-      dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
+      dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1) * dashDmgMul(p), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
       life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper'
     });
   }
@@ -6626,7 +6726,7 @@ function chainKill() {
     el.append(b, s); el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
     clearTimeout(chainKill.t); chainKill.t = setTimeout(() => { el.hidden = true; }, 1600);
   }
-  if (c % 75 === 0) grantAir();
+  if (c % airEvery() === 0) grantAir();
   if (c % 100 === 0 && G.mode === 'play') G.skullPending = true;
   return 1 + Math.min(1.5, (c - 1) * 0.02);
 }
@@ -6779,8 +6879,10 @@ function rollWeaponCard(boss) {
 function rollCards() {
   const p = G.p, boss = G.wave % 5 === 0, out = [], used = new Set();
   const wSlot = boss ? Math.floor(Math.random() * 3) : Math.random() < 0.22 ? Math.floor(Math.random() * 3) : -1;
+  let dSlot = Math.random() < (boss ? 0.35 : 0.17) ? Math.floor(Math.random() * 3) : -1; if (dSlot === wSlot) dSlot = (dSlot + 1) % 3;
   for (let s = 0; s < 3; s++) {
     if (s === wSlot) { out.push(rollWeaponCard(boss)); continue; }
+    if (s === dSlot) { out.push(rollDashCard(boss)); continue; }
     let r = rollRarity(p.luck, boss), c = null;
     for (let tries = 0; tries < 12 && !c; tries++) {
       const pool = CARDS.filter(k => k.r === r && !used.has(k.id) && !(k.max && (p.cards[k.id] || 0) >= k.max) && !(k.id === 'medkit' && p.hp > p.maxHp * 0.8));
@@ -6807,7 +6909,7 @@ const CRACK = '<svg viewBox="-40 -40 80 80" aria-hidden="true"><g stroke="rgba(8
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function buildCard(ch, i, onPick) {
   const p = G.p, R = WRAR[ch.r];
-  const b = el('button', 'gcard r-' + ch.r + (ch.type === 'weapon' ? ' weapon' : '')); b.type = 'button';
+  const b = el('button', 'gcard r-' + ch.r + (ch.type === 'weapon' ? ' weapon' : ch.type === 'dash' ? ' dash' : '')); b.type = 'button';
   b.style.setProperty('--rc', R.color); b.style.setProperty('--d', (0.08 + i * 0.14) + 's');
   const top = el('span', 'gc-top'); top.append(el('em', 'gc-rar', R.name), el('em', 'gc-type', ''), el('kbd', null, String(i + 1)));
   const art = el('canvas', 'gc-art'); art.setAttribute('aria-hidden', 'true');
@@ -6825,6 +6927,12 @@ function buildCard(ch, i, onPick) {
     cmp('Range', w.range, cur.range, v => Math.round(v));
     li(w.M.desc, 'meta');
     notes.append(el('span', 'gc-react', 'Cards: ' + (w.F.reactText + (w.M.reactText ? ' ' + w.M.reactText : ''))));
+  } else if (ch.type === 'dash') {
+    const d = ch.d, cur = dashDef(p);
+    top.querySelector('.gc-type').textContent = dashes.has(d.id) ? 'Dash' : 'New dash';
+    name.textContent = d.name; paintDash(art, d, 84, false);
+    li(d.desc, 'good'); li('Passive: ' + d.pas, 'good');
+    li('Recharge ' + (p.dashCd * d.cd).toFixed(1) + ' s · replaces ' + cur.name, 'meta');
   } else {
     const c = ch.card, eff = ZW.cardEffects(c, p.weapon);
     top.querySelector('.gc-type').textContent = c.r === 6 ? 'Deadly' : c.r === 5 ? 'Cursed card' : 'Card';
@@ -6877,6 +6985,7 @@ function chooseCard(i, ev) {
 function applyChoice(ch) {
   const p = G.p;
   if (ch.type === 'weapon') { equipWeapon(ch.w); return; }
+  if (ch.type === 'dash') { equipDash(ch.d, true); return; }
   const c = ch.card, eff = ZW.cardEffects(c, p.weapon);
   p.cards[c.id] = (p.cards[c.id] || 0) + 1;
   eff.lines.forEach(l => {
@@ -6908,6 +7017,8 @@ function renderBuild() {
   paintWeapon($('bwIcon'), w, 120, 56, false);
   $('bwName').textContent = w.name; const r = $('bwRar'); r.textContent = WRAR[w.rarity].name + ' · ' + w.code; r.style.color = WRAR[w.rarity].color;
   $('bwDesc').textContent = w.M.desc + ' ' + w.F.reactText;
+  const d = dashDef(p), bd = $('bDash'); bd.textContent = ''; const dc = el('canvas'); paintDash(dc, d, 46, false);
+  const dt = el('div'); const dn = el('b', null, 'Dash: ' + d.name); dn.style.color = d.hex; dt.append(dn, el('p', null, d.desc + ' Passive: ' + d.pas + '.')); bd.append(dc, dt);
   const st = $('bStats'); st.textContent = '';
   [['Damage', Math.round(S.dmg * S.pellets * S.burst)], ['Fire rate', S.rof.toFixed(1) + '/s'], ['Crit', Math.round(S.crit * 100) + '%'], ['Pierce', S.pierce], ['Range', Math.round(S.range)], ['Speed', Math.round(p.speed)]]
     .forEach(x => { const d = el('div'); d.append(el('dt', null, x[0]), el('dd', null, String(x[1]))); st.appendChild(d); });
@@ -6927,6 +7038,7 @@ function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true;
 $('keeper').querySelector('.kp-poke').addEventListener('click', () => { SFX.init(); KEEP.poke(); });
 function renderArmory() {
   $('arCount').textContent = guns.size + ' / 250';
+  if (arFrame === 'dash') return renderDashArmory();
   const lw = WEAPONS[loadoutId()], ld = $('arLoadout'); ld.textContent = '';
   const lb = el('b', null, lw.name); lb.style.color = WRAR[lw.rarity].color; ld.append('Starting weapon: ', lb, '. Pick up new weapons from cards during a run to unlock them here.');
   const chips = $('arFrames'); chips.textContent = '';
@@ -6936,6 +7048,7 @@ function renderArmory() {
     b.append(el('span', null, F.name), el('em', null, n + '/25')); b.addEventListener('click', () => { arFrame = i; renderArmory(); });
     chips.appendChild(b);
   });
+  chips.appendChild(dashChip());
   const F = ZW.FRAMES[arFrame], note = $('arFrameNote'); note.textContent = ''; note.append(el('b', null, F.name + '. '), F.desc + ' ' + F.reactText);
   const grid = $('arGrid'); grid.textContent = '';
   for (let m = 0; m < 25; m++) {
@@ -6947,6 +7060,43 @@ function renderArmory() {
     b.addEventListener('click', () => openWeaponDetail(w));
     grid.appendChild(b); paintWeapon(c, w, 128, 60, !show);
   }
+}
+function dashChip() {
+  const b = el('button', 'chip dchip' + (arFrame === 'dash' ? ' on' : '')); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', arFrame === 'dash');
+  b.append(el('span', null, 'Dashes'), el('em', null, dashes.size + '/25')); b.addEventListener('click', () => { arFrame = 'dash'; renderArmory(); });
+  return b;
+}
+function renderDashArmory() {
+  $('arCount').textContent = dashes.size + ' / 25';
+  const ld = $('arLoadout'); ld.textContent = ''; const cur = DASH_BY[dashLoadout()];
+  const lb = el('b', null, cur.name); lb.style.color = cur.hex; ld.append('Starting dash: ', lb, '. Find new dashes on cards during a run to unlock them here.');
+  const chips = $('arFrames'); chips.textContent = '';
+  ZW.FRAMES.forEach((F, i) => { let n = 0; for (let m = 0; m < 25; m++) if (guns.has(i * 25 + m)) n++; const b = el('button', 'chip'); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false'); b.append(el('span', null, F.name), el('em', null, n + '/25')); b.addEventListener('click', () => { arFrame = i; renderArmory(); }); chips.appendChild(b); });
+  chips.appendChild(dashChip());
+  const note = $('arFrameNote'); note.textContent = ''; note.append(el('b', null, 'Dashes. '), 'Every dash does something to you and the zombies around you, and has a passive that is always on.');
+  const grid = $('arGrid'); grid.textContent = '';
+  DASHES.forEach(d => {
+    const have = dashes.has(d.id), show = have || arSpoil, R = WRAR[d.r];
+    const b = el('button', 'wcard dcard wr-' + d.r + ' ' + (have ? 'known' : 'unknown') + (d.id === cur.id ? ' equipped' : '')); b.type = 'button'; b.style.setProperty('--rc', R.color);
+    const c = el('canvas'); c.setAttribute('aria-hidden', 'true'); paintDash(c, d, 56, !show);
+    b.append(c, el('span', 'num', 'DSH-' + String(d.i + 1).padStart(2, '0')), el('span', 'nm', show ? d.name : 'Locked'), el('span', 'rar', DASH_RAR[d.r]));
+    if (d.id === cur.id) b.append(el('span', 'eq', 'Equipped'));
+    b.addEventListener('click', () => openDashDetail(d)); grid.appendChild(b);
+  });
+}
+function openDashDetail(d) {
+  arCur = { dash: d }; const have = dashes.has(d.id), show = have || arSpoil, det = $('arDetail');
+  det.style.setProperty('--rc', WRAR[d.r].color);
+  const art = $('awArt'); const k = Math.min(window.devicePixelRatio || 1, 2); art.width = 260 * k; art.height = 110 * k; art.style.width = '260px'; art.style.height = '110px';
+  const g = art.getContext('2d'); g.setTransform(k, 0, 0, k, 0, 0); g.clearRect(0, 0, 260, 110); g.save(); g.translate(130 - 50, 5); drawDashIcon(g, d, 100, !show); g.restore();
+  $('awTag').textContent = 'DSH-' + String(d.i + 1).padStart(2, '0') + ' · ' + DASH_RAR[d.r] + ' dash'; $('awName').textContent = show ? d.name : 'Locked dash';
+  $('awMod').textContent = show ? 'When you dash: ' + d.desc : 'Find this dash on a card during a run to unlock it.';
+  $('awReact').textContent = show ? 'Passive: ' + d.pas + '.' : '';
+  const bars = $('awBars'); bars.textContent = '';
+  [['Recharge', 1 / d.cd / 1.2, (2.4 * d.cd).toFixed(1) + ' s'], ['Distance', Math.min(1, d.spd * d.dur / 260), d.spd ? Math.round(d.spd * d.dur) : 'Teleport'], ['Untouchable', d.ifr / 0.8, d.ifr.toFixed(2) + ' s']]
+    .forEach(r => { const row = el('div', 'bar-row'), t = el('div', 'track'), f = el('i'); f.style.width = show ? Math.round(Math.min(1, r[1]) * 100) + '%' : '0%'; t.appendChild(f); row.append(el('span', null, r[0]), t, el('em', null, show ? String(r[2]) : '?')); bars.appendChild(row); });
+  const eq = $('awEquip'); eq.hidden = !have; eq.disabled = d.id === dashLoadout(); eq.textContent = d.id === dashLoadout() ? 'Equipped' : 'Start runs with this';
+  det.hidden = false; det.scrollTop = 0;
 }
 function openWeaponDetail(w) {
   arCur = w; const have = guns.has(w.id), show = have || arSpoil, R = WRAR[w.rarity], d = $('arDetail');
@@ -6961,7 +7111,10 @@ function openWeaponDetail(w) {
   const eq = $('awEquip'); eq.hidden = !have; eq.disabled = w.id === loadoutId(); eq.textContent = w.id === loadoutId() ? 'Equipped' : 'Start runs with this';
   d.hidden = false; d.scrollTop = 0;
 }
-$('awEquip').addEventListener('click', () => { if (!arCur || !guns.has(arCur.id)) return; store.set('zc_loadout', arCur.id); SFX.click(); openWeaponDetail(arCur); renderArmory(); KEEP.approve(); });
+$('awEquip').addEventListener('click', () => {
+  if (arCur && arCur.dash) { if (!dashes.has(arCur.dash.id)) return; store.set('zc_dash', arCur.dash.id); SFX.click(); openDashDetail(arCur.dash); renderArmory(); KEEP.approve(); return; }
+  if (!arCur || !guns.has(arCur.id)) return; store.set('zc_loadout', arCur.id); SFX.click(); openWeaponDetail(arCur); renderArmory(); KEEP.approve();
+});
 $('awClose').addEventListener('click', () => { $('arDetail').hidden = true; });
 $('armoryBtn').addEventListener('click', openArmory); $('arClose').addEventListener('click', closeArmory);
 $('arSpoil').addEventListener('change', e => { arSpoil = e.target.checked; renderArmory(); });
@@ -7199,6 +7352,270 @@ document.addEventListener('pointerdown', unlockAudio, true);
 document.addEventListener('keydown', unlockAudio, true);
 document.addEventListener('visibilitychange', () => { if (document.hidden) SFX.suspend(); else SFX.resume(); });
 renderAudio();
+
+/* ================= dashes (1.9.10) =================
+   25 dashes. Each does something when you dash (to you, and to the zombies it touches or leaves behind) and has a
+   passive that is always on while it's equipped. Dashes turn up on cards during a run (taking one unlocks it for
+   good), and the armory picks the one you start with. Inserted into the game's closure like arsenal.js. */
+const DASH_RAR = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+// zones a dash leaves behind: ice, fire, poison, smoke, a gravity well, holy ground, a void rift
+function dZone(o) { if (!G.dfx) G.dfx = []; if (G.dfx.length > 60) G.dfx.shift(); o.t = 0; o.max = o.life; G.dfx.push(o); return o; }
+function dNear(x, y, R, fn) { near(x, y, R + 40, o => { if (o.dead || o.st.under || o.illusion) return; const d = Math.hypot(o.x - x, o.y - y); if (d < R + o.r) fn(o, d); }); }
+function dashDmg(m) { const p = G.p, S = p.S; return (12 + G.wave * 4 + S.dmg * S.pellets * 0.6) * m * (p.db && p.db.dmgT > 0 ? 1.5 : 1); }
+function zHurt(z, m, kx, ky) { return hurtZombie(z, bonusDmg(z, dashDmg(m) * (z.boss ? 0.5 : 1)), { src: 'dash', kx: kx || 0, ky: ky || 0 }); }
+function zStun(z, t, ice) { if (z.boss || z.rb) return; z.stun = Math.max(z.stun, t); if (ice) z.frozen = 1; }
+function zSlow(z, t, mul) { z.slowT = Math.max(z.slowT, t); z.slowMul = Math.min(z.slowMul || 1, mul); }
+function zBurn(z) { z.burnT = Math.max(z.burnT || 0, 3); z.burnDps = Math.max(z.burnDps || 0, 6 + G.wave * 1.3); }
+function zPoison(z, dt) { z.poisonT = Math.max(z.poisonT || 0, 4); z.poisonDps = Math.min((z.poisonDps || 0) + (2 + G.wave * 0.4) * dt * 3, z.maxHp * 0.25); }
+function zPush(z, x, y, f) { if (z.boss) return; const dx = z.x - x, dy = z.y - y, d = Math.hypot(dx, dy) || 1; z.kvx += dx / d * f * z.kb; z.kvy += dy / d * f * z.kb; }
+function dRing(x, y, r1, col, w, life) { G.rings.push({ x: x, y: y, r0: 6, r1: r1, t: 0, life: life || 0.4, c: col, w: w || 3 }); }
+function dLine(p, step, fn) { const d = G.p; d.dashTrail = (d.dashTrail || 0) + p; while (d.dashTrail >= step) { d.dashTrail -= step; fn(); } }
+function lineHits(x1, y1, x2, y2, R, fn) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, L = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / L, uy = (y2 - y1) / L;
+  near(mx, my, L / 2 + R + 40, o => { if (o.dead || o.st.under || o.illusion) return; const ex = o.x - x1, ey = o.y - y1, t = clamp(ex * ux + ey * uy, 0, L); if (Math.hypot(ex - ux * t, ey - uy * t) < R + o.r) fn(o); });
+}
+function strikeBolt(z, m) { bolt(z.x + rand(-40, 40), z.y - 420, z.x, z.y, '#dff0ff'); bolt(z.x + rand(-30, 30), z.y - 420, z.x, z.y, '#9fc4ff'); dRing(z.x, z.y, 64, '200,225,255', 4, 0.35); zHurt(z, m); zStun(z, 0.5); }
+function fireCone(p, R, half) {
+  const a = Math.atan2(p.dashDy, p.dashDx);
+  for (let i = 0; i < 26; i++) { const aa = a + rand(-half, half), sp = rand(240, 420); G.parts.push({ x: p.x, y: p.y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: rand(0.35, 0.6), max: 0.6, c: pick(['#ffe9a0', '#ff9a3a', '#ff5a1a']), s: rand(4, 8) }); }
+  dNear(p.x, p.y, R, (o) => { let da = Math.atan2(o.y - p.y, o.x - p.x) - a; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) < half + 0.15) { zBurn(o); zHurt(o, 2, Math.cos(a) * 160, Math.sin(a) * 160); } });
+}
+function boomAt(x, y, R, m, col) {
+  dNear(x, y, R, (o, d) => { zHurt(o, m * (1 - d / (R + o.r) * 0.4), (o.x - x) / (d || 1) * 300, (o.y - y) / (d || 1) * 300); });
+  burst(x, y, 26, col || '#ffb347', 320, 5, 0.5); burst(x, y, 12, '#3a2a20', 200, 7, 0.7); dRing(x, y, R, '255,150,60', 5, 0.4); splat(x, y, R * 0.45, 'rgba(20,10,6,0.55)'); shakeIt(7); SFX.boom(true);
+}
+
+// [id, name, rarity, color, cooldown x, duration s, speed px/s, untouchable s, what it does, passive]
+const DASHES = [
+  { id: 'sprint', name: 'Sprint', r: 0, hex: '#f2cc3a', ico: 'run', cd: 1, dur: 0.18, spd: 620, ifr: 0.26, desc: 'A quick burst of speed. Nothing can touch you while you dash.', pas: '+6% move speed', st: { move: 0.06 } },
+  { id: 'charge', name: 'Shoulder Charge', r: 0, hex: '#d98a4a', ico: 'shield', cd: 1.05, dur: 0.2, spd: 600, ifr: 0.28, desc: 'Plow through the horde: zombies you hit are knocked flying and stunned.', pas: 'Take 8% less damage', st: { taken: -0.08 },
+    hit(p, z) { zHurt(z, 0.8, p.dashDx * 360, p.dashDy * 360); zStun(z, 0.6); burst(z.x, z.y, 6, '#d9b38a', 140, 4, 0.3); } },
+  { id: 'slide', name: 'Baseball Slide', r: 0, hex: '#c9a27e', ico: 'slide', cd: 1, dur: 0.27, spd: 560, ifr: 0.32, desc: 'A long, low slide that sweeps the legs out from under every zombie you pass.', pas: 'Dash recharges 10% faster', st: { dash: 0.1 },
+    hit(p, z) { zHurt(z, 0.5); zStun(z, 0.9); G.texts.push({ x: z.x, y: z.y - z.r, t: 0, life: 0.5, s: 'trip', c: '#c9a27e' }); } },
+  { id: 'smoke', name: 'Smoke Bomb', r: 0, hex: '#9aa1a8', ico: 'smoke', cd: 1.15, dur: 0.18, spd: 620, ifr: 0.3, desc: 'Leave a smoke cloud behind. Zombies inside lose track of you and stumble around.', pas: '5% chance to dodge any hit', dodge: 0.05,
+    start(p) { dZone({ k: 'smoke', x: p.x, y: p.y, r: 95, life: 3.6 }); burst(p.x, p.y, 18, '#b9bfc6', 140, 8, 0.8); } },
+  { id: 'adren', name: 'Adrenaline Rush', r: 1, hex: '#ff5a7a', ico: 'heart', cd: 1, dur: 0.18, spd: 660, ifr: 0.26, desc: 'Your heart pounds: fire 40% faster for 2.5 seconds after dashing.', pas: 'Every kill recharges your dash 0.12 s',
+    end(p) { p.db.rofT = 2.5; dRing(p.x, p.y, 46, '255,90,122', 3); } },
+  { id: 'frost', name: 'Frost Step', r: 1, hex: '#9fdcff', ico: 'flake', cd: 1.05, dur: 0.22, spd: 600, ifr: 0.28, desc: 'Leave a trail of ice. Zombies on it slow to a crawl and can freeze solid.', pas: 'Your shots slow zombies', st: { slow: 0.5 },
+    trail: 22, drop(p) { dZone({ k: 'ice', x: p.x, y: p.y, r: 26, life: 3.2 }); } },
+  { id: 'flame', name: 'Flame Dash', r: 1, hex: '#ff8a2a', ico: 'flame', cd: 1.05, dur: 0.22, spd: 620, ifr: 0.28, desc: 'Leave a trail of fire that sets every zombie who walks through it ablaze.', pas: 'Burning wears off twice as fast on you', antiBurn: 1,
+    trail: 20, drop(p) { dZone({ k: 'fire', x: p.x, y: p.y, r: 24, life: 2.8 }); } },
+  { id: 'thunder', name: 'Thunder Dash', r: 1, hex: '#fff36b', ico: 'bolt', cd: 1.1, dur: 0.18, spd: 650, ifr: 0.26, desc: 'Land with a thunderclap: lightning jumps to the 5 closest zombies.', pas: 'Your shots chain lightning to 1 more zombie', st: { shock: 1 },
+    end(p) { let from = { x: p.x, y: p.y }; const seen = []; for (let i = 0; i < 5; i++) { const t = nearestZ(from.x, from.y, 230, seen); if (!t) break; bolt(from.x, from.y, t.x, t.y, '#fff36b'); seen.push(t); zHurt(t, 1.6); zStun(t, 0.3); from = t; } if (seen.length) SFX.zap(); dRing(p.x, p.y, 60, '255,243,107', 3); } },
+  { id: 'toxic', name: 'Toxic Trail', r: 1, hex: '#9be84a', ico: 'drop', cd: 1.05, dur: 0.22, spd: 610, ifr: 0.28, desc: 'Leave clouds of poison that eat away at anything that breathes them.', pas: 'Your shots poison zombies', st: { poison: 0.5 },
+    trail: 26, drop(p) { dZone({ k: 'toxic', x: p.x, y: p.y, r: 30, life: 3.8 }); } },
+  { id: 'blink', name: 'Blink', r: 2, hex: '#b07bff', ico: 'blink', cd: 1, dur: 0.06, spd: 0, ifr: 0.3, desc: 'Teleport instantly. Zombies where you were are left dazed.', pas: '+8% critical hit chance', st: { crit: 0.08 },
+    start(p) {
+      const sx = p.x, sy = p.y; let k = 0; for (let s = 0; s < 170; s += 10) { if (blocked(sx + p.dashDx * (s + 10), sy + p.dashDy * (s + 10), p.r)) break; k = s + 10; }
+      burst(sx, sy, 16, '#b07bff', 160, 4, 0.4); p.ghosts.push({ x: sx, y: sy, t: 0, a: p.aim });
+      dNear(sx, sy, 80, o => zStun(o, 0.7)); dRing(sx, sy, 80, '176,123,255', 3);
+      p.x += p.dashDx * k; p.y += p.dashDy * k; burst(p.x, p.y, 16, '#d9c2ff', 160, 4, 0.4); dRing(p.x, p.y, 40, '217,194,255', 3, 0.3);
+    } },
+  { id: 'phantom', name: 'Phantom Walk', r: 2, hex: '#a8f0ff', ico: 'ghost', cd: 1.1, dur: 0.32, spd: 520, ifr: 0.8, desc: 'Turn to mist and pass right through the horde, chilling everything you touch.', pas: '10% chance to dodge any hit', dodge: 0.1,
+    hit(p, z) { zHurt(z, 1.2); zSlow(z, 1.5, 0.5); burst(z.x, z.y, 5, '#cff7ff', 100, 3, 0.3); } },
+  { id: 'quake', name: 'Shockwave Slam', r: 2, hex: '#b38a5a', ico: 'quake', cd: 1.15, dur: 0.2, spd: 600, ifr: 0.3, desc: 'Slam down when you land: a shockwave throws every zombie around you back.', pas: 'Your bullets knock zombies back harder', knock: 1.6,
+    end(p) { dNear(p.x, p.y, 150, (o, d) => { zHurt(o, 1.6); zPush(o, p.x, p.y, 520 * (1 - d / 190)); zStun(o, 0.4); }); dRing(p.x, p.y, 150, '210,170,110', 6, 0.45); dRing(p.x, p.y, 90, '255,230,180', 3, 0.3); burst(p.x, p.y, 22, '#8c7254', 260, 5, 0.6); splat(p.x, p.y, 40, 'rgba(30,22,14,0.5)'); shakeIt(8); SFX.boom(false); } },
+  { id: 'vamp', name: 'Blood Rush', r: 2, hex: '#e0304a', ico: 'fang', cd: 1.05, dur: 0.24, spd: 600, ifr: 0.3, desc: 'Drain every zombie you rush through: they bleed, and you heal 3 health each.', pas: '+2% of your damage heals you', st: { lifesteal: 0.02 },
+    hit(p, z) { zHurt(z, 0.9); zPoison(z, 1); healPlayer(3); burst(z.x, z.y, 6, '#b3121c', 120, 3, 0.4); } },
+  { id: 'well', name: 'Gravity Well', r: 2, hex: '#7a7bff', ico: 'well', cd: 1.2, dur: 0.18, spd: 620, ifr: 0.28, desc: 'Leave a singularity behind that drags zombies in, then collapses with a bang.', pas: 'Your shots pull zombies in a little', st: { gravity: 0.4 },
+    start(p) { dZone({ k: 'well', x: p.x, y: p.y, r: 150, life: 2.2 }); } },
+  { id: 'decoy', name: 'Hologram Decoy', r: 2, hex: '#3ee0c8', ico: 'holo', cd: 1.25, dur: 0.18, spd: 620, ifr: 0.28, desc: 'Leave a hologram of yourself. Zombies chase it for 3.5 seconds, then it explodes.', pas: '+10% score', st: { score: 0.1 },
+    start(p) { G.decoy = { x: p.x, y: p.y, a: p.aim, t: 0, life: 3.5 }; } },
+  { id: 'rocket', name: 'Rocket Boots', r: 3, hex: '#ff6a3a', ico: 'rocket', cd: 1.15, dur: 0.28, spd: 900, ifr: 0.4, desc: 'Blast off twice as far on a jet of flame and explode where you land.', pas: 'Your explosions are 20% bigger', st: { blast: 0.2 },
+    tick(p) { G.parts.push({ x: p.x - p.dashDx * 10, y: p.y - p.dashDy * 10, vx: -p.dashDx * 160 + rand(-40, 40), vy: -p.dashDy * 160 + rand(-40, 40), life: 0.45, max: 0.45, c: pick(['#ffe9a0', '#ff9a3a', '#ff5a1a']), s: rand(4, 7) }); },
+    end(p) { boomAt(p.x, p.y, 95, 2.4); } },
+  { id: 'warp', name: 'Time Warp', r: 3, hex: '#5aa8ff', ico: 'clock', cd: 1.2, dur: 0.18, spd: 620, ifr: 0.3, desc: 'Bend time: every zombie moves at a third of its speed for 2.8 seconds.', pas: 'Dash recharges 20% faster', st: { dash: 0.2 },
+    end(p) { G.warpT = 2.8; dRing(p.x, p.y, 260, '90,168,255', 4, 0.6); dRing(p.x, p.y, 140, '200,230,255', 2, 0.5); } },
+  { id: 'berserk', name: 'Berserker', r: 3, hex: '#c2182a', ico: 'axe', cd: 1.05, dur: 0.22, spd: 640, ifr: 0.3, desc: 'Smash through zombies for heavy damage, then deal 50% more damage for 3 seconds.', pas: 'Below 30% health you deal 25% more damage', rage: 1,
+    hit(p, z) { zHurt(z, 2.2, p.dashDx * 260, p.dashDy * 260); burst(z.x, z.y, 8, '#ff3040', 160, 4, 0.35); },
+    end(p) { p.db.dmgT = 3; dRing(p.x, p.y, 50, '255,48,64', 4); } },
+  { id: 'holy', name: 'Holy Ground', r: 3, hex: '#fff1b8', ico: 'halo', cd: 1.2, dur: 0.18, spd: 620, ifr: 0.3, desc: 'Bless the ground where you land: it heals you and burns zombies for 4 seconds.', pas: 'Regenerate 1 health per second', st: { regen: 1 },
+    end(p) { dZone({ k: 'holy', x: p.x, y: p.y, r: 105, life: 4 }); dRing(p.x, p.y, 105, '255,241,184', 4, 0.5); } },
+  { id: 'ninja', name: 'Ninja Vanish', r: 3, hex: '#5c6b7a', ico: 'star', cd: 1.2, dur: 0.18, spd: 660, ifr: 0.4, desc: 'Vanish in a puff of smoke. Zombies lose you for 2.6 seconds and your next shot is a crit.', pas: '+25% critical hit damage', st: { critDmg: 0.25 },
+    start(p) { burst(p.x, p.y, 20, '#8a96a3', 150, 8, 0.7); }, end(p) { p.db.stealthT = 2.6; p.db.critNext = 1; burst(p.x, p.y, 14, '#8a96a3', 120, 7, 0.6); } },
+  { id: 'meteor', name: 'Meteor Strike', r: 4, hex: '#ff4a1a', ico: 'meteor', cd: 1.3, dur: 0.4, spd: 420, ifr: 0.65, desc: 'Leap into the sky and crash down like a meteor, leaving a burning crater.', pas: '+10% damage', st: { dmg: 0.1 },
+    end(p) { boomAt(p.x, p.y, 135, 3.6, '#ff6a2a'); dNear(p.x, p.y, 135, o => zStun(o, 0.6)); dZone({ k: 'fire', x: p.x, y: p.y, r: 70, life: 3.2 }); dRing(p.x, p.y, 200, '255,90,30', 6, 0.6); shakeIt(12); } },
+  { id: 'dragon', name: "Dragon's Breath", r: 4, hex: '#ff7a1a', ico: 'dragon', cd: 1.2, dur: 0.2, spd: 620, ifr: 0.3, desc: 'Finish the dash with a roaring cone of dragon fire.', pas: 'Your shots set zombies on fire', st: { burn: 1 },
+    end(p) { fireCone(p, 240, 0.62); SFX.boom(false); } },
+  { id: 'void', name: 'Void Rift', r: 4, hex: '#8a2bff', ico: 'rift', cd: 1.25, dur: 0.24, spd: 640, ifr: 0.35, desc: 'Tear open a rift along your path. It shreds zombies and swallows the weak ones whole.', pas: 'Finish off weak zombies faster', st: { execute: 0.15 },
+    start(p) { p.dashSX = p.x; p.dashSY = p.y; }, end(p) { dZone({ k: 'rift', x: p.dashSX, y: p.dashSY, x2: p.x, y2: p.y, r: 24, life: 1.6 }); } },
+  { id: 'storm', name: 'Storm Rider', r: 4, hex: '#7ab8ff', ico: 'storm', cd: 1.1, dur: 0.2, spd: 680, ifr: 0.3, desc: 'Call down 3 lightning strikes on zombies around you every time you dash.', pas: 'Dash recharges twice as fast during boss fights', boss2: 1,
+    end(p) { const pool = []; dNear(p.x, p.y, 330, o => pool.push(o)); pool.sort(() => Math.random() - 0.5).slice(0, 3).forEach((z, i) => setTimeout(() => { if (!z.dead) strikeBolt(z, 2.6); }, i * 120)); SFX.zap(); SFX.boom(false); shakeIt(5); } },
+  { id: 'warthog', name: 'Warthog Run', r: 4, hex: '#9fd36a', ico: 'jet', cd: 2.6, dur: 0.18, spd: 620, ifr: 0.3, desc: 'Radio in a single A-10 for a quick gun run straight down the line you dashed.', pas: 'Earn A-10 strikes every 60 chained kills instead of 75', air: 60,
+    end(p) { launchStrafe(p.x + p.dashDx * 170, p.y + p.dashDy * 170, Math.atan2(p.dashDy, p.dashDx), { mini: true }); SFX.radio(); } }
+];
+const DASH_SHORT = { sprint: 'Sprint', charge: 'Charge', slide: 'Slide', smoke: 'Smoke', adren: 'Adrenal', frost: 'Frost', flame: 'Flame', thunder: 'Thunder', toxic: 'Toxic', blink: 'Blink', phantom: 'Phantom', quake: 'Slam', vamp: 'Blood', well: 'Gravity', decoy: 'Decoy', rocket: 'Rocket', warp: 'Warp', berserk: 'Berserk', holy: 'Holy', ninja: 'Ninja', meteor: 'Meteor', dragon: 'Dragon', void: 'Void', storm: 'Storm', warthog: 'Warthog' };
+const DASH_BY = {}; DASHES.forEach((d, i) => { d.i = i; d.rgb = rgbOf(d.hex); d.short = DASH_SHORT[d.id] || d.name; DASH_BY[d.id] = d; });
+const dashes = new Set(store.get('zc_dashes', ['sprint'])); dashes.add('sprint');
+function saveDashes() { store.set('zc_dashes', Array.from(dashes)); }
+function dashLoadout() { const id = store.get('zc_dash', 'sprint'); return DASH_BY[id] && dashes.has(id) ? id : 'sprint'; }
+function dashDef(p) { return DASH_BY[(p && p.dashK) || 'sprint'] || DASHES[0]; }
+// the passive is added to the card stats before the game's live stats are worked out
+function dashPassive(cs, p) { const d = dashDef(p), out = Object.assign({}, cs); if (d.st) for (const k in d.st) out[k] = (out[k] || 0) + d.st[k]; return out; }
+
+function dashStart(p) {
+  const d = dashDef(p);
+  p.dashHit = new Set(); p.dashTrail = 0; p.dashSX = p.x; p.dashSY = p.y;
+  p.dashT = d.dur; p.dashDur = d.dur; p.iframe = Math.max(p.iframe, d.ifr);
+  let cd = p.dashCd * d.cd; if (d.boss2 && G.boss && !G.boss.dead) cd *= 0.5;
+  p.dashCdT = cd; p.dashCdMax = cd;
+  dRing(p.x, p.y, 34, d.rgb, 3, 0.3);
+  if (d.start) d.start(p, d);
+  SFX.dashKind(d.ico);
+}
+function dashVel(p, dt) {
+  const d = dashDef(p);
+  if (d.drop) dLine(d.spd * dt, d.trail, () => d.drop(p));
+  if (d.tick) d.tick(p, dt);
+  if (d.hit) near(p.x, p.y, p.r + 50, o => { if (o.dead || o.st.under || o.illusion || p.dashHit.has(o)) return; if (Math.hypot(o.x - p.x, o.y - p.y) < p.r + o.r + 8) { p.dashHit.add(o); d.hit(p, o); } });
+  if (!p.ghosts.length || p.ghosts[p.ghosts.length - 1].t > 0.03) p.ghosts.push({ x: p.x, y: p.y, t: 0, a: p.aim });
+  burst(p.x, p.y, 1, d.hex, 30, 4, 0.3);
+  return d.spd;
+}
+function dashEnd(p) { const d = dashDef(p); if (d.end) d.end(p, d); }
+function dashOnKill() { const p = G.p; if (p && p.dashK === 'adren') p.dashCdT = Math.max(0, p.dashCdT - 0.12); }
+function dashDodge(p) { const d = dashDef(p); return !!(d.dodge && Math.random() < d.dodge); }
+function dashDmgMul(p) { const d = dashDef(p); let m = p.db.dmgT > 0 ? 1.5 : 1; if (d.rage && p.hp < p.maxHp * 0.3) m *= 1.25; return m; }
+function dashRofMul(p) { return p.db.rofT > 0 ? 1.4 : 1; }
+function equipDash(d, fromCard) {
+  const p = G.p, isNew = !dashes.has(d.id);
+  p.dashK = d.id; dashes.add(d.id); saveDashes(); recalc(p); updDashBtn();
+  if (fromCard) { if (isNew) { toast('New dash unlocked · ' + DASH_RAR[d.r], d.name, WRAR[d.r].color); SFX.unlock(); } else toast('Dash', d.name, d.hex); }
+}
+function updDashBtn() {
+  const p = G.p, b = $('dashBtn'); if (!b) return; const d = dashDef(p);
+  b.style.setProperty('--dash', d.hex); b.setAttribute('aria-label', 'Dash: ' + d.name);
+  const n = b.querySelector('.dname'); if (n) n.textContent = d.short;
+}
+
+// every frame: buffs wear off, zones do their work, the decoy and time warp count down
+function updDash(dt) {
+  const p = G.p; if (!p) return;
+  const db = p.db; if (db.rofT > 0) db.rofT -= dt; if (db.dmgT > 0) db.dmgT -= dt; if (db.stealthT > 0) db.stealthT -= dt;
+  for (const g of p.ghosts) g.t += dt; if (p.ghosts.length) p.ghosts = p.ghosts.filter(g => g.t < 0.32).slice(-10);
+  if (G.warpT > 0) G.warpT -= dt;
+  if (dashDef(p).antiBurn && p.burnT > 0) p.burnT -= dt;
+  const dc = G.decoy;
+  if (dc) { dc.t += dt; if (dc.t >= dc.life) { boomAt(dc.x, dc.y, 85, 2.2, '#3ee0c8'); G.decoy = null; } }
+  if (!G.dfx || !G.dfx.length) return;
+  for (const z of G.dfx) {
+    z.t += dt;
+    if (z.k === 'ice') dNear(z.x, z.y, z.r, o => { zSlow(o, 1.5, 0.45); if (Math.random() < 0.18 * dt) zStun(o, 1, true); });
+    else if (z.k === 'fire') dNear(z.x, z.y, z.r, o => zBurn(o));
+    else if (z.k === 'toxic') dNear(z.x, z.y, z.r, o => zPoison(o, dt));
+    else if (z.k === 'smoke') dNear(z.x, z.y, z.r, o => { if (!o.boss) o.confT = 0.6; zSlow(o, 0.6, 0.65); });
+    else if (z.k === 'well') {
+      dNear(z.x, z.y, z.r, (o, d) => { if (o.boss) return; const k = 900 * dt * (1 - d / (z.r + 40)); o.kvx += (z.x - o.x) / (d || 1) * k * 6; o.kvy += (z.y - o.y) / (d || 1) * k * 6; });
+      if (z.t >= z.max && !z.popped) { z.popped = true; boomAt(z.x, z.y, 95, 2.6, '#9a9bff'); }
+    }
+    else if (z.k === 'holy') {
+      if (Math.hypot(p.x - z.x, p.y - z.y) < z.r) healPlayer(4 * dt);
+      dNear(z.x, z.y, z.r, o => { hurtZombie(o, bonusDmg(o, dashDmg(0.7) * dt), { src: 'dash' }); zSlow(o, 0.4, 0.7); });
+    }
+    else if (z.k === 'rift') lineHits(z.x, z.y, z.x2, z.y2, z.r, o => { if (!o.boss && !o.rb && o.hp < o.maxHp * 0.25) { burst(o.x, o.y, 10, '#c49bff', 140, 4, 0.4); killZombie(o); return; } hurtZombie(o, bonusDmg(o, dashDmg(2.5) * dt), { src: 'dash' }); });
+  }
+  G.dfx = G.dfx.filter(z => z.t < z.max);
+}
+// where a zombie walks when a dash is fooling it: the decoy, a lost scent, or a daze
+function dashLure(z, dt) {
+  if (z.boss || z.rb || z.snatch || z.fly) return null;
+  if (z.confT > 0) { z.confT -= dt; const a = z.bob * 3 + G.time * 2.2; return [z.x + Math.cos(a) * 80, z.y + Math.sin(a) * 80]; }
+  const dc = G.decoy; if (dc && Math.hypot(z.x - dc.x, z.y - dc.y) < 460) return [dc.x, dc.y];
+  const p = G.p; if (p && p.db.stealthT > 0) { const a = z.bob + G.time * 0.6; return [z.x + Math.cos(a) * 60, z.y + Math.sin(a) * 60]; }
+  return null;
+}
+
+/* ---------- drawing ---------- */
+function drawDashZones(vis) {
+  if (!G.dfx || !G.dfx.length) return;
+  for (const z of G.dfx) {
+    const f = z.t / z.max, a = Math.min(1, (1 - f) * 2.2) * Math.min(1, z.t * 6);
+    if (z.k === 'rift') {
+      ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(40,0,70,' + 0.8 * a + ')'; ctx.lineWidth = 30; ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(z.x2, z.y2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(196,155,255,' + 0.9 * a + ')'; ctx.lineWidth = 4 + Math.sin(G.time * 30) * 2; ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(z.x2, z.y2); ctx.stroke();
+      if (Math.random() < 0.6) { const t = Math.random(); burst(z.x + (z.x2 - z.x) * t, z.y + (z.y2 - z.y) * t, 1, '#c49bff', 60, 3, 0.4); }
+      continue;
+    }
+    if (!vis(z.x, z.y, z.r)) continue;
+    if (z.k === 'ice') { ctx.fillStyle = 'rgba(170,225,255,' + 0.38 * a + ')'; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, z.r * 0.8, 0.6, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(235,250,255,' + 0.6 * a + ')'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(z.x - z.r * 0.6, z.y); ctx.lineTo(z.x + z.r * 0.6, z.y); ctx.moveTo(z.x, z.y - z.r * 0.5); ctx.lineTo(z.x, z.y + z.r * 0.5); ctx.stroke(); }
+    else if (z.k === 'fire') { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,110,30,' + 0.32 * a + ')'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (0.9 + Math.sin(G.time * 12 + z.x) * 0.1), 0, TAU); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; if (Math.random() < 0.35) burst(z.x + rand(-z.r, z.r) * 0.6, z.y + rand(-z.r, z.r) * 0.6, 1, '#ff9a3a', 40, 4, 0.4); }
+    else if (z.k === 'toxic') { ctx.fillStyle = 'rgba(150,230,70,' + 0.22 * a + ')'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (1 + f * 0.2), 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(190,255,110,' + 0.18 * a + ')'; ctx.beginPath(); ctx.arc(z.x + Math.sin(G.time * 2 + z.y) * 6, z.y + Math.cos(G.time * 2 + z.x) * 5, z.r * 0.55, 0, TAU); ctx.fill(); }
+    else if (z.k === 'smoke') { for (let i = 0; i < 6; i++) { const aa = i / 6 * TAU + G.time * 0.4; ctx.fillStyle = 'rgba(170,176,184,' + 0.2 * a + ')'; ctx.beginPath(); ctx.arc(z.x + Math.cos(aa) * z.r * 0.45, z.y + Math.sin(aa) * z.r * 0.45, z.r * 0.6, 0, TAU); ctx.fill(); } }
+    else if (z.k === 'well') { ctx.strokeStyle = 'rgba(140,140,255,' + 0.55 * a + ')'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { const rr = z.r * ((G.time * 0.8 + i / 3) % 1); ctx.beginPath(); ctx.arc(z.x, z.y, z.r - rr, 0, TAU); ctx.stroke(); } ctx.fillStyle = 'rgba(10,6,30,' + 0.9 * a + ')'; ctx.beginPath(); ctx.arc(z.x, z.y, 12 + f * 8, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(200,200,255,' + a + ')'; ctx.lineWidth = 2.5; ctx.stroke(); }
+    else if (z.k === 'holy') { ctx.fillStyle = 'rgba(255,241,184,' + 0.13 * a + ')'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(255,236,160,' + 0.75 * a + ')'; ctx.lineWidth = 2.5; ctx.setLineDash([10, 8]); ctx.lineDashOffset = -G.time * 30; ctx.stroke(); ctx.setLineDash([]); if (Math.random() < 0.4) { const aa = rand(TAU), rr = rand(z.r); G.parts.push({ x: z.x + Math.cos(aa) * rr, y: z.y + Math.sin(aa) * rr, vx: 0, vy: -40, life: 0.8, max: 0.8, c: '#fff1b8', s: 3 }); } }
+  }
+  ctx.globalAlpha = 1;
+}
+// afterimages and the decoy, drawn just under the player
+function drawDashActors(p) {
+  const d = dashDef(p);
+  for (const g of p.ghosts) { const a = 0.4 * (1 - g.t / 0.32); ctx.fillStyle = 'rgba(' + d.rgb + ',' + a + ')'; ctx.beginPath(); ctx.ellipse(g.x, g.y, 10, 13, g.a, 0, TAU); ctx.fill(); }
+  const dc = G.decoy;
+  if (dc) {
+    const fl = Math.floor(G.time * 20) % 7 === 0 ? 0.35 : 0.75, end = dc.life - dc.t < 0.8 && Math.floor(G.time * 12) % 2;
+    ctx.save(); ctx.translate(dc.x, dc.y); ctx.rotate(dc.a + Math.sin(G.time * 3) * 0.3); ctx.globalAlpha = fl;
+    ctx.fillStyle = end ? 'rgba(255,90,90,0.8)' : 'rgba(62,224,200,0.55)'; ctx.beginPath(); ctx.ellipse(0, 0, 9, 13, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(2, 0, 6.5, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(160,255,240,0.9)'; ctx.lineWidth = 1; for (let y = -12; y < 13; y += 3) { ctx.beginPath(); ctx.moveTo(-10, y); ctx.lineTo(10, y); ctx.stroke(); }
+    ctx.restore(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(62,224,200,' + (0.4 + 0.3 * Math.sin(G.time * 8)) + ')'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(dc.x, dc.y, 22, 0, TAU); ctx.stroke();
+  }
+}
+function drawDashScreen() {
+  if (G.warpT > 0) { ctx.globalAlpha = Math.min(0.32, G.warpT * 0.2); ctx.drawImage(screenGrad('warp', 0.2, 0.75, '60,130,255', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
+  const p = G.p; if (p && p.db.stealthT > 0) { ctx.globalAlpha = Math.min(0.5, p.db.stealthT * 0.4); ctx.drawImage(screenGrad('ninja', 0.25, 0.6, '10,14,20', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
+}
+
+/* ---------- cards and the armory ---------- */
+function rollDashCard(boss) {
+  const p = G.p; let r = rollRarity(p.luck + (boss ? 1 : 0), boss); if (r > 4) r = 3;
+  let pool = DASHES.filter(d => d.r === r && d.id !== p.dashK); if (!pool.length) pool = DASHES.filter(d => d.id !== p.dashK);
+  const locked = pool.filter(d => !dashes.has(d.id));
+  const d = locked.length && Math.random() < 0.65 ? pick(locked) : pick(pool);
+  return { type: 'dash', d: d, r: d.r };
+}
+// a small badge for each dash: a glowing disc, speed streaks and the dash's own symbol
+function drawDashIcon(g, d, S, sil) {
+  const c = S / 2, col = sil ? '#2a2f36' : d.hex;
+  g.save(); g.translate(c, c);
+  const gr = g.createRadialGradient(0, 0, 2, 0, 0, c); gr.addColorStop(0, sil ? '#1d2127' : hexA(d.hex, 0.45)); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(0, 0, c, 0, TAU); g.fill();
+  g.strokeStyle = sil ? '#2a2f36' : hexA(d.hex, 0.55); g.lineWidth = S * 0.035; g.lineCap = 'round';
+  for (let i = 0; i < 3; i++) { const y = (i - 1) * S * 0.14; g.beginPath(); g.moveTo(-S * 0.44, y); g.lineTo(-S * 0.24 + i * S * 0.03, y); g.stroke(); }
+  const s = S / 100; g.scale(s, s); g.fillStyle = col; g.strokeStyle = col; g.lineWidth = 6; g.lineJoin = 'round';
+  const P = (pts, fill) => { g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); if (fill !== false) { g.closePath(); g.fill(); } else g.stroke(); };
+  switch (d.ico) {
+    case 'run': P([-10, -22, 10, 0, -10, 22], false); P([8, -22, 28, 0, 8, 22], false); break;
+    case 'shield': g.beginPath(); g.moveTo(0, -26); g.quadraticCurveTo(24, -20, 22, -4); g.quadraticCurveTo(18, 18, 0, 28); g.quadraticCurveTo(-18, 18, -22, -4); g.quadraticCurveTo(-24, -20, 0, -26); g.fill(); break;
+    case 'slide': P([-26, 14, 26, 14], false); P([-14, 4, 10, -8], false); g.beginPath(); g.arc(16, -12, 7, 0, TAU); g.fill(); break;
+    case 'smoke': [[-10, 4, 13], [8, -2, 15], [2, 14, 11]].forEach(q => { g.beginPath(); g.arc(q[0], q[1], q[2], 0, TAU); g.fill(); }); break;
+    case 'heart': g.beginPath(); g.moveTo(0, 22); g.bezierCurveTo(-34, -2, -18, -30, 0, -12); g.bezierCurveTo(18, -30, 34, -2, 0, 22); g.fill(); break;
+    case 'flake': for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; P([0, 0, Math.cos(a) * 26, Math.sin(a) * 26], false); P([Math.cos(a) * 15 + Math.cos(a + 1) * 7, Math.sin(a) * 15 + Math.sin(a + 1) * 7, Math.cos(a) * 15, Math.sin(a) * 15, Math.cos(a) * 15 + Math.cos(a - 1) * 7, Math.sin(a) * 15 + Math.sin(a - 1) * 7], false); } break;
+    case 'flame': g.beginPath(); g.moveTo(0, -28); g.bezierCurveTo(22, -6, 20, 24, 0, 26); g.bezierCurveTo(-20, 24, -22, 0, -8, -10); g.bezierCurveTo(-6, 0, 0, 2, 0, -28); g.fill(); break;
+    case 'bolt': P([6, -30, -14, 4, 0, 4, -6, 30, 16, -6, 2, -6]); break;
+    case 'drop': g.beginPath(); g.moveTo(0, -28); g.bezierCurveTo(16, -6, 20, 6, 20, 12); g.arc(0, 12, 20, 0, Math.PI); g.bezierCurveTo(-20, 6, -16, -6, 0, -28); g.fill(); break;
+    case 'blink': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, l = i % 2 ? 14 : 28; P([0, 0, Math.cos(a) * l, Math.sin(a) * l], false); } break;
+    case 'ghost': g.beginPath(); g.arc(0, -6, 18, Math.PI, 0); g.lineTo(18, 24); g.lineTo(9, 16); g.lineTo(0, 24); g.lineTo(-9, 16); g.lineTo(-18, 24); g.closePath(); g.fill(); g.fillStyle = '#0e1115'; g.beginPath(); g.arc(-7, -6, 4, 0, TAU); g.arc(7, -6, 4, 0, TAU); g.fill(); break;
+    case 'quake': P([-28, 20, 28, 20], false); P([0, 20, -6, 6, 6, -4, -2, -16], false); P([-14, 20, -20, 10], false); P([14, 20, 22, 8], false); break;
+    case 'fang': P([-20, -18, -10, 22, -2, -18]); P([2, -18, 10, 22, 20, -18]); break;
+    case 'well': g.beginPath(); for (let t = 0; t < 22; t++) { const a = t * 0.55, rr = 2 + t * 1.25; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.stroke(); break;
+    case 'holo': g.globalAlpha = 0.85; g.beginPath(); g.arc(0, -14, 9, 0, TAU); g.fill(); g.beginPath(); g.ellipse(0, 12, 14, 16, 0, 0, TAU); g.fill(); g.globalAlpha = 1; g.strokeStyle = '#0e1115'; g.lineWidth = 2; for (let y = -22; y < 28; y += 6) { g.beginPath(); g.moveTo(-16, y); g.lineTo(16, y); g.stroke(); } break;
+    case 'rocket': P([0, -30, 12, -6, 12, 16, -12, 16, -12, -6]); P([-12, 6, -22, 20, -12, 16]); P([12, 6, 22, 20, 12, 16]); g.fillStyle = '#ffe9a0'; P([-6, 18, 0, 32, 6, 18]); break;
+    case 'clock': g.beginPath(); g.arc(0, 0, 24, 0, TAU); g.stroke(); P([0, 0, 0, -16], false); P([0, 0, 12, 6], false); break;
+    case 'axe': P([-4, -26, 4, -26, 4, 28, -4, 28]); g.beginPath(); g.moveTo(4, -22); g.quadraticCurveTo(30, -18, 28, 4); g.quadraticCurveTo(16, -2, 4, 0); g.fill(); break;
+    case 'halo': g.beginPath(); g.ellipse(0, -16, 20, 7, 0, 0, TAU); g.stroke(); P([0, -4, 0, 26], false); P([-14, 8, 14, 8], false); break;
+    case 'star': for (let i = 0; i < 4; i++) { g.save(); g.rotate(i * Math.PI / 2 + 0.4); P([0, -28, 8, -6, 0, 0, -8, -6]); g.restore(); } g.fillStyle = '#0e1115'; g.beginPath(); g.arc(0, 0, 5, 0, TAU); g.fill(); break;
+    case 'meteor': g.beginPath(); g.arc(10, 10, 14, 0, TAU); g.fill(); g.globalAlpha = 0.6; P([-2, 2, -30, -26, -20, -30, 6, -6]); P([4, -2, -18, -30], false); g.globalAlpha = 1; break;
+    case 'dragon': P([-24, 14, -6, -20, 2, -6, 14, -24, 12, -2, 26, 4, 8, 6, 2, 20]); break;
+    case 'rift': g.lineWidth = 8; P([-4, -30, 6, -12, -6, 2, 8, 16, -2, 30], false); g.fillStyle = '#0e1115'; g.lineWidth = 3; break;
+    case 'storm': g.beginPath(); g.arc(-8, -10, 12, 0, TAU); g.arc(8, -12, 14, 0, TAU); g.arc(16, -2, 10, 0, TAU); g.arc(-16, -2, 9, 0, TAU); g.fill(); g.fillStyle = sil ? col : '#fff36b'; P([2, 0, -8, 18, 0, 18, -4, 32, 10, 12, 2, 12]); break;
+    case 'jet': g.rotate(-Math.PI / 2); P([-4, -30, 4, -30, 6, 30, -6, 30]); P([-30, -4, 30, -4, 30, 4, -30, 4]); P([-12, 22, 12, 22, 12, 28, -12, 28]); break;
+  }
+  g.restore();
+}
+function paintDash(c, d, size, sil) {
+  const k = Math.min(window.devicePixelRatio || 1, 2); c.width = c.height = Math.round(size * k); c.style.width = c.style.height = size + 'px';
+  const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, 0, 0); g.clearRect(0, 0, size, size); drawDashIcon(g, d, size, sil);
+}
 
 /* ================= the armory keeper (1.9.01) =================
    He runs through 15 acts while the armory is open, picking a different one each time, with a short rest between.
@@ -7758,14 +8175,18 @@ function updCine(dt) {
 }
 
 /* ================= A-10 Warthog airstrike ================= */
+// The GAU-8 fires 30 mm high-explosive rounds: every round bursts where it lands (splash damage), punches a hole in
+// the road and kicks up dust. The jets leave engine smoke and the gun leaves its own grey cloud; the BRRRT reaches
+// you just after the rounds land and echoes off the buildings.
+function airEvery() { return G.p && G.p.dashK === 'warthog' ? 60 : 75; }
 function updAirBtn() {
   const b = $('airBtn'); if (!b) return; const n = G.air || 0;
   b.classList.toggle('ready', n > 0); b.disabled = !(n > 0 && G.mode === 'play');
-  $('airN').textContent = n > 0 ? 'x' + n : 'x75';
+  $('airN').textContent = n > 0 ? 'x' + n : 'x' + airEvery();
 }
 function grantAir() { G.air = Math.min(2, (G.air || 0) + 1); updAirBtn(); SFX.airReady(); toast('Chain x' + G.chain, 'A-10 Warthog ready', '#9fd36a'); }
 function callAirstrike() {
-  if (G.mode !== 'play' || !(G.air > 0) || G.jets.length) return;
+  if (G.mode !== 'play' || !(G.air > 0) || G.jets.some(j => !j.mini)) return;
   G.air--; updAirBtn();
   const p = G.p; let cx = p.x + Math.cos(p.aim) * 160, cy = p.y + Math.sin(p.aim) * 160, n = 0, sx = 0, sy = 0;
   for (const z of G.zs) { if (z.dead || z.fly) continue; const d = Math.hypot(z.x - p.x, z.y - p.y); if (d < 520) { sx += z.x; sy += z.y; n++; } }
@@ -7777,45 +8198,100 @@ function callAirstrike() {
     if (c > best) { best = c; bestA = a; }
   }
   if (Math.random() < 0.5) bestA += Math.PI;
-  const ux = Math.cos(bestA), uy = Math.sin(bestA), vx = -uy, vy = ux;
-  [[0, 0], [-80, -70], [-80, 70]].forEach((o, i) => G.jets.push({ x: cx - ux * (1000 - o[0]) + vx * o[1], y: cy - uy * (1000 - o[0]) + vy * o[1], ux: ux, uy: uy, t: 0, fireT: 0, tx: cx + vx * o[1] * 0.5, ty: cy + vy * o[1] * 0.5, firing: false, shot: false, k: i }));
-  SFX.radio(); SFX.a10Jet(2.4); banner('A-10 inbound', 'Danger close');
+  launchStrafe(cx, cy, bestA, {});
+  SFX.radio(); SFX.a10Jet(2.8); banner('A-10 inbound', 'Danger close');
 }
+// a gun run along angle a through (cx, cy): three jets, or one for the Warthog Run dash
+function launchStrafe(cx, cy, a, o) {
+  const ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux, mini = !!o.mini;
+  const form = mini ? [[0, 0]] : [[0, 0], [-80, -70], [-80, 70]];
+  form.forEach((f, i) => G.jets.push({ x: cx - ux * (1000 - f[0]) + vx * f[1], y: cy - uy * (1000 - f[0]) + vy * f[1], ux: ux, uy: uy, t: 0, fireT: 0, smT: 0, rounds: 0,
+    tx: cx + vx * f[1] * 0.5, ty: cy + vy * f[1] * 0.5, firing: false, shot: false, k: i, mini: mini, len: mini ? 380 : 840, dmgMul: mini ? 0.6 : 1, tr: [] }));
+  if (mini) SFX.a10Jet(2.2, true);
+}
+function puff(x, y, r0, r1, life, c, vx, vy) { if (!G.smoke) G.smoke = []; if (G.smoke.length > 520) G.smoke.splice(0, 40); G.smoke.push({ x: x, y: y, r0: r0, r1: r1, t: 0, life: life, c: c, vx: vx || 0, vy: vy || 0 }); }
+function hole(x, y, r) { if (!G.holes) G.holes = []; if (G.holes.length > (Q.lod >= 2 ? 180 : 340)) G.holes.shift(); G.holes.push({ x: x, y: y, r: r, rot: rand(TAU), t: 0, hot: 1 }); }
 function updJets(dt) {
   if (!G.jets.length) return;
-  const dmg = 70 + G.wave * 9;
+  const dmg = 70 + G.wave * 9, sm = Q.burst;
   for (const j of G.jets) {
     j.t += dt; j.x += j.ux * 980 * dt; j.y += j.uy * 980 * dt;
-    const along = (j.x - j.tx) * j.ux + (j.y - j.ty) * j.uy;
-    j.firing = along > -720 && along < 120;
+    const along = (j.x - j.tx) * j.ux + (j.y - j.ty) * j.uy, px = -j.uy, py = j.ux;
+    // engine smoke from both pods, drifting and spreading behind the jet
+    j.smT -= dt * sm;
+    while (j.smT <= 0) { j.smT += 0.03; for (const s of [-1, 1]) puff(j.x - j.ux * 26 + px * 9 * s, j.y - j.uy * 26 + py * 9 * s, 3, 16, 1.5, '200,204,210', -j.ux * 60, -j.uy * 60); }
+    j.firing = along > -j.len + 120 && along < 120;
     if (j.firing) {
-      if (!j.shot) { j.shot = true; if (j.k === 0) { SFX.a10Brrt(0.35, 1.0); shakeIt(6); } }
+      if (!j.shot) {
+        j.shot = true;
+        if (j.k === 0) { SFX.a10Brrt(0.3, j.mini ? 0.45 : 1.05, j.mini); shakeIt(j.mini ? 6 : 10); G.flashA = j.mini ? 0.2 : 0.45; if (!j.mini) SFX.fm.duck(2.4); }
+      }
       j.fireT -= dt;
       while (j.fireT <= 0) {
-        j.fireT += 0.016;
-        const ix = j.x + j.ux * 260 + (-j.uy) * rand(-22, 22), iy = j.y + j.uy * 260 + j.ux * rand(-22, 22);
-        burst(ix, iy, 2, Math.random() < 0.5 ? '#c9b48a' : '#ffd27a', 120, 3, 0.35);
-        if (Math.random() < 0.18) { burst(ix, iy, 6, '#ff8a2a', 160, 4, 0.4); G.splats.length < 150 && splat(ix, iy, rand(5, 9), '#2a2622'); }
-        if (Math.random() < 0.25) SFX.impacts();
-        near(ix, iy, 34, o => { if (o.dead) return; if (Math.hypot(o.x - ix, o.y - iy) < 30 + o.r) hurtZombie(o, o.boss ? dmg * 0.35 : dmg, { src: 'a10', kx: j.ux * 60, ky: j.uy * 60 }); });
+        j.fireT += 0.016; j.rounds++;
+        const ix = j.x + j.ux * 260 + px * rand(-24, 24) + j.ux * rand(-16, 16), iy = j.y + j.uy * 260 + py * rand(-24, 24) + j.uy * rand(-16, 16);
+        // every round is high explosive: a small burst with splash damage, stronger in the middle
+        const R = 34, big = j.rounds % 6 === 0;
+        near(ix, iy, R + 50, o => {
+          if (o.dead) return; const d = Math.hypot(o.x - ix, o.y - iy); if (d > (big ? 56 : R) + o.r) return;
+          const f = 1 - Math.min(1, d / (R + o.r)) * 0.5;
+          hurtZombie(o, dmg * j.dmgMul * f * (o.boss ? 0.35 : 1) * (big ? 1.4 : 1), { src: 'a10', kx: j.ux * 70 + (o.x - ix) / (d || 1) * 120, ky: j.uy * 70 + (o.y - iy) / (d || 1) * 120 });
+        });
+        burst(ix, iy, 2, Math.random() < 0.5 ? '#c9b48a' : '#ffd27a', 140, 3, 0.35);
+        burst(ix, iy, 1, '#fff2c0', 220, 2, 0.2);
+        if (big) { burst(ix, iy, 9, '#ff8a2a', 200, 5, 0.45); burst(ix, iy, 5, '#3a2e24', 120, 7, 0.8); G.rings.push({ x: ix, y: iy, r0: 4, r1: 52, t: 0, life: 0.3, c: '255,170,80', w: 3 }); puff(ix, iy, 6, 30, 1.6, '70,62,56', rand(-20, 20), rand(-20, 20)); if (Math.random() < 0.5) SFX.impacts(); }
+        else if (Math.random() < 0.3) puff(ix, iy, 4, 18, 1.1, '150,136,112', rand(-15, 15), rand(-15, 15));
+        hole(ix + rand(-4, 4), iy + rand(-4, 4), rand(3, 5.4) * (big ? 1.5 : 1));
+        if (Math.random() < 0.12 && G.splats.length < 150) splat(ix, iy, rand(6, 10), '#221e1a');
+        j.tr.push({ x: ix, y: iy, t: 0 }); if (j.tr.length > 8) j.tr.shift();
         j.lix = ix; j.liy = iy;
       }
-      if (Math.random() < 0.3) shakeIt(3);
+      // the gun's own smoke cloud, left in the air under the nose
+      if (Math.random() < 0.7 * sm) puff(j.x + j.ux * 46, j.y + j.uy * 46, 5, 30, 2.2, '120,124,130', j.ux * 40, j.uy * 40);
+      if (Math.random() < 0.35) shakeIt(j.mini ? 3 : 5);
     }
-    if (j.t > 2.6) j.dead = true;
+    for (const t of j.tr) t.t += dt;
+    if (j.t > 2.8) j.dead = true;
   }
   G.jets = G.jets.filter(j => !j.dead);
+}
+// smoke, bullet holes and the impact flash keep going after the jets have gone
+function updAirFx(dt) {
+  if (G.smoke && G.smoke.length) { for (const s of G.smoke) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.97; s.vy *= 0.97; } G.smoke = G.smoke.filter(s => s.t < s.life); }
+  if (G.holes && G.holes.length) { for (const h of G.holes) { h.t += dt; if (h.hot > 0) h.hot -= dt * 0.6; } if (G.holes[0].t > 28) G.holes = G.holes.filter(h => h.t < 28); }
+  if (G.flashA > 0) G.flashA -= dt * 1.4;
+}
+function drawHoles(vis) {
+  const H = G.holes; if (!H || !H.length) return;
+  ctx.fillStyle = 'rgba(14,12,10,0.85)';
+  for (const h of H) { if (!vis(h.x, h.y, 10)) continue; ctx.globalAlpha = Math.min(1, (28 - h.t) / 6); ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r, h.r * 0.8, h.rot, 0, TAU); ctx.fill(); }
+  ctx.strokeStyle = 'rgba(120,108,92,0.55)'; ctx.lineWidth = 1.2;
+  for (const h of H) { if (!vis(h.x, h.y, 10)) continue; ctx.globalAlpha = Math.min(1, (28 - h.t) / 6); ctx.beginPath(); ctx.ellipse(h.x, h.y, h.r * 1.5, h.r * 1.25, h.rot, 0, TAU); ctx.stroke(); }
+  ctx.globalCompositeOperation = 'lighter';
+  for (const h of H) { if (h.hot <= 0 || !vis(h.x, h.y, 10)) continue; ctx.globalAlpha = h.hot * 0.8; ctx.fillStyle = h.hot > 0.6 ? '#ffd27a' : '#ff6a2a'; ctx.beginPath(); ctx.arc(h.x, h.y, h.r * 0.6, 0, TAU); ctx.fill(); }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+function drawSmoke(vis) {
+  const S = G.smoke; if (!S || !S.length) return;
+  for (const s of S) { const f = s.t / s.life, r = s.r0 + (s.r1 - s.r0) * Math.sqrt(f); if (!vis(s.x, s.y, r)) continue; ctx.fillStyle = 'rgba(' + s.c + ',' + (0.32 * (1 - f) * Math.min(1, s.t * 8)) + ')'; ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, TAU); ctx.fill(); }
 }
 function drawJets() {
   for (const j of G.jets) {
     const a = Math.atan2(j.uy, j.ux);
     ctx.save(); ctx.translate(j.x + 50, j.y + 80); ctx.rotate(a); ctx.globalAlpha = 0.35; drawA10(true); ctx.restore();
     if (j.firing && j.lix != null) {
-      ctx.strokeStyle = 'rgba(255,220,120,0.55)'; ctx.lineWidth = 2;
-      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(j.x + j.ux * 44, j.y + j.uy * 44); ctx.lineTo(j.lix + rand(-18, 18), j.liy + rand(-18, 18)); ctx.stroke(); }
+      // tracers from the gun to where the rounds are landing
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      for (const t of j.tr) { const al = Math.max(0, 1 - t.t / 0.12); if (al <= 0) continue; ctx.strokeStyle = 'rgba(255,214,120,' + 0.75 * al + ')'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(j.x + j.ux * 48, j.y + j.uy * 48); ctx.lineTo(t.x, t.y); ctx.stroke(); ctx.strokeStyle = 'rgba(255,250,220,' + 0.9 * al + ')'; ctx.lineWidth = 1; ctx.stroke(); }
+      const g = ctx.createRadialGradient(j.lix, j.liy, 2, j.lix, j.liy, 46); g.addColorStop(0, 'rgba(255,200,110,0.55)'); g.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(j.lix, j.liy, 46, 0, TAU); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
     }
-    ctx.save(); ctx.translate(j.x, j.y); ctx.rotate(a); ctx.globalAlpha = 1; drawA10(false);
-    if (j.firing) { ctx.fillStyle = '#ffe9a0'; ctx.beginPath(); ctx.moveTo(46, 0); ctx.lineTo(62, -5); ctx.lineTo(70, 0); ctx.lineTo(62, 5); ctx.closePath(); ctx.fill(); }
+    ctx.save(); ctx.translate(j.x, j.y); ctx.rotate(a); ctx.globalAlpha = 1;
+    // engine glow
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,170,90,0.5)'; ctx.beginPath(); ctx.arc(-28, -9, 4, 0, TAU); ctx.arc(-28, 9, 4, 0, TAU); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+    drawA10(false);
+    if (j.firing) { ctx.fillStyle = '#ffe9a0'; ctx.beginPath(); ctx.moveTo(46, 0); ctx.lineTo(64, -7); ctx.lineTo(74, 0); ctx.lineTo(64, 7); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(50, 0, 3, 0, TAU); ctx.fill(); }
     ctx.restore();
   }
   ctx.globalAlpha = 1;

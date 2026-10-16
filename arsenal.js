@@ -10,7 +10,7 @@ function newCardStats() {
 }
 // Combine the equipped weapon with every card taken so far into the live stats the game uses.
 function recalc(p) {
-  const w = p.weapon, c = p.cs, fx = w.fx;
+  const w = p.weapon, c = dashPassive(p.cs, p), fx = w.fx;
   let jam = fx.jamEvery ? Math.round(fx.jamEvery * (1 + Math.max(0, c.rof))) : 0;
   if (c.jam) jam = jam ? Math.min(jam, c.jam) : c.jam;
   p.S = {
@@ -18,7 +18,7 @@ function recalc(p) {
     pellets: Math.max(1, w.pellets + c.multi + c.flame), burst: w.burst + c.burst, spread: w.spread,
     speed: w.speed * (1 + Math.max(0, c.range) * 0.3), range: w.range * Math.max(0.4, 1 + c.range),
     pierce: w.pierce + c.pierce, crit: Math.min(0.95, w.crit + c.crit), critMul: w.critMul + c.critDmg,
-    knock: w.knock, kind: w.kind, blast: w.blast * (1 + c.blast),
+    knock: w.knock * (dashDef(p).knock || 1), kind: w.kind, blast: w.blast * (1 + c.blast),
     burn: (fx.burn || 0) + c.burn, slow: (fx.slow || 0) + c.slow, freeze: Math.min(0.6, (fx.freeze || 0) + c.freeze), shock: (fx.shock || 0) + c.shock,
     splash: (fx.splash || 0) + c.splash, poison: (fx.poison || 0) + c.poison, bounce: (fx.bounce || 0) + c.bounce,
     homing: (fx.homing || 0) + c.homing, lifesteal: (fx.lifesteal || 0) + c.lifesteal, split: (fx.split || 0) + c.split,
@@ -63,10 +63,11 @@ function volley(a, mul) {
     let ang = a;
     if (n > 1) ang += cone ? (i / (n - 1) - 0.5) * S.spread : (i - (n - 1) / 2) * gap;
     ang += rand(-1, 1) * (kind === 'flame' ? S.spread * 0.5 : S.spread * 0.35 + 0.012);
-    const crit = Math.random() < S.crit, spd = S.speed * (kind === 'flame' ? rand(0.75, 1.15) : 1), life = S.range / spd;
+    let crit = Math.random() < S.crit; if (p.db.critNext) { p.db.critNext = 0; crit = true; }
+    const spd = S.speed * (kind === 'flame' ? rand(0.75, 1.15) : 1), life = S.range / spd;
     G.bullets.push({
       x: mx, y: my, sx: p.x, sy: p.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
-      dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
+      dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1) * dashDmgMul(p), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
       life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper'
     });
   }
@@ -208,7 +209,7 @@ function chainKill() {
     el.append(b, s); el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
     clearTimeout(chainKill.t); chainKill.t = setTimeout(() => { el.hidden = true; }, 1600);
   }
-  if (c % 75 === 0) grantAir();
+  if (c % airEvery() === 0) grantAir();
   if (c % 100 === 0 && G.mode === 'play') G.skullPending = true;
   return 1 + Math.min(1.5, (c - 1) * 0.02);
 }
@@ -361,8 +362,10 @@ function rollWeaponCard(boss) {
 function rollCards() {
   const p = G.p, boss = G.wave % 5 === 0, out = [], used = new Set();
   const wSlot = boss ? Math.floor(Math.random() * 3) : Math.random() < 0.22 ? Math.floor(Math.random() * 3) : -1;
+  let dSlot = Math.random() < (boss ? 0.35 : 0.17) ? Math.floor(Math.random() * 3) : -1; if (dSlot === wSlot) dSlot = (dSlot + 1) % 3;
   for (let s = 0; s < 3; s++) {
     if (s === wSlot) { out.push(rollWeaponCard(boss)); continue; }
+    if (s === dSlot) { out.push(rollDashCard(boss)); continue; }
     let r = rollRarity(p.luck, boss), c = null;
     for (let tries = 0; tries < 12 && !c; tries++) {
       const pool = CARDS.filter(k => k.r === r && !used.has(k.id) && !(k.max && (p.cards[k.id] || 0) >= k.max) && !(k.id === 'medkit' && p.hp > p.maxHp * 0.8));
@@ -389,7 +392,7 @@ const CRACK = '<svg viewBox="-40 -40 80 80" aria-hidden="true"><g stroke="rgba(8
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function buildCard(ch, i, onPick) {
   const p = G.p, R = WRAR[ch.r];
-  const b = el('button', 'gcard r-' + ch.r + (ch.type === 'weapon' ? ' weapon' : '')); b.type = 'button';
+  const b = el('button', 'gcard r-' + ch.r + (ch.type === 'weapon' ? ' weapon' : ch.type === 'dash' ? ' dash' : '')); b.type = 'button';
   b.style.setProperty('--rc', R.color); b.style.setProperty('--d', (0.08 + i * 0.14) + 's');
   const top = el('span', 'gc-top'); top.append(el('em', 'gc-rar', R.name), el('em', 'gc-type', ''), el('kbd', null, String(i + 1)));
   const art = el('canvas', 'gc-art'); art.setAttribute('aria-hidden', 'true');
@@ -407,6 +410,12 @@ function buildCard(ch, i, onPick) {
     cmp('Range', w.range, cur.range, v => Math.round(v));
     li(w.M.desc, 'meta');
     notes.append(el('span', 'gc-react', 'Cards: ' + (w.F.reactText + (w.M.reactText ? ' ' + w.M.reactText : ''))));
+  } else if (ch.type === 'dash') {
+    const d = ch.d, cur = dashDef(p);
+    top.querySelector('.gc-type').textContent = dashes.has(d.id) ? 'Dash' : 'New dash';
+    name.textContent = d.name; paintDash(art, d, 84, false);
+    li(d.desc, 'good'); li('Passive: ' + d.pas, 'good');
+    li('Recharge ' + (p.dashCd * d.cd).toFixed(1) + ' s · replaces ' + cur.name, 'meta');
   } else {
     const c = ch.card, eff = ZW.cardEffects(c, p.weapon);
     top.querySelector('.gc-type').textContent = c.r === 6 ? 'Deadly' : c.r === 5 ? 'Cursed card' : 'Card';
@@ -459,6 +468,7 @@ function chooseCard(i, ev) {
 function applyChoice(ch) {
   const p = G.p;
   if (ch.type === 'weapon') { equipWeapon(ch.w); return; }
+  if (ch.type === 'dash') { equipDash(ch.d, true); return; }
   const c = ch.card, eff = ZW.cardEffects(c, p.weapon);
   p.cards[c.id] = (p.cards[c.id] || 0) + 1;
   eff.lines.forEach(l => {
@@ -490,6 +500,8 @@ function renderBuild() {
   paintWeapon($('bwIcon'), w, 120, 56, false);
   $('bwName').textContent = w.name; const r = $('bwRar'); r.textContent = WRAR[w.rarity].name + ' · ' + w.code; r.style.color = WRAR[w.rarity].color;
   $('bwDesc').textContent = w.M.desc + ' ' + w.F.reactText;
+  const d = dashDef(p), bd = $('bDash'); bd.textContent = ''; const dc = el('canvas'); paintDash(dc, d, 46, false);
+  const dt = el('div'); const dn = el('b', null, 'Dash: ' + d.name); dn.style.color = d.hex; dt.append(dn, el('p', null, d.desc + ' Passive: ' + d.pas + '.')); bd.append(dc, dt);
   const st = $('bStats'); st.textContent = '';
   [['Damage', Math.round(S.dmg * S.pellets * S.burst)], ['Fire rate', S.rof.toFixed(1) + '/s'], ['Crit', Math.round(S.crit * 100) + '%'], ['Pierce', S.pierce], ['Range', Math.round(S.range)], ['Speed', Math.round(p.speed)]]
     .forEach(x => { const d = el('div'); d.append(el('dt', null, x[0]), el('dd', null, String(x[1]))); st.appendChild(d); });
@@ -509,6 +521,7 @@ function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true;
 $('keeper').querySelector('.kp-poke').addEventListener('click', () => { SFX.init(); KEEP.poke(); });
 function renderArmory() {
   $('arCount').textContent = guns.size + ' / 250';
+  if (arFrame === 'dash') return renderDashArmory();
   const lw = WEAPONS[loadoutId()], ld = $('arLoadout'); ld.textContent = '';
   const lb = el('b', null, lw.name); lb.style.color = WRAR[lw.rarity].color; ld.append('Starting weapon: ', lb, '. Pick up new weapons from cards during a run to unlock them here.');
   const chips = $('arFrames'); chips.textContent = '';
@@ -518,6 +531,7 @@ function renderArmory() {
     b.append(el('span', null, F.name), el('em', null, n + '/25')); b.addEventListener('click', () => { arFrame = i; renderArmory(); });
     chips.appendChild(b);
   });
+  chips.appendChild(dashChip());
   const F = ZW.FRAMES[arFrame], note = $('arFrameNote'); note.textContent = ''; note.append(el('b', null, F.name + '. '), F.desc + ' ' + F.reactText);
   const grid = $('arGrid'); grid.textContent = '';
   for (let m = 0; m < 25; m++) {
@@ -529,6 +543,43 @@ function renderArmory() {
     b.addEventListener('click', () => openWeaponDetail(w));
     grid.appendChild(b); paintWeapon(c, w, 128, 60, !show);
   }
+}
+function dashChip() {
+  const b = el('button', 'chip dchip' + (arFrame === 'dash' ? ' on' : '')); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', arFrame === 'dash');
+  b.append(el('span', null, 'Dashes'), el('em', null, dashes.size + '/25')); b.addEventListener('click', () => { arFrame = 'dash'; renderArmory(); });
+  return b;
+}
+function renderDashArmory() {
+  $('arCount').textContent = dashes.size + ' / 25';
+  const ld = $('arLoadout'); ld.textContent = ''; const cur = DASH_BY[dashLoadout()];
+  const lb = el('b', null, cur.name); lb.style.color = cur.hex; ld.append('Starting dash: ', lb, '. Find new dashes on cards during a run to unlock them here.');
+  const chips = $('arFrames'); chips.textContent = '';
+  ZW.FRAMES.forEach((F, i) => { let n = 0; for (let m = 0; m < 25; m++) if (guns.has(i * 25 + m)) n++; const b = el('button', 'chip'); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false'); b.append(el('span', null, F.name), el('em', null, n + '/25')); b.addEventListener('click', () => { arFrame = i; renderArmory(); }); chips.appendChild(b); });
+  chips.appendChild(dashChip());
+  const note = $('arFrameNote'); note.textContent = ''; note.append(el('b', null, 'Dashes. '), 'Every dash does something to you and the zombies around you, and has a passive that is always on.');
+  const grid = $('arGrid'); grid.textContent = '';
+  DASHES.forEach(d => {
+    const have = dashes.has(d.id), show = have || arSpoil, R = WRAR[d.r];
+    const b = el('button', 'wcard dcard wr-' + d.r + ' ' + (have ? 'known' : 'unknown') + (d.id === cur.id ? ' equipped' : '')); b.type = 'button'; b.style.setProperty('--rc', R.color);
+    const c = el('canvas'); c.setAttribute('aria-hidden', 'true'); paintDash(c, d, 56, !show);
+    b.append(c, el('span', 'num', 'DSH-' + String(d.i + 1).padStart(2, '0')), el('span', 'nm', show ? d.name : 'Locked'), el('span', 'rar', DASH_RAR[d.r]));
+    if (d.id === cur.id) b.append(el('span', 'eq', 'Equipped'));
+    b.addEventListener('click', () => openDashDetail(d)); grid.appendChild(b);
+  });
+}
+function openDashDetail(d) {
+  arCur = { dash: d }; const have = dashes.has(d.id), show = have || arSpoil, det = $('arDetail');
+  det.style.setProperty('--rc', WRAR[d.r].color);
+  const art = $('awArt'); const k = Math.min(window.devicePixelRatio || 1, 2); art.width = 260 * k; art.height = 110 * k; art.style.width = '260px'; art.style.height = '110px';
+  const g = art.getContext('2d'); g.setTransform(k, 0, 0, k, 0, 0); g.clearRect(0, 0, 260, 110); g.save(); g.translate(130 - 50, 5); drawDashIcon(g, d, 100, !show); g.restore();
+  $('awTag').textContent = 'DSH-' + String(d.i + 1).padStart(2, '0') + ' · ' + DASH_RAR[d.r] + ' dash'; $('awName').textContent = show ? d.name : 'Locked dash';
+  $('awMod').textContent = show ? 'When you dash: ' + d.desc : 'Find this dash on a card during a run to unlock it.';
+  $('awReact').textContent = show ? 'Passive: ' + d.pas + '.' : '';
+  const bars = $('awBars'); bars.textContent = '';
+  [['Recharge', 1 / d.cd / 1.2, (2.4 * d.cd).toFixed(1) + ' s'], ['Distance', Math.min(1, d.spd * d.dur / 260), d.spd ? Math.round(d.spd * d.dur) : 'Teleport'], ['Untouchable', d.ifr / 0.8, d.ifr.toFixed(2) + ' s']]
+    .forEach(r => { const row = el('div', 'bar-row'), t = el('div', 'track'), f = el('i'); f.style.width = show ? Math.round(Math.min(1, r[1]) * 100) + '%' : '0%'; t.appendChild(f); row.append(el('span', null, r[0]), t, el('em', null, show ? String(r[2]) : '?')); bars.appendChild(row); });
+  const eq = $('awEquip'); eq.hidden = !have; eq.disabled = d.id === dashLoadout(); eq.textContent = d.id === dashLoadout() ? 'Equipped' : 'Start runs with this';
+  det.hidden = false; det.scrollTop = 0;
 }
 function openWeaponDetail(w) {
   arCur = w; const have = guns.has(w.id), show = have || arSpoil, R = WRAR[w.rarity], d = $('arDetail');
@@ -543,7 +594,10 @@ function openWeaponDetail(w) {
   const eq = $('awEquip'); eq.hidden = !have; eq.disabled = w.id === loadoutId(); eq.textContent = w.id === loadoutId() ? 'Equipped' : 'Start runs with this';
   d.hidden = false; d.scrollTop = 0;
 }
-$('awEquip').addEventListener('click', () => { if (!arCur || !guns.has(arCur.id)) return; store.set('zc_loadout', arCur.id); SFX.click(); openWeaponDetail(arCur); renderArmory(); KEEP.approve(); });
+$('awEquip').addEventListener('click', () => {
+  if (arCur && arCur.dash) { if (!dashes.has(arCur.dash.id)) return; store.set('zc_dash', arCur.dash.id); SFX.click(); openDashDetail(arCur.dash); renderArmory(); KEEP.approve(); return; }
+  if (!arCur || !guns.has(arCur.id)) return; store.set('zc_loadout', arCur.id); SFX.click(); openWeaponDetail(arCur); renderArmory(); KEEP.approve();
+});
 $('awClose').addEventListener('click', () => { $('arDetail').hidden = true; });
 $('armoryBtn').addEventListener('click', openArmory); $('arClose').addEventListener('click', closeArmory);
 $('arSpoil').addEventListener('change', e => { arSpoil = e.target.checked; renderArmory(); });
