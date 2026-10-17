@@ -160,7 +160,8 @@ window.addEventListener('blur', () => { DEV.keys = {}; });
 /* ---------- mouse ---------- */
 window.addEventListener('pointermove', e => {
   if (e.pointerType !== 'mouse') return;
-  const r = cv.getBoundingClientRect(); DEV.mx = e.clientX - r.left; DEV.my = e.clientY - r.top; DEV.mIn = true;
+  const r = cv.getBoundingClientRect(); DEV.mx = e.clientX - r.left; DEV.my = e.clientY - r.top;
+  if (!DEV.mIn) { DEV.mIn = true; if (DEV.kind === 'kbm') updDevUi(); }   // the first mouse movement turns on mouse aim, so the hints change
   if (DEV.kind !== 'kbm') { DEV.mAcc += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); if (DEV.mAcc > 30) { DEV.mAcc = 0; markDev('kbm'); } }
 }, { passive: true });
 window.addEventListener('pointerdown', e => {
