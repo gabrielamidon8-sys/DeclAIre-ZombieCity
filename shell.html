@@ -689,6 +689,76 @@ button.lcd{cursor:pointer}
   .lcd-song.scroll span,.tk-bars i,.pause-tape span,.pause-title h2::after,.btn.primary::after,.title-body h1 span{animation:none}
   .radio-drop,#fmTicker,.radio-panel,.pause-card,.pause-stats div,.sheet .sheet-inner,.title-body .btns .btn,.title-radio,.ar-grid .wcard,.ov > .panel{animation:none}
 }
+
+/* ---------- 1.9.50: settings, where you are, the frame counter ---------- */
+.where{display:flex;flex-direction:column;gap:0;line-height:1.15;margin-top:1px;text-shadow:0 1px 3px #000;min-width:0}
+.where b{font-family:var(--f-num);font-weight:400;font-size:12px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.where span{font-size:11px;color:var(--muted);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#fpsBox{position:absolute;z-index:60;left:max(8px, env(safe-area-inset-left, 0px));bottom:max(6px, env(safe-area-inset-bottom, 0px));font-family:var(--f-num);font-size:11px;letter-spacing:.06em;color:#9fe8b0;background:rgba(0,0,0,.55);padding:2px 6px;pointer-events:none}
+.set-sheet{z-index:45}
+.set-head-r{display:flex;gap:10px;align-items:center}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{min-height:38px;padding:7px 11px;border:1px solid var(--line);background:var(--panel);border-radius:2px;font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#d8d2c4;flex:1 1 auto}
+.seg button:hover{border-color:rgba(235,229,214,.35)}
+.seg button.on{border-color:var(--tape);color:var(--tape-ink);background:var(--tape)}
+.set-mode button{flex:none;min-width:84px}
+.set-layout{display:grid;grid-template-columns:minmax(0, 1fr);gap:14px}
+.set-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.set-tabs .tab{flex:none}
+.set-body{display:flex;flex-direction:column;gap:2px;animation:setin .25s ease-out}
+@keyframes setin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.set-group{margin:14px 0 4px;font-family:var(--f-num);font-weight:400;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--tape)}
+.set-group:first-child{margin-top:0}
+.set-row{display:grid;grid-template-columns:minmax(0, 1fr) minmax(0, 1.25fr);gap:10px 18px;align-items:center;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:2px}
+.set-txt label,.set-txt b{display:block;font-size:15px;font-weight:600;color:var(--bone)}
+.set-txt p{font-size:12.5px;color:var(--muted);margin-top:2px;max-width:46ch}
+.set-ctl{display:flex;justify-content:flex-end;min-width:0}
+.set-ctl .seg{justify-content:flex-end;width:100%}
+.slide{--v:50%;display:flex;align-items:center;gap:12px;width:100%}
+.slide input{flex:1 1 auto;min-width:0;height:28px;margin:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer}
+.slide input::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg, var(--tape) var(--v), rgba(235,229,214,.16) var(--v))}
+.slide input::-moz-range-track{height:6px;border-radius:3px;background:linear-gradient(90deg, var(--tape) var(--v), rgba(235,229,214,.16) var(--v))}
+.slide input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;background:var(--bone);border:3px solid var(--tape);box-shadow:0 1px 4px rgba(0,0,0,.6)}
+.slide input::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--bone);border:3px solid var(--tape)}
+.slide output{flex:none;min-width:46px;text-align:right;font-family:var(--f-num);font-size:14px;font-variant-numeric:tabular-nums;color:var(--bone)}
+.set-note{font-size:13px;color:#cfc9bb;padding:4px 2px 10px}
+.set-more{align-self:flex-start;margin-top:12px}
+.btn.danger{border-color:rgba(217,67,75,.6);color:#ff9a9f}
+.set-device{display:flex;flex-direction:column;gap:8px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:2px}
+.set-keys{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:6px;margin:0}
+.set-keys div{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--panel);border:1px solid var(--line)}
+.set-keys dt{font-family:var(--f-num);font-size:13px;color:var(--tape)}
+.set-keys dd{margin:0;font-size:13px;color:#d8d2c4;text-align:right}
+@media (min-width:860px){
+  .set-layout.adv{grid-template-columns:190px minmax(0, 1fr)}
+  .set-layout.adv .set-tabs{flex-direction:column;overflow:visible;position:sticky;top:84px;align-self:start}
+  .set-layout.adv .set-tabs .tab{text-align:left;padding:11px 14px}
+}
+@media (max-width:620px){
+  .set-row{grid-template-columns:minmax(0, 1fr)}
+  .set-ctl,.set-ctl .seg{justify-content:flex-start}
+  .seg button{padding:7px 9px;font-size:11.5px}
+  .set-keys{grid-template-columns:minmax(0, 1fr)}
+  .set-head-r .set-mode button{min-width:70px}
+}
+/* HUD size and contrast */
+.hud-top,#dashBtn,#airBtn,#toasts,#combo{zoom:var(--hud-scale, 1)}
+@media (max-width:480px){.hud-top{zoom:min(var(--hud-scale, 1), 1.1)}}
+#toasts{top:108px}
+/* on a narrow phone the song ticker sits to the right, clear of the health and district lines */
+@media (max-width:560px){
+  #fmTicker.hud{left:auto;right:max(10px, env(safe-area-inset-right, 0px));transform:none;max-width:min(250px, calc(100% - 168px));animation-name:tickinR}
+  #fmTicker.hud.out{transform:translateY(-14px)}
+}
+@keyframes tickinR{from{opacity:0;transform:translateY(-18px) scale(.95)}}
+.has-boss #toasts{top:160px}
+.hi-contrast .hud-top .vitals,.hi-contrast .score,.hi-contrast .wave,.hi-contrast .where{background:rgba(0,0,0,.82);padding:4px 7px;border-radius:2px}
+.hi-contrast .toast{background:#000}
+/* left-handed: the dash and airstrike buttons move to the left */
+.lefty #dashBtn{right:auto;left:max(20px, calc(env(safe-area-inset-left, 0px) + 12px))}
+#rpMore .set-row.mini{flex:1 1 100%;padding:8px 10px}
+#rpMore .set-row.mini .set-txt p{display:none}
+.lefty #airBtn{right:auto;left:max(26px, calc(env(safe-area-inset-left, 0px) + 18px))}
 </style>
 
 <div id="app">
@@ -699,6 +769,7 @@ button.lcd{cursor:pointer}
       <div class="vitals">
         <div class="hp"><i id="hpFill"></i></div>
         <div class="hp-row"><b id="hpText">100</b><span id="fxChips"></span></div>
+        <div class="where" id="whereChip" aria-live="polite"></div>
       </div>
       <div class="wave"><span>Wave</span><b id="waveNum">1</b></div>
       <div class="score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
@@ -725,7 +796,7 @@ button.lcd{cursor:pointer}
     <div class="title-body">
       <p class="season-chip"><span id="seasonName">Season</span> season &#183; resets in <b id="seasonLeft">--</b></p>
       <h1>Zombie<br><span>City</span></h1>
-      <p class="lede">An endless quarantine zone. Every zombie carries one of 1,000 mutations. Survive the waves, shoot the cards you want, collect 250 weapons and hunt 50 bosses that mutate as you fight them. Tune the radio to FM 66.6: seven channels, 245 songs, or your own music.</p>
+      <p class="lede">An endless quarantine zone: burning streets, ruins, ash towns, suburbs, deserts and the frozen north, with rivers, storms and seasons. Every zombie carries one of 1,000 mutations. Survive the waves, collect 250 weapons and hunt 50 bosses. Tune the radio to FM 66.6: seven channels, 245 songs, or your own music.</p>
       <div class="title-side">
         <div class="btns">
           <button class="btn primary" id="playBtn">Enter the city</button>
@@ -735,7 +806,7 @@ button.lcd{cursor:pointer}
           <button class="btn" id="lbBtn">Leaderboard</button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
-        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Performance</button></div>
+        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button></div>
       </div>
       <p class="best" id="loadLine"></p>
       <p class="hint" id="ctrlHint">Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.</p>
@@ -829,7 +900,7 @@ button.lcd{cursor:pointer}
             <button class="btn primary pause-resume" id="resumeBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 L20 12 L7 20 Z"/></svg>Resume</button>
             <button class="btn" id="pauseCodexBtn">Specimen log</button>
             <button class="btn" id="pauseRadioBtn">Radio &amp; sound</button>
-            <button type="button" class="btn ghost" id="pausePerf">Performance</button>
+            <button type="button" class="btn ghost" id="pausePerf">Settings</button>
             <button class="btn ghost pause-quit" id="quitBtn">Quit to menu</button>
           </div>
           <div class="pause-radio" id="pauseAudio"></div>
@@ -958,26 +1029,22 @@ button.lcd{cursor:pointer}
       </div>
     </div>
   </div>
-  <div class="detail" id="perfPanel" hidden role="dialog" aria-label="Performance">
-    <div class="detail-in pf-in">
-      <div class="detail-text">
-        <div class="detail-top">
-          <div><p class="tagline">Tunes itself to your device</p><h3>Performance</h3></div>
-          <button type="button" class="icon-btn" id="pfClose" aria-label="Close performance">&#215;</button>
+  <section id="settings" class="ov sheet set-sheet" hidden aria-label="Settings">
+    <div class="sheet-inner">
+      <div class="sheet-head">
+        <div><p class="eyebrow">Options</p><h2>Settings</h2></div>
+        <div class="set-head-r">
+          <div class="seg set-mode" id="setMode" role="group" aria-label="Settings view"><button type="button" data-m="basic">Basic</button><button type="button" data-m="advanced">Advanced</button></div>
+          <button type="button" class="icon-btn" id="setClose" aria-label="Close settings">&#215;</button>
         </div>
-        <p class="pf-device" id="pfDevice"></p>
-        <dl class="build-stats" id="pfStats"></dl>
-        <p class="sub-eyebrow">Quality</p>
-        <div class="tabs pf-seg" id="pfQuality" role="group" aria-label="Quality"></div>
-        <p class="sub-eyebrow">Frame rate limit</p>
-        <div class="tabs pf-seg" id="pfCap" role="group" aria-label="Frame rate limit"></div>
-        <p class="sub-eyebrow">Battery saver</p>
-        <div class="tabs pf-seg" id="pfSaver" role="group" aria-label="Battery saver"></div>
-        <div class="pf-cache"><button type="button" class="btn small" id="pfRefresh">Refresh cache</button><span>Frees the graphics the game has stored. They rebuild as needed.</span></div>
-        <p class="pf-note" id="pfNote"></p>
+      </div>
+      <div class="set-layout">
+        <nav class="tabs set-tabs" id="setTabs" aria-label="Settings sections" hidden></nav>
+        <div class="set-body" id="setBody"></div>
       </div>
     </div>
-  </div>
+  </section>
+  <div id="fpsBox" hidden aria-hidden="true"></div>
   <section id="intro" role="img" aria-label="DeclAIre Studios. Made with Claude.">
     <canvas id="introCv"></canvas>
     <div class="in-red"></div>

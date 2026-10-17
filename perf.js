@@ -8,11 +8,13 @@ const TIER_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
 // dpr: highest pixel density drawn · parts/splats/texts: effect budgets · burst: particles per effect · spr: sprite
 // resolution · boss: boss detail · lod: zombie detail offset · viz: light-show detail · sim: far zombies update every
 // Nth frame · sprCap/chunkKeep: cache sizes · chunkScale: city tile resolution · audio: audio quality · beat: HUD pulse
+// wx: weather particles · veg: trees and bushes (1 still, 2 animated) · water: animated rivers · light: dynamic lights
+// (fires, police lights) · fog: fog layers · prints: footprints kept · deco: decorative detail generated per city block
 const TIER_Q = [
-  { dpr: 1.25, parts: 140, burst: 0.4, splats: 40, texts: 24, spr: 0.75, boss: 0, lod: 2, viz: 0, sim: 3, sprCap: 120, chunkKeep: 8, chunkScale: 0.5, audio: 0, beat: 0 },
-  { dpr: 1.5, parts: 280, burst: 0.65, splats: 80, texts: 40, spr: 0.9, boss: 1, lod: 1, viz: 1, sim: 2, sprCap: 240, chunkKeep: 12, chunkScale: 0.75, audio: 1, beat: 1 },
-  { dpr: 2, parts: 520, burst: 1, splats: 150, texts: 60, spr: 1, boss: 2, lod: 0, viz: 2, sim: 2, sprCap: 400, chunkKeep: 16, chunkScale: 1, audio: 2, beat: 2 },
-  { dpr: 3, parts: 700, burst: 1.2, splats: 220, texts: 80, spr: 1, boss: 2, lod: 0, viz: 2, sim: 1, sprCap: 520, chunkKeep: 20, chunkScale: 1.25, audio: 2, beat: 2 }
+  { dpr: 1.25, parts: 140, burst: 0.4, splats: 40, texts: 24, spr: 0.75, boss: 0, lod: 2, viz: 0, sim: 3, sprCap: 120, chunkKeep: 8, chunkScale: 0.5, audio: 0, beat: 0, wx: 0.35, veg: 1, water: 0, light: 0, fog: 0, prints: 0, deco: 0.5 },
+  { dpr: 1.5, parts: 280, burst: 0.65, splats: 80, texts: 40, spr: 0.9, boss: 1, lod: 1, viz: 1, sim: 2, sprCap: 240, chunkKeep: 12, chunkScale: 0.75, audio: 1, beat: 1, wx: 0.6, veg: 1, water: 1, light: 1, fog: 1, prints: 30, deco: 0.75 },
+  { dpr: 2, parts: 520, burst: 1, splats: 150, texts: 60, spr: 1, boss: 2, lod: 0, viz: 2, sim: 2, sprCap: 400, chunkKeep: 16, chunkScale: 1, audio: 2, beat: 2, wx: 0.9, veg: 2, water: 1, light: 2, fog: 1, prints: 60, deco: 1 },
+  { dpr: 3, parts: 700, burst: 1.2, splats: 220, texts: 80, spr: 1, boss: 2, lod: 0, viz: 2, sim: 1, sprCap: 520, chunkKeep: 20, chunkScale: 1.25, audio: 2, beat: 2, wx: 1, veg: 2, water: 1, light: 2, fog: 1, prints: 90, deco: 1.2 }
 ];
 const RES_STEPS = [1, 0.85, 0.72, 0.6, 0.5];
 // one ladder from best to lightest: [tier, resolution step]. The governor climbs it one rung at a time.
@@ -25,7 +27,9 @@ const PERF = {
   saver: false, battery: null, thermal: 0, hz: 60, rafIv: [],
   win: { n: 0, sum: 0, work: 0, iv: [] }, good: 0, bad: 0, holdT: 0, upWait: {}, lastUp: { rung: -1, t: -1e9 }, stableT: 0,
   fps: 0, workMs: 0, changes: [], repairs: 0, log: [], errs: [], errT: [], storms: 0,
-  lastFrame: 0, lastNow: -1, lastRaf: 0, lastDraw: 0, visibleAt: 0, freed: 0, lodN: [0, 0, 0, 0], frames: 0
+  lastFrame: 0, lastNow: -1, lastRaf: 0, lastDraw: 0, visibleAt: 0, freed: 0, lodN: [0, 0, 0, 0], frames: 0,
+  // settings that scale the tier, and the parts the governor trims on its own before dropping a whole tier
+  partMul: 1, resLock: null, wxScale: 1, vegCut: false, sec: { wx: 0, life: 0 }, secWin: { wx: 0, life: 0 }, deco: 1
 };
 
 /* ---------- device profile ---------- */
@@ -144,7 +148,7 @@ function applyRung(i, why) {
   i = clamp(i, 0, LADDER.length - 1);
   const r = LADDER[i], tierChanged = r[0] !== PERF.tier;
   PERF.rung = i; PERF.tier = r[0]; PERF.res = r[1];
-  Object.assign(Q, TIER_Q[r[0]]);
+  Object.assign(Q, TIER_Q[r[0]]); applyOverrides();
   ZB.setDetail(Q.boss); SFX.setQuality(Q.audio);
   if (!Q.beat) { const a = $('app'); a.style.setProperty('--beat', '0'); VZ.css = ''; }
   resize();
@@ -173,7 +177,10 @@ function perfFrame(now, rawIv, work) {
   if (G.mode !== PERF.lastMode) { PERF.lastMode = G.mode; PERF.holdT = Math.max(PERF.holdT, now + 1200); }
   if (!live || now < PERF.holdT) { w.n = w.sum = w.work = 0; w.iv.length = 0; return; }
   w.n++; w.sum += rawIv; w.work += work; w.iv.push(rawIv);
+  const sw = PERF.secWin; sw.wx += PERF.sec.wx; sw.life += PERF.sec.life; PERF.sec.wx = PERF.sec.life = 0;
   if (w.sum < 1000) return;
+  const wxShare = sw.wx / Math.max(1, w.work), lifeShare = sw.life / Math.max(1, w.work); sw.wx = sw.life = 0;
+  PERF.share = { wx: Math.round(wxShare * 100), life: Math.round(lifeShare * 100) };
   const avg = w.sum / w.n, wk = w.work / w.n;
   w.iv.sort((a, b) => a - b); const p90 = w.iv[Math.floor(w.n * 0.9)];
   w.n = w.sum = w.work = 0; w.iv.length = 0;
@@ -185,6 +192,12 @@ function perfFrame(now, rawIv, work) {
   if (PERF.rung < top) { applyRung(top, 'limit'); return; }
   if (bad) {
     PERF.good = 0;
+    // the weather or the vegetation eating a big slice of the frame is trimmed first, keeping the rest sharp
+    // a frame that is slow while the script is idle is waiting on drawing pixels: heavy weather (fog, storm darkness,
+    // blowing sand) fills the whole screen several times over, so it is trimmed before the resolution drops
+    const fillBound = wk < T * 0.45, heavyWx = WX.fog + WX.dark + WX.sand + WX.rain * 0.5 + WX.snow * 0.5 > 0.55;
+    if (PERF.bad >= 1 && (wxShare > 0.2 || (fillBound && heavyWx)) && PERF.wxScale > (fillBound && wxShare <= 0.2 ? 0.51 : 0.26) && SET.weather === 'auto') { PERF.wxScale = Math.max(0.25, PERF.wxScale - 0.25); PERF.bad = 0; PERF.holdT = now + 1200; logTrim('weather ' + Math.round(PERF.wxScale * 100) + '%'); return; }
+    if (PERF.bad >= 1 && lifeShare > 0.18 && !PERF.vegCut && SET.veg === 'auto') { PERF.vegCut = true; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('still trees'); return; }
     if (++PERF.bad >= 2 && PERF.rung < LADDER.length - 1) {
       const from = PERF.rung, step = avg > T * 2 ? 2 : 1;
       // stepping down soon after stepping up means that rung is too much: wait longer before trying it again
@@ -194,13 +207,16 @@ function perfFrame(now, rawIv, work) {
   } else if (good) {
     PERF.bad = 0;
     const next = PERF.rung - 1;
-    if (next >= top && ++PERF.good >= (PERF.upWait[next] || 6)) { PERF.lastUp = { rung: next, t: now }; applyRung(next, 'headroom'); }
+    if ((PERF.wxScale < 1 || PERF.vegCut) && PERF.good >= 10) { PERF.good = 0; if (PERF.vegCut) PERF.vegCut = false; else PERF.wxScale = Math.min(1, PERF.wxScale + 0.25); logTrim('restored detail'); }
+    else if (next >= top && ++PERF.good >= (PERF.upWait[next] || 6)) { PERF.lastUp = { rung: next, t: now }; applyRung(next, 'headroom'); }
+    else if (next < top) PERF.good++;
   } else { PERF.bad = Math.max(0, PERF.bad - 1); PERF.good = 0; }
   // remember a level that has held for a while, so the next launch starts there
   if (now - PERF.stableT > 20000 && (!PS.learned || PS.learned.rung !== PERF.rung || PS.learned.key !== PERF.key)) {
     PS.learned = { key: PERF.key, rung: PERF.rung }; savePerf();
   }
 }
+function logTrim(what) { PERF.changes.push({ at: Math.round(performance.now() / 1000), to: TIER_NAMES[PERF.tier] + ' ' + Math.round(RES_STEPS[PERF.res] * 100) + '%', why: what }); if (PERF.changes.length > 12) PERF.changes.shift(); }
 // the display's refresh rate, from the first couple of seconds of frames
 function trackHz(iv) {
   const a = PERF.rafIv; if (a.length >= 150 || iv <= 0 || iv > 100) return;
@@ -216,7 +232,8 @@ function canvasBytes(c) { return c ? c.width * c.height * 4 : 0; }
 function cacheBytes() {
   let s = 0, k = 0, m = 0;
   for (const v of sprites.values()) s += canvasBytes(v.c);
-  for (const c of chunks.values()) if (c.can) k += canvasBytes(c.can);
+  for (const c of chunks.values()) { if (c.can) k += canvasBytes(c.can); if (c.wcan) k += canvasBytes(c.wcan); }
+  if (typeof WSPR !== 'undefined') for (const v of WSPR.values()) s += canvasBytes(v.c);
   for (const id of ['cxGrid', 'arGrid', 'blGrid']) { const g = $(id); if (g) for (const c of g.querySelectorAll('canvas')) m += canvasBytes(c); }
   for (const c of glowCache.values()) m += canvasBytes(c);
   return { sprites: s, city: k, menus: m, total: s + k + m };
@@ -229,7 +246,8 @@ function trimCaches(level) {
   const live = []; for (const c of chunks.values()) if (c.can) live.push(c);
   live.sort((a, b) => b.seen - a.seen);
   const keep = level >= 2 ? 0 : level >= 1 ? live.filter(c => frameNo - c.seen < 3).length : Q.chunkKeep;
-  for (let i = keep; i < live.length; i++) { freed += canvasBytes(live[i].can); live[i].can = null; }
+  for (let i = keep; i < live.length; i++) { freed += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); live[i].can = null; live[i].wcan = null; }
+  if (level >= 1 && typeof WSPR !== 'undefined') { for (const v of WSPR.values()) freed += canvasBytes(v.c); WSPR.clear(); }
   for (const [key, c] of chunks) if (Math.abs(c.ox + CH / 2 - cam.x) > CH * 5 || Math.abs(c.oy + CH / 2 - cam.y) > CH * 5) chunks.delete(key);
   if (level >= 1 || glowCache.size > 16) { for (const c of glowCache.values()) freed += canvasBytes(c); glowCache.clear(); ZB.clearCache(); EDGE.col = ''; VZ.specGr = null; SG.clear(); }
   for (const [id, sheet] of [['cxGrid', 'codex'], ['arGrid', 'armory'], ['blGrid', 'bosslog']]) {
@@ -243,7 +261,7 @@ function trimCaches(level) {
   PERF.freed += freed;
   return freed;
 }
-PERF.status = () => ({ tier: TIER_NAMES[PERF.tier], res: RES_STEPS[PERF.res], rung: PERF.rung, dpr: Math.round(DPR * 100) / 100, fps: PERF.fps, work: PERF.workMs,
+PERF.status = () => ({ share: PERF.share, tier: TIER_NAMES[PERF.tier], res: RES_STEPS[PERF.res], rung: PERF.rung, dpr: Math.round(DPR * 100) / 100, fps: PERF.fps, work: PERF.workMs,
   hz: PERF.hz, mode: PERF.mode, start: PERF.start, ceil: PERF.ceil, score: PERF.score, lod: PERF.lodN.slice(), repairs: PERF.repairs, cacheMB: Math.round(cacheBytes().total / 1048576 * 10) / 10 });
 function noteRepair(what) {
   PERF.repairs++; PERF.log.push({ at: Math.round(performance.now() / 1000), what: what });
@@ -283,7 +301,7 @@ function perfCare() {
     if (pm && pm.jsHeapSizeLimit && pm.usedJSHeapSize / pm.jsHeapSizeLimit > 0.75) { trimCaches(1); noteRepair('Freed memory'); }
   }
   if (perfTicks % 10 === 0) trimCaches(0);   // every 20 s: keep caches inside the budget
-  if (!$('perfPanel').hidden) renderPerfPanel();
+  renderPerfPanel();
 }
 
 /* ---------- start-up ---------- */
@@ -321,52 +339,6 @@ function perfInit() {
   setInterval(perfCare, 2000);
 }
 
-/* ---------- performance panel ---------- */
+/* ---------- the panel lives in Settings > System (settings.js) ---------- */
 function fmtMB(b) { return b >= 1048576 ? (b / 1048576).toFixed(b >= 10485760 ? 0 : 1) + ' MB' : Math.round(b / 1024) + ' KB'; }
-function renderPerfBtn() {
-  for (const id of ['titlePerf', 'pausePerf']) {
-    const b = $(id); if (!b) continue;
-    b.textContent = 'Performance: ' + (PERF.mode === 'auto' ? 'Auto · ' : '') + TIER_NAMES[PERF.tier];
-  }
-}
-function segRow(id, opts, cur, fn) {
-  const box = $(id); box.textContent = '';
-  for (const [val, label] of opts) {
-    const b = el('button', 'tab' + (String(val) === String(cur) ? ' on' : ''), label); b.type = 'button';
-    b.setAttribute('aria-pressed', String(val) === String(cur));
-    b.addEventListener('click', () => { SFX.click(); fn(val); renderPerfPanel(); });
-    box.appendChild(b);
-  }
-}
-function renderPerfPanel() {
-  const p = PERF.prof || {}, st = $('pfStats'), cb = cacheBytes();
-  st.textContent = '';
-  const add = (k, v) => { const d = el('div'); d.append(el('dt', '', k), el('dd', '', v)); st.appendChild(d); };
-  add('Running', TIER_NAMES[PERF.tier] + ' · ' + Math.round(RES_STEPS[PERF.res] * 100) + '%');
-  add('Frame rate', PERF.fps ? Math.round(PERF.fps) + ' fps' : '…');
-  add('Screen', Math.round(PERF.hz) + ' Hz · ' + (Math.round(p.dpr * 100) / 100) + 'x');
-  add('CPU', p.cores ? p.cores + ' cores' : 'Unknown');
-  add('Memory', p.mem ? p.mem + ' GB' : 'Unknown');
-  add('Cache', fmtMB(cb.total));
-  const dev = [p.model, p.gpu && p.gpu !== 'unknown' ? friendlyGpu(p.gpu) : '', p.os, p.browser].filter(Boolean).join(' · ');
-  $('pfDevice').textContent = dev;
-  segRow('pfQuality', [['auto', 'Auto'], [0, 'Low'], [1, 'Medium'], [2, 'High'], [3, 'Ultra']], PERF.mode, setMode);
-  segRow('pfCap', [[30, '30'], [60, '60'], [0, 'Max']], PERF.cap, v => { PERF.cap = +v; savePerf(); PERF.holdT = performance.now() + 1500; });
-  segRow('pfSaver', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], PERF.saverMode, v => { PERF.saverMode = v; savePerf(); perfTicks = 4; perfCare(); });
-  const notes = [];
-  if (PERF.mode === 'auto') notes.push('Auto adjusts resolution and detail every few seconds to keep the game smooth, and remembers the best level for this device.');
-  if (PERF.saver) notes.push('Battery saver is on: 30 fps and at most Medium quality.');
-  if (PERF.thermal >= 2) notes.push('Your phone is warm, so quality is lowered until it cools down.');
-  if (PERF.repairs) notes.push('Fixed itself ' + PERF.repairs + (PERF.repairs === 1 ? ' time' : ' times') + ' this session. Latest: ' + PERF.log[PERF.log.length - 1].what.toLowerCase() + '.');
-  $('pfNote').textContent = notes.join(' ');
-}
-function openPerf() { renderPerfPanel(); $('perfPanel').hidden = false; }
-function closePerf() { $('perfPanel').hidden = true; renderPerfBtn(); }
-$('pfClose').addEventListener('click', closePerf);
-$('pfRefresh').addEventListener('click', () => {
-  const before = cacheBytes().total; trimCaches(2); const after = cacheBytes().total;
-  SFX.click(); toast('Cache refreshed', 'Freed ' + fmtMB(Math.max(0, before - after)), '#7dff4a'); renderPerfPanel();
-});
-for (const id of ['titlePerf', 'pausePerf']) { const b = $(id); if (b) b.addEventListener('click', () => { SFX.click(); openPerf(); }); }
 perfInit();
-renderPerfBtn();

@@ -113,6 +113,19 @@ public class MainActivity extends Activity {
             } catch (Exception e) { /* report what we have */ }
             return b.append("}").toString();
         }
+
+        /** A short buzz for big hits, explosions and lightning (only when the player has Vibration on). */
+        @JavascriptInterface
+        @SuppressWarnings("deprecation")
+        public void vibrate(int ms) {
+            try {
+                android.os.Vibrator v = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (v == null || !v.hasVibrator()) return;
+                long d = Math.max(5, Math.min(200, ms));
+                if (Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createOneShot(d, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                else v.vibrate(d);
+            } catch (Exception e) { /* no buzz, no problem */ }
+        }
     }
 
     static String q(String s) {

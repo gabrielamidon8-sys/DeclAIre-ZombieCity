@@ -247,7 +247,7 @@
   function setG(a) { ac = a[0]; musBus = a[1]; synthBus = a[2]; drumBus = a[3]; revIn = a[4]; dlyIn = a[5]; dly = a[6]; distIn = a[7]; bellBus = a[8]; gtrIn = a[9]; leadIn = a[10]; pulse25 = a[11]; sfxBus = a[12]; STEP = a[13]; BPM = a[14]; TR = a[15]; song = a[16]; RENDER = a[17]; }
 
   // ---------- the deck ----------
-  var RD = { ctx: null, bus: null, an: null, vol: null, mode: 'radio', ch: 0, idx: [0, 0, 0, 0, 0, 0, 0], muted: false, on: false,
+  var RD = { ctx: null, bus: null, an: null, vol: null, uvol: null, uv: 0.8, mono: false, mode: 'radio', ch: 0, idx: [0, 0, 0, 0, 0, 0, 0], muted: false, on: false,
     songs: [], job: null, token: 0, timer: null, startT: 0, buildMs: 0, buildMax: 0, stat: null, statG: null, errs: 0, late: 0, renderMs: 0, chunks: 0, listeners: [],
     bt: { list: [], i: 0, els: [], gs: [], cur: -1, url: null, urls: [] }, heal: { ct: -1, stuck: 0, rebuilds: 0 } };
   (function () { for (var i = 0; i < 7; i++) RD.idx[i] = Math.floor(Math.random() * RSONGS); })();
@@ -274,7 +274,9 @@
     var trim = c.createGain(); trim.gain.value = 0.6;
     RD.an = c.createAnalyser(); RD.an.fftSize = 1024; RD.an.smoothingTimeConstant = 0.5; spec = new Uint8Array(RD.an.frequencyBinCount); VIZ.spec = spec;
     RD.vol = c.createGain(); RD.vol.gain.value = RD.muted ? 0 : 1;
-    RD.bus.connect(comp); comp.connect(trim); trim.connect(clip); clip.connect(RD.an); RD.an.connect(RD.vol); RD.vol.connect(c.destination);
+    // the Music volume setting comes last, after the analyser, so the light show still sees the full song
+    RD.uvol = c.createGain(); RD.uvol.gain.value = RD.uv; rMono();
+    RD.bus.connect(comp); comp.connect(trim); trim.connect(clip); clip.connect(RD.an); RD.an.connect(RD.vol); RD.vol.connect(RD.uvol); RD.uvol.connect(c.destination);
     // the beat finder for the player's own songs listens to the raw signal
     onAn = c.createAnalyser(); onAn.fftSize = 1024; onAn.smoothingTimeConstant = 0; onAn.minDecibels = -100; onAn.maxDecibels = 0;
     onSpec = new Float32Array(onAn.frequencyBinCount); onPrev = new Float32Array(onAn.frequencyBinCount);
@@ -286,6 +288,7 @@
     var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 0.6; RD.statG.connect(bp); bp.connect(RD.bus);
     RD.bt.els = []; RD.bt.gs = []; RD.bt.cur = -1;
   }
+  function rMono() { if (!RD.uvol) return; try { RD.uvol.channelCount = RD.mono ? 1 : 2; RD.uvol.channelCountMode = RD.mono ? 'explicit' : 'max'; } catch (e) { } }
   function rStatic(on) {
     var c = RD.ctx; if (!c) return; var t = c.currentTime;
     if (on && !RD.stat) { var s = c.createBufferSource(); s.buffer = RD.statBuf; s.loop = true; s.connect(RD.statG); s.start(t); RD.stat = s; }
@@ -436,6 +439,8 @@
     skip: function () { if (RD.mode === 'bt') { btNext(1); return; } RD.idx[RD.ch] = (RD.idx[RD.ch] + 1) % RSONGS; if (RD.mode !== 'radio') rSetMode('radio'); else rTune(); },
     mute: function (on) { RD.muted = on == null ? !RD.muted : !!on; if (RD.vol) { var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(RD.muted ? 0 : 1, t, 0.06); } introLevel(); rNotify(); return RD.muted; },
     muted: function () { return RD.muted; },
+    setVolume: function (v) { RD.uv = Math.max(0, Math.min(1.2, v)); if (RD.uvol) RD.uvol.gain.setTargetAtTime(RD.uv, RD.ctx.currentTime, 0.05); },
+    setMono: function (m) { RD.mono = !!m; rMono(); },
     // the radio dips under something loud (the A-10's cannon), then comes back
     duck: function (sec) { if (!RD.vol || RD.muted) return; var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(0.4, t, 0.06); RD.vol.gain.setTargetAtTime(1, t + (sec || 2), 0.4); },
     setState: function (s) { if (!s) return; if (s.ch != null) RD.ch = (s.ch % 7 + 7) % 7; if (s.idx && s.idx.length === 7) RD.idx = s.idx.map(function (v) { return ((v | 0) % RSONGS + RSONGS) % RSONGS; }); if (s.muted != null) RD.muted = !!s.muted; if (s.mode) RD.mode = s.mode; },

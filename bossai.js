@@ -262,7 +262,7 @@ function updBlasts(dt) {
     const col = b.col || '#ff8a3a';
     if (b.kind === 'bolt') { bolt(b.x + rand(-30, 30), b.y - 320, b.x, b.y, '#fff36b'); bolt(b.x + rand(-30, 30), b.y - 320, b.x, b.y, '#ffffff'); SFX.zap(); }
     else SFX.boom(b.kind === 'meteor');
-    ring(b.x, b.y, 6, b.r * 1.15, 0.4, hexRgb(col), 4); burst(b.x, b.y, 14, col, 200, 5, 0.5); shakeIt(b.kind === 'meteor' ? 5 : 3);
+    ring(b.x, b.y, 6, b.r * 1.15, 0.4, hexRgb(col), 4); burst(b.x, b.y, 14, col, 200, 5, 0.5); shakeIt(b.kind === 'meteor' ? 5 : 3); worldBlast(b.x, b.y, b.r * 1.3, null);
     if (b.kind === 'frost') G.haz.push({ k: 'ice', x: b.x, y: b.y, r: b.r, life: 4, max: 4, dps: 4 + G.wave * 0.3 });
     else if (b.haz && b.kind !== 'bolt') G.haz.push({ k: b.haz === 'ice' ? 'ice' : b.haz, x: b.x, y: b.y, r: b.r * 0.85, life: 3, max: 3, dps: 9 + G.wave * 0.6 });
   }
@@ -433,7 +433,7 @@ function updJets(dt) {
     if (j.firing) {
       if (!j.shot) {
         j.shot = true;
-        if (j.k === 0) { SFX.a10Brrt(0.3, j.mini ? 0.45 : 1.05, j.mini); shakeIt(j.mini ? 6 : 10); G.flashA = j.mini ? 0.2 : 0.45; if (!j.mini) SFX.fm.duck(2.4); }
+        if (j.k === 0) { SFX.a10Brrt(0.3, j.mini ? 0.45 : 1.05, j.mini); shakeIt(j.mini ? 6 : 10); G.flashA = j.mini ? 0.2 : 0.45; if (!j.mini && SET.duck) SFX.fm.duck(2.4); }
       }
       j.fireT -= dt;
       while (j.fireT <= 0) {
@@ -448,7 +448,7 @@ function updJets(dt) {
         });
         burst(ix, iy, 2, Math.random() < 0.5 ? '#c9b48a' : '#ffd27a', 140, 3, 0.35);
         burst(ix, iy, 1, '#fff2c0', 220, 2, 0.2);
-        if (big) { burst(ix, iy, 9, '#ff8a2a', 200, 5, 0.45); burst(ix, iy, 5, '#3a2e24', 120, 7, 0.8); G.rings.push({ x: ix, y: iy, r0: 4, r1: 52, t: 0, life: 0.3, c: '255,170,80', w: 3 }); puff(ix, iy, 6, 30, 1.6, '70,62,56', rand(-20, 20), rand(-20, 20)); if (Math.random() < 0.5) SFX.impacts(); }
+        if (big) { if ((j.rounds & 31) === 0) worldBlast(ix, iy, 90, null); burst(ix, iy, 9, '#ff8a2a', 200, 5, 0.45); burst(ix, iy, 5, '#3a2e24', 120, 7, 0.8); G.rings.push({ x: ix, y: iy, r0: 4, r1: 52, t: 0, life: 0.3, c: '255,170,80', w: 3 }); puff(ix, iy, 6, 30, 1.6, '70,62,56', rand(-20, 20), rand(-20, 20)); if (Math.random() < 0.5) SFX.impacts(); }
         else if (Math.random() < 0.3) puff(ix, iy, 4, 18, 1.1, '150,136,112', rand(-15, 15), rand(-15, 15));
         hole(ix + rand(-4, 4), iy + rand(-4, 4), rand(3, 5.4) * (big ? 1.5 : 1));
         if (Math.random() < 0.12 && G.splats.length < 150) splat(ix, iy, rand(6, 10), '#221e1a');

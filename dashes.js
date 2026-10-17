@@ -27,7 +27,7 @@ function fireCone(p, R, half) {
 }
 function boomAt(x, y, R, m, col) {
   dNear(x, y, R, (o, d) => { zHurt(o, m * (1 - d / (R + o.r) * 0.4), (o.x - x) / (d || 1) * 300, (o.y - y) / (d || 1) * 300); });
-  burst(x, y, 26, col || '#ffb347', 320, 5, 0.5); burst(x, y, 12, '#3a2a20', 200, 7, 0.7); dRing(x, y, R, '255,150,60', 5, 0.4); splat(x, y, R * 0.45, 'rgba(20,10,6,0.55)'); shakeIt(7); SFX.boom(true);
+  burst(x, y, 26, col || '#ffb347', 320, 5, 0.5); burst(x, y, 12, '#3a2a20', 200, 7, 0.7); dRing(x, y, R, '255,150,60', 5, 0.4); splat(x, y, R * 0.45, 'rgba(20,10,6,0.55)'); shakeIt(7); SFX.boom(true); worldBlast(x, y, R * 1.3, null);
 }
 
 // [id, name, rarity, color, cooldown x, duration s, speed px/s, untouchable s, what it does, passive]

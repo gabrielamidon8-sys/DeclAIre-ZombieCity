@@ -50,7 +50,7 @@ function fireWeapon(t) {
   for (let i = 1; i < S.burst; i++) p.queue.push({ t: i * 0.07, mul: 1 });
   if (S.echo) p.queue.push({ t: 0.17, mul: 0.6 });
   if (S.jamEvery && p.shots % S.jamEvery === 0) { p.jamT = 1.2; SFX.jam(); G.texts.push({ x: p.x, y: p.y - 28, t: 0, life: 0.9, s: 'JAMMED', c: '#fff36b' }); }
-  SFX.shot(p.weapon.F.key);
+  SFX.shot(p.weapon.F.key, p.weapon.M.key);
 }
 function volley(a, mul) {
   const p = G.p, S = p.S, w = p.weapon, n = S.pellets, kind = S.kind, cone = w.F.key === 'shotgun' || kind === 'flame';
@@ -105,7 +105,11 @@ function updBullets(dt) {
     if (b.boom === 2) {
       const a = Math.atan2(p.y - b.y, p.x - b.x), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
       if (Math.hypot(p.x - b.x, p.y - b.y) < 18) { b.dead = true; continue; }
-    } else if (pointInRect(b.x, b.y)) {
+    } else if (bulletProps(b, sx, sy)) {
+      if (b.kind === 'grenade') explodeAt(b.x, b.y, b, null);
+      b.dead = true; continue;
+    } else if ((b.wall = pointInRect(b.x, b.y))) {
+      if (b.wall.k === 'car' && b.kind !== 'flame') carHit(b.wall);
       if (b.kind === 'grenade') { b.x -= b.vx * dt; b.y -= b.vy * dt; explodeAt(b.x, b.y, b, null); b.dead = true; continue; }
       if (b.bounce > 0 && b.kind !== 'flame') { reflectBullet(b, dt); b.bounce--; continue; }
       b.dead = true; if (b.kind !== 'flame') burst(b.x, b.y, 3, b.col, 90, 2, 0.2); continue;
@@ -168,7 +172,7 @@ function explodeAt(x, y, b, direct) {
     const res = hurtZombie(o, dmg, { src: 'blast', crit: b.crit, kx: (o.x - x) / (d || 1) * 220, ky: (o.y - y) / (d || 1) * 220 });
     if (res === true) onHitFx(o, { x: o.x, y: o.y, crit: b.crit, chained: true }, dmg * 0.6);
   });
-  burst(x, y, 24, '#ffb347', 320, 5, 0.5); burst(x, y, 10, '#5a1a10', 200, 7, 0.7);
+  burst(x, y, 24, '#ffb347', 320, 5, 0.5); burst(x, y, 10, '#5a1a10', 200, 7, 0.7); worldBlast(x, y, R * 1.4, null);
   ring(x, y, 8, R, 0.35, '255,140,50', 4); splat(x, y, R * 0.5, 'rgba(20,10,6,0.55)'); shakeIt(6); SFX.boom(true);
 }
 function splitBullet(b, z) {
@@ -783,13 +787,12 @@ function paintRadioPanel(i) {
   box.append(row);
   const more = $('rpMore'); more.textContent = ''; audioToggles(more);
 }
+// under the radio: music and effects volume, and the way into every sound setting
 function audioToggles(box) {
-  const s = el('button', 'btn small', 'Sound effects: ' + (AUD.sfx ? 'On' : 'Off')); s.type = 'button'; s.setAttribute('aria-pressed', AUD.sfx);
-  s.addEventListener('click', () => { AUD.sfx = !AUD.sfx; store.set('zc_audio', AUD); SFX.setSfx(AUD.sfx); SFX.click(); renderAudio(); });
-  const vl = { full: 'Full', low: 'Low', off: 'Off' }[AUD.vis];
-  const v = el('button', 'btn small', 'Light show: ' + vl); v.type = 'button';
-  v.addEventListener('click', () => { const o = ['full', 'low', 'off']; AUD.vis = o[(o.indexOf(AUD.vis) + 1) % 3]; store.set('zc_audio', AUD); SFX.click(); renderAudio(); });
-  box.append(s, v);
+  for (const id of ['volMusic', 'volSfx']) { const r = SET_ROWS.find(x => x.id === id), row = settingRow(r); row.classList.add('mini'); box.append(row); }
+  const b = el('button', 'btn small', 'All sound settings'); b.type = 'button';
+  b.addEventListener('click', () => { closeRadio(); openSettings('sound'); });
+  box.append(b);
 }
 // the HUD: a radio button next to pause that drops down a small radio
 let hudStrip = null, hudT = 0;

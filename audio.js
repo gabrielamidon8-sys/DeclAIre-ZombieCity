@@ -5,7 +5,9 @@
    or go quiet. SFX.viz() reports the music's beats and spectrum for the light show. */
 var SFX = (function () {
   'use strict';
-  var ac = null, master = null, sfxBus = null, musBus = null, noiseBuf = null, loudBus = null;
+  var ac = null, master = null, sfxBus = null, musBus = null, noiseBuf = null, loudBus = null, mixG = null;
+  var gunBus = null, uiBus = null, ambBus = null, gunOut = null;   // gunfire, menus and weather each get their own volume
+  var VOL = { master: 1, music: 0.8, sfx: 0.9, gun: 0.9, amb: 0.7, ui: 0.7 }, MIX = { night: false, mono: false };
   var onAn = null, onSpec = null, onPrev = null, BANK = {}, BAKING = false, sfxComp = null, musComp = null;
   var synthBus = null, drumBus = null, revIn = null, dlyIn = null, dly = null, distIn = null, bellBus = null;
   var gtrIn = null, leadIn = null, pulse25 = null;
@@ -35,7 +37,7 @@ var SFX = (function () {
     sfxComp = ac.createDynamicsCompressor(); musComp = ac.createDynamicsCompressor();
     sfxComp.threshold.value = -14; sfxComp.knee.value = 8; sfxComp.ratio.value = 6; sfxComp.attack.value = 0.002; sfxComp.release.value = 0.12;
     musComp.threshold.value = -15; musComp.knee.value = 10; musComp.ratio.value = 3; musComp.attack.value = 0.006; musComp.release.value = 0.2;
-    var mix = ac.createGain(); mix.gain.value = 0.5;
+    var mix = ac.createGain(); mix.gain.value = 0.5; mixG = mix;
     var clip = ac.createWaveShaper(); clip.curve = softClip(); clip.oversample = AQ >= 1 ? '2x' : 'none'; SHAPERS = [clip];
     // the phone adds this engine and the radio together, so this one leaves the radio some headroom
     master = ac.createGain(); master.gain.value = 0.86;
@@ -46,6 +48,13 @@ var SFX = (function () {
     // the A-10's cannon and engines skip the effects compressor so they hit at full size (the clipper still rounds them off)
     loudBus = ac.createGain(); loudBus.gain.value = 0.8; loudBus.connect(mix);
     mix.connect(clip); clip.connect(master); master.connect(ac.destination);
+    // gunfire has its own lighter compressor so each shot keeps its crack instead of being squashed with everything else
+    gunBus = ac.createGain(); var gunComp = ac.createDynamicsCompressor();
+    gunComp.threshold.value = -9; gunComp.knee.value = 6; gunComp.ratio.value = 4; gunComp.attack.value = 0.004; gunComp.release.value = 0.1;
+    gunBus.connect(gunComp); gunComp.connect(mix); gunOut = gunComp;
+    uiBus = ac.createGain(); uiBus.connect(sfxComp);
+    ambBus = ac.createGain(); ambBus.connect(mix);
+    applyVol(); applyMix(); gunEnvInit();
     noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 1.5), ac.sampleRate);
     var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     synthBus = ac.createGain(); synthBus.connect(musBus);
@@ -588,6 +597,7 @@ var SFX = (function () {
     })(k);
     SHOTS.forEach(function (sh) { bake('s_' + sh, 0.4, function (t) { FX.shot(t, sh); }); });
     bake('boom0', 0.45, function (t) { FX.boom(t, false); }); bake('boom1', 0.85, function (t) { FX.boom(t, true); });
+    bakeAll2();
     bake('brrt', 3.7, function (t) { gau8(t, 1.05); }, 0.95); bake('brrt2', 2.9, function (t) { gau8(t, 0.45); }, 0.9); bake('hits', 2.6, function (t) { heiHits(t, 1.15); }, 0.8);
     Object.keys(FXDUR).forEach(function (n) { bake('x_' + n, FXDUR[n], function (t) { FX[n](t); }); });
   }
@@ -653,12 +663,13 @@ var SFX = (function () {
     return r;
   }
   function setQuality(q) {
-    AQ = q; RSR = q >= 2 ? 44100 : 32000;
+    AQ = q; RSR = q >= 2 ? 44100 : 32000; gunConvSet();
     for (var i = 0; i < SHAPERS.length; i++) { try { SHAPERS[i].oversample = q >= 1 ? '2x' : 'none'; } catch (e) { } }
   }
 
+/*__SFX2__*/
   var api = {
-    tick: function () { rPump(); },
+    tick: function () { rPump(); flameTick(); },
     selfHeal: selfHeal, rebuild: rebuild, setQuality: setQuality,
     health: function () { return { state: ac ? ac.state : 'off', rebuilds: rebuilds, late: lateN, quality: AQ, radio: RD.ctx ? RD.ctx.state : 'off', radioRebuilds: RD.heal.rebuilds, radioLate: RD.late, radioErrors: RD.errs }; },
     init: init,
@@ -832,14 +843,6 @@ var SFX = (function () {
       bell(t + 0.3, 1568, 0.05, 1.6); bell(t + 0.38, 2349, 0.04, 1.6);
     },
     refuse: function () { if (!ok()) return; fx('refuse', 1); },
-    shot: function (kind) {
-      if (!ok() || !throttle('shot', kind === 'smg' || kind === 'lmg' ? 55 : kind === 'flamer' ? 110 : 40)) return;
-      var k = SHOTS.indexOf(kind) >= 0 ? kind : 'pistol', t = ac.currentTime, buf = BANK['s_' + k];
-      if (LASTSHOT) { var o = LASTSHOT; LASTSHOT = null; try { o.g.gain.cancelScheduledValues(t); o.g.gain.setValueAtTime(o.g.gain.value, t); o.g.gain.linearRampToValueAtTime(0.0001, t + 0.012); o.s.stop(t + 0.02); } catch (e) { } }
-      if (!buf) { FX.shot(t, k); return; }
-      var src = ac.createBufferSource(), g = ac.createGain(); src.buffer = buf; src.playbackRate.value = jit(); src.connect(g); g.connect(sfxBus); src.start(t);
-      var me = { s: src, g: g }; LASTSHOT = me; src.onended = function () { if (LASTSHOT === me) LASTSHOT = null; try { g.disconnect(); } catch (e) { } };
-    },
     boom: function (big) { if (!ok() || !throttle('boom', 90)) return; if (!sfx('boom' + (big ? 1 : 0))) FX.boom(ac.currentTime, big); },
     hurt: function () { if (!ok() || !throttle('hurt', 160)) return; fx('hurt'); },
     dash: function () { if (!ok()) return; fx('dash'); },
@@ -870,7 +873,7 @@ var SFX = (function () {
     unlock: function () { if (!ok()) return; var t = ac.currentTime; [523.3, 659.3, 784, 1046.5].forEach(function (f, i) { osc('square', f, f, t + i * 0.08, 0.14, 0.06); bell(t + i * 0.08, f * 2, 0.05, 0.6); }); },
     milestone: function () { if (!ok()) return; var t = ac.currentTime; horn(t, [146.8, 220], 0.7, 0.18); bell(t, 2093, 0.08, 1); },
     death: function () { if (!ok()) return; var t = ac.currentTime; osc('sawtooth', 220, 40, t, 1.4, 0.22, null, 0.02); noise(t, 1, 0.3, 'lowpass', 600, 1, 80); drum(t + 0.1, 40, 0.9); },
-    click: function () { if (!ok()) return; fx('click', 1); }
+    click: function () { if (!ok()) return; if (!play('x_click', ac.currentTime, 1, 1, uiBus)) FX.click(ac.currentTime); }
 ,
     // ---------- new effects ----------
     // A-10 flyover: engine whine and roar sweeping past, with a doppler drop
@@ -1027,5 +1030,6 @@ var SFX = (function () {
     bossIntro: function () { if (!ok()) return; var t = ac.currentTime; drum(t, 44, 1); drum(t + 0.25, 40, 1); horn(t, [55, 82.4, 110], 2, 0.4); bell(t, 110, 0.1, 2.5); }
 
   };
+  Object.assign(api, api2);
   return api;
 })();
