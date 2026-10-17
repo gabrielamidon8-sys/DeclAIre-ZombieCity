@@ -41,11 +41,12 @@ function recalc(p) {
 function healPlayer(a) { const p = G.p; if (!p || a <= 0) return; p.hp = Math.min(p.maxHp, p.hp + a * p.healMul); }
 
 /* ---------- firing ---------- */
-function fireWeapon(t) {
-  const p = G.p, S = p.S, a = Math.atan2(t.y - p.y, t.x - p.x);
+// t: the zombie being shot at (null when you aim at nothing); ang: where you are aiming yourself (mouse or stick)
+function fireWeapon(t, ang) {
+  const p = G.p, S = p.S, a = ang != null ? ang : Math.atan2(t.y - p.y, t.x - p.x);
   p.shots++;
   if (p.hpPerShot) p.hp = Math.max(1, p.hp - p.hpPerShot);
-  if (S.thunder && p.shots % 6 === 0) thunderStrike(t);
+  if (S.thunder && p.shots % 6 === 0 && t) thunderStrike(t);
   volley(a, 1);
   for (let i = 1; i < S.burst; i++) p.queue.push({ t: i * 0.07, mul: 1 });
   if (S.echo) p.queue.push({ t: 0.17, mul: 0.6 });
@@ -242,7 +243,7 @@ function openSkull() {
     $('skullRefuse').hidden = false;
     G.skullChoices.forEach((ch, i) => setTimeout(() => SFX.cardIn(i), 90 + i * 140)); setTimeout(() => SFX.rare(6), 420);
     G.skullChoices.forEach((ch, i) => { const b = buildCard(ch, i, chooseForbidden); b.classList.add('from-skull'); row.appendChild(b); });
-    setTimeout(() => { const f = row.querySelector('button'); if (f && !TOUCH) f.focus({ preventScroll: true }); }, 60);
+    setTimeout(() => { const f = row.querySelector('button'); if (f && DEV.kind !== 'touch') f.focus({ preventScroll: true }); }, 60);
   }, RM ? 200 : 2000);
 }
 function chooseForbidden(i, ev) {
@@ -446,7 +447,7 @@ function openCards() {
   G.upChoices.forEach((ch, i) => setTimeout(() => SFX.cardIn(i), 90 + i * 140));
   const best = Math.max.apply(null, G.upChoices.map(c => c.r === 5 ? 5 : c.r));
   if (best >= 3) setTimeout(() => SFX.rare(best), 380);
-  setTimeout(() => { const f = row.querySelector('button'); if (f && !TOUCH) f.focus({ preventScroll: true }); }, 60);
+  setTimeout(() => { const f = row.querySelector('button'); if (f && DEV.kind !== 'touch') f.focus({ preventScroll: true }); }, 60);
 }
 function shootCard(row, i, ev) {
   G.picking = true;
@@ -525,6 +526,7 @@ function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true;
 $('keeper').querySelector('.kp-poke').addEventListener('click', () => { SFX.init(); KEEP.poke(); });
 function renderArmory() {
   $('arCount').textContent = guns.size + ' / 250';
+  renderArmorySide();
   if (arFrame === 'dash') return renderDashArmory();
   const lw = WEAPONS[loadoutId()], ld = $('arLoadout'); ld.textContent = '';
   const lb = el('b', null, lw.name); lb.style.color = WRAR[lw.rarity].color; ld.append('Starting weapon: ', lb, '. Pick up new weapons from cards during a run to unlock them here.');
@@ -547,6 +549,37 @@ function renderArmory() {
     b.addEventListener('click', () => openWeaponDetail(w));
     grid.appendChild(b); paintWeapon(c, w, 128, 60, !show);
   }
+}
+// the loadout panel beside the racks on wide screens: what you start with, how much is unlocked, a word from the keeper
+const KEEP_TIPS = ['Legendaries glow. Try not to stare, they get shy.', 'Cards that say "cursed" mean it. Read the small print.', 'Shotguns love close friends. Snipers hate them.', 'The A-10 does not miss. You might, but it does not.', 'A dash is a gun for your feet. Use both.', 'Every weapon reacts to cards in its own way. Check how before you pick.', 'Rivers slow you down. They slow them down too. Mostly.', 'If the skull offers you a deal, count your fingers after.', 'Burst rifles hate wasted bullets. Aim, then hold.', 'Clean your rifle. Mine has never jammed. Today.'];
+function renderArmorySide() {
+  const S = $('arSide'); if (!S) return;
+  S.textContent = '';
+  const lw = WEAPONS[loadoutId()], R = WRAR[lw.rarity];
+  const eq = el('section', 'ar-card ar-eq'); eq.style.setProperty('--rc', R.color);
+  const h = el('h3'); h.append(el('span', null, 'Starting weapon'), el('em', null, lw.code)); eq.append(h);
+  const c = el('canvas'); c.setAttribute('aria-hidden', 'true'); eq.append(c); paintWeapon(c, lw, 300, 110, false); c.style.width = '100%'; c.style.height = 'auto';
+  eq.append(el('b', null, lw.name), el('span', 'rr', R.name + ' · ' + ZW.FRAMES[Math.floor(lw.id / 25)].name), el('p', null, lw.M.name + ' mod: ' + lw.M.desc));
+  const bars = el('div', 'ar-bars');
+  [['Damage', lw.dmg * lw.pellets * lw.burst / W_MAX.dmg, Math.round(lw.dmg * lw.pellets * lw.burst)], ['Fire rate', lw.rof / W_MAX.rof, lw.rof.toFixed(1) + '/s'], ['Range', lw.range / W_MAX.range, Math.round(lw.range)], ['Power', lw.dps / W_MAX.dps, Math.round(lw.dps)]]
+    .forEach(([k, f, v]) => { const d = el('div'), tr = el('i'), fl = el('s'); fl.style.width = Math.round(clamp(f, 0.03, 1) * 100) + '%'; tr.append(fl); d.append(el('span', null, k), tr, el('em', null, String(v))); bars.append(d); });
+  eq.append(bars); S.append(eq);
+  const cd = DASH_BY[dashLoadout()], ds = el('section', 'ar-card');
+  const dh = el('h3'); dh.append(el('span', null, 'Starting dash'), el('em', null, DASH_RAR[cd.r])); ds.append(dh);
+  const dr = el('div', 'ar-dash'), dc = el('canvas'); dc.setAttribute('aria-hidden', 'true'); paintDash(dc, cd, 52, false);
+  const dt = el('div'), dn = el('b', null, cd.name); dn.style.color = cd.hex; dt.append(dn, el('p', null, cd.desc));
+  dr.append(dc, dt); ds.append(dr); S.append(ds);
+  const col = el('section', 'ar-card'), ch = el('h3'); ch.append(el('span', null, 'Collection'), el('em', null, guns.size + ' / 250')); col.append(ch);
+  const list = el('div', 'ar-col');
+  WRAR.forEach((rr, ri) => {
+    let tot = 0, have = 0; for (const w of WEAPONS) if (w.rarity === ri) { tot++; if (guns.has(w.id)) have++; }
+    if (!tot) return;
+    const d = el('div'); d.style.setProperty('--rc', rr.color); const tr = el('i'), fl = el('s'); fl.style.width = (have / tot * 100).toFixed(1) + '%'; tr.append(fl);
+    d.append(el('span', null, rr.name), tr, el('em', null, have + '/' + tot)); list.append(d);
+  });
+  { const d = el('div'); d.style.setProperty('--rc', '#29e6ff'); const tr = el('i'), fl = el('s'); fl.style.width = (dashes.size / 25 * 100).toFixed(1) + '%'; tr.append(fl); d.append(el('span', null, 'Dashes'), tr, el('em', null, dashes.size + '/25')); list.append(d); }
+  col.append(list); S.append(col);
+  const tip = el('p', 'ar-tip', KEEP_TIPS[Math.floor(Math.random() * KEEP_TIPS.length)]); tip.append(el('small', null, 'The keeper')); S.append(tip);
 }
 function dashChip() {
   const b = el('button', 'chip dchip' + (arFrame === 'dash' ? ' on' : '')); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', arFrame === 'dash');

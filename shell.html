@@ -759,6 +759,161 @@ button.lcd{cursor:pointer}
 #rpMore .set-row.mini{flex:1 1 100%;padding:8px 10px}
 #rpMore .set-row.mini .set-txt p{display:none}
 .lefty #airBtn{right:auto;left:max(26px, calc(env(safe-area-inset-left, 0px) + 18px))}
+
+/* ---------- 1.9.60: devices, your name, the main menu panel, key bindings ---------- */
+.dev-ic{display:inline-grid;place-items:center;flex:none;width:18px;height:18px}
+.dev-ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.dev-ic circle{fill:currentColor}
+/* the key or button for each HUD button, on PC and controller */
+.glyph{display:none;position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);padding:1px 5px;font-family:var(--f-num);font-style:normal;font-size:10px;line-height:1.35;letter-spacing:.04em;text-transform:none;white-space:nowrap;color:var(--tape-ink);background:var(--tape);border-radius:2px;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.dev-kbm .glyph,.dev-pad .glyph{display:block}
+#pauseBtn{position:relative}
+#pauseBtn .glyph{bottom:-11px}
+.dev-kbm #dashBtn,.dev-pad #dashBtn{width:66px;height:66px}
+.dev-kbm #airBtn,.dev-pad #airBtn{width:56px;height:56px;bottom:104px}
+.dev-pad #app,.dev-pad #app *{cursor:none!important}
+.dev-pad button:focus,.dev-pad input:focus,.dev-pad [tabindex]:focus,.dev-pad a:focus{outline:3px solid var(--tape)!important;outline-offset:2px;box-shadow:0 0 0 7px rgba(242,204,58,.16)}
+.dev-pad .gcard kbd{display:none}
+/* your name, top left during a run */
+.hud-name{display:flex;align-items:center;gap:6px;align-self:flex-start;max-width:100%;padding:2px 9px 2px 6px;font-family:var(--f-num);font-size:13px;line-height:1.3;letter-spacing:.14em;color:var(--bone);background:rgba(8,10,13,.55);border-left:2px solid var(--tape);text-shadow:0 1px 2px #000}
+.hud-name b{font-weight:400;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hud-name .dev-ic{width:15px;height:15px;color:var(--tape)}
+/* your name on the main menu */
+.profile{display:flex;flex-direction:column;gap:6px}
+.profile label{font-family:var(--f-num);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.pf-row{display:flex;gap:8px;max-width:440px}
+.pf-row input{flex:1 1 auto;min-width:0;height:44px;padding:0 12px;background:rgba(8,10,13,.8);border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:18px;letter-spacing:.14em;text-transform:uppercase;-webkit-user-select:text;user-select:text}
+.pf-row input::placeholder{color:#6f747c;letter-spacing:.08em}
+.pf-row input:focus{outline:none;border-color:var(--tape)}
+.pf-row .btn{min-height:44px;padding:8px 16px}
+.profile.unnamed .pf-row input{animation:namepulse 2.4s ease-in-out infinite}
+@keyframes namepulse{50%{box-shadow:0 0 0 3px rgba(242,204,58,.24)}}
+#nameSave.ok{border-color:#7dff4a;color:#7dff4a}
+.dev-badge{display:flex;align-items:center;gap:7px;min-height:18px;font-family:var(--f-num);font-size:12px;letter-spacing:.05em;color:#bdb7a8}
+.dev-badge .dev-ic{color:var(--tape)}
+/* the main menu's side panel on wide screens */
+.title-panel{display:none}
+@media (min-width:1180px) and (min-height:620px){
+  .title-panel{position:absolute;z-index:1;right:clamp(24px, 3.5vw, 64px);top:clamp(130px, 20vh, 200px);bottom:26px;width:min(410px, 29vw);display:flex;flex-direction:column;justify-content:flex-end;gap:10px;overflow:hidden}
+}
+.tp-card{flex:none;padding:12px 14px 13px;background:linear-gradient(180deg, rgba(24,28,35,.93), rgba(13,16,20,.93));border:1px solid var(--line);border-radius:3px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.title-panel.fresh .tp-card,#title.reveal .tp-card{animation:rise .5s ease-out both}
+#title.reveal .tp-card{animation-delay:.45s}#title.reveal .tp-card:nth-child(2){animation-delay:.52s}#title.reveal .tp-card:nth-child(3){animation-delay:.59s}#title.reveal .tp-card:nth-child(4){animation-delay:.66s}
+.tp-card:nth-child(2){animation-delay:.07s}.tp-card:nth-child(3){animation-delay:.14s}.tp-card:nth-child(4){animation-delay:.21s}
+.tp-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px;font-family:var(--f-num);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--tape)}
+.tp-head em{font-style:normal;color:var(--muted);letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-file{border-top:3px solid var(--tape);background:repeating-linear-gradient(-45deg, rgba(255,255,255,.012) 0 6px, transparent 6px 12px), linear-gradient(180deg, rgba(24,28,35,.94), rgba(13,16,20,.94))}
+.tp-id{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tp-name{min-width:0;font-family:var(--f-display);font-weight:400;font-size:30px;line-height:1.02;letter-spacing:.02em;color:var(--bone);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-name.none{font-size:22px;color:#6f747c}
+.tp-id .dev-ic{width:26px;height:26px;color:var(--tape)}
+.tp-dev{margin-top:3px;font-family:var(--f-num);font-size:12px;color:#a9a396}
+.tp-stats{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:6px;margin:11px 0 0}
+.tp-stats div{min-width:0;padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(235,229,214,.08)}
+.tp-stats dt{font-family:var(--f-num);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.tp-stats dd{margin:2px 0 0;font-family:var(--f-num);font-size:16px;color:var(--bone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-keys{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:7px 12px}
+.tp-keys li{display:flex;align-items:center;gap:8px;min-width:0}
+.kcs{display:flex;gap:3px;flex:none}
+.kc{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;font-family:var(--f-num);font-size:12px;line-height:1;color:var(--bone);background:linear-gradient(#2b313a, #1a1e25);border:1px solid #3e4550;border-bottom-width:3px;border-radius:4px;white-space:nowrap}
+.kc.wide{font-size:11px}
+.kw{min-width:0;font-size:13px;color:#cfc9bb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-btn{margin-top:10px;min-height:32px;padding:4px 11px;font-size:11px}
+.tp-rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.tp-rows li{display:grid;grid-template-columns:30px minmax(0, 1fr) auto 18px;gap:8px;align-items:center;padding:5px 8px;background:rgba(255,255,255,.03);font-variant-numeric:tabular-nums}
+.tp-rows li.tp-empty{display:block;background:none;padding:2px 0;font-size:13px;color:var(--muted)}
+.tp-rows li.me{outline:1px solid var(--tape)}
+.tp-rows .rk{font-family:var(--f-num);color:var(--tape)}
+.tp-rows .tg{font-weight:600;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-rows .sc{font-family:var(--f-num)}
+.tp-rows .dev-ic{width:16px;height:16px;color:var(--muted)}
+.tp-note{margin-top:7px;font-size:12px;color:var(--muted)}
+.tp-new ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:3px;font-size:13px;color:#cfc9bb}
+.tp-new li::marker{color:var(--tape)}
+@media (max-height:979px){.tp-new{display:none}}
+@media (max-height:779px){.tp-board{display:none}}
+/* Settings > Controls */
+.set-sub{margin:10px 0 2px;font-family:var(--f-num);font-weight:400;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.set-devnow{display:flex;align-items:center;gap:12px;margin-bottom:6px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px}
+.set-devnow .dev-ic{width:30px;height:30px;color:var(--tape)}
+.set-devnow b{font-size:14px}
+.set-devnow p{font-size:13px;color:#a9a396}
+.binds{display:flex;flex-direction:column;gap:4px}
+.bind-row{display:grid;grid-template-columns:minmax(0, 1fr) minmax(96px, 150px) minmax(96px, 150px);gap:6px;align-items:center;padding:6px 8px 6px 14px;background:var(--panel);border:1px solid var(--line);border-radius:2px}
+.bind-name{font-size:14px;color:#d8d2c4}
+.bind-key{height:34px;padding:0 10px;font-family:var(--f-num);font-size:13px;color:var(--bone);background:linear-gradient(#2b313a, #1a1e25);border:1px solid #3e4550;border-bottom-width:3px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bind-key:hover{border-color:#5b6471}
+.bind-key.empty{color:#5d636b;background:transparent;border-style:dashed;border-bottom-width:1px}
+.bind-key.listen{color:var(--tape-ink);background:var(--tape);border-color:var(--tape);animation:listen 1s ease-in-out infinite}
+@keyframes listen{50%{filter:brightness(1.25)}}
+.bind-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding-top:4px}
+.bind-foot .set-note{flex:1 1 300px;padding:4px 2px}
+@media (max-width:520px){.bind-row{grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);padding-left:10px}.bind-name{grid-column:1 / -1}}
+/* the leaderboard: who played on what */
+.lb-filter{display:flex;flex-wrap:wrap;gap:6px}
+.lb-filter button{padding:6px 13px;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:12px;letter-spacing:.06em;color:#cfc9bb}
+.lb-filter button.on{background:var(--bone);border-color:var(--bone);color:var(--night)}
+.lb-row,.lb-head{grid-template-columns:40px minmax(0, 1fr) auto 50px 22px}
+.lb-head span:nth-child(5){text-align:center}
+.lb-row .dv{display:grid;place-items:center;color:var(--muted)}
+.lb-row .dv .dev-ic{width:18px;height:18px}
+@media (prefers-reduced-motion:reduce){.profile.unnamed .pf-row input,.tp-card,.bind-key.listen{animation:none}}
+
+/* the armory on wide screens: a loadout panel beside the racks */
+.ar-layout{display:flex;flex-direction:column;gap:14px}
+.ar-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ar-side{display:none}
+@media (min-width:1200px){
+  .ar-inner{width:min(1460px, 100%)}
+  .ar-layout{display:grid;grid-template-columns:minmax(0, 1fr) 340px;gap:22px;align-items:start}
+  .ar-main .keeper{margin-inline:0;border:1px solid var(--line);border-radius:3px}
+  .ar-main #arLoadout{display:none}
+  .ar-side{display:flex;flex-direction:column;gap:12px;position:sticky;top:86px}
+}
+.ar-card{padding:14px 16px;background:linear-gradient(180deg, #1a1e25, #13161b);border:1px solid var(--line);border-radius:3px}
+.ar-card h3{margin:0 0 10px;font-family:var(--f-num);font-weight:400;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--tape);display:flex;justify-content:space-between;gap:8px}
+.ar-card h3 em{font-style:normal;color:var(--muted);letter-spacing:.06em}
+.ar-eq{border-top:3px solid var(--rc, var(--tape))}
+.ar-eq canvas{display:block;width:100%;height:auto;max-height:120px;margin:2px 0 8px;background:radial-gradient(ellipse at 50% 60%, color-mix(in srgb, var(--rc, #f2cc3a) 14%, transparent), transparent 70%)}
+.ar-eq b{display:block;font-size:18px;line-height:1.2}
+.ar-eq .rr{font-family:var(--f-num);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--rc)}
+.ar-eq p{margin-top:6px;font-size:13px;color:#cfc9bb}
+.ar-bars{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.ar-bars div{display:grid;grid-template-columns:72px minmax(0, 1fr) 46px;gap:8px;align-items:center;font-size:12px;color:#bdb7a8}
+.ar-bars i{display:block;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.ar-bars i s{display:block;height:100%;background:var(--rc, var(--tape));border-radius:3px}
+.ar-bars em{font-style:normal;font-family:var(--f-num);text-align:right;color:var(--bone)}
+.ar-dash{display:flex;gap:12px;align-items:center}
+.ar-dash canvas{flex:none;width:52px;height:52px}
+.ar-dash b{display:block;font-size:15px}
+.ar-dash p{font-size:12.5px;color:#bdb7a8}
+.ar-col{display:flex;flex-direction:column;gap:7px}
+.ar-col div{display:grid;grid-template-columns:86px minmax(0, 1fr) 52px;gap:8px;align-items:center;font-size:12px}
+.ar-col span{color:var(--rc)}
+.ar-col i{display:block;height:8px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.ar-col i s{display:block;height:100%;background:var(--rc)}
+.ar-col em{font-style:normal;font-family:var(--f-num);text-align:right;color:#cfc9bb}
+.ar-tip{position:relative;padding:12px 14px 12px 40px;font-size:13px;font-style:italic;color:#d8d2c4;background:#15181d;border:1px dashed rgba(235,229,214,.18);border-radius:3px}
+.ar-tip::before{content:"\201C";position:absolute;left:12px;top:2px;font-family:var(--f-display);font-size:34px;color:var(--tape);font-style:normal}
+.ar-tip small{display:block;margin-top:4px;font-style:normal;font-family:var(--f-num);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* the main menu scrolls from the top when it is taller than the screen (a phone with the name box) */
+.ov-title{justify-content:flex-start}
+.ov-title > .title-body{margin-top:auto}
+
+/* laptops and other short desktop screens: a tighter main menu so it fits without scrolling */
+@media (min-width:900px) and (max-height:900px) and (min-height:561px){
+  .title-body{width:min(700px, 100%);gap:10px;padding-block:14px 16px}
+  .title-body h1{font-size:clamp(60px, 12vh, 136px)}
+  .title-body .lede{max-width:62ch;font-size:14px}
+  .title-body .btns .btn{min-height:42px;padding:8px 16px}
+  .title-side{gap:10px}
+  .pf-row input,.pf-row .btn{height:40px;min-height:40px}
+}
+@media (min-width:1180px) and (min-height:620px) and (max-height:900px){.title-body .hint{display:none}}
+
+/* no sideways scrolling on any screen (the quarantine tape runs past the edges on purpose) */
+.ov{overflow-x:hidden}
 </style>
 
 <div id="app">
@@ -767,6 +922,7 @@ button.lcd{cursor:pointer}
   <div id="hud" hidden>
     <div class="hud-top">
       <div class="vitals">
+        <div class="hud-name" id="hudName" hidden><span id="hudDev" aria-hidden="true"></span><b id="hudNameTxt"></b></div>
         <div class="hp"><i id="hpFill"></i></div>
         <div class="hp-row"><b id="hpText">100</b><span id="fxChips"></span></div>
         <div class="where" id="whereChip" aria-live="polite"></div>
@@ -774,7 +930,7 @@ button.lcd{cursor:pointer}
       <div class="wave"><span>Wave</span><b id="waveNum">1</b></div>
       <div class="score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
       <button id="radioBtn" class="icon-btn radio-btn" type="button" aria-label="Radio" aria-expanded="false" aria-controls="hudRadio"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="rb-ant" d="M5 9 L18 3.5"/><rect x="2.5" y="9" width="19" height="12" rx="2"/><circle cx="8.5" cy="15" r="3.2"/><path d="M14.5 13 H19 M14.5 16 H19"/></svg><i class="rb-dot" aria-hidden="true"></i></button>
-      <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span></button>
+      <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span><i class="glyph" id="pauseKey" aria-hidden="true"></i></button>
     </div>
     <div id="hudRadio" class="radio-drop" hidden></div>
     <div id="bossBar" hidden><span id="bossName"></span><div class="bar bar1"><i id="bossFill"></i></div><div class="bar bar2"><i id="bossFill2"></i></div><span id="bossInfo"></span></div>
@@ -782,8 +938,8 @@ button.lcd{cursor:pointer}
     <div id="banner" hidden></div>
     <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
     <div id="chainPop" hidden></div>
-    <button id="dashBtn" aria-label="Dash"><b>Dash</b><span class="dname">Sprint</span></button>
-    <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em></button>
+    <button id="dashBtn" aria-label="Dash"><b>Dash</b><span class="dname">Sprint</span><i class="glyph" id="dashKey" aria-hidden="true"></i></button>
+    <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em><i class="glyph" id="airKey" aria-hidden="true"></i></button>
     <div class="wchip" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><span id="wName">Standard Pistol</span></div>
     <div id="qte" hidden>
       <div class="qte-head"><b>Break free</b><span id="qtePips" aria-label="Escape progress"></span><div class="qte-time"><i id="qteTime"></i></div></div>
@@ -798,6 +954,11 @@ button.lcd{cursor:pointer}
       <h1>Zombie<br><span>City</span></h1>
       <p class="lede">An endless quarantine zone: burning streets, ruins, ash towns, suburbs, deserts and the frozen north, with rivers, storms and seasons. Every zombie carries one of 1,000 mutations. Survive the waves, collect 250 weapons and hunt 50 bosses. Tune the radio to FM 66.6: seven channels, 245 songs, or your own music.</p>
       <div class="title-side">
+        <form class="profile unnamed" id="nameForm" autocomplete="off">
+          <label for="nameInput">Your name</label>
+          <div class="pf-row"><input id="nameInput" maxlength="14" spellcheck="false" autocomplete="off" autocapitalize="characters" placeholder="Type your name" enterkeyhint="done"><button class="btn small" id="nameSave" type="submit">Save</button></div>
+          <p class="dev-badge" id="devBadge" aria-live="polite"></p>
+        </form>
         <div class="btns">
           <button class="btn primary" id="playBtn">Enter the city</button>
           <button class="btn" id="armoryBtn">Armory <em id="gunCount">1/250</em></button>
@@ -806,12 +967,13 @@ button.lcd{cursor:pointer}
           <button class="btn" id="lbBtn">Leaderboard</button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
-        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button></div>
+        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
       </div>
       <p class="best" id="loadLine"></p>
       <p class="hint" id="ctrlHint">Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.</p>
       <p class="best" id="bestLine"></p>
     </div>
+    <aside class="title-panel" id="titlePanel" aria-label="Survivor file"></aside>
   </section>
 
   <section id="upgrade" class="ov ov-cards" hidden aria-label="Choose a card">
@@ -979,17 +1141,22 @@ button.lcd{cursor:pointer}
   </div>
 
   <section id="armory" class="ov sheet" hidden aria-label="Armory">
-    <div class="sheet-inner">
+    <div class="sheet-inner ar-inner">
       <header class="sheet-head">
         <div><p class="eyebrow">Armory</p><h2><span id="arCount">1 / 250</span> unlocked</h2></div>
         <button class="icon-btn" id="arClose" aria-label="Close armory">&#215;</button>
       </header>
+      <div class="ar-layout">
+        <div class="ar-main">
 <!--__KEEPER__-->
-      <p class="strain-note" id="arLoadout"></p>
-      <div class="cx-tools"><label class="toggle"><input type="checkbox" id="arSpoil"> Show locked weapons</label></div>
-      <div class="chips" id="arFrames" role="tablist" aria-label="Weapon types"></div>
-      <p class="strain-note" id="arFrameNote"></p>
-      <div class="ar-grid" id="arGrid"></div>
+          <p class="strain-note" id="arLoadout"></p>
+          <div class="cx-tools"><label class="toggle"><input type="checkbox" id="arSpoil"> Show locked weapons</label></div>
+          <div class="chips" id="arFrames" role="tablist" aria-label="Weapon types"></div>
+          <p class="strain-note" id="arFrameNote"></p>
+          <div class="ar-grid" id="arGrid"></div>
+        </div>
+        <aside class="ar-side" id="arSide" aria-label="Your loadout"></aside>
+      </div>
     </div>
   </section>
 
@@ -1081,7 +1248,8 @@ button.lcd{cursor:pointer}
         <button class="tab on" id="tabGlobal" role="tab">Global</button>
         <button class="tab" id="tabLocal" role="tab">This device</button>
       </div>
-      <div class="lb-head"><span>Rank</span><span>Callsign</span><span>Score</span><span>Wave</span></div>
+      <div class="lb-filter" id="lbFilter" role="group" aria-label="Show scores from"><button type="button" class="on" data-d="all" aria-pressed="true">Everyone</button><button type="button" data-d="touch" aria-pressed="false">Phone</button><button type="button" data-d="kbm" aria-pressed="false">PC</button><button type="button" data-d="pad" aria-pressed="false">Controller</button></div>
+      <div class="lb-head"><span>Rank</span><span>Callsign</span><span>Score</span><span>Wave</span><span>On</span></div>
       <ol class="lb-list" id="lbList"></ol>
       <p class="lb-note" id="lbNote"></p>
     </div>

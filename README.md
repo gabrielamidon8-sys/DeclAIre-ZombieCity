@@ -1,11 +1,14 @@
 # Zombie City
 
-A top-down zombie survival shooter for phones and browsers. You hold the streets against waves of mutating zombies, chain kills for bigger rewards, and fight bosses that evolve mid-fight. Tune the in-game radio to FM 66.6 for seven channels of music, and the city lights up in time with it.
+A top-down zombie survival shooter for phones, PCs and controllers. You hold the streets against waves of mutating zombies, chain kills for bigger rewards, and fight bosses that evolve mid-fight. Tune the in-game radio to FM 66.6 for seven channels of music, and the city lights up in time with it.
 
 ## Play
 
 - **Android:** download the latest `.apk` from the [Releases](../../releases) page and open it on your phone. Updates install over the old version and keep your saves.
+- **Windows:** download `ZombieCity-<version>-Windows.zip`, unzip it anywhere and run `ZombieCity.exe` from the `Zombie City` folder. Nothing is installed. (Windows may warn that the app is new: choose "More info", then "Run anyway".)
 - **Browser:** open `zombie-city-offline.html` in any modern browser. It's a single self-contained file that needs no internet connection.
+
+Every version is the same game. It works out what you are playing with (touch screen, keyboard and mouse, or a controller) and switches on the fly; on PC and controller you aim yourself, and every key and button can be changed in Settings > Controls.
 
 ## What's in the game
 
@@ -22,12 +25,15 @@ A top-down zombie survival shooter for phones and browsers. You hold the streets
 - Layered gun sounds for every weapon, with shell casings and echoes that change with the district
 - A light show that reacts to the radio or your own music
 - Settings with a simple Basic page and an Advanced page for graphics, sound (master, music, effects, gunfire, ambience and menu volume), gameplay, controls, accessibility and the system
+- Touch, keyboard and mouse, and controllers (Xbox, PlayStation, Switch and others), picked automatically from what you last used. Mouse aim with a crosshair, twin-stick aiming on a controller, optional aim assist or auto-aim, full key and button rebinding, controller rumble and menus you can drive with a controller
+- Your name on the main menu, at the top left during a run and on the leaderboard, with the device each score was played on
 - Tunes itself to your device: it detects the hardware, adjusts resolution, weather and world detail as you play, and cleans up its own caches
 
 ## Versions
 
 | Version | Highlights |
 |---|---|
+| **1.9.60** | Play on PC with a keyboard and mouse or on any device with a controller, and aim for yourself: the mouse aims with a crosshair (hold left click to fire), and on a controller the left stick moves and the right stick aims and fires. Aim assist, auto-aim and the firing style can be set separately for each, and V (or R3) switches auto-aim on the fly. The game detects whether you are on a touch screen, a keyboard and mouse or a controller and switches the moment you pick up something else, changing the HUD and the hints to match. Every key, mouse button and controller button can be reassigned in Settings > Controls (with swapping, clearing and reset), the controller drives every menu (A chooses, B goes back, LB and RB flip tabs) and rumbles on big hits. Type your name on the main menu: it shows at the top left during a run and goes on the leaderboard together with what you played on, and the board can be filtered by phone, PC or controller. The main menu has a survivor file with your record, a controls card and the top of the board on wide screens, the armory has a loadout panel beside the racks, and the intro's road now runs through a city that builds itself around it. New Windows app. |
 | **1.9.50** | The city is now a procedurally generated world, different every run. It is split into named districts: downtown, burning districts full of fires, riot zones with barricades and police lights, destroyed blocks of rubble and craters, grey ash towns, leafy suburbs, deserts with mesas and cacti, and the snowy frozen north. Rivers wind through everything; roads cross them on bridges, and wading through the water slows you (and the zombies) down. In the desert they are dry washes, up north they freeze over. The weather changes as you play: rain, thunderstorms whose lightning strikes the street (and conducts through water), fog, snow, blizzards, sandstorms and ashfall, and the season turns from spring to winter. Bushes and grass shake when you or the zombies push through, trees drop leaves, cones and trash cans get kicked around, red barrels explode when shot, parked cars set off alarms that pull zombies in, crows take off as you get close, and you leave footprints in snow and sand. Every gun has a new layered sound with shell casings and echoes that follow the district. New Settings: a Basic page and an Advanced page with Graphics, Sound (sliders for master, music, effects, gunfire, ambience and menus), Gameplay, Controls, Accessibility and System. The quality governor now also trims weather and tree animation, builds new streets ahead of you, and scales world detail to the device. |
 | **1.9.10** | 25 dashes, each with its own effect on you and the zombies plus an always-on passive: Sprint, Shoulder Charge, Baseball Slide, Smoke Bomb, Adrenaline Rush, Frost Step, Flame Dash, Thunder Dash, Toxic Trail, Blink, Phantom Walk, Shockwave Slam, Blood Rush, Gravity Well, Hologram Decoy, Rocket Boots, Time Warp, Berserker, Holy Ground, Ninja Vanish, Meteor Strike, Dragon's Breath, Void Rift, Storm Rider and Warthog Run. Find them on cards during a run and pick your starting dash in the armory. The A-10 is louder and more epic: a deep GAU-8 BRRRT that echoes off the buildings after the rounds land, engine smoke trails, a gun smoke cloud, tracers, and high-explosive rounds that splash damage and leave bullet holes in the road. |
 | **1.9.01** | The armory is now a full back room behind a chain-link cage: gun racks, a workbench, a neon ARMORY sign, a wall clock that shows the real time, a shelf radio that pulses with FM 66.6, dripping pipes and a rat. The keeper has 15 animations: cleaning his rifle, sleeping, reciting funny Shakespeare, a coffee break, aiming at you, flipping a bullet, reloading, reading the paper, waving, humming to the radio, sharpening a machete, swatting a fly, juggling grenades, a blackout and a thumbs up when you equip a weapon. Ring the bell to get his attention. The rare skull moment (still 0.001%) now tears in with a glitch. Epic and legendary weapons glow in the armory. |
@@ -65,13 +71,23 @@ The game is plain JavaScript split into modules that `build.js` joins into one p
 | `keeper.html`, `keeper.css`, `keeper.js` | The armory keeper: his room, his 15 animations and the glitch |
 | `radio.js` | FM 66.6: the song generator, the seven channels, offline rendering and the Bluetooth player |
 | `perf.js` | Device detection, the quality governor, LOD settings, cache refresher and self-repair |
-| `intro.js` | The DeclAIre Studios intro and the "Made with Claude" card |
+| `intro.js` | The DeclAIre Studios intro (with the city that builds itself around the road) and the "Made with Claude" card |
+| `input.js` | Touch, keyboard and mouse, and controller input: device detection, aiming, rebinding and menu navigation |
+| `profile.js` | Your name, your record across runs and the main menu's side panel |
+| `desktop/` | The Windows app: Electron's `main.js` and `preload.js`, the packaging script and the exe icon patcher |
 | `fonts/` | The three fonts (embedded into the page at build time) and their licenses |
 | `media/` | The intro card's music clip (embedded into the page at build time) |
 
 ```sh
 node build.js          # browser version -> zombie-city.html (+ zombie-city-offline.html)
 node build.js app      # Android page    -> android/www/index.html
+node build.js win      # Windows page    -> desktop/app/index.html
+```
+
+To build the Windows app, download Electron's Windows x64 zip (`electron-v33.2.1-win32-x64.zip` from Electron's GitHub releases) and run:
+
+```sh
+python3 desktop/build_win.py electron-v33.2.1-win32-x64.zip ZombieCity-1.9.60-Windows.zip 1.9.60
 ```
 
 To build the Android app you also need `aapt2`, `android.jar` (API 34), `dx.jar` and Python's `cryptography` package:

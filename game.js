@@ -241,35 +241,8 @@ function newPlayer() {
 }
 
 /* ================= input ================= */
-const keys = {};
+// keyboard, mouse and controller input live in input.js; the touch joystick is here
 const joy = { id: null, ox: 0, oy: 0, dx: 0, dy: 0, active: false, kx: 0, ky: 0 };
-window.addEventListener('keydown', e => {
-  if (e.target && e.target.tagName === 'INPUT') return;
-  const k = e.key.toLowerCase(); keys[k] = true;
-  if (G.grab && G.mode === 'play' && (k === ' ' || k === 'e' || k === 'enter' || k === 'shift')) { qteHit(); e.preventDefault(); return; }
-  if (k === ' ' || k === 'shift') { if (G.mode === 'play') { tryDash(); e.preventDefault(); } }
-  if (k === 'q' || k === 'f') { if (G.mode === 'play') callAirstrike(); }
-  // the radio: M mutes, N skips the song, [ and ] change the channel
-  if (G.mode !== 'intro') {
-    if (k === 'm') SFX.fm.mute(); else if (k === 'n') SFX.fm.skip(); else if (k === '[') SFX.fm.step(-1); else if (k === ']') SFX.fm.step(1);
-  }
-  if (k === 'escape' || k === 'p') {
-    if (!$('settings').hidden) { closeSettings(); return; }
-    if (!$('radioPanel').hidden) { closeRadio(); return; }
-    if (!$('hudRadio').hidden && k === 'escape') { toggleHudRadio(false); return; }
-    if (!$('blDetail').hidden) { $('blDetail').hidden = true; return; }
-    if (!$('bosslog').hidden) { closeBossLog(); return; }
-    if (!$('arDetail').hidden) { $('arDetail').hidden = true; return; }
-    if (!$('armory').hidden) { closeArmory(); return; }
-    if (!$('cxDetail').hidden) { closeDetail(); return; }
-    if (!$('codex').hidden) { closeCodex(); return; }
-    if (!$('lb').hidden) { closeLB(); return; }
-    if (G.mode === 'play') pauseGame(); else if (G.mode === 'pause') resumeGame();
-  }
-  if (G.mode === 'upgrade' && (k === '1' || k === '2' || k === '3')) chooseCard(+k - 1, null);
-  if (G.mode === 'skull' && (k === '1' || k === '2' || k === '3')) chooseForbidden(+k - 1, null);
-});
-window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 // App bridge: the Android app calls these for its back button and when it goes to the background.
 window.zcBack = function () {
   if (typeof INTRO !== 'undefined' && INTRO.on) return introSkip();
@@ -291,14 +264,13 @@ window.zcBack = function () {
 };
 window.zcAppPause = function () { if (G.mode === 'play') pauseGame(); SFX.suspend(); };
 window.zcAppResume = function () { SFX.resume(); };
-window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 function localXY(e) { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
 // the joystick: on the left (or the right, left-handed), floating where the thumb lands or fixed in the corner
 const JR = () => 56 * SET.joySize / 100;
 const moveSide = x => SET.lefty ? x > W * 0.4 : x < W * 0.6;
 function joyHome() { return [SET.lefty ? W - 104 : 104, H - 128]; }
 cv.addEventListener('pointerdown', e => {
-  if (G.mode !== 'play' || G.grab) return;
+  if (G.mode !== 'play' || G.grab || e.pointerType === 'mouse') return;   // a mouse aims and fires instead (input.js)
   const xy = localXY(e);
   if (joy.id === null && moveSide(xy[0])) {
     joy.id = e.pointerId; joy.dx = 0; joy.dy = 0; joy.kx = 0; joy.ky = 0; joy.active = true;
@@ -838,10 +810,7 @@ function dotPlayer(a) { const p = G.p; if (G.mode !== 'play' || !p) return; p.hp
 
 function updPlayer(dt) {
   const p = G.p;
-  let ix = 0, iy = 0;
-  if (keys.a || keys.arrowleft) ix -= 1; if (keys.d || keys.arrowright) ix += 1;
-  if (keys.w || keys.arrowup) iy -= 1; if (keys.s || keys.arrowdown) iy += 1;
-  if (joy.active) { ix += joy.dx; iy += joy.dy; }
+  let [ix, iy] = moveInput();
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
   p.ix = ix; p.iy = iy;
   if (p.slowT > 0) { p.slowT -= dt; if (p.slowT <= 0) p.slowMul = 1; }
@@ -865,20 +834,37 @@ function updPlayer(dt) {
   const kd = Math.exp(-7 * dt); p.kvx *= kd; p.kvy *= kd;
   p.x += vx * dt; p.y += vy * dt; collide(p, p.r); p.wk = waterAt(p.x, p.y);
   if (l > 0.1) p.walk += dt * 10;
+  // Aiming. On a phone (and with Auto-aim on PC or a controller) the gun locks onto the nearest zombie and fires by
+  // itself. With a mouse or a controller you aim yourself: the mouse, or the right stick, with an optional nudge
+  // onto targets (assist), and you fire with the button, the stick or "on target".
+  const am = aimMode();
   let best = null, bd = Infinity;
-  const vw = W / ZOOM / 2 + 10, vh = H / ZOOM / 2 + 10, rg = p.S.range * p.S.range;
-  for (const z of G.zs) {
-    if (z.dead || z.st.under) continue;
-    const ex = z.x - p.x, ey = z.y - p.y; if (Math.abs(ex) > vw || Math.abs(ey) > vh) continue;
-    let dd = ex * ex + ey * ey; if (dd > rg) continue;
-    if (z.st.down > 0 || (z.m.S.p.camo && dd > 52900)) continue;
-    if (z.st.phased) dd *= 4; if (z.fly) dd *= 1.5;
-    if (dd < bd) { bd = dd; best = z; }
+  if (am === 'auto' || (am === 'assist' && DEV.kind === 'pad')) {
+    const vw = W / ZOOM / 2 + 10, vh = H / ZOOM / 2 + 10, rg = p.S.range * p.S.range;
+    for (const z of G.zs) {
+      if (z.dead || z.st.under) continue;
+      const ex = z.x - p.x, ey = z.y - p.y; if (Math.abs(ex) > vw || Math.abs(ey) > vh) continue;
+      let dd = ex * ex + ey * ey; if (dd > rg) continue;
+      if (z.st.down > 0 || (z.m.S.p.camo && dd > 52900)) continue;
+      if (z.st.phased) dd *= 4; if (z.fly) dd *= 1.5;
+      if (dd < bd) { bd = dd; best = z; }
+    }
   }
-  if (best) p.aim = angLerp(p.aim, Math.atan2(best.y - p.y, best.x - p.x), Math.min(1, dt * 18));
-  else if (l > 0.1) p.aim = angLerp(p.aim, Math.atan2(iy, ix), Math.min(1, dt * 10));
   p.fireCd -= dt;
-  if (best && p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0) { fireWeapon(best); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
+  if (am === 'auto') {
+    if (best) p.aim = angLerp(p.aim, Math.atan2(best.y - p.y, best.x - p.x), Math.min(1, dt * 18));
+    else if (l > 0.1) p.aim = angLerp(p.aim, Math.atan2(iy, ix), Math.min(1, dt * 10));
+    if (best && p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0) { fireWeapon(best); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
+    return;
+  }
+  let ang = aimInput(p);
+  if (ang == null && DEV.kind === 'pad' && G.time - DEV.rsT > 0.45) {
+    if (best) ang = Math.atan2(best.y - p.y, best.x - p.x);            // assist keeps tracking with the stick let go
+    else if (l > 0.1) ang = Math.atan2(iy, ix);                         // otherwise face the way you walk
+  }
+  if (ang != null && am === 'assist') { const t = coneTarget(p, ang, 0.2); if (t) ang = angLerp(ang, Math.atan2(t.y - p.y, t.x - p.x), 0.6); }
+  if (ang != null) p.aim = DEV.kind === 'kbm' && am === 'manual' ? ang : angLerp(p.aim, ang, Math.min(1, dt * (DEV.kind === 'kbm' ? 30 : 22)));
+  if (p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0 && wantFire(p)) { fireWeapon(coneTarget(p, p.aim, 0.25), p.aim); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
 }
 /* ================= projectiles, hazards ================= */
 function pointInRect(x, y) { const rs = rectsNear(x, y, 0.5); for (let i = 0; i < rs.length; i++) { const r = rs[i]; if (!r.low && x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return r; } return null; }
@@ -1029,6 +1015,7 @@ function newRun() {
   $('skull').hidden = true;
   Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
+  DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
   worldReset();
   $('toasts').textContent = '';
@@ -1046,7 +1033,7 @@ function pauseGame() {
   toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio();
 }
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
-function toTitle() { G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
+function toTitle() { if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
 function die() {
   if (G.mode !== 'play') return;
   const p = G.p;
@@ -1059,8 +1046,8 @@ function die() {
   if (G.grab) { G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); }
   p.hp = 0; G.mode = 'over'; joy.active = false; joy.id = null; SFX.death();
   burst(p.x, p.y, 40, '#9e1c22', 220, 6, 0.9); shakeIt(14);
-  const entry = { tag: getTag(), score: G.score, wave: G.wave, kills: G.kills, at: Date.now() };
-  G.lastEntry = entry; saveLocal(entry);
+  const entry = { tag: getTag(), score: G.score, wave: G.wave, kills: G.kills, at: Date.now(), dev: runDevice(), plat: PLATFORM };
+  G.lastEntry = entry; saveLocal(entry); recordRun();
   $('ovEyebrow').textContent = 'Run over · ' + SEASON_NAME + ' season';
   $('ovScore').textContent = G.score.toLocaleString(); $('ovWave').textContent = G.wave;
   $('ovKills').textContent = G.kills; $('ovFound').textContent = G.runFound.length; $('ovChain').textContent = 'x' + G.bestChain;
@@ -1080,7 +1067,7 @@ function refreshTitle() {
   const loc = store.get('zc_lb_' + SEASON, []);
   const bl = $('bestLine'); bl.textContent = '';
   if (loc.length) { bl.append('Your best this season: '); const b = document.createElement('b'); b.textContent = loc[0].score.toLocaleString() + ' (wave ' + loc[0].wave + ')'; bl.append(b); }
-  $('ctrlHint').textContent = TOUCH ? 'Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.' : 'Move with WASD or the arrow keys. Your gun aims and fires on its own. Space to dash, Esc to pause.';
+  updNameUi(); updDevUi();
 }
 $('playBtn').addEventListener('click', newRun);
 $('againBtn').addEventListener('click', newRun);
@@ -1090,7 +1077,7 @@ $('menuBtn').addEventListener('click', toTitle);
 
 /* ================= leaderboard ================= */
 function saveLocal(e) { const k = 'zc_lb_' + SEASON, a = store.get(k, []); a.push(e); a.sort((x, y) => y.score - x.score); store.set(k, a.slice(0, 25)); }
-const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: 'global' };
+const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: 'global', dev: 'all' };
 (async function initDb() {
   try {
     if (!window.claude || typeof window.claude.use !== 'function') { LB.status = 'off'; renderLB(); return; }
@@ -1100,9 +1087,9 @@ const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: '
     LB.uid = user ? await user.id() : null;
     LB.db = db; LB.status = 'live';
     db.collection('scores').where('season', '==', SEASON).orderBy('score', 'desc').limit(50).onSnapshot(s => {
-      LB.rows = s.docs.map(d => Object.assign({ id: d.id }, d.data())); renderLB();
+      LB.rows = s.docs.map(d => Object.assign({ id: d.id }, d.data())); renderLB(); if (G.mode === 'title') renderTitlePanel();
     }, () => { LB.status = 'error'; renderLB(); });
-    renderLB();
+    renderLB(); adoptOnlineName();
   } catch (e) { LB.status = 'off'; renderLB(); }
 })();
 async function postGlobal(entry) {
@@ -1111,14 +1098,14 @@ async function postGlobal(entry) {
   try {
     const ref = LB.db.collection('scores').doc(LB.uid), cur = await ref.get(), d = cur.exists ? cur.data() : null;
     if (d && d.season === SEASON && d.score >= entry.score) return 'kept';
-    await ref.set({ season: SEASON, tag: entry.tag, score: entry.score, wave: entry.wave, kills: entry.kills, at: Date.now() });
+    await ref.set({ season: SEASON, tag: entry.tag, score: entry.score, wave: entry.wave, kills: entry.kills, at: Date.now(), dev: entry.dev || DEV.kind, plat: entry.plat || PLATFORM });
     return 'posted';
   } catch (e) { if (e && e.code === 'invalid_argument') { LB.ro = true; return 'readonly'; } return 'failed'; }
 }
 $('postForm').addEventListener('submit', async e => {
   e.preventDefault();
   const entry = G.lastEntry; if (!entry) return;
-  const tag = cleanTag($('callsign').value); $('callsign').value = tag; store.set('zc_tag', tag);
+  const tag = cleanTag($('callsign').value); $('callsign').value = tag; store.set('zc_tag', tag); updNameUi();
   entry.tag = tag;
   const k = 'zc_lb_' + SEASON, a = store.get(k, []), mine = a.find(x => x.at === entry.at); if (mine) { mine.tag = tag; store.set(k, a); }
   $('postBtn').disabled = true; $('postBtn').textContent = 'Posting';
@@ -1126,7 +1113,7 @@ $('postForm').addEventListener('submit', async e => {
   const msg = {
     posted: 'Posted to the global board for ' + SEASON_NAME + '.',
     kept: 'Saved. Your best on the global board this season is higher, so it stays.',
-    local: IS_APP ? 'Saved on this device.' : 'Saved on this device. The global board is not available on this page.',
+    local: PLATFORM !== 'web' ? 'Saved on this device.' : 'Saved on this device. The global board is not available on this page.',
     readonly: 'Saved on this device. You can view the global board but not post to it.',
     failed: 'Could not reach the global board. Your score is saved on this device.'
   }[res];
@@ -1138,6 +1125,7 @@ function closeLB() { $('lb').hidden = true; }
 $('lbBtn').addEventListener('click', openLB); $('overLbBtn').addEventListener('click', openLB); $('lbClose').addEventListener('click', closeLB);
 $('tabGlobal').addEventListener('click', () => { LB.tab = 'global'; renderLB(); });
 $('tabLocal').addEventListener('click', () => { LB.tab = 'local'; renderLB(); });
+document.querySelectorAll('#lbFilter button').forEach(b => b.addEventListener('click', () => { LB.dev = b.dataset.d; SFX.click(); renderLB(); }));
 function renderLB() {
   if ($('lb').hidden) return;
   $('lbSeason').textContent = SEASON_NAME;
@@ -1148,20 +1136,23 @@ function renderLB() {
   let rows, note = '';
   if (LB.tab === 'global') {
     if (LB.status === 'live') { rows = LB.rows; note = 'One entry per player: your best run this season.'; }
-    else { rows = []; note = LB.status === 'loading' ? 'Connecting to the global board.' : IS_APP ? 'The app keeps scores on this device. Your runs are on the This device tab.' : 'The global board is not available on this page. Your runs are on the This device tab.'; }
+    else { rows = []; note = LB.status === 'loading' ? 'Connecting to the global board.' : PLATFORM !== 'web' ? 'The app keeps scores on this device (the global board is on the web version). Your runs are on the This device tab.' : 'The global board is not available on this page. Your runs are on the This device tab.'; }
   } else { rows = store.get('zc_lb_' + SEASON, []); note = 'Runs played in this browser this season.'; }
-  if (!rows.length) {
+  if (!rows.length || (LB.dev !== 'all' && !rows.some(r => r.dev === LB.dev))) {
     const li = document.createElement('li'); li.className = 'empty';
-    li.textContent = LB.tab === 'global' && LB.status !== 'live' ? 'No global board here.' : 'No scores yet this season. Be the first.';
+    li.textContent = LB.tab === 'global' && LB.status !== 'live' ? 'No global board here.' : LB.dev !== 'all' && rows.length ? 'No ' + DEV_SHORT[LB.dev].toLowerCase() + ' scores yet this season.' : 'No scores yet this season. Be the first.';
     list.appendChild(li);
   }
+  if (LB.dev !== 'all') rows = rows.filter(r => r.dev === LB.dev);
+  document.querySelectorAll('#lbFilter button').forEach(b => { const on = b.dataset.d === LB.dev; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
   rows.slice(0, 50).forEach((r, i) => {
     const li = document.createElement('li'); li.className = 'lb-row' + (i < 3 ? ' top' : '') + (LB.tab === 'global' && r.id === LB.uid ? ' me' : '');
     const c1 = document.createElement('span'); c1.className = 'rk'; c1.textContent = '#' + (i + 1);
     const c2 = document.createElement('span'); c2.className = 'tg'; c2.textContent = cleanTag(r.tag) + (LB.tab === 'global' && r.id === LB.uid ? ' (you)' : '');
     const c3 = document.createElement('span'); c3.className = 'sc'; c3.textContent = Number(r.score || 0).toLocaleString();
     const c4 = document.createElement('span'); c4.className = 'wv'; c4.textContent = 'W' + (r.wave || 0);
-    li.append(c1, c2, c3, c4); list.appendChild(li);
+    const c5 = document.createElement('span'); c5.className = 'dv'; if (r.dev) { c5.append(devIcon(r.dev)); c5.title = DEV_SHORT[r.dev] || ''; }
+    li.append(c1, c2, c3, c4, c5); list.appendChild(li);
   });
   $('lbNote').textContent = note;
 }
@@ -1398,7 +1389,7 @@ function render() {
   if (vz) drawVizScreen(vz);
   tw = performance.now(); drawWeatherScreen(Math.min(0.05, (performance.now() - (render.lt || performance.now())) / 1000)); render.lt = performance.now(); PERF.sec.wx += performance.now() - tw;
   if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') {
-    drawScreenFx(); drawDashScreen();
+    drawScreenFx(); drawDashScreen(); drawAim();
     if (G.flashA > 0) { ctx.globalAlpha = Math.min(0.5, G.flashA); ctx.drawImage(screenGrad('a10', 0.1, 0.8, '255,214,150', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
   }
 }
@@ -1743,9 +1734,9 @@ function drawScreenFx() {
     const R = JR(), k = SET.joySize / 100;
     ctx.strokeStyle = 'rgba(235,229,214,0.28)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(joy.ox, joy.oy, R, 0, TAU); ctx.stroke();
     ctx.fillStyle = 'rgba(242,204,58,0.42)'; ctx.beginPath(); ctx.arc(joy.ox + joy.kx, joy.oy + joy.ky, 22 * k, 0, TAU); ctx.fill();
-  } else if (G.mode === 'play' && TOUCH && SET.joy === 'fixed') {
+  } else if (G.mode === 'play' && DEV.kind === 'touch' && SET.joy === 'fixed') {
     const h = joyHome(); ctx.strokeStyle = 'rgba(235,229,214,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(h[0], h[1], JR(), 0, TAU); ctx.stroke();
-  } else if (G.mode === 'play' && TOUCH && G.hintT > 0 && SET.hints) {
+  } else if (G.mode === 'play' && DEV.kind === 'touch' && G.hintT > 0 && SET.hints) {
     const a = clamp(G.hintT, 0, 1) * 0.35, hx = SET.lefty ? W - 96 : 96; ctx.strokeStyle = 'rgba(235,229,214,' + a + ')'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(hx, H - 120, 56, 0, TAU); ctx.stroke();
     ctx.fillStyle = 'rgba(235,229,214,' + a + ')'; ctx.font = "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 120);
@@ -1794,6 +1785,7 @@ function updHud() {
 /* ================= loop ================= */
 function update(dt) {
   G.time += dt; if (G.hintT > 0) G.hintT -= dt;
+  DEV.useT[DEV.kind] += dt;
   updPlayer(dt);
   spawner(dt);
   buildGrid();
@@ -1852,6 +1844,7 @@ function frame(now) {
   const t0 = performance.now();
   try {
     if (SFX.tick) SFX.tick();
+    padPoll(rdt);
     vzNow = vizFrame();
     if (G.mode === 'play') update(dt);
     else if (G.mode === 'cine') updCine(dt);
@@ -1873,6 +1866,7 @@ function frame(now) {
 /*__ARSENAL__*/
 resize();
 initAttract();
+applyDev();
 refreshTitle();
 // every launch opens with the studio intro (tests and ?nointro links go straight to the title)
 if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) { $('intro').hidden = true; showOv('title'); } else startIntro();

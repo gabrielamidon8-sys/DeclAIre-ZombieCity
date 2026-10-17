@@ -535,6 +535,7 @@ function drawFlame(x, y, r, ph) {
 }
 // a short buzz on phones that support it (if the player allows it)
 function buzz(ms) {
+  if (DEV.kind === 'pad') { padRumble(ms); return; }   // a controller rumbles instead of the phone
   if (!SET.vibrate) return;
   try { const n = window.ZCNative; if (n && n.vibrate) { n.vibrate(ms | 0); return; } if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { }
 }

@@ -16,3 +16,6 @@ zc-test-body.html
 
 # Backup bundles (they hold the APKs, which go on the Releases page)
 *.zip
+
+# Built Windows app page (node build.js win)
+desktop/app/

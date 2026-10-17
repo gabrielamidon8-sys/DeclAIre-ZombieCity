@@ -60,6 +60,7 @@ function introBuild() {
   }
   INTRO.dust = []; INTRO.debris = []; INTRO.embers = []; INTRO.bite = null; INTRO.shake = 0;
   INTRO.sk = { art: introSkullArt(), x: w / 2, y: INTRO.roadY - INTRO.RH * 0.8, s: 0, jaw: 0, lit: 0, open: 0 };
+  introCity();
 }
 
 /* ---------- timeline events ---------- */
@@ -233,6 +234,218 @@ function drawSkull(g, t) {
   g.restore();
 }
 
+/* ---------- the city around the road (1.9.60) ----------
+   Rooftops seen from above fill the space on both sides of the road. They drop into place block by block as the road
+   is laid, the street lamps come on in a wave, a roof catches fire and a police car flashes in an alley once the
+   stampede comes, and when the skull laughs the lights flicker and die one by one. */
+let IGLOW = null;
+function introGlow() {
+  if (IGLOW) return IGLOW;
+  IGLOW = {};
+  for (const [k, c] of [['warm', '255,196,120'], ['red', '255,50,60'], ['blue', '70,120,255'], ['fire', '255,120,40'], ['white', '235,235,255']]) {
+    const cv2 = document.createElement('canvas'); cv2.width = cv2.height = 128; const g = cv2.getContext('2d');
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(' + c + ',0.9)'); gr.addColorStop(0.35, 'rgba(' + c + ',0.35)'); gr.addColorStop(1, 'rgba(' + c + ',0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128); IGLOW[k] = cv2;
+  }
+  return IGLOW;
+}
+const IROOFS = [[52, 56, 63], [58, 55, 52], [47, 53, 50], [61, 60, 58], [44, 48, 56], [66, 58, 50], [50, 50, 54]];
+function introCity() {
+  const w = INTRO.w, h = INTRO.h, B = INTRO.B, top = INTRO.roadY - INTRO.RH / 2, span = T1.build1 - T1.build0 - 0.25;
+  const C = { bld: [], lamps: [], props: [], smoke: [], embers: [], fog: [], streets: [], trees: [] };
+  const upEdge = top - B - 3, dnEdge = top + INTRO.RH + B + 3;
+  const lite = PERF.tier <= 0;
+  // side streets run off the main road, up and down, which breaks up the blocks
+  const nst = w < 700 ? 1 : w < 1150 ? 2 : 3, spots = nst === 1 ? [rand(0.15, 0.3)] : nst === 2 ? [rand(0.14, 0.3), rand(0.6, 0.8)] : [rand(0.12, 0.3), rand(0.52, 0.66), rand(0.82, 0.95)];
+  for (const fx of spots) C.streets.push({ x: fx * w, w: B * rand(1.5, 1.9), up: Math.random() < 0.8, dn: Math.random() < 0.8, ta: T1.build0 + fx * span + 0.05 });
+  const inStreet = (x0, x1, side) => C.streets.some(st => (side < 0 ? st.up : st.dn) && x1 > st.x - st.w / 2 - 6 && x0 < st.x + st.w / 2 + 6);
+  // rows of buildings outward from the road until the screen edge is covered (a little past it for the camera zoom)
+  const rows = (side) => {
+    let edge = side < 0 ? upEdge : dnEdge, row = 0;
+    while (side < 0 ? edge > -60 : edge < h + 60) {
+      const depth = B * rand(1.6, 3.4) + (row ? B * 0.6 : 0), gapY = row ? B * rand(0.25, 0.5) : 0;
+      let x = -50 - rand(0, B * 2);
+      while (x < w + 50) {
+        const bw = B * rand(1.7, 3.8), alley = Math.random() < 0.35 ? 0 : B * rand(0.3, 0.75);
+        const blocked = C.streets.find(st => (side < 0 ? st.up : st.dn) && x + bw > st.x - st.w / 2 - 6 && x < st.x + st.w / 2 + 6);
+        if (blocked) { x = blocked.x + blocked.w / 2 + 8; continue; }
+        if (row > 0 && Math.random() < 0.1) {   // an empty lot with a couple of trees
+          const ly = side < 0 ? edge - gapY - depth * 0.5 : edge + gapY + depth * 0.5;
+          for (let i = 0; i < 3; i++) C.trees.push({ x: x + bw * rand(0.2, 0.8), y: ly + rand(-0.3, 0.3) * depth, r: B * rand(0.35, 0.6), ta: T1.build0 + clamp(x / w, 0, 1) * span + 0.3 });
+          x += bw + alley; continue;
+        }
+        const y = side < 0 ? edge - gapY - depth : edge + gapY, dd = depth * rand(0.82, 1);
+        const b = { x: x, y: side < 0 ? y + (depth - dd) : y, w: bw, d: dd, side: side, row: row, col: IROOFS[(Math.random() * IROOFS.length) | 0], sh: rand(-6, 6),
+          ta: T1.build0 + clamp((x + bw / 2) / w, 0, 1) * span + 0.1 + row * 0.12 + rand(0, 0.12), det: [], win: [] };
+        // rooftop details
+        const n = lite ? 1 : 2 + ((Math.random() * 4) | 0);
+        for (let i = 0; i < n; i++) {
+          const k = Math.random();
+          b.det.push({ k: k < 0.35 ? 'ac' : k < 0.55 ? 'vent' : k < 0.7 ? 'tank' : k < 0.85 ? 'sky' : 'ant', u: rand(0.12, 0.88), v: rand(0.18, 0.7), s: rand(0.7, 1.2) });
+        }
+        // facade windows facing south (the road, for the row above it)
+        if (bw > B * 2.5 && Math.random() < 0.5) b.top = { u: rand(0.1, 0.35), v: rand(0.1, 0.3), w: rand(0.35, 0.55), h: rand(0.35, 0.55) };   // a taller part of the building
+        const nw = Math.max(2, Math.floor(bw / (B * 0.34)));
+        for (let i = 0; i < nw; i++) b.win.push({ lit: Math.random() < 0.38, tv: Math.random() < 0.12, ph: rand(TAU), off: rand(0.2, 1) });
+        C.bld.push(b);
+        if (alley > B * 0.45 && Math.random() < 0.3) C.trees.push({ x: x + bw + alley / 2, y: side < 0 ? edge - gapY - depth * rand(0.2, 0.8) : edge + gapY + depth * rand(0.2, 0.8), r: Math.min(alley * 0.55, B * 0.5), ta: T1.build0 + clamp(x / w, 0, 1) * span + 0.3 });
+        else if (alley > B * 0.5 && Math.random() < 0.45) C.props.push({ k: Math.random() < 0.55 ? 'car' : 'bin', x: x + bw + alley / 2, y: side < 0 ? edge - gapY - depth * rand(0.3, 0.7) : edge + gapY + depth * rand(0.3, 0.7), a: rand(-0.3, 0.3) + (Math.random() < 0.5 ? Math.PI / 2 : 0), c: ['#5a2a26', '#2c3d52', '#3d3f44', '#4a4434', '#202326'][(Math.random() * 5) | 0], burnt: Math.random() < 0.3, ta: b.ta + 0.2 });
+        x += bw + alley;
+      }
+      edge = side < 0 ? edge - gapY - depth : edge + gapY + depth; row++;
+      if (row > 8) break;
+    }
+  };
+  rows(-1); rows(1);
+  // one burning roof up top, one police car in an alley below
+  const near = (side, fx) => C.bld.filter(b => b.side === side && b.row === 0).sort((a, b) => Math.abs(a.x + a.w / 2 - w * fx) - Math.abs(b.x + b.w / 2 - w * fx))[0];
+  const fb = near(-1, 0.74); if (fb) fb.fire = true;
+  const pb = near(1, 0.24); if (pb) C.props.push({ k: 'police', x: pb.x + pb.w + B * 0.35, y: dnEdge + B * 0.9, a: Math.PI / 2 + 0.2, ta: T1.build1 });
+  // street lamps on both sidewalks
+  for (let x = B * 2.2, i = 0; x < w + B; x += B * 4.6, i++) {
+    C.lamps.push({ x: x, y: top - B * 0.82, ny: top + B * 0.2, on: T1.build1 + 0.12 + x / w * 0.5, die: T1.lunge - 0.5 + rand(0, 0.45), flick: Math.random() < 0.18, ph: rand(TAU) });
+    C.lamps.push({ x: x + B * 2.3, y: top + INTRO.RH + B * 0.82, ny: top + INTRO.RH - B * 0.2, on: T1.build1 + 0.2 + (x + B * 2.3) / w * 0.5, die: T1.lunge - 0.5 + rand(0, 0.45), flick: Math.random() < 0.18, ph: rand(TAU) });
+  }
+  // drifting fog over the rooftops
+  if (!lite) for (let i = 0; i < 7; i++) C.fog.push({ x: rand(-0.2, 1.1) * w, y: i % 2 ? rand(0, upEdge) : rand(dnEdge, h), r: rand(0.18, 0.34) * Math.max(w, h), v: rand(6, 16) });
+  INTRO.city = C;
+}
+function drawCar(g, x, y, a, len, col, burnt) {
+  g.save(); g.translate(x, y); g.rotate(a);
+  const L = len, Wd = len * 0.46;
+  g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(-L / 2 + 3, -Wd / 2 + 3, L, Wd);
+  g.fillStyle = burnt ? '#1b1a19' : col; g.beginPath(); g.roundRect ? g.roundRect(-L / 2, -Wd / 2, L, Wd, Wd * 0.3) : g.rect(-L / 2, -Wd / 2, L, Wd); g.fill();
+  g.fillStyle = burnt ? '#0c0b0b' : 'rgba(140,170,190,0.55)'; g.fillRect(L * 0.08, -Wd * 0.36, L * 0.18, Wd * 0.72); g.fillRect(-L * 0.34, -Wd * 0.34, L * 0.12, Wd * 0.68);
+  g.fillStyle = burnt ? '#2a2522' : 'rgba(255,255,255,0.08)'; g.fillRect(-L * 0.2, -Wd * 0.38, L * 0.26, Wd * 0.76);
+  g.restore();
+}
+// rooftops, alleys and props (drawn before the road)
+function drawCity(g, t, dt) {
+  const C = INTRO.city; if (!C) return;
+  const B = INTRO.B, dark = t > T1.lunge ? clamp((t - T1.lunge) / 0.3, 0, 1) : 0, glow = introGlow();
+  const top = INTRO.roadY - INTRO.RH / 2, bot = top + INTRO.RH;
+  for (const st of C.streets) {
+    const k = clamp((t - st.ta) / 0.4, 0, 1); if (k <= 0) continue;
+    g.globalAlpha = k;
+    const x0 = st.x - st.w / 2, len = Math.max(INTRO.h, 400) * k;
+    g.fillStyle = '#1d2024';
+    if (st.up) g.fillRect(x0, top - B - len, st.w, len);
+    if (st.dn) g.fillRect(x0, bot + B, st.w, len);
+    g.fillStyle = '#34383f';
+    if (st.up) { g.fillRect(x0 - B * 0.28, top - B - len, B * 0.28, len); g.fillRect(x0 + st.w, top - B - len, B * 0.28, len); }
+    if (st.dn) { g.fillRect(x0 - B * 0.28, bot + B, B * 0.28, len); g.fillRect(x0 + st.w, bot + B, B * 0.28, len); }
+    if (t > T1.paint) {
+      g.fillStyle = 'rgba(214,180,80,0.6)';
+      if (st.up) for (let y = top - B - 30; y > top - B - len; y -= 46) g.fillRect(st.x - 2, y, 4, 24);
+      if (st.dn) for (let y = bot + B + 8; y < bot + B + len; y += 46) g.fillRect(st.x - 2, y, 4, 24);
+      g.fillStyle = 'rgba(230,226,214,0.4)';   // a crosswalk where it meets the main road
+      for (let i = 0; i < 5; i++) { const xx = x0 + 4 + i * (st.w - 8) / 5; if (st.up) g.fillRect(xx, top - B * 0.9, (st.w - 8) / 10, B * 0.7); if (st.dn) g.fillRect(xx, bot + B * 0.2, (st.w - 8) / 10, B * 0.7); }
+    }
+  }
+  g.globalAlpha = 1;
+  for (const b of C.bld) {
+    const k = clamp((t - b.ta) / 0.32, 0, 1); if (k <= 0) continue;
+    const e = easeOutBack(k), sc = 0.55 + 0.45 * e, cx = b.x + b.w / 2, cy = b.y + b.d / 2;
+    g.save(); g.translate(cx, cy); g.scale(sc, sc); g.translate(-cx, -cy); g.globalAlpha = Math.min(1, k * 2);
+    const fh = Math.min(B * 0.38, b.d * 0.22), rh = b.d - fh, [r0, g0, b0] = b.col, v = b.sh;
+    // shadow on the ground, light from the top left
+    g.fillStyle = 'rgba(0,0,0,0.42)'; g.fillRect(b.x + 6, b.y + 6, b.w, b.d);
+    // roof
+    g.fillStyle = 'rgb(' + (r0 + v) + ',' + (g0 + v) + ',' + (b0 + v) + ')'; g.fillRect(b.x, b.y, b.w, rh);
+    g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(b.x, b.y, b.w, 2); g.fillRect(b.x, b.y, 2, rh);
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 2; g.strokeRect(b.x + 4, b.y + 4, b.w - 8, rh - 8);
+    if (b.top) {
+      const tx = b.x + b.top.u * b.w, ty = b.y + b.top.v * rh, tw = b.top.w * b.w, th = b.top.h * rh;
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(tx + 5, ty + 5, tw, th);
+      g.fillStyle = 'rgb(' + (r0 + v + 9) + ',' + (g0 + v + 9) + ',' + (b0 + v + 10) + ')'; g.fillRect(tx, ty, tw, th);
+      g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(tx, ty, tw, 2); g.fillRect(tx, ty, 2, th);
+    }
+    for (const q of b.det) {
+      const x = b.x + q.u * b.w, y = b.y + q.v * rh, s = B * 0.22 * q.s;
+      if (q.k === 'ac') { g.fillStyle = '#7b8088'; g.fillRect(x - s, y - s * 0.7, s * 2, s * 1.4); g.fillStyle = '#2c3036'; g.beginPath(); g.arc(x, y, s * 0.5, 0, TAU); g.fill(); g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x - s + 2, y + s * 0.7, s * 2, 3); }
+      else if (q.k === 'vent') { g.fillStyle = '#3a3e44'; g.fillRect(x - s * 0.5, y - s * 0.5, s, s); g.fillStyle = '#9aa0a8'; g.fillRect(x - s * 0.35, y - s * 0.35, s * 0.7, s * 0.2); }
+      else if (q.k === 'tank') { g.fillStyle = '#5b4a38'; g.beginPath(); g.arc(x, y, s * 0.95, 0, TAU); g.fill(); g.strokeStyle = '#3a2f24'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, s * 0.6, 0, TAU); g.stroke(); }
+      else if (q.k === 'sky') { g.fillStyle = 'rgba(150,190,210,0.28)'; g.fillRect(x - s * 1.2, y - s * 0.6, s * 2.4, s * 1.2); g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 1; g.strokeRect(x - s * 1.2, y - s * 0.6, s * 2.4, s * 1.2); }
+      else { g.strokeStyle = '#8a9099'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x + s * 1.6, y - s * 1.2); g.moveTo(x + s * 0.5, y - s * 0.35); g.lineTo(x + s * 0.9, y + s * 0.2); g.stroke(); if (Math.sin(t * 5 + q.u * 9) > 0.6 && !dark) { g.fillStyle = '#ff3a3a'; g.fillRect(x + s * 1.6 - 1.5, y - s * 1.2 - 1.5, 3, 3); } }
+    }
+    if (b.fire && t > T1.rumble) {   // a hole burnt through the roof
+      const fx = b.x + b.w * 0.5, fy = b.y + rh * 0.5;
+      g.fillStyle = '#0b0807'; g.beginPath(); g.ellipse(fx, fy, b.w * 0.26, rh * 0.28, 0.2, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,' + (110 + Math.sin(t * 23) * 30 | 0) + ',30,0.9)'; g.beginPath(); g.ellipse(fx, fy, b.w * 0.17 * (0.9 + Math.sin(t * 17) * 0.1), rh * 0.17, 0, 0, TAU); g.fill();
+    }
+    // facade with windows along the south edge
+    g.fillStyle = 'rgb(' + (r0 * 0.55 | 0) + ',' + (g0 * 0.55 | 0) + ',' + (b0 * 0.6 | 0) + ')'; g.fillRect(b.x, b.y + rh, b.w, fh);
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(b.x, b.y + rh, b.w, 2);
+    const n = b.win.length, ww = b.w / n;
+    for (let i = 0; i < n; i++) {
+      const q = b.win[i]; let on = q.lit && t > b.ta + 0.4 * q.off + 0.3;
+      if (on && dark > q.off) on = false;
+      if (on && t > T1.laugh && t < T1.lunge && Math.sin(t * 31 + q.ph) > 0.4) on = false;
+      g.fillStyle = on ? (q.tv ? 'rgba(120,170,255,' + (0.55 + 0.3 * Math.sin(t * 9 + q.ph)) + ')' : 'rgba(255,206,120,0.82)') : 'rgba(8,10,14,0.45)';
+      g.fillRect(b.x + i * ww + ww * 0.22, b.y + rh + fh * 0.28, ww * 0.56, fh * 0.46);
+    }
+    g.restore();
+  }
+  g.globalAlpha = 1;
+  for (const q of C.trees) {
+    const k = clamp((t - q.ta) / 0.3, 0, 1); if (k <= 0) continue;
+    const r = q.r * (0.6 + 0.4 * easeOutBack(k)), sw = Math.sin(t * 1.6 + q.x * 0.03) * 1.2;
+    g.globalAlpha = Math.min(1, k * 2);
+    g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(q.x + 5, q.y + 6, r, 0, TAU); g.fill();
+    g.fillStyle = '#1f3324'; g.beginPath(); g.arc(q.x + sw, q.y, r, 0, TAU); g.fill();
+    g.fillStyle = '#2b4630'; g.beginPath(); g.arc(q.x + sw - r * 0.25, q.y - r * 0.25, r * 0.62, 0, TAU); g.fill();
+  }
+  g.globalAlpha = 1;
+  for (const q of C.props) {
+    const k = clamp((t - q.ta) / 0.3, 0, 1); if (k <= 0) continue;
+    g.globalAlpha = k;
+    if (q.k === 'bin') { g.save(); g.translate(q.x, q.y); g.rotate(q.a); g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(-B * 0.3 + 3, -B * 0.2 + 3, B * 0.6, B * 0.4); g.fillStyle = '#2f4a35'; g.fillRect(-B * 0.3, -B * 0.2, B * 0.6, B * 0.4); g.fillStyle = '#1e3022'; g.fillRect(-B * 0.3, -B * 0.2, B * 0.6, B * 0.1); g.restore(); }
+    else drawCar(g, q.x, q.y, q.a, B * 1.25, q.k === 'police' ? '#e8e6e0' : q.c, q.burnt);
+    if (q.k === 'police' && t > T1.rumble && !dark) { g.fillStyle = Math.sin(t * 18) > 0 ? '#ff3344' : '#3d6bff'; g.beginPath(); g.arc(q.x, q.y, B * 0.1, 0, TAU); g.fill(); }
+  }
+  g.globalAlpha = 1;
+}
+// light falling on the street: lamps, the fire and the police lights (drawn after the road, before the runners)
+function drawCityLights(g, t, dt) {
+  const C = INTRO.city; if (!C) return;
+  const B = INTRO.B, glow = introGlow(), dark = t > T1.lunge;
+  g.globalCompositeOperation = 'lighter';
+  for (const L of C.lamps) {
+    let on = t > L.on && t < L.die;
+    if (on && t - L.on < 0.25) on = Math.sin((t - L.on) * 60) > -0.2;          // a buzz as it comes on
+    if (on && L.flick && Math.sin(t * 13 + L.ph) + Math.sin(t * 29 + L.ph) > 1.3) on = false;
+    if (on && t > T1.laugh && Math.sin(t * 40 + L.ph * 3) > 0.55) on = false;   // the skull's laugh shakes the power
+    if (!on) continue;
+    const R = B * 2.4;
+    g.globalAlpha = 0.55; g.drawImage(glow.warm, L.x - R, L.ny - R * 0.62, R * 2, R * 1.24);
+    g.globalAlpha = 0.9; g.drawImage(glow.warm, L.x - B * 0.35, L.y - B * 0.35, B * 0.7, B * 0.7);
+  }
+  if (!dark && t > T1.rumble) {
+    const fb = C.bld.find(b => b.fire);
+    if (fb) { const fl = 0.75 + 0.25 * Math.sin(t * 19) * Math.sin(t * 7.3), R = B * 3.2 * fl; g.globalAlpha = 0.6; g.drawImage(glow.fire, fb.x + fb.w / 2 - R, fb.y + fb.d * 0.4 - R, R * 2, R * 2); }
+    const pc = C.props.find(q => q.k === 'police');
+    if (pc) { const red = Math.sin(t * 18) > 0, R = B * 2.6; g.globalAlpha = 0.5; g.drawImage(red ? glow.red : glow.blue, pc.x - R, pc.y - R, R * 2, R * 2); }
+  }
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  // smoke and embers from the fire, fog drifting over the roofs
+  const fb = C.bld.find(b => b.fire);
+  if (fb && t > T1.rumble && !INTRO.frozen) {
+    if (Math.random() < dt * 9 && C.smoke.length < 26) C.smoke.push({ x: fb.x + fb.w / 2 + rand(-8, 8), y: fb.y + fb.d * 0.4, r: B * 0.3, life: 2.6, max: 2.6 });
+    if (Math.random() < dt * 22 && C.embers.length < 50) C.embers.push({ x: fb.x + fb.w / 2 + rand(-10, 10), y: fb.y + fb.d * 0.4, vx: rand(10, 40), vy: -rand(30, 80), life: rand(0.8, 1.8) });
+  }
+  if (!INTRO.frozen) {
+    for (const q of C.smoke) { q.life -= dt; q.r += dt * B * 0.5; q.x += dt * 22; q.y -= dt * 14; }
+    for (const q of C.embers) { q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx += Math.sin(t * 3 + q.y * 0.05) * 20 * dt; }
+    C.smoke = C.smoke.filter(q => q.life > 0); C.embers = C.embers.filter(q => q.life > 0);
+    for (const f of C.fog) { f.x += f.v * dt; if (f.x - f.r > INTRO.w + 40) f.x = -f.r; }
+  }
+  for (const q of C.smoke) { g.globalAlpha = clamp(q.life / q.max, 0, 1) * 0.3; g.fillStyle = '#2a2a2c'; g.beginPath(); g.arc(q.x, q.y, q.r, 0, TAU); g.fill(); }
+  g.fillStyle = '#ffb04a'; for (const q of C.embers) { g.globalAlpha = clamp(q.life, 0, 1); g.fillRect(q.x, q.y, 2, 2); }
+  const fa = clamp((t - T1.build1) / 1.2, 0, 1) * 0.07;
+  if (fa > 0) for (const f of C.fog) { g.globalAlpha = fa; g.drawImage(glow.white, f.x - f.r, f.y - f.r * 0.5, f.r * 2, f.r); }
+  g.globalAlpha = 1;
+}
+
 /* ---------- card 1 ---------- */
 function drawIntro1(dt) {
   const g = IG, t = INTRO.t, w = INTRO.w, h = INTRO.h, d = INTRO.d;
@@ -249,8 +462,10 @@ function drawIntro1(dt) {
   if (amb > 0) { g.globalAlpha = amb; g.fillStyle = '#0d1014'; g.fillRect(-30, -30, w + 60, h + 60); g.globalAlpha = 1; }
   // build the stampede's sprites a few per frame while the road is laid, so nothing hitches when they arrive
   if (t < T1.run) { let k = 0; for (const r of INTRO.runners) { if (r.kind === 'z' && !r.warm) { getSprite(r.m, r.r, true); r.warm = 1; if (++k >= 4) break; } } }
+  drawCity(g, t, dt);
   drawRoadBlocks(g, t);
   drawBite(g);
+  drawCityLights(g, t, dt);
   // runners, dust behind them
   let onScreen = 0;
   for (const q of INTRO.dust) { q.life -= dt; q.r += dt * 30; q.x += q.vx * dt; }

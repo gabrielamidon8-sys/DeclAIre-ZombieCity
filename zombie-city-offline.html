@@ -1114,6 +1114,161 @@ button.lcd{cursor:pointer}
 #rpMore .set-row.mini{flex:1 1 100%;padding:8px 10px}
 #rpMore .set-row.mini .set-txt p{display:none}
 .lefty #airBtn{right:auto;left:max(26px, calc(env(safe-area-inset-left, 0px) + 18px))}
+
+/* ---------- 1.9.60: devices, your name, the main menu panel, key bindings ---------- */
+.dev-ic{display:inline-grid;place-items:center;flex:none;width:18px;height:18px}
+.dev-ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.dev-ic circle{fill:currentColor}
+/* the key or button for each HUD button, on PC and controller */
+.glyph{display:none;position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);padding:1px 5px;font-family:var(--f-num);font-style:normal;font-size:10px;line-height:1.35;letter-spacing:.04em;text-transform:none;white-space:nowrap;color:var(--tape-ink);background:var(--tape);border-radius:2px;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.dev-kbm .glyph,.dev-pad .glyph{display:block}
+#pauseBtn{position:relative}
+#pauseBtn .glyph{bottom:-11px}
+.dev-kbm #dashBtn,.dev-pad #dashBtn{width:66px;height:66px}
+.dev-kbm #airBtn,.dev-pad #airBtn{width:56px;height:56px;bottom:104px}
+.dev-pad #app,.dev-pad #app *{cursor:none!important}
+.dev-pad button:focus,.dev-pad input:focus,.dev-pad [tabindex]:focus,.dev-pad a:focus{outline:3px solid var(--tape)!important;outline-offset:2px;box-shadow:0 0 0 7px rgba(242,204,58,.16)}
+.dev-pad .gcard kbd{display:none}
+/* your name, top left during a run */
+.hud-name{display:flex;align-items:center;gap:6px;align-self:flex-start;max-width:100%;padding:2px 9px 2px 6px;font-family:var(--f-num);font-size:13px;line-height:1.3;letter-spacing:.14em;color:var(--bone);background:rgba(8,10,13,.55);border-left:2px solid var(--tape);text-shadow:0 1px 2px #000}
+.hud-name b{font-weight:400;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hud-name .dev-ic{width:15px;height:15px;color:var(--tape)}
+/* your name on the main menu */
+.profile{display:flex;flex-direction:column;gap:6px}
+.profile label{font-family:var(--f-num);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.pf-row{display:flex;gap:8px;max-width:440px}
+.pf-row input{flex:1 1 auto;min-width:0;height:44px;padding:0 12px;background:rgba(8,10,13,.8);border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:18px;letter-spacing:.14em;text-transform:uppercase;-webkit-user-select:text;user-select:text}
+.pf-row input::placeholder{color:#6f747c;letter-spacing:.08em}
+.pf-row input:focus{outline:none;border-color:var(--tape)}
+.pf-row .btn{min-height:44px;padding:8px 16px}
+.profile.unnamed .pf-row input{animation:namepulse 2.4s ease-in-out infinite}
+@keyframes namepulse{50%{box-shadow:0 0 0 3px rgba(242,204,58,.24)}}
+#nameSave.ok{border-color:#7dff4a;color:#7dff4a}
+.dev-badge{display:flex;align-items:center;gap:7px;min-height:18px;font-family:var(--f-num);font-size:12px;letter-spacing:.05em;color:#bdb7a8}
+.dev-badge .dev-ic{color:var(--tape)}
+/* the main menu's side panel on wide screens */
+.title-panel{display:none}
+@media (min-width:1180px) and (min-height:620px){
+  .title-panel{position:absolute;z-index:1;right:clamp(24px, 3.5vw, 64px);top:clamp(130px, 20vh, 200px);bottom:26px;width:min(410px, 29vw);display:flex;flex-direction:column;justify-content:flex-end;gap:10px;overflow:hidden}
+}
+.tp-card{flex:none;padding:12px 14px 13px;background:linear-gradient(180deg, rgba(24,28,35,.93), rgba(13,16,20,.93));border:1px solid var(--line);border-radius:3px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.title-panel.fresh .tp-card,#title.reveal .tp-card{animation:rise .5s ease-out both}
+#title.reveal .tp-card{animation-delay:.45s}#title.reveal .tp-card:nth-child(2){animation-delay:.52s}#title.reveal .tp-card:nth-child(3){animation-delay:.59s}#title.reveal .tp-card:nth-child(4){animation-delay:.66s}
+.tp-card:nth-child(2){animation-delay:.07s}.tp-card:nth-child(3){animation-delay:.14s}.tp-card:nth-child(4){animation-delay:.21s}
+.tp-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px;font-family:var(--f-num);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--tape)}
+.tp-head em{font-style:normal;color:var(--muted);letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-file{border-top:3px solid var(--tape);background:repeating-linear-gradient(-45deg, rgba(255,255,255,.012) 0 6px, transparent 6px 12px), linear-gradient(180deg, rgba(24,28,35,.94), rgba(13,16,20,.94))}
+.tp-id{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tp-name{min-width:0;font-family:var(--f-display);font-weight:400;font-size:30px;line-height:1.02;letter-spacing:.02em;color:var(--bone);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-name.none{font-size:22px;color:#6f747c}
+.tp-id .dev-ic{width:26px;height:26px;color:var(--tape)}
+.tp-dev{margin-top:3px;font-family:var(--f-num);font-size:12px;color:#a9a396}
+.tp-stats{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:6px;margin:11px 0 0}
+.tp-stats div{min-width:0;padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(235,229,214,.08)}
+.tp-stats dt{font-family:var(--f-num);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.tp-stats dd{margin:2px 0 0;font-family:var(--f-num);font-size:16px;color:var(--bone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-keys{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:7px 12px}
+.tp-keys li{display:flex;align-items:center;gap:8px;min-width:0}
+.kcs{display:flex;gap:3px;flex:none}
+.kc{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;font-family:var(--f-num);font-size:12px;line-height:1;color:var(--bone);background:linear-gradient(#2b313a, #1a1e25);border:1px solid #3e4550;border-bottom-width:3px;border-radius:4px;white-space:nowrap}
+.kc.wide{font-size:11px}
+.kw{min-width:0;font-size:13px;color:#cfc9bb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-btn{margin-top:10px;min-height:32px;padding:4px 11px;font-size:11px}
+.tp-rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.tp-rows li{display:grid;grid-template-columns:30px minmax(0, 1fr) auto 18px;gap:8px;align-items:center;padding:5px 8px;background:rgba(255,255,255,.03);font-variant-numeric:tabular-nums}
+.tp-rows li.tp-empty{display:block;background:none;padding:2px 0;font-size:13px;color:var(--muted)}
+.tp-rows li.me{outline:1px solid var(--tape)}
+.tp-rows .rk{font-family:var(--f-num);color:var(--tape)}
+.tp-rows .tg{font-weight:600;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-rows .sc{font-family:var(--f-num)}
+.tp-rows .dev-ic{width:16px;height:16px;color:var(--muted)}
+.tp-note{margin-top:7px;font-size:12px;color:var(--muted)}
+.tp-new ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:3px;font-size:13px;color:#cfc9bb}
+.tp-new li::marker{color:var(--tape)}
+@media (max-height:979px){.tp-new{display:none}}
+@media (max-height:779px){.tp-board{display:none}}
+/* Settings > Controls */
+.set-sub{margin:10px 0 2px;font-family:var(--f-num);font-weight:400;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.set-devnow{display:flex;align-items:center;gap:12px;margin-bottom:6px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px}
+.set-devnow .dev-ic{width:30px;height:30px;color:var(--tape)}
+.set-devnow b{font-size:14px}
+.set-devnow p{font-size:13px;color:#a9a396}
+.binds{display:flex;flex-direction:column;gap:4px}
+.bind-row{display:grid;grid-template-columns:minmax(0, 1fr) minmax(96px, 150px) minmax(96px, 150px);gap:6px;align-items:center;padding:6px 8px 6px 14px;background:var(--panel);border:1px solid var(--line);border-radius:2px}
+.bind-name{font-size:14px;color:#d8d2c4}
+.bind-key{height:34px;padding:0 10px;font-family:var(--f-num);font-size:13px;color:var(--bone);background:linear-gradient(#2b313a, #1a1e25);border:1px solid #3e4550;border-bottom-width:3px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bind-key:hover{border-color:#5b6471}
+.bind-key.empty{color:#5d636b;background:transparent;border-style:dashed;border-bottom-width:1px}
+.bind-key.listen{color:var(--tape-ink);background:var(--tape);border-color:var(--tape);animation:listen 1s ease-in-out infinite}
+@keyframes listen{50%{filter:brightness(1.25)}}
+.bind-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding-top:4px}
+.bind-foot .set-note{flex:1 1 300px;padding:4px 2px}
+@media (max-width:520px){.bind-row{grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);padding-left:10px}.bind-name{grid-column:1 / -1}}
+/* the leaderboard: who played on what */
+.lb-filter{display:flex;flex-wrap:wrap;gap:6px}
+.lb-filter button{padding:6px 13px;border:1px solid var(--line);border-radius:999px;background:transparent;font-size:12px;letter-spacing:.06em;color:#cfc9bb}
+.lb-filter button.on{background:var(--bone);border-color:var(--bone);color:var(--night)}
+.lb-row,.lb-head{grid-template-columns:40px minmax(0, 1fr) auto 50px 22px}
+.lb-head span:nth-child(5){text-align:center}
+.lb-row .dv{display:grid;place-items:center;color:var(--muted)}
+.lb-row .dv .dev-ic{width:18px;height:18px}
+@media (prefers-reduced-motion:reduce){.profile.unnamed .pf-row input,.tp-card,.bind-key.listen{animation:none}}
+
+/* the armory on wide screens: a loadout panel beside the racks */
+.ar-layout{display:flex;flex-direction:column;gap:14px}
+.ar-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ar-side{display:none}
+@media (min-width:1200px){
+  .ar-inner{width:min(1460px, 100%)}
+  .ar-layout{display:grid;grid-template-columns:minmax(0, 1fr) 340px;gap:22px;align-items:start}
+  .ar-main .keeper{margin-inline:0;border:1px solid var(--line);border-radius:3px}
+  .ar-main #arLoadout{display:none}
+  .ar-side{display:flex;flex-direction:column;gap:12px;position:sticky;top:86px}
+}
+.ar-card{padding:14px 16px;background:linear-gradient(180deg, #1a1e25, #13161b);border:1px solid var(--line);border-radius:3px}
+.ar-card h3{margin:0 0 10px;font-family:var(--f-num);font-weight:400;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--tape);display:flex;justify-content:space-between;gap:8px}
+.ar-card h3 em{font-style:normal;color:var(--muted);letter-spacing:.06em}
+.ar-eq{border-top:3px solid var(--rc, var(--tape))}
+.ar-eq canvas{display:block;width:100%;height:auto;max-height:120px;margin:2px 0 8px;background:radial-gradient(ellipse at 50% 60%, color-mix(in srgb, var(--rc, #f2cc3a) 14%, transparent), transparent 70%)}
+.ar-eq b{display:block;font-size:18px;line-height:1.2}
+.ar-eq .rr{font-family:var(--f-num);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--rc)}
+.ar-eq p{margin-top:6px;font-size:13px;color:#cfc9bb}
+.ar-bars{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.ar-bars div{display:grid;grid-template-columns:72px minmax(0, 1fr) 46px;gap:8px;align-items:center;font-size:12px;color:#bdb7a8}
+.ar-bars i{display:block;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.ar-bars i s{display:block;height:100%;background:var(--rc, var(--tape));border-radius:3px}
+.ar-bars em{font-style:normal;font-family:var(--f-num);text-align:right;color:var(--bone)}
+.ar-dash{display:flex;gap:12px;align-items:center}
+.ar-dash canvas{flex:none;width:52px;height:52px}
+.ar-dash b{display:block;font-size:15px}
+.ar-dash p{font-size:12.5px;color:#bdb7a8}
+.ar-col{display:flex;flex-direction:column;gap:7px}
+.ar-col div{display:grid;grid-template-columns:86px minmax(0, 1fr) 52px;gap:8px;align-items:center;font-size:12px}
+.ar-col span{color:var(--rc)}
+.ar-col i{display:block;height:8px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.ar-col i s{display:block;height:100%;background:var(--rc)}
+.ar-col em{font-style:normal;font-family:var(--f-num);text-align:right;color:#cfc9bb}
+.ar-tip{position:relative;padding:12px 14px 12px 40px;font-size:13px;font-style:italic;color:#d8d2c4;background:#15181d;border:1px dashed rgba(235,229,214,.18);border-radius:3px}
+.ar-tip::before{content:"\201C";position:absolute;left:12px;top:2px;font-family:var(--f-display);font-size:34px;color:var(--tape);font-style:normal}
+.ar-tip small{display:block;margin-top:4px;font-style:normal;font-family:var(--f-num);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* the main menu scrolls from the top when it is taller than the screen (a phone with the name box) */
+.ov-title{justify-content:flex-start}
+.ov-title > .title-body{margin-top:auto}
+
+/* laptops and other short desktop screens: a tighter main menu so it fits without scrolling */
+@media (min-width:900px) and (max-height:900px) and (min-height:561px){
+  .title-body{width:min(700px, 100%);gap:10px;padding-block:14px 16px}
+  .title-body h1{font-size:clamp(60px, 12vh, 136px)}
+  .title-body .lede{max-width:62ch;font-size:14px}
+  .title-body .btns .btn{min-height:42px;padding:8px 16px}
+  .title-side{gap:10px}
+  .pf-row input,.pf-row .btn{height:40px;min-height:40px}
+}
+@media (min-width:1180px) and (min-height:620px) and (max-height:900px){.title-body .hint{display:none}}
+
+/* no sideways scrolling on any screen (the quarantine tape runs past the edges on purpose) */
+.ov{overflow-x:hidden}
 </style>
 
 </head><body><div id="app">
@@ -1122,6 +1277,7 @@ button.lcd{cursor:pointer}
   <div id="hud" hidden>
     <div class="hud-top">
       <div class="vitals">
+        <div class="hud-name" id="hudName" hidden><span id="hudDev" aria-hidden="true"></span><b id="hudNameTxt"></b></div>
         <div class="hp"><i id="hpFill"></i></div>
         <div class="hp-row"><b id="hpText">100</b><span id="fxChips"></span></div>
         <div class="where" id="whereChip" aria-live="polite"></div>
@@ -1129,7 +1285,7 @@ button.lcd{cursor:pointer}
       <div class="wave"><span>Wave</span><b id="waveNum">1</b></div>
       <div class="score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
       <button id="radioBtn" class="icon-btn radio-btn" type="button" aria-label="Radio" aria-expanded="false" aria-controls="hudRadio"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="rb-ant" d="M5 9 L18 3.5"/><rect x="2.5" y="9" width="19" height="12" rx="2"/><circle cx="8.5" cy="15" r="3.2"/><path d="M14.5 13 H19 M14.5 16 H19"/></svg><i class="rb-dot" aria-hidden="true"></i></button>
-      <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span></button>
+      <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span><i class="glyph" id="pauseKey" aria-hidden="true"></i></button>
     </div>
     <div id="hudRadio" class="radio-drop" hidden></div>
     <div id="bossBar" hidden><span id="bossName"></span><div class="bar bar1"><i id="bossFill"></i></div><div class="bar bar2"><i id="bossFill2"></i></div><span id="bossInfo"></span></div>
@@ -1137,8 +1293,8 @@ button.lcd{cursor:pointer}
     <div id="banner" hidden></div>
     <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
     <div id="chainPop" hidden></div>
-    <button id="dashBtn" aria-label="Dash"><b>Dash</b><span class="dname">Sprint</span></button>
-    <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em></button>
+    <button id="dashBtn" aria-label="Dash"><b>Dash</b><span class="dname">Sprint</span><i class="glyph" id="dashKey" aria-hidden="true"></i></button>
+    <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em><i class="glyph" id="airKey" aria-hidden="true"></i></button>
     <div class="wchip" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><span id="wName">Standard Pistol</span></div>
     <div id="qte" hidden>
       <div class="qte-head"><b>Break free</b><span id="qtePips" aria-label="Escape progress"></span><div class="qte-time"><i id="qteTime"></i></div></div>
@@ -1153,6 +1309,11 @@ button.lcd{cursor:pointer}
       <h1>Zombie<br><span>City</span></h1>
       <p class="lede">An endless quarantine zone: burning streets, ruins, ash towns, suburbs, deserts and the frozen north, with rivers, storms and seasons. Every zombie carries one of 1,000 mutations. Survive the waves, collect 250 weapons and hunt 50 bosses. Tune the radio to FM 66.6: seven channels, 245 songs, or your own music.</p>
       <div class="title-side">
+        <form class="profile unnamed" id="nameForm" autocomplete="off">
+          <label for="nameInput">Your name</label>
+          <div class="pf-row"><input id="nameInput" maxlength="14" spellcheck="false" autocomplete="off" autocapitalize="characters" placeholder="Type your name" enterkeyhint="done"><button class="btn small" id="nameSave" type="submit">Save</button></div>
+          <p class="dev-badge" id="devBadge" aria-live="polite"></p>
+        </form>
         <div class="btns">
           <button class="btn primary" id="playBtn">Enter the city</button>
           <button class="btn" id="armoryBtn">Armory <em id="gunCount">1/250</em></button>
@@ -1161,12 +1322,13 @@ button.lcd{cursor:pointer}
           <button class="btn" id="lbBtn">Leaderboard</button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
-        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button></div>
+        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
       </div>
       <p class="best" id="loadLine"></p>
       <p class="hint" id="ctrlHint">Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.</p>
       <p class="best" id="bestLine"></p>
     </div>
+    <aside class="title-panel" id="titlePanel" aria-label="Survivor file"></aside>
   </section>
 
   <section id="upgrade" class="ov ov-cards" hidden aria-label="Choose a card">
@@ -1334,11 +1496,13 @@ button.lcd{cursor:pointer}
   </div>
 
   <section id="armory" class="ov sheet" hidden aria-label="Armory">
-    <div class="sheet-inner">
+    <div class="sheet-inner ar-inner">
       <header class="sheet-head">
         <div><p class="eyebrow">Armory</p><h2><span id="arCount">1 / 250</span> unlocked</h2></div>
         <button class="icon-btn" id="arClose" aria-label="Close armory">&#215;</button>
       </header>
+      <div class="ar-layout">
+        <div class="ar-main">
       <div class="keeper" id="keeper">
         <!-- the back room: brick, pegboards of guns, a workbench, lockers, crates (nothing here moves) -->
         <svg class="kp-l kp-back" viewBox="-360 0 1080 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
@@ -1652,11 +1816,14 @@ button.lcd{cursor:pointer}
         <button class="kp-poke" type="button" aria-label="Ring the bell for the keeper"></button>
       </div>
 
-      <p class="strain-note" id="arLoadout"></p>
-      <div class="cx-tools"><label class="toggle"><input type="checkbox" id="arSpoil"> Show locked weapons</label></div>
-      <div class="chips" id="arFrames" role="tablist" aria-label="Weapon types"></div>
-      <p class="strain-note" id="arFrameNote"></p>
-      <div class="ar-grid" id="arGrid"></div>
+          <p class="strain-note" id="arLoadout"></p>
+          <div class="cx-tools"><label class="toggle"><input type="checkbox" id="arSpoil"> Show locked weapons</label></div>
+          <div class="chips" id="arFrames" role="tablist" aria-label="Weapon types"></div>
+          <p class="strain-note" id="arFrameNote"></p>
+          <div class="ar-grid" id="arGrid"></div>
+        </div>
+        <aside class="ar-side" id="arSide" aria-label="Your loadout"></aside>
+      </div>
     </div>
   </section>
 
@@ -1748,7 +1915,8 @@ button.lcd{cursor:pointer}
         <button class="tab on" id="tabGlobal" role="tab">Global</button>
         <button class="tab" id="tabLocal" role="tab">This device</button>
       </div>
-      <div class="lb-head"><span>Rank</span><span>Callsign</span><span>Score</span><span>Wave</span></div>
+      <div class="lb-filter" id="lbFilter" role="group" aria-label="Show scores from"><button type="button" class="on" data-d="all" aria-pressed="true">Everyone</button><button type="button" data-d="touch" aria-pressed="false">Phone</button><button type="button" data-d="kbm" aria-pressed="false">PC</button><button type="button" data-d="pad" aria-pressed="false">Controller</button></div>
+      <div class="lb-head"><span>Rank</span><span>Callsign</span><span>Score</span><span>Wave</span><span>On</span></div>
       <ol class="lb-list" id="lbList"></ol>
       <p class="lb-note" id="lbNote"></p>
     </div>
@@ -5172,35 +5340,8 @@ function newPlayer() {
 }
 
 /* ================= input ================= */
-const keys = {};
+// keyboard, mouse and controller input live in input.js; the touch joystick is here
 const joy = { id: null, ox: 0, oy: 0, dx: 0, dy: 0, active: false, kx: 0, ky: 0 };
-window.addEventListener('keydown', e => {
-  if (e.target && e.target.tagName === 'INPUT') return;
-  const k = e.key.toLowerCase(); keys[k] = true;
-  if (G.grab && G.mode === 'play' && (k === ' ' || k === 'e' || k === 'enter' || k === 'shift')) { qteHit(); e.preventDefault(); return; }
-  if (k === ' ' || k === 'shift') { if (G.mode === 'play') { tryDash(); e.preventDefault(); } }
-  if (k === 'q' || k === 'f') { if (G.mode === 'play') callAirstrike(); }
-  // the radio: M mutes, N skips the song, [ and ] change the channel
-  if (G.mode !== 'intro') {
-    if (k === 'm') SFX.fm.mute(); else if (k === 'n') SFX.fm.skip(); else if (k === '[') SFX.fm.step(-1); else if (k === ']') SFX.fm.step(1);
-  }
-  if (k === 'escape' || k === 'p') {
-    if (!$('settings').hidden) { closeSettings(); return; }
-    if (!$('radioPanel').hidden) { closeRadio(); return; }
-    if (!$('hudRadio').hidden && k === 'escape') { toggleHudRadio(false); return; }
-    if (!$('blDetail').hidden) { $('blDetail').hidden = true; return; }
-    if (!$('bosslog').hidden) { closeBossLog(); return; }
-    if (!$('arDetail').hidden) { $('arDetail').hidden = true; return; }
-    if (!$('armory').hidden) { closeArmory(); return; }
-    if (!$('cxDetail').hidden) { closeDetail(); return; }
-    if (!$('codex').hidden) { closeCodex(); return; }
-    if (!$('lb').hidden) { closeLB(); return; }
-    if (G.mode === 'play') pauseGame(); else if (G.mode === 'pause') resumeGame();
-  }
-  if (G.mode === 'upgrade' && (k === '1' || k === '2' || k === '3')) chooseCard(+k - 1, null);
-  if (G.mode === 'skull' && (k === '1' || k === '2' || k === '3')) chooseForbidden(+k - 1, null);
-});
-window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 // App bridge: the Android app calls these for its back button and when it goes to the background.
 window.zcBack = function () {
   if (typeof INTRO !== 'undefined' && INTRO.on) return introSkip();
@@ -5222,14 +5363,13 @@ window.zcBack = function () {
 };
 window.zcAppPause = function () { if (G.mode === 'play') pauseGame(); SFX.suspend(); };
 window.zcAppResume = function () { SFX.resume(); };
-window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 function localXY(e) { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
 // the joystick: on the left (or the right, left-handed), floating where the thumb lands or fixed in the corner
 const JR = () => 56 * SET.joySize / 100;
 const moveSide = x => SET.lefty ? x > W * 0.4 : x < W * 0.6;
 function joyHome() { return [SET.lefty ? W - 104 : 104, H - 128]; }
 cv.addEventListener('pointerdown', e => {
-  if (G.mode !== 'play' || G.grab) return;
+  if (G.mode !== 'play' || G.grab || e.pointerType === 'mouse') return;   // a mouse aims and fires instead (input.js)
   const xy = localXY(e);
   if (joy.id === null && moveSide(xy[0])) {
     joy.id = e.pointerId; joy.dx = 0; joy.dy = 0; joy.kx = 0; joy.ky = 0; joy.active = true;
@@ -5769,10 +5909,7 @@ function dotPlayer(a) { const p = G.p; if (G.mode !== 'play' || !p) return; p.hp
 
 function updPlayer(dt) {
   const p = G.p;
-  let ix = 0, iy = 0;
-  if (keys.a || keys.arrowleft) ix -= 1; if (keys.d || keys.arrowright) ix += 1;
-  if (keys.w || keys.arrowup) iy -= 1; if (keys.s || keys.arrowdown) iy += 1;
-  if (joy.active) { ix += joy.dx; iy += joy.dy; }
+  let [ix, iy] = moveInput();
   const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
   p.ix = ix; p.iy = iy;
   if (p.slowT > 0) { p.slowT -= dt; if (p.slowT <= 0) p.slowMul = 1; }
@@ -5796,20 +5933,37 @@ function updPlayer(dt) {
   const kd = Math.exp(-7 * dt); p.kvx *= kd; p.kvy *= kd;
   p.x += vx * dt; p.y += vy * dt; collide(p, p.r); p.wk = waterAt(p.x, p.y);
   if (l > 0.1) p.walk += dt * 10;
+  // Aiming. On a phone (and with Auto-aim on PC or a controller) the gun locks onto the nearest zombie and fires by
+  // itself. With a mouse or a controller you aim yourself: the mouse, or the right stick, with an optional nudge
+  // onto targets (assist), and you fire with the button, the stick or "on target".
+  const am = aimMode();
   let best = null, bd = Infinity;
-  const vw = W / ZOOM / 2 + 10, vh = H / ZOOM / 2 + 10, rg = p.S.range * p.S.range;
-  for (const z of G.zs) {
-    if (z.dead || z.st.under) continue;
-    const ex = z.x - p.x, ey = z.y - p.y; if (Math.abs(ex) > vw || Math.abs(ey) > vh) continue;
-    let dd = ex * ex + ey * ey; if (dd > rg) continue;
-    if (z.st.down > 0 || (z.m.S.p.camo && dd > 52900)) continue;
-    if (z.st.phased) dd *= 4; if (z.fly) dd *= 1.5;
-    if (dd < bd) { bd = dd; best = z; }
+  if (am === 'auto' || (am === 'assist' && DEV.kind === 'pad')) {
+    const vw = W / ZOOM / 2 + 10, vh = H / ZOOM / 2 + 10, rg = p.S.range * p.S.range;
+    for (const z of G.zs) {
+      if (z.dead || z.st.under) continue;
+      const ex = z.x - p.x, ey = z.y - p.y; if (Math.abs(ex) > vw || Math.abs(ey) > vh) continue;
+      let dd = ex * ex + ey * ey; if (dd > rg) continue;
+      if (z.st.down > 0 || (z.m.S.p.camo && dd > 52900)) continue;
+      if (z.st.phased) dd *= 4; if (z.fly) dd *= 1.5;
+      if (dd < bd) { bd = dd; best = z; }
+    }
   }
-  if (best) p.aim = angLerp(p.aim, Math.atan2(best.y - p.y, best.x - p.x), Math.min(1, dt * 18));
-  else if (l > 0.1) p.aim = angLerp(p.aim, Math.atan2(iy, ix), Math.min(1, dt * 10));
   p.fireCd -= dt;
-  if (best && p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0) { fireWeapon(best); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
+  if (am === 'auto') {
+    if (best) p.aim = angLerp(p.aim, Math.atan2(best.y - p.y, best.x - p.x), Math.min(1, dt * 18));
+    else if (l > 0.1) p.aim = angLerp(p.aim, Math.atan2(iy, ix), Math.min(1, dt * 10));
+    if (best && p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0) { fireWeapon(best); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
+    return;
+  }
+  let ang = aimInput(p);
+  if (ang == null && DEV.kind === 'pad' && G.time - DEV.rsT > 0.45) {
+    if (best) ang = Math.atan2(best.y - p.y, best.x - p.x);            // assist keeps tracking with the stick let go
+    else if (l > 0.1) ang = Math.atan2(iy, ix);                         // otherwise face the way you walk
+  }
+  if (ang != null && am === 'assist') { const t = coneTarget(p, ang, 0.2); if (t) ang = angLerp(ang, Math.atan2(t.y - p.y, t.x - p.x), 0.6); }
+  if (ang != null) p.aim = DEV.kind === 'kbm' && am === 'manual' ? ang : angLerp(p.aim, ang, Math.min(1, dt * (DEV.kind === 'kbm' ? 30 : 22)));
+  if (p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0 && wantFire(p)) { fireWeapon(coneTarget(p, p.aim, 0.25), p.aim); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
 }
 /* ================= projectiles, hazards ================= */
 function pointInRect(x, y) { const rs = rectsNear(x, y, 0.5); for (let i = 0; i < rs.length; i++) { const r = rs[i]; if (!r.low && x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return r; } return null; }
@@ -5960,6 +6114,7 @@ function newRun() {
   $('skull').hidden = true;
   Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
+  DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
   worldReset();
   $('toasts').textContent = '';
@@ -5977,7 +6132,7 @@ function pauseGame() {
   toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio();
 }
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
-function toTitle() { G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
+function toTitle() { if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
 function die() {
   if (G.mode !== 'play') return;
   const p = G.p;
@@ -5990,8 +6145,8 @@ function die() {
   if (G.grab) { G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); }
   p.hp = 0; G.mode = 'over'; joy.active = false; joy.id = null; SFX.death();
   burst(p.x, p.y, 40, '#9e1c22', 220, 6, 0.9); shakeIt(14);
-  const entry = { tag: getTag(), score: G.score, wave: G.wave, kills: G.kills, at: Date.now() };
-  G.lastEntry = entry; saveLocal(entry);
+  const entry = { tag: getTag(), score: G.score, wave: G.wave, kills: G.kills, at: Date.now(), dev: runDevice(), plat: PLATFORM };
+  G.lastEntry = entry; saveLocal(entry); recordRun();
   $('ovEyebrow').textContent = 'Run over · ' + SEASON_NAME + ' season';
   $('ovScore').textContent = G.score.toLocaleString(); $('ovWave').textContent = G.wave;
   $('ovKills').textContent = G.kills; $('ovFound').textContent = G.runFound.length; $('ovChain').textContent = 'x' + G.bestChain;
@@ -6011,7 +6166,7 @@ function refreshTitle() {
   const loc = store.get('zc_lb_' + SEASON, []);
   const bl = $('bestLine'); bl.textContent = '';
   if (loc.length) { bl.append('Your best this season: '); const b = document.createElement('b'); b.textContent = loc[0].score.toLocaleString() + ' (wave ' + loc[0].wave + ')'; bl.append(b); }
-  $('ctrlHint').textContent = TOUCH ? 'Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.' : 'Move with WASD or the arrow keys. Your gun aims and fires on its own. Space to dash, Esc to pause.';
+  updNameUi(); updDevUi();
 }
 $('playBtn').addEventListener('click', newRun);
 $('againBtn').addEventListener('click', newRun);
@@ -6021,7 +6176,7 @@ $('menuBtn').addEventListener('click', toTitle);
 
 /* ================= leaderboard ================= */
 function saveLocal(e) { const k = 'zc_lb_' + SEASON, a = store.get(k, []); a.push(e); a.sort((x, y) => y.score - x.score); store.set(k, a.slice(0, 25)); }
-const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: 'global' };
+const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: 'global', dev: 'all' };
 (async function initDb() {
   try {
     if (!window.claude || typeof window.claude.use !== 'function') { LB.status = 'off'; renderLB(); return; }
@@ -6031,9 +6186,9 @@ const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: '
     LB.uid = user ? await user.id() : null;
     LB.db = db; LB.status = 'live';
     db.collection('scores').where('season', '==', SEASON).orderBy('score', 'desc').limit(50).onSnapshot(s => {
-      LB.rows = s.docs.map(d => Object.assign({ id: d.id }, d.data())); renderLB();
+      LB.rows = s.docs.map(d => Object.assign({ id: d.id }, d.data())); renderLB(); if (G.mode === 'title') renderTitlePanel();
     }, () => { LB.status = 'error'; renderLB(); });
-    renderLB();
+    renderLB(); adoptOnlineName();
   } catch (e) { LB.status = 'off'; renderLB(); }
 })();
 async function postGlobal(entry) {
@@ -6042,14 +6197,14 @@ async function postGlobal(entry) {
   try {
     const ref = LB.db.collection('scores').doc(LB.uid), cur = await ref.get(), d = cur.exists ? cur.data() : null;
     if (d && d.season === SEASON && d.score >= entry.score) return 'kept';
-    await ref.set({ season: SEASON, tag: entry.tag, score: entry.score, wave: entry.wave, kills: entry.kills, at: Date.now() });
+    await ref.set({ season: SEASON, tag: entry.tag, score: entry.score, wave: entry.wave, kills: entry.kills, at: Date.now(), dev: entry.dev || DEV.kind, plat: entry.plat || PLATFORM });
     return 'posted';
   } catch (e) { if (e && e.code === 'invalid_argument') { LB.ro = true; return 'readonly'; } return 'failed'; }
 }
 $('postForm').addEventListener('submit', async e => {
   e.preventDefault();
   const entry = G.lastEntry; if (!entry) return;
-  const tag = cleanTag($('callsign').value); $('callsign').value = tag; store.set('zc_tag', tag);
+  const tag = cleanTag($('callsign').value); $('callsign').value = tag; store.set('zc_tag', tag); updNameUi();
   entry.tag = tag;
   const k = 'zc_lb_' + SEASON, a = store.get(k, []), mine = a.find(x => x.at === entry.at); if (mine) { mine.tag = tag; store.set(k, a); }
   $('postBtn').disabled = true; $('postBtn').textContent = 'Posting';
@@ -6057,7 +6212,7 @@ $('postForm').addEventListener('submit', async e => {
   const msg = {
     posted: 'Posted to the global board for ' + SEASON_NAME + '.',
     kept: 'Saved. Your best on the global board this season is higher, so it stays.',
-    local: IS_APP ? 'Saved on this device.' : 'Saved on this device. The global board is not available on this page.',
+    local: PLATFORM !== 'web' ? 'Saved on this device.' : 'Saved on this device. The global board is not available on this page.',
     readonly: 'Saved on this device. You can view the global board but not post to it.',
     failed: 'Could not reach the global board. Your score is saved on this device.'
   }[res];
@@ -6069,6 +6224,7 @@ function closeLB() { $('lb').hidden = true; }
 $('lbBtn').addEventListener('click', openLB); $('overLbBtn').addEventListener('click', openLB); $('lbClose').addEventListener('click', closeLB);
 $('tabGlobal').addEventListener('click', () => { LB.tab = 'global'; renderLB(); });
 $('tabLocal').addEventListener('click', () => { LB.tab = 'local'; renderLB(); });
+document.querySelectorAll('#lbFilter button').forEach(b => b.addEventListener('click', () => { LB.dev = b.dataset.d; SFX.click(); renderLB(); }));
 function renderLB() {
   if ($('lb').hidden) return;
   $('lbSeason').textContent = SEASON_NAME;
@@ -6079,20 +6235,23 @@ function renderLB() {
   let rows, note = '';
   if (LB.tab === 'global') {
     if (LB.status === 'live') { rows = LB.rows; note = 'One entry per player: your best run this season.'; }
-    else { rows = []; note = LB.status === 'loading' ? 'Connecting to the global board.' : IS_APP ? 'The app keeps scores on this device. Your runs are on the This device tab.' : 'The global board is not available on this page. Your runs are on the This device tab.'; }
+    else { rows = []; note = LB.status === 'loading' ? 'Connecting to the global board.' : PLATFORM !== 'web' ? 'The app keeps scores on this device (the global board is on the web version). Your runs are on the This device tab.' : 'The global board is not available on this page. Your runs are on the This device tab.'; }
   } else { rows = store.get('zc_lb_' + SEASON, []); note = 'Runs played in this browser this season.'; }
-  if (!rows.length) {
+  if (!rows.length || (LB.dev !== 'all' && !rows.some(r => r.dev === LB.dev))) {
     const li = document.createElement('li'); li.className = 'empty';
-    li.textContent = LB.tab === 'global' && LB.status !== 'live' ? 'No global board here.' : 'No scores yet this season. Be the first.';
+    li.textContent = LB.tab === 'global' && LB.status !== 'live' ? 'No global board here.' : LB.dev !== 'all' && rows.length ? 'No ' + DEV_SHORT[LB.dev].toLowerCase() + ' scores yet this season.' : 'No scores yet this season. Be the first.';
     list.appendChild(li);
   }
+  if (LB.dev !== 'all') rows = rows.filter(r => r.dev === LB.dev);
+  document.querySelectorAll('#lbFilter button').forEach(b => { const on = b.dataset.d === LB.dev; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
   rows.slice(0, 50).forEach((r, i) => {
     const li = document.createElement('li'); li.className = 'lb-row' + (i < 3 ? ' top' : '') + (LB.tab === 'global' && r.id === LB.uid ? ' me' : '');
     const c1 = document.createElement('span'); c1.className = 'rk'; c1.textContent = '#' + (i + 1);
     const c2 = document.createElement('span'); c2.className = 'tg'; c2.textContent = cleanTag(r.tag) + (LB.tab === 'global' && r.id === LB.uid ? ' (you)' : '');
     const c3 = document.createElement('span'); c3.className = 'sc'; c3.textContent = Number(r.score || 0).toLocaleString();
     const c4 = document.createElement('span'); c4.className = 'wv'; c4.textContent = 'W' + (r.wave || 0);
-    li.append(c1, c2, c3, c4); list.appendChild(li);
+    const c5 = document.createElement('span'); c5.className = 'dv'; if (r.dev) { c5.append(devIcon(r.dev)); c5.title = DEV_SHORT[r.dev] || ''; }
+    li.append(c1, c2, c3, c4, c5); list.appendChild(li);
   });
   $('lbNote').textContent = note;
 }
@@ -6329,7 +6488,7 @@ function render() {
   if (vz) drawVizScreen(vz);
   tw = performance.now(); drawWeatherScreen(Math.min(0.05, (performance.now() - (render.lt || performance.now())) / 1000)); render.lt = performance.now(); PERF.sec.wx += performance.now() - tw;
   if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') {
-    drawScreenFx(); drawDashScreen();
+    drawScreenFx(); drawDashScreen(); drawAim();
     if (G.flashA > 0) { ctx.globalAlpha = Math.min(0.5, G.flashA); ctx.drawImage(screenGrad('a10', 0.1, 0.8, '255,214,150', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
   }
 }
@@ -6674,9 +6833,9 @@ function drawScreenFx() {
     const R = JR(), k = SET.joySize / 100;
     ctx.strokeStyle = 'rgba(235,229,214,0.28)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(joy.ox, joy.oy, R, 0, TAU); ctx.stroke();
     ctx.fillStyle = 'rgba(242,204,58,0.42)'; ctx.beginPath(); ctx.arc(joy.ox + joy.kx, joy.oy + joy.ky, 22 * k, 0, TAU); ctx.fill();
-  } else if (G.mode === 'play' && TOUCH && SET.joy === 'fixed') {
+  } else if (G.mode === 'play' && DEV.kind === 'touch' && SET.joy === 'fixed') {
     const h = joyHome(); ctx.strokeStyle = 'rgba(235,229,214,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(h[0], h[1], JR(), 0, TAU); ctx.stroke();
-  } else if (G.mode === 'play' && TOUCH && G.hintT > 0 && SET.hints) {
+  } else if (G.mode === 'play' && DEV.kind === 'touch' && G.hintT > 0 && SET.hints) {
     const a = clamp(G.hintT, 0, 1) * 0.35, hx = SET.lefty ? W - 96 : 96; ctx.strokeStyle = 'rgba(235,229,214,' + a + ')'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(hx, H - 120, 56, 0, TAU); ctx.stroke();
     ctx.fillStyle = 'rgba(235,229,214,' + a + ')'; ctx.font = "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 120);
@@ -6725,6 +6884,7 @@ function updHud() {
 /* ================= loop ================= */
 function update(dt) {
   G.time += dt; if (G.hintT > 0) G.hintT -= dt;
+  DEV.useT[DEV.kind] += dt;
   updPlayer(dt);
   spawner(dt);
   buildGrid();
@@ -6783,6 +6943,7 @@ function frame(now) {
   const t0 = performance.now();
   try {
     if (SFX.tick) SFX.tick();
+    padPoll(rdt);
     vzNow = vizFrame();
     if (G.mode === 'play') update(dt);
     else if (G.mode === 'cine') updCine(dt);
@@ -8383,6 +8544,7 @@ function drawFlame(x, y, r, ph) {
 }
 // a short buzz on phones that support it (if the player allows it)
 function buzz(ms) {
+  if (DEV.kind === 'pad') { padRumble(ms); return; }   // a controller rumbles instead of the phone
   if (!SET.vibrate) return;
   try { const n = window.ZCNative; if (n && n.vibrate) { n.vibrate(ms | 0); return; } if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { }
 }
@@ -8800,11 +8962,12 @@ function recalc(p) {
 function healPlayer(a) { const p = G.p; if (!p || a <= 0) return; p.hp = Math.min(p.maxHp, p.hp + a * p.healMul); }
 
 /* ---------- firing ---------- */
-function fireWeapon(t) {
-  const p = G.p, S = p.S, a = Math.atan2(t.y - p.y, t.x - p.x);
+// t: the zombie being shot at (null when you aim at nothing); ang: where you are aiming yourself (mouse or stick)
+function fireWeapon(t, ang) {
+  const p = G.p, S = p.S, a = ang != null ? ang : Math.atan2(t.y - p.y, t.x - p.x);
   p.shots++;
   if (p.hpPerShot) p.hp = Math.max(1, p.hp - p.hpPerShot);
-  if (S.thunder && p.shots % 6 === 0) thunderStrike(t);
+  if (S.thunder && p.shots % 6 === 0 && t) thunderStrike(t);
   volley(a, 1);
   for (let i = 1; i < S.burst; i++) p.queue.push({ t: i * 0.07, mul: 1 });
   if (S.echo) p.queue.push({ t: 0.17, mul: 0.6 });
@@ -9001,7 +9164,7 @@ function openSkull() {
     $('skullRefuse').hidden = false;
     G.skullChoices.forEach((ch, i) => setTimeout(() => SFX.cardIn(i), 90 + i * 140)); setTimeout(() => SFX.rare(6), 420);
     G.skullChoices.forEach((ch, i) => { const b = buildCard(ch, i, chooseForbidden); b.classList.add('from-skull'); row.appendChild(b); });
-    setTimeout(() => { const f = row.querySelector('button'); if (f && !TOUCH) f.focus({ preventScroll: true }); }, 60);
+    setTimeout(() => { const f = row.querySelector('button'); if (f && DEV.kind !== 'touch') f.focus({ preventScroll: true }); }, 60);
   }, RM ? 200 : 2000);
 }
 function chooseForbidden(i, ev) {
@@ -9205,7 +9368,7 @@ function openCards() {
   G.upChoices.forEach((ch, i) => setTimeout(() => SFX.cardIn(i), 90 + i * 140));
   const best = Math.max.apply(null, G.upChoices.map(c => c.r === 5 ? 5 : c.r));
   if (best >= 3) setTimeout(() => SFX.rare(best), 380);
-  setTimeout(() => { const f = row.querySelector('button'); if (f && !TOUCH) f.focus({ preventScroll: true }); }, 60);
+  setTimeout(() => { const f = row.querySelector('button'); if (f && DEV.kind !== 'touch') f.focus({ preventScroll: true }); }, 60);
 }
 function shootCard(row, i, ev) {
   G.picking = true;
@@ -9284,6 +9447,7 @@ function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true;
 $('keeper').querySelector('.kp-poke').addEventListener('click', () => { SFX.init(); KEEP.poke(); });
 function renderArmory() {
   $('arCount').textContent = guns.size + ' / 250';
+  renderArmorySide();
   if (arFrame === 'dash') return renderDashArmory();
   const lw = WEAPONS[loadoutId()], ld = $('arLoadout'); ld.textContent = '';
   const lb = el('b', null, lw.name); lb.style.color = WRAR[lw.rarity].color; ld.append('Starting weapon: ', lb, '. Pick up new weapons from cards during a run to unlock them here.');
@@ -9306,6 +9470,37 @@ function renderArmory() {
     b.addEventListener('click', () => openWeaponDetail(w));
     grid.appendChild(b); paintWeapon(c, w, 128, 60, !show);
   }
+}
+// the loadout panel beside the racks on wide screens: what you start with, how much is unlocked, a word from the keeper
+const KEEP_TIPS = ['Legendaries glow. Try not to stare, they get shy.', 'Cards that say "cursed" mean it. Read the small print.', 'Shotguns love close friends. Snipers hate them.', 'The A-10 does not miss. You might, but it does not.', 'A dash is a gun for your feet. Use both.', 'Every weapon reacts to cards in its own way. Check how before you pick.', 'Rivers slow you down. They slow them down too. Mostly.', 'If the skull offers you a deal, count your fingers after.', 'Burst rifles hate wasted bullets. Aim, then hold.', 'Clean your rifle. Mine has never jammed. Today.'];
+function renderArmorySide() {
+  const S = $('arSide'); if (!S) return;
+  S.textContent = '';
+  const lw = WEAPONS[loadoutId()], R = WRAR[lw.rarity];
+  const eq = el('section', 'ar-card ar-eq'); eq.style.setProperty('--rc', R.color);
+  const h = el('h3'); h.append(el('span', null, 'Starting weapon'), el('em', null, lw.code)); eq.append(h);
+  const c = el('canvas'); c.setAttribute('aria-hidden', 'true'); eq.append(c); paintWeapon(c, lw, 300, 110, false); c.style.width = '100%'; c.style.height = 'auto';
+  eq.append(el('b', null, lw.name), el('span', 'rr', R.name + ' · ' + ZW.FRAMES[Math.floor(lw.id / 25)].name), el('p', null, lw.M.name + ' mod: ' + lw.M.desc));
+  const bars = el('div', 'ar-bars');
+  [['Damage', lw.dmg * lw.pellets * lw.burst / W_MAX.dmg, Math.round(lw.dmg * lw.pellets * lw.burst)], ['Fire rate', lw.rof / W_MAX.rof, lw.rof.toFixed(1) + '/s'], ['Range', lw.range / W_MAX.range, Math.round(lw.range)], ['Power', lw.dps / W_MAX.dps, Math.round(lw.dps)]]
+    .forEach(([k, f, v]) => { const d = el('div'), tr = el('i'), fl = el('s'); fl.style.width = Math.round(clamp(f, 0.03, 1) * 100) + '%'; tr.append(fl); d.append(el('span', null, k), tr, el('em', null, String(v))); bars.append(d); });
+  eq.append(bars); S.append(eq);
+  const cd = DASH_BY[dashLoadout()], ds = el('section', 'ar-card');
+  const dh = el('h3'); dh.append(el('span', null, 'Starting dash'), el('em', null, DASH_RAR[cd.r])); ds.append(dh);
+  const dr = el('div', 'ar-dash'), dc = el('canvas'); dc.setAttribute('aria-hidden', 'true'); paintDash(dc, cd, 52, false);
+  const dt = el('div'), dn = el('b', null, cd.name); dn.style.color = cd.hex; dt.append(dn, el('p', null, cd.desc));
+  dr.append(dc, dt); ds.append(dr); S.append(ds);
+  const col = el('section', 'ar-card'), ch = el('h3'); ch.append(el('span', null, 'Collection'), el('em', null, guns.size + ' / 250')); col.append(ch);
+  const list = el('div', 'ar-col');
+  WRAR.forEach((rr, ri) => {
+    let tot = 0, have = 0; for (const w of WEAPONS) if (w.rarity === ri) { tot++; if (guns.has(w.id)) have++; }
+    if (!tot) return;
+    const d = el('div'); d.style.setProperty('--rc', rr.color); const tr = el('i'), fl = el('s'); fl.style.width = (have / tot * 100).toFixed(1) + '%'; tr.append(fl);
+    d.append(el('span', null, rr.name), tr, el('em', null, have + '/' + tot)); list.append(d);
+  });
+  { const d = el('div'); d.style.setProperty('--rc', '#29e6ff'); const tr = el('i'), fl = el('s'); fl.style.width = (dashes.size / 25 * 100).toFixed(1) + '%'; tr.append(fl); d.append(el('span', null, 'Dashes'), tr, el('em', null, dashes.size + '/25')); list.append(d); }
+  col.append(list); S.append(col);
+  const tip = el('p', 'ar-tip', KEEP_TIPS[Math.floor(Math.random() * KEEP_TIPS.length)]); tip.append(el('small', null, 'The keeper')); S.append(tip);
 }
 function dashChip() {
   const b = el('button', 'chip dchip' + (arFrame === 'dash' ? ' on' : '')); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', arFrame === 'dash');
@@ -10941,6 +11136,7 @@ const SET_DEF = {
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
+  aimKbm: 'manual', fireKbm: 'hold', aimPad: 'assist', firePad: 'stick', padDead: 18, padSwap: false, padRumble: true, xhair: 'cross', xhairSize: 100, xhairColor: 'yellow',
   motion: 'auto', flash: false, hudScale: 100, contrast: false,
   saver: 'auto'
 };
@@ -11002,6 +11198,8 @@ function setSetting(k, v) {
     case 'wxMode': if (v !== 'dynamic') { WX.kind = v; WX.t = 60; } else WX.t = Math.min(WX.t, 20); break;
     case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
     case 'veg': case 'water': WSPR.clear(); break;
+    case 'aimKbm': case 'aimPad': case 'fireKbm': case 'firePad': DEV.fireOn = false; DEV.aimFlip = false; updDevUi(); break;
+    case 'lefty': applyLook(); updDevUi(); break;
     default:
       if (/^vol|^night$|^mono$/.test(k)) applySound();
       if (k === 'hudScale' || k === 'contrast' || k === 'lefty' || k === 'fpsShow' || k === 'hints') applyLook();
@@ -11061,14 +11259,29 @@ const SET_ROWS = [
   { id: 'districts', tab: 'gameplay', type: 'seg', label: 'District names', desc: 'A note when you walk into a new part of the city.', opts: ON_OFF },
   { id: 'hints', tab: 'gameplay', type: 'seg', label: 'Hints', desc: 'Tips on the title screen and the movement guide.', opts: ON_OFF },
   { id: 'vibrate', tab: 'gameplay', type: 'seg', label: 'Vibration', desc: 'A buzz on big hits, explosions and lightning.', opts: ON_OFF, touch: true },
-  // controls
-  { tab: 'controls', group: 'Touch' },
-  { id: 'joy', tab: 'controls', type: 'seg', label: 'Joystick', desc: 'Floating appears where your thumb lands; Fixed stays in the corner.', opts: [['float', 'Floating'], ['fixed', 'Fixed']] },
-  { id: 'joySize', tab: 'controls', type: 'slider', label: 'Joystick size', desc: 'How far you drag for full speed.', min: 70, max: 140, step: 10, fmt: v => v + '%' },
-  { id: 'dashTap', tab: 'controls', type: 'seg', label: 'Tap to dash', desc: 'Tap the other side of the screen to dash, or use only the button.', opts: [[true, 'Tap + button'], [false, 'Button only']] },
-  { id: 'lefty', tab: 'controls', type: 'seg', label: 'Left-handed', desc: 'Move on the right, dash on the left.', opts: ON_OFF },
-  { tab: 'controls', group: 'Keyboard' },
-  { tab: 'controls', info: 'keys' },
+  // controls: each device has its own section, shown once the game has seen that device (the one in use comes first)
+  { tab: 'controls', info: 'devnow' },
+  { tab: 'controls', group: 'Keyboard and mouse', dev: 'kbm' },
+  { id: 'aimKbm', tab: 'controls', basic: 'kbm', dev: 'kbm', type: 'seg', label: 'Aiming', desc: 'Aim with the mouse, get a small nudge onto zombies, or let the gun aim itself like on a phone.', opts: [['manual', 'Mouse'], ['assist', 'Mouse + assist'], ['auto', 'Auto-aim']] },
+  { id: 'fireKbm', tab: 'controls', basic: 'kbm', dev: 'kbm', type: 'seg', label: 'Firing', desc: 'Hold the fire button, click once to keep firing, or fire on its own when a zombie is under the crosshair.', opts: [['hold', 'Hold'], ['toggle', 'Click on/off'], ['auto', 'On target']] },
+  { tab: 'controls', info: 'binds-kb', dev: 'kbm', label: 'Keys and mouse buttons' },
+  { tab: 'controls', group: 'Controller', dev: 'padgroup' },
+  { tab: 'controls', info: 'nopad', dev: 'nopad' },
+  { id: 'aimPad', tab: 'controls', basic: 'pad', dev: 'pad', type: 'seg', label: 'Aiming', desc: 'Aim with the right stick, with a small nudge onto zombies, or let the gun aim itself.', opts: [['manual', 'Stick'], ['assist', 'Stick + assist'], ['auto', 'Auto-aim']] },
+  { id: 'firePad', tab: 'controls', basic: 'pad', dev: 'pad', type: 'seg', label: 'Firing', desc: 'Fire whenever you push the aim stick, only while you hold the fire button, or on its own when the aim is on a zombie.', opts: [['stick', 'Aim to fire'], ['trigger', 'Button'], ['auto', 'On target']] },
+  { id: 'padDead', tab: 'controls', dev: 'pad', type: 'slider', label: 'Stick dead zone', desc: 'Raise it if you drift with the sticks let go.', min: 4, max: 40, step: 2, fmt: v => v + '%' },
+  { id: 'padSwap', tab: 'controls', dev: 'pad', type: 'seg', label: 'Swap sticks', desc: 'Move with the right stick and aim with the left.', opts: ON_OFF },
+  { id: 'padRumble', tab: 'controls', dev: 'pad', type: 'seg', label: 'Rumble', desc: 'The controller shakes on big hits, explosions and lightning.', opts: ON_OFF },
+  { tab: 'controls', info: 'binds-pad', dev: 'pad', label: 'Buttons' },
+  { tab: 'controls', group: 'Crosshair', dev: 'aim' },
+  { id: 'xhair', tab: 'controls', dev: 'aim', type: 'seg', label: 'Crosshair', desc: 'It turns red over a zombie and shows the reload on slow guns.', opts: [['cross', 'Cross'], ['dot', 'Dot'], ['circle', 'Circle'], ['off', 'Off']] },
+  { id: 'xhairSize', tab: 'controls', dev: 'aim', type: 'slider', label: 'Crosshair size', desc: 'How big the crosshair is drawn.', min: 60, max: 160, step: 10, fmt: v => v + '%' },
+  { id: 'xhairColor', tab: 'controls', dev: 'aim', type: 'seg', label: 'Crosshair color', desc: 'Pick one that stands out on your screen.', opts: [['yellow', 'Yellow'], ['white', 'White'], ['green', 'Green'], ['cyan', 'Cyan'], ['red', 'Red']] },
+  { tab: 'controls', group: 'Touch', dev: 'touch' },
+  { id: 'joy', tab: 'controls', dev: 'touch', type: 'seg', label: 'Joystick', desc: 'Floating appears where your thumb lands; Fixed stays in the corner.', opts: [['float', 'Floating'], ['fixed', 'Fixed']] },
+  { id: 'joySize', tab: 'controls', dev: 'touch', type: 'slider', label: 'Joystick size', desc: 'How far you drag for full speed.', min: 70, max: 140, step: 10, fmt: v => v + '%' },
+  { id: 'dashTap', tab: 'controls', dev: 'touch', type: 'seg', label: 'Tap to dash', desc: 'Tap the other side of the screen to dash, or use only the button.', opts: [[true, 'Tap + button'], [false, 'Button only']] },
+  { id: 'lefty', tab: 'controls', dev: 'touch', type: 'seg', label: 'Left-handed', desc: 'Move on the right, dash on the left.', opts: ON_OFF },
   // accessibility
   { tab: 'access', group: 'Comfort' },
   { id: 'motion', tab: 'access', type: 'seg', label: 'Reduce motion', desc: 'Fewer animations and no screen shake. Auto follows your device.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
@@ -11080,6 +11293,7 @@ const SET_ROWS = [
   { tab: 'system', group: 'This device' },
   { tab: 'system', info: 'device' },
   { id: 'saver', tab: 'system', basic: true, type: 'seg', label: 'Battery saver', desc: 'Caps the game at 30 fps and Medium quality. Auto turns on when the battery is low.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
+  { tab: 'system', action: 'fullscreen', desk: true, basic: 'kbm', label: 'Full screen', desc: 'Fill the whole screen, or play in a window. F11 or Alt+Enter also switch.', btn: 'Switch' },
   { tab: 'system', action: 'cache', label: 'Refresh cache', desc: 'Frees the graphics the game has stored. They rebuild as needed.', btn: 'Refresh' },
   { tab: 'system', action: 'recheck', label: 'Check the device again', desc: 'Re-runs the quick speed test and picks a new starting quality.', btn: 'Check' },
   { tab: 'system', action: 'reset', label: 'Reset all settings', desc: 'Back to the defaults. Your weapons, specimens and scores are kept.', btn: 'Reset', danger: true }
@@ -11091,27 +11305,58 @@ function openSettings(tab) {
   if (tab) { SP.tab = tab; if (tab !== 'graphics' && SP.mode === 'basic') SP.mode = 'advanced'; }
   renderSettings(); $('settings').hidden = false; $('settings').scrollTop = 0; SFX.click();
 }
-function closeSettings() { $('settings').hidden = true; renderPerfBtn(); }
-function renderSettings() {
+function closeSettings() { stopListen(); $('settings').hidden = true; renderPerfBtn(); updDevUi(); }
+// whether a row belongs on screen: each device's options appear once the game has seen that device
+function rowOn(r) {
+  if (r.touch && !TOUCH) return false;
+  if (r.desk && !window.ZCDesktop) return false;
+  switch (r.dev) {
+    case 'kbm': return DEV.seen.kbm;
+    case 'pad': return DEV.seen.pad;
+    case 'nopad': return !DEV.seen.pad;
+    case 'padgroup': return true;
+    case 'aim': return DEV.seen.kbm || DEV.seen.pad;
+    case 'touch': return TOUCH || DEV.seen.touch;
+  }
+  return true;
+}
+function renderSettings(keep) {
+  const sheet = $('settings'), top = sheet.scrollTop;
   const box = $('setBody'); box.textContent = '';
   const adv = SP.mode === 'advanced';
   $('setMode').querySelectorAll('button').forEach(b => { const on = b.dataset.m === SP.mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
   const nav = $('setTabs'); nav.hidden = !adv; nav.textContent = ''; nav.parentNode.classList.toggle('adv', adv);
   if (adv) for (const [k, label] of SET_TABS) {
     const b = el('button', 'tab' + (k === SP.tab ? ' on' : ''), label); b.type = 'button'; b.setAttribute('aria-pressed', k === SP.tab);
-    b.addEventListener('click', () => { SP.tab = k; SFX.click(); renderSettings(); }); nav.append(b);
+    b.addEventListener('click', () => { SP.tab = k; SFX.click(); stopListen(); renderSettings(); }); nav.append(b);
   }
-  const rows = adv ? SET_ROWS.filter(r => r.tab === SP.tab) : SET_ROWS.filter(r => r.basic);
-  if (!adv) box.append(setNote('The most useful options. Switch to Advanced for everything, from rain density to the joystick.'));
+  let rows = adv ? SET_ROWS.filter(r => r.tab === SP.tab) : SET_ROWS.filter(r => r.basic === true || r.basic === DEV.kind);
+  rows = rows.filter(rowOn);
+  if (adv && SP.tab === 'controls') {
+    // the device in use goes first
+    const secs = [[]]; for (const r of rows) { if (r.group) secs.push([]); secs[secs.length - 1].push(r); }
+    const rank = sec => { const d = sec[0] && sec[0].dev; return d === DEV.kind || (d === 'padgroup' && DEV.kind === 'pad') ? 0 : d === 'aim' ? (DEV.kind === 'touch' ? 3 : 1) : 2; };
+    const head = secs.shift(); secs.sort((a, b) => rank(a) - rank(b)); rows = head.concat.apply(head, secs);
+  }
+  if (!adv) box.append(setNote('The most useful options. Switch to Advanced for everything, from rain density to ' + (DEV.kind === 'touch' ? 'the joystick.' : DEV.kind === 'pad' ? 'your controller buttons.' : 'your key bindings.')));
   for (const r of rows) {
-    if (r.touch && !TOUCH) continue;
     if (r.group) { box.append(el('h3', 'set-group', r.group)); continue; }
     if (r.info === 'device') { box.append(deviceInfo()); continue; }
-    if (r.info === 'keys') { box.append(keyInfo()); continue; }
+    if (r.info === 'devnow') { box.append(devNow()); continue; }
+    if (r.info === 'nopad') { box.append(setNote('Plug in or pair a controller and press any button on it. The game switches to it on its own, and its aiming options and button layout show up here.')); continue; }
+    if (r.info === 'binds-kb' || r.info === 'binds-pad') { const h = el('h4', 'set-sub', r.label); box.append(h, bindTable(r.info === 'binds-pad' ? 'pad' : 'kb')); continue; }
     box.append(r.action ? actionRow(r) : settingRow(r));
   }
   if (!adv) { const more = el('button', 'btn small ghost set-more', 'All settings'); more.type = 'button'; more.addEventListener('click', () => { SP.mode = 'advanced'; store.set('zc_setmode', 'advanced'); SFX.click(); renderSettings(); }); box.append(more); }
   if (adv && SP.tab === 'gameplay') box.append(setNote('Map seed ' + (SET.seedMode === 'fixed' && SET.seed ? SET.seed : WORLD.lastSeed || 0) + (SET.seedMode === 'fixed' ? ' (kept)' : '') + ' · ' + (WORLD.cur ? WORLD.cur.name + ', ' + BIO[WORLD.cur.bio].name : '')));
+  if (keep) sheet.scrollTop = top;
+}
+// which device the game thinks you are on right now
+function devNow() {
+  const box = el('div', 'set-devnow');
+  box.append(devIcon(DEV.kind));
+  const t = el('div'); t.append(el('b', null, 'Playing with: ' + (DEV.kind === 'pad' ? padName() : DEV_NAMES[DEV.kind])), el('p', null, 'Picked on its own from what you used last. Touch the screen, the keyboard or a controller and it switches.'));
+  box.append(t); return box;
 }
 function setNote(t) { return el('p', 'set-note', t); }
 function settingRow(r) {
@@ -11155,6 +11400,7 @@ function actionRow(r) {
 function settingsAction(a, b) {
   SFX.click();
   if (a === 'radio') { openRadio(); return; }
+  if (a === 'fullscreen') { if (window.ZCDesktop) window.ZCDesktop.fullscreen(); return; }
   if (a === 'cache') { const before = cacheBytes().total; trimCaches(2); WSPR.clear(); toast('Cache refreshed', 'Freed ' + fmtMB(Math.max(0, before - cacheBytes().total)), '#7dff4a'); renderSettings(); return; }
   if (a === 'recheck') {
     try { const bm = PERF.bench = benchmark(), sc = scoreTier(PERF.prof, bm); PS.bench = bm; PS.learned = null; PERF.score = sc.score; PERF.start = sc.tier; PERF.ceil = deviceCeil(PERF.prof, sc.tier); savePerf(); if (PERF.mode === 'auto') applyRung(Math.max(ceilRung(), firstRung(PERF.start)), 'device check'); toast('Device checked', 'Starting at ' + TIER_NAMES[PERF.start], '#29e6ff'); } catch (e) { }
@@ -11163,7 +11409,9 @@ function settingsAction(a, b) {
   if (a === 'reset') {
     if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again to reset'; setTimeout(() => { b.dataset.sure = ''; b.textContent = 'Reset'; }, 3000); return; }
     const keep = { seed: SET.seed };
-    Object.assign(SET, SET_DEF, { flash: SYS_RM }, keep); saveSettings(); applyAll(); setMode(SET.quality); resize(); toast('Settings reset', 'Back to the defaults', '#f2cc3a'); renderSettings();
+    Object.assign(SET, SET_DEF, { flash: SYS_RM }, keep); saveSettings(); applyAll(); setMode(SET.quality); resize();
+    for (const a of ACTIONS) for (const k of ['kb', 'pad']) if (a[k]) BIND[k][a.id] = a[k].slice();
+    saveBinds(); toast('Settings reset', 'Back to the defaults', '#f2cc3a'); renderSettings();
   }
 }
 function deviceInfo() {
@@ -11187,12 +11435,6 @@ function deviceInfo() {
   if (notes.length) box.append(el('p', 'pf-note', notes.join(' ')));
   return box;
 }
-function keyInfo() {
-  const box = el('dl', 'set-keys');
-  [['WASD or arrows', 'Move'], ['Space or Shift', 'Dash'], ['Q or F', 'A-10 airstrike'], ['1 2 3', 'Pick a card'], ['P or Esc', 'Pause'], ['M', 'Mute the radio'], ['N', 'Next song'], ['[ ]', 'Change channel']]
-    .forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, v)); box.append(d); });
-  return box;
-}
 $('setClose').addEventListener('click', closeSettings);
 $('setMode').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { SP.mode = b.dataset.m; store.set('zc_setmode', SP.mode); SFX.click(); renderSettings(); }));
 // the old performance panel now opens the System tab
@@ -11210,6 +11452,665 @@ function updFpsBox(now) {
 }
 applyAll();
 renderPerfBtn();
+
+/* ================= input: touch, keyboard and mouse, controller =================
+   The game works out what you are playing with from the last thing you used and switches on the spot:
+   a finger on the screen means touch (joystick, the gun aims itself), a key or the mouse means keyboard and mouse
+   (aim with the mouse, fire with the button), and a button or stick on a controller means controller (twin sticks).
+   Keys, mouse buttons and controller buttons can all be reassigned in Settings > Controls. */
+const ACTIONS = [
+  { id: 'up', label: 'Move up', kb: ['KeyW', 'ArrowUp'], pad: null },
+  { id: 'down', label: 'Move down', kb: ['KeyS', 'ArrowDown'], pad: null },
+  { id: 'left', label: 'Move left', kb: ['KeyA', 'ArrowLeft'], pad: null },
+  { id: 'right', label: 'Move right', kb: ['KeyD', 'ArrowRight'], pad: null },
+  { id: 'fire', label: 'Fire', kb: ['Mouse0', ''], pad: ['b7', ''] },
+  { id: 'dash', label: 'Dash', kb: ['Space', 'ShiftLeft'], pad: ['b0', 'b6'] },
+  { id: 'air', label: 'A-10 airstrike', kb: ['KeyQ', 'KeyF'], pad: ['b3', 'b5'] },
+  { id: 'free', label: 'Break free when grabbed', kb: ['KeyE', 'Enter'], pad: ['b2', ''] },
+  { id: 'aim', label: 'Auto-aim on or off', kb: ['KeyV', ''], pad: ['b11', ''] },
+  { id: 'pause', label: 'Pause', kb: ['KeyP', ''], pad: ['b9', 'b8'] },
+  { id: 'mute', label: 'Mute the radio', kb: ['KeyM', ''], pad: ['b13', ''] },
+  { id: 'next', label: 'Next song', kb: ['KeyN', ''], pad: ['b15', ''] },
+  { id: 'chDown', label: 'Radio channel down', kb: ['BracketLeft', ''], pad: ['b14', ''] },
+  { id: 'chUp', label: 'Radio channel up', kb: ['BracketRight', ''], pad: ['b12', ''] }
+];
+const NO_ACTS = [];
+const BIND = (function () {
+  const saved = store.get('zc_binds', null) || {}, b = { kb: {}, pad: {} };
+  for (const a of ACTIONS) for (const k of ['kb', 'pad']) {
+    if (!a[k]) continue;
+    const s = saved[k] && saved[k][a.id];
+    b[k][a.id] = Array.isArray(s) && s.length === 2 && s.every(v => typeof v === 'string' && v.length < 24) ? s.slice() : a[k].slice();
+  }
+  return b;
+})();
+let KB_MAP = {}, PAD_MAP = {};
+function remapBinds() {
+  KB_MAP = {}; PAD_MAP = {};
+  for (const a of ACTIONS) {
+    for (const c of BIND.kb[a.id]) if (c) (KB_MAP[c] = KB_MAP[c] || []).push(a.id);
+    if (BIND.pad[a.id]) for (const c of BIND.pad[a.id]) if (c) (PAD_MAP[c] = PAD_MAP[c] || []).push(a.id);
+  }
+}
+remapBinds();
+function saveBinds() { store.set('zc_binds', BIND); remapBinds(); updGlyphs(); updDevUi(); }
+
+/* ---------- names for keys and buttons ---------- */
+const KEY_NAMES = { Space: 'Space', ShiftLeft: 'L-Shift', ShiftRight: 'R-Shift', ControlLeft: 'L-Ctrl', ControlRight: 'R-Ctrl', AltLeft: 'L-Alt', AltRight: 'R-Alt', MetaLeft: 'L-Win', MetaRight: 'R-Win',
+  ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Escape: 'Esc', Enter: 'Enter', NumpadEnter: 'Num Enter', Tab: 'Tab', Backspace: 'Backspace', CapsLock: 'Caps',
+  BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', Backslash: '\\', Minus: '-', Equal: '=', Backquote: '`', IntlBackslash: '\\',
+  Insert: 'Ins', Delete: 'Del', Home: 'Home', End: 'End', PageUp: 'PgUp', PageDown: 'PgDn', ContextMenu: 'Menu',
+  Mouse0: 'Left click', Mouse1: 'Middle click', Mouse2: 'Right click', Mouse3: 'Mouse 4', Mouse4: 'Mouse 5' };
+function keyLabel(c) {
+  if (!c) return '';
+  if (KEY_NAMES[c]) return KEY_NAMES[c];
+  let m = /^Key([A-Z])$/.exec(c); if (m) return m[1];
+  m = /^Digit(\d)$/.exec(c); if (m) return m[1];
+  m = /^Numpad(.+)$/.exec(c); if (m) return 'Num ' + m[1].replace('Decimal', '.').replace('Add', '+').replace('Subtract', '-').replace('Multiply', '*').replace('Divide', '/');
+  m = /^F(\d+)$/.exec(c); if (m) return c;
+  return c.replace(/(Left|Right)$/, '');
+}
+const PAD_NAMES = {
+  xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'LS', 'RS', 'D-pad ↑', 'D-pad ↓', 'D-pad ←', 'D-pad →', 'Xbox'],
+  ps: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', 'D-pad ↑', 'D-pad ↓', 'D-pad ←', 'D-pad →', 'PS'],
+  nin: ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '−', '+', 'LS', 'RS', 'D-pad ↑', 'D-pad ↓', 'D-pad ←', 'D-pad →', 'Home']
+};
+function padLabel(c) { if (!c) return ''; const i = +c.slice(1), n = PAD_NAMES[DEV.padType] || PAD_NAMES.xbox; return n[i] || 'Button ' + (i + 1); }
+const PAD_A = () => padLabel('b0'), PAD_B = () => padLabel('b1');
+function bindName(kind, c) { return c ? (kind === 'pad' ? padLabel(c) : keyLabel(c)) : '—'; }
+function firstBind(kind, id) { const b = BIND[kind][id]; return b ? (b[0] || b[1] || '') : ''; }
+const DEV_NAMES = { touch: 'Touch screen', kbm: 'Keyboard and mouse', pad: 'Controller' };
+
+/* ---------- which device ---------- */
+const FINE = !!(window.matchMedia && matchMedia('(any-pointer: fine)').matches);
+const DEV = {
+  kind: TOUCH ? 'touch' : 'kbm',
+  seen: { touch: TOUCH, kbm: !TOUCH || FINE, pad: !!store.get('zc_padseen', false) },
+  keys: {}, pad: false, padIdx: -1, padId: '', padType: 'xbox', btn: [], prev: [], ls: { x: 0, y: 0 }, rs: { x: 0, y: 0 },
+  mx: 0, my: 0, mIn: false, mAcc: 0, fireOn: false, aimFlip: false, lastPadT: -1e9, listen: null, rsT: -9,
+  nav: { dir: '', t: 0 }, useT: { touch: 0, kbm: 0, pad: 0 }, latch: [], latchT: 0
+};
+const PLATFORM = window.ZC_DESKTOP || window.ZCDesktop ? 'win' : IS_APP ? 'app' : 'web';
+function markDev(kind) {
+  if (kind === 'kbm' && performance.now() - DEV.lastPadT < 400) return;   // some controllers send key presses too
+  let fresh = false;
+  if (!DEV.seen[kind]) { DEV.seen[kind] = true; fresh = true; if (kind === 'pad') store.set('zc_padseen', true); }
+  if (DEV.kind === kind) { if (fresh) refreshControlsTab(); return; }
+  DEV.kind = kind; applyDev(); refreshControlsTab();
+  if (G.mode === 'play') toast('Now playing with', DEV_NAMES[kind], '#29e6ff');
+}
+function applyDev() {
+  const app = $('app'); app.classList.remove('dev-touch', 'dev-kbm', 'dev-pad'); app.classList.add('dev-' + DEV.kind);
+  if (DEV.kind !== 'touch') { joy.active = false; joy.id = null; joy.dx = joy.dy = 0; }
+  if (DEV.kind !== 'kbm') DEV.fireOn = false;
+  updGlyphs(); updDevUi();
+}
+function refreshControlsTab() { if (!$('settings').hidden && SP.mode === 'advanced' && SP.tab === 'controls' && !DEV.listen) renderSettings(true); }
+// the device used most during a run goes on the leaderboard with the score
+function runDevice() { const u = DEV.useT; return u.pad > u.kbm && u.pad > u.touch ? 'pad' : u.kbm > u.touch ? 'kbm' : u.touch > 0 ? 'touch' : DEV.kind; }
+
+/* ---------- keyboard ---------- */
+// the physical key: e.code, or worked out from e.key for the odd keyboard (or synthetic event) that leaves code empty
+const KEY_CODE = { ' ': 'Space', Shift: 'ShiftLeft', Control: 'ControlLeft', Alt: 'AltLeft', '[': 'BracketLeft', ']': 'BracketRight', ';': 'Semicolon', "'": 'Quote', ',': 'Comma', '.': 'Period', '/': 'Slash', '\\': 'Backslash', '-': 'Minus', '=': 'Equal', '`': 'Backquote', Esc: 'Escape' };
+function keyCode(e) {
+  if (e.code) return e.code;
+  const k = String(e.key || '');
+  if (KEY_CODE[k]) return KEY_CODE[k];
+  if (/^[a-z]$/i.test(k)) return 'Key' + k.toUpperCase();
+  if (/^[0-9]$/.test(k)) return 'Digit' + k;
+  return k;
+}
+const isTyping = t => !!t && (t.tagName === 'TEXTAREA' || t.isContentEditable || (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit)$/.test(t.type)));
+function held(id) {
+  const kb = BIND.kb[id]; if ((kb[0] && DEV.keys[kb[0]]) || (kb[1] && DEV.keys[kb[1]])) return true;
+  const pd = BIND.pad[id]; if (pd && DEV.pad) for (const c of pd) if (c && DEV.btn[+c.slice(1)]) return true;
+  return false;
+}
+// one place that turns an action into what it does, for keys, mouse buttons and controller buttons alike
+function doActions(A, repeat) {
+  const has = id => A.indexOf(id) >= 0, play = G.mode === 'play' && !menuOpen();
+  if (play && G.grab && (has('free') || has('dash') || has('fire'))) { qteHit(); return true; }
+  let used = false;
+  if (has('dash') && play) { tryDash(); used = true; }
+  if (repeat) return used;
+  if (has('air') && play) { callAirstrike(); used = true; }
+  if (has('aim') && play) { toggleAutoAim(); used = true; }
+  if (has('fire') && play && DEV.kind === 'kbm' && SET.fireKbm === 'toggle') { DEV.fireOn = !DEV.fireOn; used = true; }
+  if (has('mute')) { SFX.fm.mute(); used = true; } if (has('next')) { SFX.fm.skip(); used = true; }
+  if (has('chDown')) { SFX.fm.step(-1); used = true; } if (has('chUp')) { SFX.fm.step(1); used = true; }
+  return used;
+}
+// Esc (and the pause key) closes whatever is on top, or pauses and resumes the run
+function goBack(esc) {
+  if (!$('settings').hidden) { closeSettings(); return; }
+  if (!$('radioPanel').hidden) { closeRadio(); return; }
+  if (!$('hudRadio').hidden && esc) { toggleHudRadio(false); return; }
+  if (!$('blDetail').hidden) { $('blDetail').hidden = true; return; }
+  if (!$('bosslog').hidden) { closeBossLog(); return; }
+  if (!$('arDetail').hidden) { $('arDetail').hidden = true; return; }
+  if (!$('armory').hidden) { closeArmory(); return; }
+  if (!$('cxDetail').hidden) { closeDetail(); return; }
+  if (!$('codex').hidden) { closeCodex(); return; }
+  if (!$('lb').hidden) { closeLB(); return; }
+  if (G.mode === 'play') pauseGame(); else if (G.mode === 'pause') resumeGame();
+}
+window.addEventListener('keydown', e => {
+  if (DEV.listen) return;   // handled by the capture listener below
+  if (isTyping(e.target)) return;
+  if (typeof INTRO !== 'undefined' && INTRO.on) return;   // the intro has its own skip keys
+  const code = keyCode(e);
+  if (!e.repeat) markDev('kbm');
+  DEV.keys[code] = true;
+  const A = KB_MAP[code] || NO_ACTS;
+  if (doActions(A, e.repeat) && G.mode === 'play') { e.preventDefault(); }
+  if (e.repeat) return;
+  if (code === 'Escape' || A.indexOf('pause') >= 0) { goBack(code === 'Escape'); return; }
+  if (G.mode === 'upgrade' || G.mode === 'skull') { const n = /^(?:Digit|Numpad)([123])$/.exec(code); if (n) { (G.mode === 'upgrade' ? chooseCard : chooseForbidden)(+n[1] - 1, null); return; } }
+  // arrow keys move between buttons in the menus (left and right still slide a focused slider)
+  if (/^Arrow/.test(code) && menuOpen() && !(e.target && e.target.type === 'range' && /Left|Right/.test(code))) { navMove(code.slice(5).toLowerCase()); e.preventDefault(); }
+});
+window.addEventListener('keyup', e => { const code = keyCode(e); DEV.keys[code] = false; });
+window.addEventListener('blur', () => { DEV.keys = {}; });
+
+/* ---------- mouse ---------- */
+window.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return;
+  const r = cv.getBoundingClientRect(); DEV.mx = e.clientX - r.left; DEV.my = e.clientY - r.top; DEV.mIn = true;
+  if (DEV.kind !== 'kbm') { DEV.mAcc += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); if (DEV.mAcc > 30) { DEV.mAcc = 0; markDev('kbm'); } }
+}, { passive: true });
+window.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'touch' || e.pointerType === 'pen') markDev('touch');
+  else if (e.pointerType === 'mouse') { DEV.mAcc = 0; markDev('kbm'); }
+}, true);
+cv.addEventListener('mousedown', e => {
+  if (DEV.listen) return;
+  const r = cv.getBoundingClientRect(); DEV.mx = e.clientX - r.left; DEV.my = e.clientY - r.top; DEV.mIn = true;
+  const code = 'Mouse' + e.button; DEV.keys[code] = true;
+  if (e.button === 1) e.preventDefault();   // no auto-scroll on a middle click
+  doActions(KB_MAP[code] || NO_ACTS, false);
+});
+window.addEventListener('mouseup', e => { DEV.keys['Mouse' + e.button] = false; });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- controller ---------- */
+function padKind(id) { id = String(id || ''); return /xbox|xinput|045e/i.test(id) ? 'xbox' : /054c|playstation|dualsense|dualshock|wireless controller/i.test(id) ? 'ps' : /057e|nintendo|switch|pro controller|joy-con/i.test(id) ? 'nin' : 'xbox'; }
+function padName() { return DEV.padType === 'ps' ? 'PlayStation controller' : DEV.padType === 'nin' ? 'Switch controller' : /xbox|xinput|045e/i.test(DEV.padId) ? 'Xbox controller' : 'Controller'; }
+function livePads() { try { return navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(g => g && g.connected) : []; } catch (e) { return []; } }
+// a quick tap can start and end between two frames on a slow device, so a fast timer notes every press until the next frame reads it
+function padLatch() {
+  if (!DEV.pad) { clearInterval(DEV.latchT); DEV.latchT = 0; return; }
+  const g = livePads().find(x => x.index === DEV.padIdx); if (!g) return;
+  for (let i = 0, n = Math.min(20, g.buttons.length); i < n; i++) { const b = g.buttons[i]; if (b && (b.pressed || b.value > 0.4)) DEV.latch[i] = 1; }
+}
+function usePad(g) { DEV.pad = true; DEV.padIdx = g.index; if (!DEV.latchT) DEV.latchT = setInterval(padLatch, 10); if (g.id !== DEV.padId) { DEV.padId = g.id; DEV.padType = padKind(g.id); updGlyphs(); updDevUi(); } }
+window.addEventListener('gamepadconnected', e => {
+  DEV.lastPadT = performance.now(); usePad(e.gamepad); markDev('pad');
+  toast('Controller connected', padName(), '#7dff4a');
+});
+window.addEventListener('gamepaddisconnected', e => {
+  if (e.gamepad.index !== DEV.padIdx) return;
+  const rest = livePads(); if (rest.length) { usePad(rest[0]); return; }
+  DEV.pad = false; DEV.padIdx = -1; DEV.btn = []; DEV.prev = []; DEV.ls.x = DEV.ls.y = DEV.rs.x = DEV.rs.y = 0;
+  toast('Controller disconnected', 'Plug it back in or keep going', '#e5484d');
+  if (DEV.kind === 'pad') { DEV.kind = TOUCH && !FINE ? 'touch' : 'kbm'; applyDev(); refreshControlsTab(); if (G.mode === 'play') pauseGame(); }
+});
+function stickRead(ax, ay, dz, out) {
+  ax = +ax || 0; ay = +ay || 0; const m = Math.hypot(ax, ay);
+  if (m < dz) { out.x = 0; out.y = 0; return; }
+  const k = Math.min(1, (m - dz) / (1 - dz)) / m; out.x = ax * k; out.y = ay * k;
+}
+// read the controller once a frame: buttons, sticks, menu navigation and button presses
+function padPoll(dt) {
+  const pads = livePads(); if (!pads.length) { if (DEV.pad) { DEV.pad = false; DEV.btn = []; } return; }
+  let gp = pads.find(g => g.index === DEV.padIdx);
+  // a second controller takes over as soon as a button on it is pressed
+  for (const g of pads) if (g !== gp && g.buttons.some(b => b && b.pressed)) { gp = g; break; }
+  if (!gp) gp = pads[0];
+  if (gp.index !== DEV.padIdx || !DEV.pad || gp.id !== DEV.padId) usePad(gp);
+  const B = DEV.btn, P = DEV.prev, n = Math.min(20, gp.buttons.length);
+  for (let i = 0; i < n; i++) { P[i] = !!B[i]; const b = gp.buttons[i]; B[i] = (!!b && (b.pressed || b.value > 0.4)) || !!DEV.latch[i]; DEV.latch[i] = 0; }
+  const dz = clamp(SET.padDead, 2, 60) / 100;
+  stickRead(gp.axes[0], gp.axes[1], dz, DEV.ls); stickRead(gp.axes[2], gp.axes[3], dz, DEV.rs);
+  let active = false;
+  for (let i = 0; i < n; i++) if (B[i] && !P[i]) { active = true; break; }
+  if (!active && (Math.hypot(DEV.ls.x, DEV.ls.y) > 0.5 || Math.hypot(DEV.rs.x, DEV.rs.y) > 0.5)) active = true;
+  if (active) { DEV.lastPadT = performance.now(); markDev('pad'); }
+  if (DEV.listen) {
+    if (DEV.listen.kind === 'pad') for (let i = 0; i < n; i++) if (B[i] && !P[i]) { assignBind('b' + i); break; }
+    if (DEV.listen && performance.now() - DEV.listen.t > 9000) stopListen();
+    return;
+  }
+  if (DEV.kind !== 'pad') return;
+  const intro = typeof INTRO !== 'undefined' && INTRO.on;
+  for (let i = 0; i < n; i++) if (B[i] && !P[i]) padDown(i, intro);
+  if (!intro && menuOpen()) padNav(dt);
+}
+function padDown(i, intro) {
+  if (intro) { if (i === 0 || i === 1 || i === 9) introSkip(); return; }
+  if (G.mode === 'cine') return;
+  if (!menuOpen()) { doActions(PAD_MAP['b' + i] || NO_ACTS, false); if ((PAD_MAP['b' + i] || NO_ACTS).indexOf('pause') >= 0) pauseGame(); return; }
+  if (i === 0) { navPress(); return; }
+  if (i === 1) { if (window.zcBack) window.zcBack(); SFX.click(); return; }
+  if (i === 9) { if (G.mode === 'pause' && !sheetOpen()) resumeGame(); else if (G.mode === 'title' && !sheetOpen()) $('playBtn').click(); return; }
+  if (i === 4 || i === 5) { navTab(i === 5 ? 1 : -1); return; }
+  if (i === 2 && G.mode === 'skull' && !$('skullRefuse').hidden) { $('skullRefuse').click(); return; }
+}
+function padRumble(ms) {
+  if (!SET.padRumble || !DEV.pad) return;
+  try {
+    const g = livePads().find(x => x.index === DEV.padIdx), va = g && g.vibrationActuator;
+    if (va && va.playEffect) va.playEffect('dual-rumble', { startDelay: 0, duration: Math.min(450, ms * 2.4 + 40), strongMagnitude: clamp(ms / 120, 0.15, 1), weakMagnitude: clamp(ms / 70, 0.25, 1) }).catch(() => {});
+  } catch (e) { /* no rumble on this controller */ }
+}
+
+/* ---------- menus with a controller (and arrow keys) ---------- */
+const LAYERS = ['settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'skull', 'upgrade', 'pause', 'over', 'title'];
+const shown = e => !!e && !e.hidden && e.getClientRects().length > 0;
+function sheetOpen() { return shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')); }
+function menuOpen() { if (typeof INTRO !== 'undefined' && INTRO.on) return false; return (G.mode !== 'play' && G.mode !== 'cine') || shown($('settings')) || shown($('radioPanel')); }
+function menuLayer() { for (const id of LAYERS) { const e = $(id); if (shown(e)) return e; } return null; }
+function focusables(L) {
+  return Array.from(L.querySelectorAll('button, input, select, a[href], [tabindex]:not([tabindex="-1"])'))
+    .filter(e => !e.disabled && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && !e.closest('[hidden]') && (L.id === 'arDetail' || L.id === 'cxDetail' || L.id === 'blDetail' || !e.closest('.detail')));
+}
+function scrollBox(e) { while (e && e !== document.body) { if (e.scrollHeight > e.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return e; e = e.parentElement; } return null; }
+function focusEl(e) {
+  if (!e) return; try { e.focus({ preventScroll: true }); } catch (x) { e.focus(); }
+  e.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  const sb = scrollBox(e.parentElement); if (sb) { const r = e.getBoundingClientRect(), br = sb.getBoundingClientRect(), head = sb.querySelector(':scope > .sheet-inner > .sheet-head'), hh = head ? head.getBoundingClientRect().height : 0; if (r.top < br.top + hh + 6) sb.scrollTop -= br.top + hh + 6 - r.top; }
+}
+function preferred(items) {
+  return items.find(e => e.classList.contains('primary')) || items.find(e => e.classList.contains('on') && !isTyping(e)) || items.find(e => !isTyping(e) && !e.classList.contains('icon-btn')) || items[0];
+}
+function focusFirst(L) { const it = focusables(L); if (it.length) focusEl(preferred(it)); }
+function navMove(dir) {
+  const L = menuLayer(); if (!L) return;
+  const items = focusables(L); if (!items.length) { const sb = scrollBox(L) || L; if (dir === 'up' || dir === 'down') sb.scrollTop += dir === 'up' ? -160 : 160; return; }
+  const cur = document.activeElement;
+  if (!cur || !L.contains(cur) || items.indexOf(cur) < 0) { focusEl(preferred(items)); return; }
+  if (cur.type === 'range' && (dir === 'left' || dir === 'right')) {
+    const st = +cur.step || 1, v = clamp(+cur.value + (dir === 'right' ? st : -st), +cur.min, +cur.max);
+    if (v !== +cur.value) { cur.value = v; cur.dispatchEvent(new Event('input', { bubbles: true })); cur.dispatchEvent(new Event('change', { bubbles: true })); }
+    return;
+  }
+  const r0 = cur.getBoundingClientRect(), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+  let best = null, bs = Infinity;
+  for (const e of items) {
+    if (e === cur) continue;
+    const r = e.getBoundingClientRect(), ex = r.left + r.width / 2, ey = r.top + r.height / 2;
+    let main, cross;
+    if (dir === 'right' || dir === 'left') {
+      main = dir === 'right' ? ex - cx : cx - ex; if (main < 4) continue;
+      cross = r.bottom > r0.top + 2 && r.top < r0.bottom - 2 ? 0 : Math.abs(ey - cy);
+    } else {
+      main = dir === 'down' ? ey - cy : cy - ey; if (main < 4) continue;
+      cross = r.right > r0.left + 2 && r.left < r0.right - 2 ? Math.abs(ex - cx) * 0.3 : Math.abs(ex - cx);
+    }
+    const s = main + cross * 2.4;
+    if (s < bs) { bs = s; best = e; }
+  }
+  if (best) { focusEl(best); SFX.click(); }
+  else if (dir === 'up' || dir === 'down') { const sb = scrollBox(L); if (sb) sb.scrollTop += dir === 'up' ? -200 : 200; }
+}
+function navPress() {
+  const L = menuLayer(); if (!L) return;
+  const a = document.activeElement;
+  if (!a || !L.contains(a) || a === document.body) { focusFirst(L); return; }
+  if (a.type === 'range') return;
+  if (isTyping(a)) { a.focus(); return; }
+  a.click();
+}
+// LB and RB flip through tabs: the settings tabs, weapon types, specimen series, leaderboard tabs
+function navTab(d) {
+  const L = menuLayer(); if (!L) return;
+  const tabs = Array.from(L.querySelectorAll('.tab, .chip, [role="tab"]')).filter(e => e.getClientRects().length && !e.closest('[hidden]'));
+  const groups = new Map(); for (const t of tabs) { const g = t.parentElement; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(t); }
+  let grp = null; for (const [, list] of groups) if (list.length > 1 && (!grp || list.length > grp.length)) grp = list;
+  if (!grp) return;
+  let i = grp.findIndex(t => t.classList.contains('on') || t.getAttribute('aria-selected') === 'true' || t.getAttribute('aria-pressed') === 'true'); if (i < 0) i = 0;
+  const nx = grp[(i + d + grp.length) % grp.length], key = nx.textContent;
+  nx.click();
+  // the click may rebuild the tab row, so find the new button by its label
+  setTimeout(() => { const L2 = menuLayer(); if (!L2) return; const again = Array.from(L2.querySelectorAll('.tab, .chip, [role="tab"]')).find(t => t.textContent === key); if (again) focusEl(again); }, 0);
+}
+function padNav(dt) {
+  const B = DEV.btn; let dir = '';
+  if (B[12]) dir = 'up'; else if (B[13]) dir = 'down'; else if (B[14]) dir = 'left'; else if (B[15]) dir = 'right';
+  else { const x = DEV.ls.x, y = DEV.ls.y; if (Math.max(Math.abs(x), Math.abs(y)) > 0.55) dir = Math.abs(x) > Math.abs(y) ? (x > 0 ? 'right' : 'left') : (y > 0 ? 'down' : 'up'); }
+  const N = DEV.nav;
+  if (!dir) N.dir = '';
+  else if (dir !== N.dir) { N.dir = dir; N.t = 0.36; navMove(dir); }
+  else { N.t -= dt; if (N.t <= 0) { N.t = 0.1; navMove(dir); } }
+  const L = menuLayer(); if (!L) return;
+  if (Math.abs(DEV.rs.y) > 0.15) { const sb = scrollBox(L) || L; sb.scrollTop += DEV.rs.y * 1100 * dt; }
+  const a = document.activeElement;
+  if (!a || a === document.body || !L.contains(a)) focusFirst(L);
+}
+
+/* ---------- aiming and firing ---------- */
+function aimMode() {
+  if (DEV.kind === 'touch') return 'auto';
+  if (DEV.kind === 'kbm' && !DEV.mIn) return 'auto';   // keys but no mouse yet (a tablet with a keyboard): the gun aims itself
+  const m = DEV.kind === 'pad' ? SET.aimPad : SET.aimKbm;
+  return DEV.aimFlip ? (m === 'auto' ? 'manual' : 'auto') : m;
+}
+function toggleAutoAim() { DEV.aimFlip = !DEV.aimFlip; toast('Aim', aimMode() === 'auto' ? 'Auto-aim on' : 'You aim', '#f2cc3a'); SFX.click(); }
+function aimStick() { return SET.padSwap ? DEV.ls : DEV.rs; }
+function moveStick() { return SET.padSwap ? DEV.rs : DEV.ls; }
+function moveInput() {
+  let x = 0, y = 0;
+  if (held('left')) x -= 1; if (held('right')) x += 1; if (held('up')) y -= 1; if (held('down')) y += 1;
+  if (DEV.pad) { const s = moveStick(); x += s.x; y += s.y; }
+  if (joy.active) { x += joy.dx; y += joy.dy; }
+  return [x, y];
+}
+// the direction you are aiming yourself, or null when you are not aiming (mouse not over the game, stick let go)
+function aimInput(p) {
+  if (DEV.kind === 'kbm') {
+    if (!DEV.mIn) return null;
+    const wx = cam.x + (DEV.mx - W / 2) / ZOOM, wy = cam.y + (DEV.my - H / 2) / ZOOM;
+    if (Math.abs(wx - p.x) + Math.abs(wy - p.y) < 3) return null;
+    return Math.atan2(wy - p.y, wx - p.x);
+  }
+  if (DEV.kind === 'pad') { const s = aimStick(); if (Math.hypot(s.x, s.y) > 0.28) { DEV.rsT = G.time; return Math.atan2(s.y, s.x); } }
+  return null;
+}
+// the zombie closest to a line from you at angle `ang` (within `cone` radians, big ones count as wider), or null
+function coneTarget(p, ang, cone) {
+  let best = null, bs = Infinity;
+  const rg = p.S.range, vw = W / ZOOM / 2 + 10, vh = H / ZOOM / 2 + 10;
+  for (const z of G.zs) {
+    if (z.dead || z.st.under || z.st.down > 0) continue;
+    const ex = z.x - p.x, ey = z.y - p.y; if (Math.abs(ex) > vw || Math.abs(ey) > vh) continue;
+    const d = Math.hypot(ex, ey); if (d > rg + z.r) continue;
+    if (z.m.S.p.camo && d > 230) continue;
+    const da = Math.abs(((Math.atan2(ey, ex) - ang + Math.PI) % TAU + TAU) % TAU - Math.PI), slack = Math.atan2(z.r, Math.max(d, 1));
+    if (da > cone + slack) continue;
+    const s = d * (1 + 3 * Math.max(0, da - slack));
+    if (s < bs) { bs = s; best = z; }
+  }
+  return best;
+}
+function wantFire(p) {
+  if (DEV.kind === 'kbm') { const f = SET.fireKbm; if (f === 'toggle') return DEV.fireOn || held('fire'); if (held('fire')) return true; return f === 'auto' && !!coneTarget(p, p.aim, 0.08); }
+  if (DEV.kind === 'pad') { const f = SET.firePad; if (held('fire')) return true; if (f === 'stick') { const s = aimStick(); return Math.hypot(s.x, s.y) > 0.55; } return f === 'auto' && !!coneTarget(p, p.aim, 0.1); }
+  return false;
+}
+const XCOL = { yellow: '#f2cc3a', white: '#f4f1e8', green: '#7dff4a', cyan: '#29e6ff', red: '#ff5a4a' };
+// the crosshair: at the mouse, or out along the aim with a controller (screen space)
+function drawAim() {
+  const p = G.p, play = G.mode === 'play', k = DEV.kind;
+  const cur = play && k === 'kbm' && aimMode() !== 'auto' && SET.xhair !== 'off' ? 'none' : '';
+  if (cv.style.cursor !== cur) cv.style.cursor = cur;
+  if (!p || !play || k === 'touch' || G.grab) return;
+  if (G.hintT > 0 && SET.hints) {
+    const a = clamp(G.hintT, 0, 1), txt = ctrlLine().toUpperCase();
+    ctx.font = "13px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = Math.min(W - 24, ctx.measureText(txt).width + 28);
+    ctx.fillStyle = 'rgba(8,10,13,' + 0.72 * a + ')'; ctx.fillRect(W / 2 - tw / 2, H - 60, tw, 30);
+    ctx.fillStyle = 'rgba(242,204,58,' + 0.9 * a + ')'; ctx.fillRect(W / 2 - tw / 2, H - 60, 3, 30);
+    ctx.fillStyle = 'rgba(235,229,214,' + 0.92 * a + ')'; ctx.fillText(txt, W / 2, H - 45, W - 40);
+  }
+  const am = aimMode(); if (am === 'auto' || SET.xhair === 'off') return;
+  const col = XCOL[SET.xhairColor] || XCOL.yellow, sz = SET.xhairSize / 100;
+  const px = (p.x - cam.x) * ZOOM + W / 2, py = (p.y - cam.y) * ZOOM + H / 2, ca = Math.cos(p.aim), sa = Math.sin(p.aim);
+  let x, y, hot;
+  if (k === 'kbm') {
+    x = DEV.mx; y = DEV.my;
+    const wx = cam.x + (x - W / 2) / ZOOM, wy = cam.y + (y - H / 2) / ZOOM;
+    hot = G.zs.some(z => !z.dead && !z.st.under && Math.hypot(z.x - wx, z.y - wy) < z.r + 6);
+  } else {
+    const d = clamp(p.S.range * ZOOM * 0.5, 90, 190); x = px + ca * d; y = py + sa * d;
+    hot = !!coneTarget(p, p.aim, 0.05);
+    ctx.save(); ctx.strokeStyle = hexA(col, 0.22); ctx.setLineDash([3, 7]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(px + ca * 30, py + sa * 30); ctx.lineTo(x - ca * 14 * sz, y - sa * 14 * sz); ctx.stroke(); ctx.restore();
+  }
+  const c = p.jamT > 0 ? '#9a968c' : hot ? '#ff5a4a' : col, R = 9 * sz, gap = 4 * sz, len = 6 * sz;
+  const shape = (lw, stroke) => {
+    ctx.strokeStyle = stroke; ctx.fillStyle = stroke; ctx.lineWidth = lw; ctx.beginPath();
+    if (SET.xhair === 'cross') { ctx.moveTo(x - gap - len, y); ctx.lineTo(x - gap, y); ctx.moveTo(x + gap, y); ctx.lineTo(x + gap + len, y); ctx.moveTo(x, y - gap - len); ctx.lineTo(x, y - gap); ctx.moveTo(x, y + gap); ctx.lineTo(x, y + gap + len); }
+    else if (SET.xhair === 'circle') ctx.arc(x, y, R, 0, TAU);
+    else ctx.arc(x, y, R * 0.75, 0, TAU);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, SET.xhair === 'dot' ? 2.6 * sz + lw / 4 : 1.4 * sz + lw / 4, 0, TAU); ctx.fill();
+  };
+  ctx.globalAlpha = SET.xhair === 'dot' ? 0.9 : 1;
+  shape(4, 'rgba(0,0,0,0.55)'); shape(2, c);
+  ctx.globalAlpha = 1;
+  // slow guns show how long until the next shot
+  const cdMax = 1 / (p.S.rof * dashRofMul(p)), left = clamp(p.fireCd / cdMax, 0, 1);
+  if (cdMax > 0.3 && left > 0.02) { ctx.strokeStyle = hexA(c, 0.8); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R + 6 * sz, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - left)); ctx.stroke(); }
+  if (k === 'kbm' && SET.fireKbm === 'toggle' && DEV.fireOn) { ctx.fillStyle = c; ctx.fillRect(x - 3, y + R + 7 * sz, 6, 3); }
+}
+
+/* ---------- rebinding (Settings > Controls) ---------- */
+function bindTable(kind) {
+  const box = el('div', 'binds'); box.dataset.kind = kind;
+  for (const a of ACTIONS) {
+    if (!BIND[kind][a.id]) continue;
+    const row = el('div', 'bind-row'); row.append(el('span', 'bind-name', a.label));
+    for (let s = 0; s < 2; s++) {
+      const code = BIND[kind][a.id][s], b = el('button', 'bind-key' + (code ? '' : ' empty'), bindName(kind, code)); b.type = 'button';
+      b.dataset.a = a.id; b.dataset.s = s; b.dataset.k = kind;
+      b.setAttribute('aria-label', a.label + ', ' + (s ? 'second' : 'first') + (kind === 'pad' ? ' button: ' : ' key: ') + (code ? bindName(kind, code) : 'none'));
+      b.addEventListener('click', () => startListen(kind, a.id, s, b));
+      row.append(b);
+    }
+    box.append(row);
+  }
+  const foot = el('div', 'bind-foot');
+  foot.append(el('p', 'set-note', kind === 'pad'
+    ? 'Choose a box, then press the button for it. If that button is already used, the two swap. In the menus ' + PAD_A() + ' always chooses and ' + PAD_B() + ' goes back; the left stick moves and the right stick aims.'
+    : 'Click a box, then press a key or a mouse button. If it is already used, the two swap. Backspace clears a box, Esc cancels, and Esc always pauses.'));
+  const r = el('button', 'btn small ghost', kind === 'pad' ? 'Reset buttons' : 'Reset keys'); r.type = 'button';
+  r.addEventListener('click', () => { for (const a of ACTIONS) if (a[kind]) BIND[kind][a.id] = a[kind].slice(); saveBinds(); SFX.click(); toast('Controls', kind === 'pad' ? 'Buttons back to the defaults' : 'Keys back to the defaults', '#f2cc3a'); renderSettings(true); });
+  foot.append(r); box.append(foot);
+  return box;
+}
+function startListen(kind, id, slot, btn) {
+  stopListen();
+  DEV.listen = { kind: kind, id: id, slot: slot, btn: btn, t: performance.now() };
+  btn.classList.add('listen'); btn.textContent = kind === 'pad' ? 'Press a button' : 'Press a key';
+  SFX.click();
+}
+function stopListen() {
+  const L = DEV.listen; if (!L) return; DEV.listen = null;
+  if (L.btn && L.btn.isConnected) { L.btn.classList.remove('listen'); L.btn.textContent = bindName(L.kind, BIND[L.kind][L.id][L.slot]); }
+}
+function assignBind(code) {
+  const L = DEV.listen; if (!L) return;
+  const Bk = BIND[L.kind], old = Bk[L.id][L.slot]; let swapped = null;
+  if (code) for (const a of ACTIONS) { if (!Bk[a.id]) continue; for (let s = 0; s < 2; s++) if (Bk[a.id][s] === code && !(a.id === L.id && s === L.slot)) { Bk[a.id][s] = old; swapped = a; } }
+  Bk[L.id][L.slot] = code;
+  DEV.listen = null; saveBinds(); SFX.click();
+  if (swapped) toast('Swapped', swapped.label + ': ' + (old ? bindName(L.kind, old) : 'nothing'), '#f2cc3a');
+  renderSettings(true);
+  const again = document.querySelector('.bind-key[data-k="' + L.kind + '"][data-a="' + L.id + '"][data-s="' + L.slot + '"]'); if (again) focusEl(again);
+}
+// while a box is waiting for a key, that key goes to the box and nowhere else
+window.addEventListener('keydown', e => {
+  if (!DEV.listen) return;
+  e.preventDefault(); e.stopPropagation();
+  const code = keyCode(e);
+  if (code === 'Escape') { stopListen(); return; }
+  if (DEV.listen.kind !== 'kb') return;
+  if (code === 'Backspace' || code === 'Delete') { assignBind(''); return; }
+  assignBind(code);
+}, true);
+window.addEventListener('mousedown', e => {
+  if (!DEV.listen) return;
+  e.preventDefault(); e.stopPropagation();
+  if (DEV.listen.kind !== 'kb') { stopListen(); return; }
+  assignBind('Mouse' + e.button);
+}, true);
+window.addEventListener('contextmenu', e => { if (DEV.listen) e.preventDefault(); }, true);
+
+/* ---------- what the screen says about the controls ---------- */
+function kbList(id, n) { const b = BIND.kb[id]; return b.filter(Boolean).slice(0, n || 2).map(keyLabel).join(' or '); }
+function moveKeys() { const ids = ['up', 'left', 'down', 'right'].map(i => firstBind('kb', i)); return ids.join(',') === 'KeyW,KeyA,KeyS,KeyD' ? 'WASD' : ids.map(keyLabel).join(' '); }
+// one line for the first seconds of a run
+function ctrlLine() {
+  const am = aimMode(), parts = [];
+  if (DEV.kind === 'pad') {
+    const f = SET.firePad, fire = padLabel(firstBind('pad', 'fire'));
+    if (am === 'auto') parts.push('Left stick moves, the gun aims and fires on its own');
+    else { parts.push(f === 'stick' ? 'Right stick aims and fires' : 'Right stick aims'); if (f === 'auto') parts.push('it fires when the aim is on a zombie'); else if (f === 'trigger' && fire) parts.push('hold ' + fire + ' to fire'); }
+    parts.push(padLabel(firstBind('pad', 'dash')) + ' dashes');
+    return parts.join(' · ');
+  }
+  const f = SET.fireKbm, fire = keyLabel(firstBind('kb', 'fire')) || 'the fire key';
+  if (am === 'auto') return moveKeys() + ' to move, the gun aims and fires on its own';
+  return 'Aim with the mouse · ' + (f === 'toggle' ? fire + ' starts and stops firing' : f === 'auto' ? 'it fires when a zombie is under the crosshair' : 'hold ' + fire + ' to fire');
+}
+// the title screen hint
+function ctrlHintText() {
+  if (DEV.kind === 'touch') return 'Drag on the ' + (SET.lefty ? 'right' : 'left') + ' side to move. Your gun aims and fires on its own. Tap the other side to dash.';
+  if (DEV.kind === 'pad') {
+    const am = aimMode();
+    const f = SET.firePad, fire = padLabel(firstBind('pad', 'fire'));
+    return 'Left stick to move. ' + (am === 'auto' ? 'Your gun aims and fires on its own. ' : 'Right stick to aim' + (f === 'stick' ? ' and fire' : f === 'auto' ? ', it fires when the aim is on a zombie' : fire ? ', hold ' + fire + ' to fire' : '') + '. ')
+      + padLabel(firstBind('pad', 'dash')) + ' to dash, ' + padLabel(firstBind('pad', 'air')) + ' for the A-10, ' + padLabel(firstBind('pad', 'pause')) + ' to pause.';
+  }
+  const am = aimMode();
+  return 'Move with ' + moveKeys() + '. ' + (am === 'auto' ? 'Your gun aims and fires on its own. ' : ctrlLine().replace(' · ', ', ') + '. ') + kbList('dash', 1) + ' to dash, ' + kbList('air', 1) + ' for the A-10, Esc to pause.';
+}
+// the little key or button names on the HUD buttons
+function updGlyphs() {
+  const k = DEV.kind, set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  if (k === 'pad') { set('dashKey', padLabel(firstBind('pad', 'dash'))); set('airKey', padLabel(firstBind('pad', 'air'))); set('pauseKey', padLabel(firstBind('pad', 'pause')) || padLabel('b9')); }
+  else { set('dashKey', keyLabel(firstBind('kb', 'dash'))); set('airKey', keyLabel(firstBind('kb', 'air'))); set('pauseKey', 'Esc'); }
+}
+const DEV_SVG = {
+  touch: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M10.5 18.5h3"/></svg>',
+  kbm: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>',
+  pad: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10a5 5 0 0 1 4.6 7l-1 2.3a2.4 2.4 0 0 1-4 .6L15 15H9l-1.6 1.9a2.4 2.4 0 0 1-4-.6l-1-2.3A5 5 0 0 1 7 7z"/><path d="M7.5 10v3M6 11.5h3"/><circle cx="16" cy="10.6" r=".6"/><circle cx="17.6" cy="12.4" r=".6"/></svg>'
+};
+function devIcon(kind) { const s = el('span', 'dev-ic dev-ic-' + kind); s.innerHTML = DEV_SVG[kind] || DEV_SVG.kbm; return s; }
+const DEV_SHORT = { touch: 'Phone', kbm: 'PC', pad: 'Controller' };
+function devLine() {
+  const plat = PLATFORM === 'win' ? 'Windows app' : PLATFORM === 'app' ? 'Android app' : 'Web';
+  return DEV.kind === 'pad' ? padName() + ' · ' + plat : DEV.kind === 'kbm' ? 'Keyboard and mouse · ' + plat : 'Touch screen · ' + plat;
+}
+function updDevUi() {
+  const h = $('ctrlHint'); if (h) h.textContent = ctrlHintText();
+  const b = $('devBadge'); if (b) { b.textContent = ''; b.append(devIcon(DEV.kind), el('span', null, devLine())); }
+  const hi = $('hudDev'); if (hi) { hi.textContent = ''; hi.append(devIcon(DEV.kind)); }
+  if (G.mode === 'title') renderTitlePanel();
+}
+
+/* ================= your name, your record and the main menu's side panel =================
+   You type your name on the main menu once; it shows at the top left of the screen during a run and goes on the
+   leaderboard with your scores, together with what you played on (phone, PC or controller). The global board on
+   the web page is one board for every device. */
+function hasName() { return !!store.get('zc_tag', ''); }
+function setName(v) {
+  const t = cleanTag(v); store.set('zc_tag', t);
+  updNameUi(); syncNameOnline(t);
+  return t;
+}
+// the leaderboard keeps one entry per player; a new name renames it there too
+async function syncNameOnline(tag) {
+  if (!LB.db || !LB.uid || LB.ro) return;
+  try {
+    const ref = LB.db.collection('scores').doc(LB.uid), cur = await ref.get();
+    if (cur.exists && cur.data().tag !== tag) await ref.update({ tag: tag });
+  } catch (e) { if (e && e.code === 'invalid_argument') LB.ro = true; }
+}
+// signed in on a new device: pick up the name you used before
+async function adoptOnlineName() {
+  if (hasName() || !LB.db || !LB.uid) return;
+  try { const cur = await LB.db.collection('scores').doc(LB.uid).get(); const t = cur.exists && cur.data().tag; if (t && !hasName()) { store.set('zc_tag', cleanTag(t)); updNameUi(); } } catch (e) { /* keep it local */ }
+}
+function updNameUi() {
+  const named = hasName(), tag = getTag();
+  const inp = $('nameInput'); if (inp && document.activeElement !== inp) inp.value = named ? tag : '';
+  $('nameForm').classList.toggle('unnamed', !named);
+  $('hudName').hidden = !named; $('hudNameTxt').textContent = named ? tag : '';
+  if (G.mode === 'title') renderTitlePanel();
+}
+$('nameForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const inp = $('nameInput'), raw = inp.value.trim();
+  if (!raw) { inp.focus(); return; }
+  const t = setName(raw); inp.value = t; inp.blur();
+  const b = $('nameSave'); b.textContent = 'Saved'; b.classList.add('ok'); SFX.click();
+  setTimeout(() => { b.textContent = 'Save'; b.classList.remove('ok'); }, 1400);
+});
+$('nameInput').addEventListener('input', e => { const v = e.target.value.toUpperCase().replace(/[^A-Z0-9 _.\-]/g, ''); if (v !== e.target.value) e.target.value = v; });
+$('nameInput').addEventListener('blur', () => { const v = $('nameInput').value.trim(); if (v && cleanTag(v) !== getTag()) setName(v); else if (!v) updNameUi(); });
+
+/* ---------- your record across runs ---------- */
+const STATS = Object.assign({ runs: 0, kills: 0, time: 0, bestWave: 0, bestChain: 0, bestScore: 0, sid: 0 }, store.get('zc_stats', {}) || {});
+if (!STATS.sid) { STATS.sid = 1 + Math.floor(Math.random() * 9998); store.set('zc_stats', STATS); }
+function recordRun() {
+  if (!G.p || G.recorded) return; G.recorded = true;
+  STATS.runs++; STATS.kills += G.kills || 0; STATS.time += Math.floor(G.time || 0);
+  STATS.bestWave = Math.max(STATS.bestWave, G.wave || 0); STATS.bestChain = Math.max(STATS.bestChain, G.bestChain || 0); STATS.bestScore = Math.max(STATS.bestScore, G.score || 0);
+  store.set('zc_stats', STATS);
+}
+function fmtTime(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? h + 'h ' + String(m).padStart(2, '0') + 'm' : m + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
+function fmtK(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n); }
+
+/* ---------- the side panel on wide screens ---------- */
+function keycap(txt, wide) { return el('kbd', wide ? 'kc wide' : 'kc', txt); }
+function ctrlRows() {
+  const k = DEV.kind, rows = [];
+  if (k === 'touch') {
+    rows.push([[SET.lefty ? 'Right side' : 'Left side'], 'Drag to move'], [['Auto'], 'Aims and fires'], [['Dash'], 'Button or tap'], [['A-10'], 'Airstrike button']);
+    return rows;
+  }
+  const am = aimMode();
+  if (k === 'pad') {
+    const L = firstBind;
+    rows.push([[SET.padSwap ? 'R-stick' : 'L-stick'], 'Move']);
+    if (am !== 'auto') rows.push([[SET.padSwap ? 'L-stick' : 'R-stick'], SET.firePad === 'stick' ? 'Aim and fire' : 'Aim']);
+    if (am !== 'auto' && SET.firePad !== 'stick') rows.push([[padLabel(L('pad', 'fire'))], SET.firePad === 'auto' ? 'Fire (or on target)' : 'Fire']);
+    if (am === 'auto') rows.push([['Auto'], 'Aims and fires']);
+    rows.push([[padLabel(L('pad', 'dash'))], 'Dash'], [[padLabel(L('pad', 'air'))], 'A-10'], [[padLabel(L('pad', 'aim'))], 'Auto-aim'], [[padLabel(L('pad', 'pause'))], 'Pause']);
+    return rows;
+  }
+  const mv = ['up', 'left', 'down', 'right'].map(i => keyLabel(firstBind('kb', i)));
+  rows.push([mv, 'Move']);
+  if (am !== 'auto') rows.push([['Mouse'], 'Aim'], [[keyLabel(firstBind('kb', 'fire'))], SET.fireKbm === 'toggle' ? 'Fire on/off' : SET.fireKbm === 'auto' ? 'Fire (or on target)' : 'Fire']);
+  else rows.push([['Auto'], 'Aims and fires']);
+  rows.push([[keyLabel(firstBind('kb', 'dash'))], 'Dash'], [[keyLabel(firstBind('kb', 'air'))], 'A-10'], [[keyLabel(firstBind('kb', 'aim'))], 'Auto-aim'], [['Esc'], 'Pause']);
+  return rows;
+}
+function renderTitlePanel() {
+  const P = $('titlePanel'); if (!P) return;
+  P.textContent = '';
+  if (!P.dataset.once && G.mode === 'title' && $('intro').hidden) { P.dataset.once = '1'; P.classList.add('fresh'); setTimeout(() => P.classList.remove('fresh'), 1200); }   // the cards rise in once, not on every update
+  const card = (cls, title, sub) => { const c = el('section', 'tp-card ' + cls), h = el('div', 'tp-head'); h.append(el('span', null, title)); if (sub) h.append(el('em', null, sub)); c.append(h); P.append(c); return c; };
+  // survivor file
+  const f = card('tp-file', 'Survivor file', 'No. ' + String(STATS.sid).padStart(4, '0'));
+  const id = el('div', 'tp-id'); const nm = el('b', 'tp-name' + (hasName() ? '' : ' none'), hasName() ? getTag() : 'No name yet'); id.append(nm, devIcon(DEV.kind)); f.append(id);
+  f.append(el('p', 'tp-dev', devLine()));
+  const dl = el('dl', 'tp-stats');
+  [['Runs', fmtK(STATS.runs)], ['Best wave', STATS.bestWave || '—'], ['Kills', fmtK(STATS.kills)], ['Time alive', STATS.time ? fmtTime(STATS.time) : '—'], ['Best chain', STATS.bestChain ? 'x' + STATS.bestChain : '—'], ['Best score', STATS.bestScore ? STATS.bestScore.toLocaleString() : '—']]
+    .forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, String(v))); dl.append(d); });
+  f.append(dl);
+  // controls for the device in use
+  const c = card('tp-ctrl', 'Controls', DEV.kind === 'pad' ? padName() : DEV_NAMES[DEV.kind]);
+  const ul = el('ul', 'tp-keys');
+  for (const [caps, what] of ctrlRows()) { const li = el('li'); const ks = el('span', 'kcs'); caps.forEach(t => ks.append(keycap(t || '—', (t || '').length > 3))); li.append(ks, el('span', 'kw', what)); ul.append(li); }
+  c.append(ul);
+  if (DEV.kind !== 'touch') { const b = el('button', 'btn small ghost tp-btn', DEV.kind === 'pad' ? 'Change buttons' : 'Change keys'); b.type = 'button'; b.addEventListener('click', () => { SP.mode = 'advanced'; openSettings('controls'); }); c.append(b); }
+  // the board
+  const live = LB.status === 'live', rows = (live ? LB.rows : store.get('zc_lb_' + SEASON, [])).slice(0, 3);
+  const bd = card('tp-board', live ? 'Top of the board' : 'Your best runs', SEASON_NAME);
+  const ol = el('ol', 'tp-rows');
+  if (!rows.length) ol.append(el('li', 'tp-empty', 'No scores yet this season. Be the first.'));
+  rows.forEach((r, i) => { const li = el('li', live && r.id === LB.uid ? 'me' : ''); li.append(el('span', 'rk', '#' + (i + 1)), el('span', 'tg', cleanTag(r.tag)), el('span', 'sc', Number(r.score || 0).toLocaleString())); if (r.dev) li.append(devIcon(r.dev)); ol.append(li); });
+  bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : PLATFORM === 'web' ? 'The global board is not available on this page.' : 'The global board is on the web version. Scores here stay on this device.'));
+  // what's new
+  const n = card('tp-new', 'New in 1.9.60');
+  const nl = el('ul');
+  ['Play with a mouse and keyboard or a controller, and aim yourself', 'Change every key and button in Settings', 'Your name at the top left and on the board', 'A Windows app for PC'].forEach(t => nl.append(el('li', null, t)));
+  n.append(nl);
+}
+
+// the Windows app can be closed from the main menu
+if (window.ZCDesktop) { const q = $('quitApp'); q.hidden = false; q.addEventListener('click', () => { SFX.click(); window.ZCDesktop.quit(); }); }
 
 /* ================= intro: DeclAIre Studios, then "Made with Claude" =================
    Card 1: a road is laid block by block, the player sprints across it with a stampede of the game's zombies behind,
@@ -11273,6 +12174,7 @@ function introBuild() {
   }
   INTRO.dust = []; INTRO.debris = []; INTRO.embers = []; INTRO.bite = null; INTRO.shake = 0;
   INTRO.sk = { art: introSkullArt(), x: w / 2, y: INTRO.roadY - INTRO.RH * 0.8, s: 0, jaw: 0, lit: 0, open: 0 };
+  introCity();
 }
 
 /* ---------- timeline events ---------- */
@@ -11446,6 +12348,218 @@ function drawSkull(g, t) {
   g.restore();
 }
 
+/* ---------- the city around the road (1.9.60) ----------
+   Rooftops seen from above fill the space on both sides of the road. They drop into place block by block as the road
+   is laid, the street lamps come on in a wave, a roof catches fire and a police car flashes in an alley once the
+   stampede comes, and when the skull laughs the lights flicker and die one by one. */
+let IGLOW = null;
+function introGlow() {
+  if (IGLOW) return IGLOW;
+  IGLOW = {};
+  for (const [k, c] of [['warm', '255,196,120'], ['red', '255,50,60'], ['blue', '70,120,255'], ['fire', '255,120,40'], ['white', '235,235,255']]) {
+    const cv2 = document.createElement('canvas'); cv2.width = cv2.height = 128; const g = cv2.getContext('2d');
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(' + c + ',0.9)'); gr.addColorStop(0.35, 'rgba(' + c + ',0.35)'); gr.addColorStop(1, 'rgba(' + c + ',0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128); IGLOW[k] = cv2;
+  }
+  return IGLOW;
+}
+const IROOFS = [[52, 56, 63], [58, 55, 52], [47, 53, 50], [61, 60, 58], [44, 48, 56], [66, 58, 50], [50, 50, 54]];
+function introCity() {
+  const w = INTRO.w, h = INTRO.h, B = INTRO.B, top = INTRO.roadY - INTRO.RH / 2, span = T1.build1 - T1.build0 - 0.25;
+  const C = { bld: [], lamps: [], props: [], smoke: [], embers: [], fog: [], streets: [], trees: [] };
+  const upEdge = top - B - 3, dnEdge = top + INTRO.RH + B + 3;
+  const lite = PERF.tier <= 0;
+  // side streets run off the main road, up and down, which breaks up the blocks
+  const nst = w < 700 ? 1 : w < 1150 ? 2 : 3, spots = nst === 1 ? [rand(0.15, 0.3)] : nst === 2 ? [rand(0.14, 0.3), rand(0.6, 0.8)] : [rand(0.12, 0.3), rand(0.52, 0.66), rand(0.82, 0.95)];
+  for (const fx of spots) C.streets.push({ x: fx * w, w: B * rand(1.5, 1.9), up: Math.random() < 0.8, dn: Math.random() < 0.8, ta: T1.build0 + fx * span + 0.05 });
+  const inStreet = (x0, x1, side) => C.streets.some(st => (side < 0 ? st.up : st.dn) && x1 > st.x - st.w / 2 - 6 && x0 < st.x + st.w / 2 + 6);
+  // rows of buildings outward from the road until the screen edge is covered (a little past it for the camera zoom)
+  const rows = (side) => {
+    let edge = side < 0 ? upEdge : dnEdge, row = 0;
+    while (side < 0 ? edge > -60 : edge < h + 60) {
+      const depth = B * rand(1.6, 3.4) + (row ? B * 0.6 : 0), gapY = row ? B * rand(0.25, 0.5) : 0;
+      let x = -50 - rand(0, B * 2);
+      while (x < w + 50) {
+        const bw = B * rand(1.7, 3.8), alley = Math.random() < 0.35 ? 0 : B * rand(0.3, 0.75);
+        const blocked = C.streets.find(st => (side < 0 ? st.up : st.dn) && x + bw > st.x - st.w / 2 - 6 && x < st.x + st.w / 2 + 6);
+        if (blocked) { x = blocked.x + blocked.w / 2 + 8; continue; }
+        if (row > 0 && Math.random() < 0.1) {   // an empty lot with a couple of trees
+          const ly = side < 0 ? edge - gapY - depth * 0.5 : edge + gapY + depth * 0.5;
+          for (let i = 0; i < 3; i++) C.trees.push({ x: x + bw * rand(0.2, 0.8), y: ly + rand(-0.3, 0.3) * depth, r: B * rand(0.35, 0.6), ta: T1.build0 + clamp(x / w, 0, 1) * span + 0.3 });
+          x += bw + alley; continue;
+        }
+        const y = side < 0 ? edge - gapY - depth : edge + gapY, dd = depth * rand(0.82, 1);
+        const b = { x: x, y: side < 0 ? y + (depth - dd) : y, w: bw, d: dd, side: side, row: row, col: IROOFS[(Math.random() * IROOFS.length) | 0], sh: rand(-6, 6),
+          ta: T1.build0 + clamp((x + bw / 2) / w, 0, 1) * span + 0.1 + row * 0.12 + rand(0, 0.12), det: [], win: [] };
+        // rooftop details
+        const n = lite ? 1 : 2 + ((Math.random() * 4) | 0);
+        for (let i = 0; i < n; i++) {
+          const k = Math.random();
+          b.det.push({ k: k < 0.35 ? 'ac' : k < 0.55 ? 'vent' : k < 0.7 ? 'tank' : k < 0.85 ? 'sky' : 'ant', u: rand(0.12, 0.88), v: rand(0.18, 0.7), s: rand(0.7, 1.2) });
+        }
+        // facade windows facing south (the road, for the row above it)
+        if (bw > B * 2.5 && Math.random() < 0.5) b.top = { u: rand(0.1, 0.35), v: rand(0.1, 0.3), w: rand(0.35, 0.55), h: rand(0.35, 0.55) };   // a taller part of the building
+        const nw = Math.max(2, Math.floor(bw / (B * 0.34)));
+        for (let i = 0; i < nw; i++) b.win.push({ lit: Math.random() < 0.38, tv: Math.random() < 0.12, ph: rand(TAU), off: rand(0.2, 1) });
+        C.bld.push(b);
+        if (alley > B * 0.45 && Math.random() < 0.3) C.trees.push({ x: x + bw + alley / 2, y: side < 0 ? edge - gapY - depth * rand(0.2, 0.8) : edge + gapY + depth * rand(0.2, 0.8), r: Math.min(alley * 0.55, B * 0.5), ta: T1.build0 + clamp(x / w, 0, 1) * span + 0.3 });
+        else if (alley > B * 0.5 && Math.random() < 0.45) C.props.push({ k: Math.random() < 0.55 ? 'car' : 'bin', x: x + bw + alley / 2, y: side < 0 ? edge - gapY - depth * rand(0.3, 0.7) : edge + gapY + depth * rand(0.3, 0.7), a: rand(-0.3, 0.3) + (Math.random() < 0.5 ? Math.PI / 2 : 0), c: ['#5a2a26', '#2c3d52', '#3d3f44', '#4a4434', '#202326'][(Math.random() * 5) | 0], burnt: Math.random() < 0.3, ta: b.ta + 0.2 });
+        x += bw + alley;
+      }
+      edge = side < 0 ? edge - gapY - depth : edge + gapY + depth; row++;
+      if (row > 8) break;
+    }
+  };
+  rows(-1); rows(1);
+  // one burning roof up top, one police car in an alley below
+  const near = (side, fx) => C.bld.filter(b => b.side === side && b.row === 0).sort((a, b) => Math.abs(a.x + a.w / 2 - w * fx) - Math.abs(b.x + b.w / 2 - w * fx))[0];
+  const fb = near(-1, 0.74); if (fb) fb.fire = true;
+  const pb = near(1, 0.24); if (pb) C.props.push({ k: 'police', x: pb.x + pb.w + B * 0.35, y: dnEdge + B * 0.9, a: Math.PI / 2 + 0.2, ta: T1.build1 });
+  // street lamps on both sidewalks
+  for (let x = B * 2.2, i = 0; x < w + B; x += B * 4.6, i++) {
+    C.lamps.push({ x: x, y: top - B * 0.82, ny: top + B * 0.2, on: T1.build1 + 0.12 + x / w * 0.5, die: T1.lunge - 0.5 + rand(0, 0.45), flick: Math.random() < 0.18, ph: rand(TAU) });
+    C.lamps.push({ x: x + B * 2.3, y: top + INTRO.RH + B * 0.82, ny: top + INTRO.RH - B * 0.2, on: T1.build1 + 0.2 + (x + B * 2.3) / w * 0.5, die: T1.lunge - 0.5 + rand(0, 0.45), flick: Math.random() < 0.18, ph: rand(TAU) });
+  }
+  // drifting fog over the rooftops
+  if (!lite) for (let i = 0; i < 7; i++) C.fog.push({ x: rand(-0.2, 1.1) * w, y: i % 2 ? rand(0, upEdge) : rand(dnEdge, h), r: rand(0.18, 0.34) * Math.max(w, h), v: rand(6, 16) });
+  INTRO.city = C;
+}
+function drawCar(g, x, y, a, len, col, burnt) {
+  g.save(); g.translate(x, y); g.rotate(a);
+  const L = len, Wd = len * 0.46;
+  g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(-L / 2 + 3, -Wd / 2 + 3, L, Wd);
+  g.fillStyle = burnt ? '#1b1a19' : col; g.beginPath(); g.roundRect ? g.roundRect(-L / 2, -Wd / 2, L, Wd, Wd * 0.3) : g.rect(-L / 2, -Wd / 2, L, Wd); g.fill();
+  g.fillStyle = burnt ? '#0c0b0b' : 'rgba(140,170,190,0.55)'; g.fillRect(L * 0.08, -Wd * 0.36, L * 0.18, Wd * 0.72); g.fillRect(-L * 0.34, -Wd * 0.34, L * 0.12, Wd * 0.68);
+  g.fillStyle = burnt ? '#2a2522' : 'rgba(255,255,255,0.08)'; g.fillRect(-L * 0.2, -Wd * 0.38, L * 0.26, Wd * 0.76);
+  g.restore();
+}
+// rooftops, alleys and props (drawn before the road)
+function drawCity(g, t, dt) {
+  const C = INTRO.city; if (!C) return;
+  const B = INTRO.B, dark = t > T1.lunge ? clamp((t - T1.lunge) / 0.3, 0, 1) : 0, glow = introGlow();
+  const top = INTRO.roadY - INTRO.RH / 2, bot = top + INTRO.RH;
+  for (const st of C.streets) {
+    const k = clamp((t - st.ta) / 0.4, 0, 1); if (k <= 0) continue;
+    g.globalAlpha = k;
+    const x0 = st.x - st.w / 2, len = Math.max(INTRO.h, 400) * k;
+    g.fillStyle = '#1d2024';
+    if (st.up) g.fillRect(x0, top - B - len, st.w, len);
+    if (st.dn) g.fillRect(x0, bot + B, st.w, len);
+    g.fillStyle = '#34383f';
+    if (st.up) { g.fillRect(x0 - B * 0.28, top - B - len, B * 0.28, len); g.fillRect(x0 + st.w, top - B - len, B * 0.28, len); }
+    if (st.dn) { g.fillRect(x0 - B * 0.28, bot + B, B * 0.28, len); g.fillRect(x0 + st.w, bot + B, B * 0.28, len); }
+    if (t > T1.paint) {
+      g.fillStyle = 'rgba(214,180,80,0.6)';
+      if (st.up) for (let y = top - B - 30; y > top - B - len; y -= 46) g.fillRect(st.x - 2, y, 4, 24);
+      if (st.dn) for (let y = bot + B + 8; y < bot + B + len; y += 46) g.fillRect(st.x - 2, y, 4, 24);
+      g.fillStyle = 'rgba(230,226,214,0.4)';   // a crosswalk where it meets the main road
+      for (let i = 0; i < 5; i++) { const xx = x0 + 4 + i * (st.w - 8) / 5; if (st.up) g.fillRect(xx, top - B * 0.9, (st.w - 8) / 10, B * 0.7); if (st.dn) g.fillRect(xx, bot + B * 0.2, (st.w - 8) / 10, B * 0.7); }
+    }
+  }
+  g.globalAlpha = 1;
+  for (const b of C.bld) {
+    const k = clamp((t - b.ta) / 0.32, 0, 1); if (k <= 0) continue;
+    const e = easeOutBack(k), sc = 0.55 + 0.45 * e, cx = b.x + b.w / 2, cy = b.y + b.d / 2;
+    g.save(); g.translate(cx, cy); g.scale(sc, sc); g.translate(-cx, -cy); g.globalAlpha = Math.min(1, k * 2);
+    const fh = Math.min(B * 0.38, b.d * 0.22), rh = b.d - fh, [r0, g0, b0] = b.col, v = b.sh;
+    // shadow on the ground, light from the top left
+    g.fillStyle = 'rgba(0,0,0,0.42)'; g.fillRect(b.x + 6, b.y + 6, b.w, b.d);
+    // roof
+    g.fillStyle = 'rgb(' + (r0 + v) + ',' + (g0 + v) + ',' + (b0 + v) + ')'; g.fillRect(b.x, b.y, b.w, rh);
+    g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(b.x, b.y, b.w, 2); g.fillRect(b.x, b.y, 2, rh);
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 2; g.strokeRect(b.x + 4, b.y + 4, b.w - 8, rh - 8);
+    if (b.top) {
+      const tx = b.x + b.top.u * b.w, ty = b.y + b.top.v * rh, tw = b.top.w * b.w, th = b.top.h * rh;
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(tx + 5, ty + 5, tw, th);
+      g.fillStyle = 'rgb(' + (r0 + v + 9) + ',' + (g0 + v + 9) + ',' + (b0 + v + 10) + ')'; g.fillRect(tx, ty, tw, th);
+      g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(tx, ty, tw, 2); g.fillRect(tx, ty, 2, th);
+    }
+    for (const q of b.det) {
+      const x = b.x + q.u * b.w, y = b.y + q.v * rh, s = B * 0.22 * q.s;
+      if (q.k === 'ac') { g.fillStyle = '#7b8088'; g.fillRect(x - s, y - s * 0.7, s * 2, s * 1.4); g.fillStyle = '#2c3036'; g.beginPath(); g.arc(x, y, s * 0.5, 0, TAU); g.fill(); g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x - s + 2, y + s * 0.7, s * 2, 3); }
+      else if (q.k === 'vent') { g.fillStyle = '#3a3e44'; g.fillRect(x - s * 0.5, y - s * 0.5, s, s); g.fillStyle = '#9aa0a8'; g.fillRect(x - s * 0.35, y - s * 0.35, s * 0.7, s * 0.2); }
+      else if (q.k === 'tank') { g.fillStyle = '#5b4a38'; g.beginPath(); g.arc(x, y, s * 0.95, 0, TAU); g.fill(); g.strokeStyle = '#3a2f24'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, s * 0.6, 0, TAU); g.stroke(); }
+      else if (q.k === 'sky') { g.fillStyle = 'rgba(150,190,210,0.28)'; g.fillRect(x - s * 1.2, y - s * 0.6, s * 2.4, s * 1.2); g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 1; g.strokeRect(x - s * 1.2, y - s * 0.6, s * 2.4, s * 1.2); }
+      else { g.strokeStyle = '#8a9099'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x + s * 1.6, y - s * 1.2); g.moveTo(x + s * 0.5, y - s * 0.35); g.lineTo(x + s * 0.9, y + s * 0.2); g.stroke(); if (Math.sin(t * 5 + q.u * 9) > 0.6 && !dark) { g.fillStyle = '#ff3a3a'; g.fillRect(x + s * 1.6 - 1.5, y - s * 1.2 - 1.5, 3, 3); } }
+    }
+    if (b.fire && t > T1.rumble) {   // a hole burnt through the roof
+      const fx = b.x + b.w * 0.5, fy = b.y + rh * 0.5;
+      g.fillStyle = '#0b0807'; g.beginPath(); g.ellipse(fx, fy, b.w * 0.26, rh * 0.28, 0.2, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,' + (110 + Math.sin(t * 23) * 30 | 0) + ',30,0.9)'; g.beginPath(); g.ellipse(fx, fy, b.w * 0.17 * (0.9 + Math.sin(t * 17) * 0.1), rh * 0.17, 0, 0, TAU); g.fill();
+    }
+    // facade with windows along the south edge
+    g.fillStyle = 'rgb(' + (r0 * 0.55 | 0) + ',' + (g0 * 0.55 | 0) + ',' + (b0 * 0.6 | 0) + ')'; g.fillRect(b.x, b.y + rh, b.w, fh);
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(b.x, b.y + rh, b.w, 2);
+    const n = b.win.length, ww = b.w / n;
+    for (let i = 0; i < n; i++) {
+      const q = b.win[i]; let on = q.lit && t > b.ta + 0.4 * q.off + 0.3;
+      if (on && dark > q.off) on = false;
+      if (on && t > T1.laugh && t < T1.lunge && Math.sin(t * 31 + q.ph) > 0.4) on = false;
+      g.fillStyle = on ? (q.tv ? 'rgba(120,170,255,' + (0.55 + 0.3 * Math.sin(t * 9 + q.ph)) + ')' : 'rgba(255,206,120,0.82)') : 'rgba(8,10,14,0.45)';
+      g.fillRect(b.x + i * ww + ww * 0.22, b.y + rh + fh * 0.28, ww * 0.56, fh * 0.46);
+    }
+    g.restore();
+  }
+  g.globalAlpha = 1;
+  for (const q of C.trees) {
+    const k = clamp((t - q.ta) / 0.3, 0, 1); if (k <= 0) continue;
+    const r = q.r * (0.6 + 0.4 * easeOutBack(k)), sw = Math.sin(t * 1.6 + q.x * 0.03) * 1.2;
+    g.globalAlpha = Math.min(1, k * 2);
+    g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(q.x + 5, q.y + 6, r, 0, TAU); g.fill();
+    g.fillStyle = '#1f3324'; g.beginPath(); g.arc(q.x + sw, q.y, r, 0, TAU); g.fill();
+    g.fillStyle = '#2b4630'; g.beginPath(); g.arc(q.x + sw - r * 0.25, q.y - r * 0.25, r * 0.62, 0, TAU); g.fill();
+  }
+  g.globalAlpha = 1;
+  for (const q of C.props) {
+    const k = clamp((t - q.ta) / 0.3, 0, 1); if (k <= 0) continue;
+    g.globalAlpha = k;
+    if (q.k === 'bin') { g.save(); g.translate(q.x, q.y); g.rotate(q.a); g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(-B * 0.3 + 3, -B * 0.2 + 3, B * 0.6, B * 0.4); g.fillStyle = '#2f4a35'; g.fillRect(-B * 0.3, -B * 0.2, B * 0.6, B * 0.4); g.fillStyle = '#1e3022'; g.fillRect(-B * 0.3, -B * 0.2, B * 0.6, B * 0.1); g.restore(); }
+    else drawCar(g, q.x, q.y, q.a, B * 1.25, q.k === 'police' ? '#e8e6e0' : q.c, q.burnt);
+    if (q.k === 'police' && t > T1.rumble && !dark) { g.fillStyle = Math.sin(t * 18) > 0 ? '#ff3344' : '#3d6bff'; g.beginPath(); g.arc(q.x, q.y, B * 0.1, 0, TAU); g.fill(); }
+  }
+  g.globalAlpha = 1;
+}
+// light falling on the street: lamps, the fire and the police lights (drawn after the road, before the runners)
+function drawCityLights(g, t, dt) {
+  const C = INTRO.city; if (!C) return;
+  const B = INTRO.B, glow = introGlow(), dark = t > T1.lunge;
+  g.globalCompositeOperation = 'lighter';
+  for (const L of C.lamps) {
+    let on = t > L.on && t < L.die;
+    if (on && t - L.on < 0.25) on = Math.sin((t - L.on) * 60) > -0.2;          // a buzz as it comes on
+    if (on && L.flick && Math.sin(t * 13 + L.ph) + Math.sin(t * 29 + L.ph) > 1.3) on = false;
+    if (on && t > T1.laugh && Math.sin(t * 40 + L.ph * 3) > 0.55) on = false;   // the skull's laugh shakes the power
+    if (!on) continue;
+    const R = B * 2.4;
+    g.globalAlpha = 0.55; g.drawImage(glow.warm, L.x - R, L.ny - R * 0.62, R * 2, R * 1.24);
+    g.globalAlpha = 0.9; g.drawImage(glow.warm, L.x - B * 0.35, L.y - B * 0.35, B * 0.7, B * 0.7);
+  }
+  if (!dark && t > T1.rumble) {
+    const fb = C.bld.find(b => b.fire);
+    if (fb) { const fl = 0.75 + 0.25 * Math.sin(t * 19) * Math.sin(t * 7.3), R = B * 3.2 * fl; g.globalAlpha = 0.6; g.drawImage(glow.fire, fb.x + fb.w / 2 - R, fb.y + fb.d * 0.4 - R, R * 2, R * 2); }
+    const pc = C.props.find(q => q.k === 'police');
+    if (pc) { const red = Math.sin(t * 18) > 0, R = B * 2.6; g.globalAlpha = 0.5; g.drawImage(red ? glow.red : glow.blue, pc.x - R, pc.y - R, R * 2, R * 2); }
+  }
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  // smoke and embers from the fire, fog drifting over the roofs
+  const fb = C.bld.find(b => b.fire);
+  if (fb && t > T1.rumble && !INTRO.frozen) {
+    if (Math.random() < dt * 9 && C.smoke.length < 26) C.smoke.push({ x: fb.x + fb.w / 2 + rand(-8, 8), y: fb.y + fb.d * 0.4, r: B * 0.3, life: 2.6, max: 2.6 });
+    if (Math.random() < dt * 22 && C.embers.length < 50) C.embers.push({ x: fb.x + fb.w / 2 + rand(-10, 10), y: fb.y + fb.d * 0.4, vx: rand(10, 40), vy: -rand(30, 80), life: rand(0.8, 1.8) });
+  }
+  if (!INTRO.frozen) {
+    for (const q of C.smoke) { q.life -= dt; q.r += dt * B * 0.5; q.x += dt * 22; q.y -= dt * 14; }
+    for (const q of C.embers) { q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx += Math.sin(t * 3 + q.y * 0.05) * 20 * dt; }
+    C.smoke = C.smoke.filter(q => q.life > 0); C.embers = C.embers.filter(q => q.life > 0);
+    for (const f of C.fog) { f.x += f.v * dt; if (f.x - f.r > INTRO.w + 40) f.x = -f.r; }
+  }
+  for (const q of C.smoke) { g.globalAlpha = clamp(q.life / q.max, 0, 1) * 0.3; g.fillStyle = '#2a2a2c'; g.beginPath(); g.arc(q.x, q.y, q.r, 0, TAU); g.fill(); }
+  g.fillStyle = '#ffb04a'; for (const q of C.embers) { g.globalAlpha = clamp(q.life, 0, 1); g.fillRect(q.x, q.y, 2, 2); }
+  const fa = clamp((t - T1.build1) / 1.2, 0, 1) * 0.07;
+  if (fa > 0) for (const f of C.fog) { g.globalAlpha = fa; g.drawImage(glow.white, f.x - f.r, f.y - f.r * 0.5, f.r * 2, f.r); }
+  g.globalAlpha = 1;
+}
+
 /* ---------- card 1 ---------- */
 function drawIntro1(dt) {
   const g = IG, t = INTRO.t, w = INTRO.w, h = INTRO.h, d = INTRO.d;
@@ -11462,8 +12576,10 @@ function drawIntro1(dt) {
   if (amb > 0) { g.globalAlpha = amb; g.fillStyle = '#0d1014'; g.fillRect(-30, -30, w + 60, h + 60); g.globalAlpha = 1; }
   // build the stampede's sprites a few per frame while the road is laid, so nothing hitches when they arrive
   if (t < T1.run) { let k = 0; for (const r of INTRO.runners) { if (r.kind === 'z' && !r.warm) { getSprite(r.m, r.r, true); r.warm = 1; if (++k >= 4) break; } } }
+  drawCity(g, t, dt);
   drawRoadBlocks(g, t);
   drawBite(g);
+  drawCityLights(g, t, dt);
   // runners, dust behind them
   let onScreen = 0;
   for (const q of INTRO.dust) { q.life -= dt; q.r += dt * 30; q.x += q.vx * dt; }
@@ -11715,6 +12831,7 @@ window.addEventListener('resize', () => { if (INTRO.on && !(INTRO.card === 1 && 
 
 resize();
 initAttract();
+applyDev();
 refreshTitle();
 // every launch opens with the studio intro (tests and ?nointro links go straight to the title)
 if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) { $('intro').hidden = true; showOv('title'); } else startIntro();
