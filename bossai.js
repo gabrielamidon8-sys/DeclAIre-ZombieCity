@@ -253,11 +253,11 @@ function finishMutation(z) {
 }
 /* ---------- blasts (meteors, bombs, frost, lightning) and quake rings ---------- */
 function updBlasts(dt) {
-  const p = G.p;
   for (const b of G.blasts) {
     b.t -= dt; if (b.t > 0) continue; b.dead = true;
-    const d = Math.hypot(p.x - b.x, p.y - b.y), hit = G.mode === 'play' && d < b.r + p.r * 0.4;
-    if (hit && hurtPlayer(b.dmg)) { if (b.kind === 'frost') { p.frozenT = Math.max(p.frozenT, 0.7); } if (b.haz === 'fire') p.burnT = Math.max(p.burnT, 2); }
+    if (G.mode === 'play') netEach(p => {
+      if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + p.r * 0.4 && hurtPlayer(b.dmg)) { if (b.kind === 'frost') { p.frozenT = Math.max(p.frozenT, 0.7); } if (b.haz === 'fire') p.burnT = Math.max(p.burnT, 2); }
+    });
     near(b.x, b.y, b.r, o => { if (!o.dead && !o.boss && Math.hypot(o.x - b.x, o.y - b.y) < b.r) hurtZombie(o, b.dmg * 0.5, { src: 'blast' }); });
     const col = b.col || '#ff8a3a';
     if (b.kind === 'bolt') { bolt(b.x + rand(-30, 30), b.y - 320, b.x, b.y, '#fff36b'); bolt(b.x + rand(-30, 30), b.y - 320, b.x, b.y, '#ffffff'); SFX.zap(); }
@@ -269,8 +269,8 @@ function updBlasts(dt) {
   G.blasts = G.blasts.filter(b => !b.dead);
   for (const q of G.quakes) {
     q.t += dt; if (q.t < 0) continue; if (q.t > q.max) { q.dead = true; continue; }
-    const R = q.R * q.t / q.max, d = Math.hypot(p.x - q.x, p.y - q.y);
-    if (!q.hit && G.mode === 'play' && Math.abs(d - R) < q.w + p.r * 0.5) { q.hit = true; hurtPlayer(q.dmg); }
+    const R = q.R * q.t / q.max;
+    if (!q.hit && G.mode === 'play') netEach(p => { if (!q.hit && Math.abs(Math.hypot(p.x - q.x, p.y - q.y) - R) < q.w + p.r * 0.5) { q.hit = true; hurtPlayer(q.dmg); } });
   }
   G.quakes = G.quakes.filter(q => !q.dead);
 }
@@ -395,7 +395,8 @@ function updAirBtn() {
 }
 function grantAir() { G.air = Math.min(2, (G.air || 0) + 1); updAirBtn(); SFX.airReady(); toast('Chain x' + G.chain, 'A-10 Warthog ready', '#9fd36a'); }
 function callAirstrike() {
-  if (G.mode !== 'play' || !(G.air > 0) || G.jets.some(j => !j.mini)) return;
+  if (NET.role === 'client') { if (G.mode === 'play' && G.air > 0) netSend({ t: 'air' }); return; }   // co-op: the host flies it
+  if (G.mode !== 'play' || !(G.air > 0) || G.jets.some(j => !j.mini && !j.cos)) return;
   G.air--; updAirBtn();
   const p = G.p; let cx = p.x + Math.cos(p.aim) * 160, cy = p.y + Math.sin(p.aim) * 160, n = 0, sx = 0, sy = 0;
   for (const z of G.zs) { if (z.dead || z.fly) continue; const d = Math.hypot(z.x - p.x, z.y - p.y); if (d < 520) { sx += z.x; sy += z.y; n++; } }
@@ -413,9 +414,11 @@ function callAirstrike() {
 // a gun run along angle a through (cx, cy): three jets, or one for the Warthog Run dash
 function launchStrafe(cx, cy, a, o) {
   const ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux, mini = !!o.mini;
+  if (!o.cos && NET.role === 'host') NET.evs.push(['air', Math.round(cx), Math.round(cy), Math.round(a * 1000) / 1000, mini ? 1 : 0, NET.airBy || 1]);
+  if (!o.cos && NET.role === 'client' && mini) netSend({ t: 'airv', cx: Math.round(cx), cy: Math.round(cy), a: Math.round(a * 1000) / 1000 });
   const form = mini ? [[0, 0]] : [[0, 0], [-80, -70], [-80, 70]];
   form.forEach((f, i) => G.jets.push({ x: cx - ux * (1000 - f[0]) + vx * f[1], y: cy - uy * (1000 - f[0]) + vy * f[1], ux: ux, uy: uy, t: 0, fireT: 0, smT: 0, rounds: 0,
-    tx: cx + vx * f[1] * 0.5, ty: cy + vy * f[1] * 0.5, firing: false, shot: false, k: i, mini: mini, len: mini ? 380 : 840, dmgMul: mini ? 0.6 : 1, tr: [] }));
+    tx: cx + vx * f[1] * 0.5, ty: cy + vy * f[1] * 0.5, firing: false, shot: false, k: i, mini: mini, len: mini ? 380 : 840, dmgMul: mini ? 0.6 : 1, tr: [], cos: !!o.cos }));
   if (mini) SFX.a10Jet(2.2, true);
 }
 function puff(x, y, r0, r1, life, c, vx, vy) { if (!G.smoke) G.smoke = []; if (G.smoke.length > 520) G.smoke.splice(0, 40); G.smoke.push({ x: x, y: y, r0: r0, r1: r1, t: 0, life: life, c: c, vx: vx || 0, vy: vy || 0 }); }
@@ -441,7 +444,7 @@ function updJets(dt) {
         const ix = j.x + j.ux * 260 + px * rand(-24, 24) + j.ux * rand(-16, 16), iy = j.y + j.uy * 260 + py * rand(-24, 24) + j.uy * rand(-16, 16);
         // every round is high explosive: a small burst with splash damage, stronger in the middle
         const R = 34, big = j.rounds % 6 === 0;
-        near(ix, iy, R + 50, o => {
+        if (!j.cos) near(ix, iy, R + 50, o => {
           if (o.dead) return; const d = Math.hypot(o.x - ix, o.y - iy); if (d > (big ? 56 : R) + o.r) return;
           const f = 1 - Math.min(1, d / (R + o.r)) * 0.5;
           hurtZombie(o, dmg * j.dmgMul * f * (o.boss ? 0.35 : 1) * (big ? 1.4 : 1), { src: 'a10', kx: j.ux * 70 + (o.x - ix) / (d || 1) * 120, ky: j.uy * 70 + (o.y - iy) / (d || 1) * 120 });

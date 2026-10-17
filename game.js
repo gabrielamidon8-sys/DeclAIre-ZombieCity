@@ -13,6 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
+const ZC_VERSION = '1.9.70';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -158,7 +159,11 @@ function cellBlocked(cx, cy) {
   return v;
 }
 function buildField() {
-  const p = G.p, n = FF_N, pcx = Math.floor(p.x / FF_CS), pcy = Math.floor(p.y / FF_CS);
+  let p = G.p; const n = FF_N;
+  // co-op: the field is centred between the players and flows to whichever is nearest
+  const srcs = NET.role === 'host' && NET.started ? netAlive() : null;
+  if (srcs && srcs.length > 1) { let sx = 0, sy = 0; for (const q of srcs) { sx += q.x; sy += q.y; } p = { x: sx / srcs.length, y: sy / srcs.length }; }
+  const pcx = Math.floor(p.x / FF_CS), pcy = Math.floor(p.y / FF_CS);
   FF.ox = pcx - (n >> 1); FF.oy = pcy - (n >> 1); FF.pcx = pcx; FF.pcy = pcy; FF.t = G.time;
   const dist = FF.dist, cost = FF.cost, open = FF.open;
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) open[j * n + i] = cellBlocked(FF.ox + i, FF.oy + j) ? 0 : 1;
@@ -172,7 +177,9 @@ function buildField() {
   }
   let hs = 0;
   const push = (id, k) => { let i = hs++; HI[i] = id; HK[i] = k; while (i > 0) { const pa = (i - 1) >> 1; if (HK[pa] <= HK[i]) break; const ti = HI[pa], tk = HK[pa]; HI[pa] = HI[i]; HK[pa] = HK[i]; HI[i] = ti; HK[i] = tk; i = pa; } };
-  const start = (n >> 1) * n + (n >> 1); dist[start] = 0; push(start, 0);
+  if (srcs && srcs.length > 1) {
+    for (const q of srcs) { const i = Math.floor(q.x / FF_CS) - FF.ox, j = Math.floor(q.y / FF_CS) - FF.oy; if (i >= 0 && j >= 0 && i < n && j < n) { const id = j * n + i; dist[id] = 0; push(id, 0); } }
+  } else { const start = (n >> 1) * n + (n >> 1); dist[start] = 0; push(start, 0); }
   while (hs > 0) {
     const id = HI[0], k = HK[0];
     hs--; if (hs > 0) { HI[0] = HI[hs]; HK[0] = HK[hs]; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < hs && HK[l] < HK[m]) m = l; if (r < hs && HK[r] < HK[m]) m = r; if (m === i) break; const ti = HI[m], tk = HK[m]; HI[m] = HI[i]; HK[m] = HK[i]; HI[i] = ti; HK[i] = tk; i = m; } }
@@ -257,6 +264,7 @@ window.zcBack = function () {
   if (!$('cxDetail').hidden) { closeDetail(); return true; }
   if (!$('codex').hidden) { closeCodex(); return true; }
   if (!$('lb').hidden) { closeLB(); return true; }
+  if (!$('coop').hidden) { closeCoop(); return true; }
   if (G.mode === 'play') { pauseGame(); return true; }
   if (G.mode === 'pause') { resumeGame(); return true; }
   if (G.mode === 'over') { toTitle(); return true; }
@@ -341,13 +349,15 @@ function spawnZombie(m, x, y, o) {
   if (z.abs.indexOf('juggernaut') >= 0) { z.dr = 1 - (1 - z.dr) * 0.6; z.kb = 0; }
   if (o.boss) z.kb = 0;
   if (z.abs.indexOf('warden') >= 0) { z.shieldMax = z.maxHp * 0.5; z.shield = z.shieldMax; }
+  z.nid = ++NET.zid;
+  if (NET.role === 'client' && !NET.spawning) return z;   // in co-op only the host makes zombies; a teammate's game shows them
   G.zs.push(z);
   return z;
 }
 function heal(z, a) { z.hp = Math.min(z.maxHp, z.hp + a); }
 // Just outside a random edge of the screen, so zombies walk in quickly but never pop in on camera.
 function spawnPos() {
-  const p = G.p, hw = W / ZOOM / 2, hh = H / ZOOM / 2;
+  const p = NET.role === 'host' ? netAnchor() : G.p, hw = W / ZOOM / 2, hh = H / ZOOM / 2;
   for (let i = 0; i < 20; i++) {
     const side = Math.floor(Math.random() * 4), off = rand(50, 130);
     let x, y;
@@ -364,7 +374,7 @@ function shoot(x, y, a, spd, dmg, r, k) { G.eshots.push({ x: x, y: y, vx: Math.c
 
 function bombBlast(z) {
   z.st.boomed = true; const R = 88 + z.r;
-  if (G.mode === 'play' && G.p && Math.hypot(G.p.x - z.x, G.p.y - z.y) < R) hurtPlayer(z.dmg * 2.2);
+  if (G.mode === 'play') netEach(p => { if (Math.hypot(p.x - z.x, p.y - z.y) < R) hurtPlayer(z.dmg * 2.2); });
   near(z.x, z.y, R, o => { if (o !== z && !o.dead && !o.boss && Math.hypot(o.x - z.x, o.y - z.y) < R) hurtZombie(o, 22 + G.wave * 4, { src: 'blast' }); });
   burst(z.x, z.y, 26, '#ffb347', 340, 5, 0.55); burst(z.x, z.y, 14, '#5a1a10', 200, 7, 0.8); worldBlast(z.x, z.y, R * 1.3, null);
   ring(z.x, z.y, z.r, R, 0.35, '255,140,50', 4); shakeIt(9); splat(z.x, z.y, z.r * 2, 'rgba(20,10,6,0.6)'); SFX.boom(true);
@@ -601,6 +611,7 @@ function onHitEffect(z) {
 }
 
 function hurtZombie(z, dmg, o) {
+  if (NET.role === 'client') { if (NET.cosmetic) return false; if (z.puppet) return netHit(z, dmg, o); }
   if (z.dead) return false;
   if (z.st.under || z.st.down > 0) return 'pass';
   if (z.rb && !z.rb.ill) {
@@ -634,15 +645,18 @@ function hurtZombie(z, dmg, o) {
   return true;
 }
 function killZombie(z) {
-  if (z.dead) return; z.dead = true;
-  const m = z.m, gore = m.S.gore;
+  if (z.dead) return;
+  if (NET.role === 'client') { if (z.puppet && !NET.cosmetic) netSend({ t: 'kz', z: z.nid }); return; }
+  z.dead = true;
+  if (NET.role === 'host') { NET.kills.push([z.nid, NET.lastHitBy]); NET.zmap.delete(z.nid); }
+  const m = z.m, gore = m.S.gore, mine = NET.lastHitBy === 1;
   if (z.illusion) { burst(z.x, z.y, 10, '#efe9dc', 120, 4, 0.4); return; }
   if (!z.fly) {
-    G.kills++; dashOnKill();
+    G.kills++; if (mine) dashOnKill();
     const cm = chainKill();
     const pts = Math.round(m.threat * 10 * (1 + G.wave * 0.1) * (z.boss ? 12 : (z.minion || z.child) ? 0.4 : 1) * cm * (G.p ? G.p.scoreMul : 1));
     G.score += pts;
-    if (G.p && G.p.killHeal) healPlayer(G.p.killHeal);
+    if (mine && G.p && G.p.killHeal && !G.p.remote) healPlayer(G.p.killHeal);
     if (!z.minion && !m.unique) discover(m);
     if (z.boss) G.texts.push({ x: z.x, y: z.y - z.r - 10, t: 0, life: 1.4, s: '+' + pts, c: '#f2cc3a', big: true });
   }
@@ -656,7 +670,7 @@ function killZombie(z) {
   if (!z.fly && G.chain >= 25 && G.mode === 'play') burst(z.x, z.y, 6 + Math.min(14, Math.floor(G.chain / 25) * 3), chainColor(G.chain), 260, 3, 0.45);
   const dp = m.S.p.death;
   if (!z.fly && !z.minion) {
-    if (dp === 'bile') { if (G.mode === 'play' && Math.hypot(G.p.x - z.x, G.p.y - z.y) < 70 + z.r) hurtPlayer(10 + G.wave); burst(z.x, z.y, 18, '#b7c25a', 220, 5, 0.5); ring(z.x, z.y, z.r, 70 + z.r, 0.3, '183,194,90', 3); }
+    if (dp === 'bile') { if (G.mode === 'play') netEach(p => { if (Math.hypot(p.x - z.x, p.y - z.y) < 70 + z.r) hurtPlayer(10 + G.wave); }); burst(z.x, z.y, 18, '#b7c25a', 220, 5, 0.5); ring(z.x, z.y, z.r, 70 + z.r, 0.3, '183,194,90', 3); }
     if (dp === 'sludge') G.haz.push({ k: 'sludge', x: z.x, y: z.y, r: z.r * 2.2, life: 5, max: 5 });
     if (dp === 'fire') G.haz.push({ k: 'fire', x: z.x, y: z.y, r: z.r * 1.8, life: 3.5, max: 3.5, dps: 10 + G.wave * 0.6 });
     if (dp === 'spores') G.haz.push({ k: 'spore', x: z.x, y: z.y, r: 72, life: 3.5, max: 3.5 });
@@ -673,7 +687,8 @@ function killZombie(z) {
     G.boss = null; shakeIt(14);
     if (G.grab && G.grab.z === z) endGrab(true);
     const ovl = z.rb && z.rb.def.overlord;
-    if (G.p) G.p.hp = ovl ? G.p.maxHp : Math.min(G.p.maxHp, G.p.hp + 30);
+    if (G.p && !G.p.remote && !G.p.down) G.p.hp = ovl ? G.p.maxHp : Math.min(G.p.maxHp, G.p.hp + 30);
+    if (NET.role === 'host') for (const pr of NET.peers.values()) if (pr.p && !pr.p.down) pr.p.out.heal += ovl ? pr.p.maxHp : 30;
     if (z.rb) { if (ovl) store.set('zc_overlord', store.get('zc_overlord', 0) + 1); else { bossKilled.add(z.rb.def.id); saveBosses(); } }
     if (ovl) { const bonus = 5000 * Math.max(1, G.wave); G.score += bonus; SFX.milestone(); shakeIt(22); banner('Overlord slain', 'Fully healed · +' + bonus.toLocaleString()); }
     else banner(z.rb ? z.rb.def.name + ' destroyed' : m.unique ? 'The Snatcher is down' : 'Alpha down', 'Healed 30');
@@ -738,6 +753,7 @@ function snatcherTick(z, dt, dx, dy, d, c) {
   s.t -= dt; if (s.t <= 0) s.state = 'idle';
 }
 function startGrab(z) {
+  if (G.p && G.p.remote) { netHeavy(G.p, z); return; }   // a teammate can't be held from here: it lands as a heavy hit
   const p = G.p, ovl = !!(z.rb && z.rb.def.overlord), need = 5 + Math.floor(G.wave / 15) + (ovl ? 2 : 0), tt = ovl ? 3.4 : 4.6;
   G.grab = { z: z, need: need, got: 0, t: tt, max: tt, ql: 0, last: null, fast: ovl };
   if (z.snatch) z.snatch.state = 'holding'; else if (z.rb) z.rb.state = 'holding';
@@ -799,6 +815,8 @@ $('qteBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPro
 /* ================= player ================= */
 function hurtPlayer(a) {
   const p = G.p; if (G.mode !== 'play' || !p) return false;
+  if (p.remote) return netHurtProxy(p, a);
+  if (p.down) return false;
   if (p.iframe > 0 || p.dashT > 0 || G.grab) return false;
   if (dashDodge(p)) { p.iframe = 0.25; G.texts.push({ x: p.x, y: p.y - 26, t: 0, life: 0.6, s: 'dodge', c: dashDef(p).hex }); return false; }
   p.hp -= a * p.taken; p.iframe = 0.3; G.hurtFlash = 0.35; shakeIt(6); SFX.hurt(); buzz(22);
@@ -806,7 +824,7 @@ function hurtPlayer(a) {
   if (p.hp <= 0) die();
   return true;
 }
-function dotPlayer(a) { const p = G.p; if (G.mode !== 'play' || !p) return; p.hp -= a * p.taken; if (p.hp <= 0) die(); }
+function dotPlayer(a) { const p = G.p; if (G.mode !== 'play' || !p) return; if (p.remote) { netDotProxy(p, a); return; } if (p.down) return; p.hp -= a * p.taken; if (p.hp <= 0) die(); }
 
 function updPlayer(dt) {
   const p = G.p;
@@ -824,6 +842,7 @@ function updPlayer(dt) {
   if (p.selfDps && p.hp > 1) { p.hp = Math.max(1, p.hp - p.selfDps * dt); if (Math.random() < dt * 8) burst(p.x, p.y, 1, '#ff9a3a', 40, 3, 0.4); }
   if (p.queue.length) { for (const q of p.queue) q.t -= dt; const due = p.queue.filter(q => q.t <= 0); if (due.length) { p.queue = p.queue.filter(q => q.t > 0); if (p.jamT <= 0 && p.frozenT <= 0 && !G.grab) due.forEach(q => volley(p.aim, q.mul)); } }
   if (G.grab) { updGrab(dt); return; }
+  if (p.down) { p.ix = p.iy = 0; p.kvx = p.kvy = 0; return; }   // co-op: down until a teammate revives you
   let vx, vy;
   if (p.dashT > 0) { const sp = dashVel(p, dt); p.dashT -= dt; vx = p.dashDx * sp; vy = p.dashDy * sp; if (p.dashT <= 0) dashEnd(p); }
   else if (p.frozenT > 0 || p.rootT > 0) { vx = 0; vy = 0; }
@@ -980,6 +999,7 @@ function spawnBoss() {
 function waveCleared() {
   G.score += G.wave * 100; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
   SFX.waveClear();
+  if (NET.role === 'host') netCardsOpen();
   openCards();
 }
 
@@ -1010,8 +1030,9 @@ function banner(a, b) {
 /* ================= screens ================= */
 const OVS = ['title', 'upgrade', 'pause', 'over'];
 function showOv(id) { OVS.forEach(o => { $(o).hidden = o !== id; }); $('hud').hidden = !(G.mode === 'play' || G.mode === 'upgrade' || G.mode === 'pause' || G.mode === 'skull' || G.mode === 'cine'); }
-function newRun() {
-  startWorld(false);
+function newRun(o) {
+  o = o || {};
+  startWorld(false, o.world);
   $('skull').hidden = true;
   Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
@@ -1020,11 +1041,16 @@ function newRun() {
   worldReset();
   $('toasts').textContent = '';
   wxReset();
-  G.mode = 'play'; showOv(null); startWave(1);
+  if (o.client) {
+    // co-op: a teammate's game joins the host's run (same city, same wave), next to the host
+    const a = (NET.slot || NET.me || 2) * 1.7, at = o.at || WORLD.start;
+    for (let r = 46; r < 200; r += 30) { const x = at.x + Math.cos(a) * r, y = at.y + Math.sin(a) * r; if (!blocked(x, y, 14)) { G.p.x = x; G.p.y = y; break; } }
+    cam.x = G.p.x; cam.y = G.p.y; G.wave = o.wave || 1; G.mode = 'play'; showOv(null);
+  } else { G.mode = 'play'; showOv(null); startWave(1); }
   try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* not allowed */ }
 }
 function pauseGame() {
-  if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · run in progress';
+  if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · ' + (NET.role === 'client' ? 'co-op: the game keeps going while you are here' : NET.role === 'host' ? 'co-op: paused for everyone' : 'run in progress');
   const st = $('pauseStats'); st.textContent = '';
   const tm = Math.floor(G.time || 0);
   [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', Math.floor(tm / 60) + ':' + String(tm % 60).padStart(2, '0')]].forEach(([k, v]) => {
@@ -1033,10 +1059,11 @@ function pauseGame() {
   toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio();
 }
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
-function toTitle() { if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
+function toTitle() { if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); if (NET.role) netLeave(); G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
 function die() {
   if (G.mode !== 'play') return;
   const p = G.p;
+  if (NET.role && NET.started && !NET.finishing && !p.cs.phoenix) { netDown(); return; }
   if (p.cs.phoenix > 0) {
     p.cs.phoenix--; p.hp = p.maxHp * 0.5; p.iframe = 2.5; p.kvx = p.kvy = 0;
     if (G.grab) endGrab(true);
@@ -1070,7 +1097,7 @@ function refreshTitle() {
   updNameUi(); updDevUi();
 }
 $('playBtn').addEventListener('click', newRun);
-$('againBtn').addEventListener('click', newRun);
+$('againBtn').addEventListener('click', () => { if (NET.role === 'host') netHostRun(); else if (NET.role === 'client') return; else newRun(); });
 $('resumeBtn').addEventListener('click', resumeGame);
 $('quitBtn').addEventListener('click', toTitle);
 $('menuBtn').addEventListener('click', toTitle);
@@ -1338,7 +1365,7 @@ function render() {
   }
   LODQ.length = Math.min(LODQ.length, 256);
   for (const z of G.zs) if (!z.dead && z.boss) drawZ(z);
-  if (G.p && G.mode !== 'title') { drawDashActors(G.p); drawPlayer(G.p); }
+  if (G.p && G.mode !== 'title') { drawDashActors(G.p); if (!G.p.down) drawPlayer(G.p); if (NET.started) netDrawPlayers(); }
   // bullets
   ctx.lineCap = 'round';
   ctx.globalCompositeOperation = 'lighter';
@@ -1784,20 +1811,24 @@ function updHud() {
 
 /* ================= loop ================= */
 function update(dt) {
+  if (NET.role === 'client') { netClientUpdate(dt); return; }
   G.time += dt; if (G.hintT > 0) G.hintT -= dt;
   DEV.useT[DEV.kind] += dt;
   updPlayer(dt);
+  const host = NET.role === 'host' && NET.started;
+  if (host) netHostPre(dt);
   spawner(dt);
   buildGrid();
   { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS);
     if (!FF.ready || G.time - FF.t > 0.35 || Math.abs(pcx - FF.pcx) + Math.abs(pcy - FF.pcy) >= 2) buildField(); }
   if (G.cineT > 0) G.cineT -= dt;
   let nf = 0; for (const z of G.zs) if (z.fly && !z.dead) nf++; G.nFly = nf;
-  const fr = Math.max(W, H) / ZOOM * 0.75 + 220, far2 = fr * fr, px = G.p.x, py = G.p.y;
+  const fr = Math.max(W, H) / ZOOM * 0.75 + 220, far2 = fr * fr, px = G.p.x, py = G.p.y, me = G.p;
   for (let i = 0; i < G.zs.length; i++) {
     const z = G.zs[i]; if (z.dead) continue;
+    if (host) G.p = netTarget(z);   // co-op: each zombie goes after the nearest standing player
     if (Q.sim > 1 && !z.boss && !z.rb && !z.m.unique) {
-      const dx = z.x - px, dy = z.y - py;
+      const dx = z.x - G.p.x, dy = z.y - G.p.y;
       if (dx * dx + dy * dy > far2) {
         z.lodAcc = (z.lodAcc || 0) + dt;
         if (((frameNo + ((z.bob * 1000) | 0)) % Q.sim) !== 0 && z.lodAcc < 0.12) continue;
@@ -1806,12 +1837,15 @@ function update(dt) {
     }
     if (z.lodAcc) { const d = Math.min(0.15, z.lodAcc + dt); z.lodAcc = 0; updZ(z, d); } else updZ(z, dt);
   }
+  G.p = me;
   updBullets(dt); updEshots(dt); updHaz(dt); updPicks(dt); updBlasts(dt); updJets(dt); updDash(dt); updAirFx(dt); updWorld(dt);
   catchUp(dt);
+  if (host) netHostPost();
   G.zs = G.zs.filter(z => !z.dead);
   updFx(dt);
   if (G.boss && G.boss.dead) G.boss = null;
-  const k = Math.min(1, dt * 7); cam.x += (G.p.x - cam.x) * k; cam.y += (G.p.y - cam.y) * k;
+  const ct = host && G.p.down ? (netAlive()[0] || G.p) : G.p;   // down in co-op: the camera follows a teammate
+  const k = Math.min(1, dt * 7); cam.x += (ct.x - cam.x) * k; cam.y += (ct.y - cam.y) * k;
   if (G.skullPending && G.mode === 'play') { openSkull(); return; }
   if (G.mode === 'play' && G.spawnQ <= 0 && !G.bossPending && !G.zs.some(z => !z.illusion)) waveCleared();
 }
@@ -1823,7 +1857,7 @@ function catchUp(dt) {
   for (const z of G.zs) {
     if (z.dead || z.illusion || (z.snatch && z.snatch.state !== 'idle') || (z.rb && z.rb.state !== 'idle' && z.rb.state !== 'chase')) continue;
     const dx = z.x - p.x, dy = z.y - p.y;
-    if (dx * dx + dy * dy < far2) { z.farT = 0; continue; }
+    if ((NET.role === 'host' ? netNearD2(z.x, z.y) : dx * dx + dy * dy) < far2) { z.farT = 0; continue; }
     z.farT = (z.farT || 0) + dt;
     if (z.farT > (z.boss ? 2 : 3.5)) { const s = spawnPos(); z.x = s.x; z.y = s.y; z.vx = z.vy = z.kvx = z.kvy = 0; z.farT = 0; z.losT = 0; }
   }
@@ -1845,6 +1879,7 @@ function frame(now) {
   try {
     if (SFX.tick) SFX.tick();
     padPoll(rdt);
+    netTick(rdt);
     vzNow = vizFrame();
     if (G.mode === 'play') update(dt);
     else if (G.mode === 'cine') updCine(dt);

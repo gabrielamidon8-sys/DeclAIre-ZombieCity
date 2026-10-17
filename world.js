@@ -71,11 +71,12 @@ function seasonFromSetting() {
   return s === 'spring' ? 0 : s === 'summer' ? 1 : s === 'fall' ? 2 : s === 'winter' ? 3 : realSeason();
 }
 // a fresh world for a run (or the title screen): a new seed unless the player fixed one, the season, a start point
-function startWorld(title) {
-  WORLD.mix = SET.world || 'mixed';
-  const seed = SET.seedMode === 'fixed' && SET.seed ? (SET.seed | 0) : (Math.random() * 1e9) | 0;
+function startWorld(title, o) {
+  // o (co-op): the host's seed, map type and season, so every player walks the same city
+  WORLD.mix = (o && o.mix) || SET.world || 'mixed';
+  const seed = o && o.seed != null ? (o.seed | 0) : SET.seedMode === 'fixed' && SET.seed ? (SET.seed | 0) : (Math.random() * 1e9) | 0;
   worldSeed(seed); WORLD.lastSeed = seed;
-  WORLD.season = seasonFromSetting();
+  WORLD.season = o && o.season != null ? o.season : seasonFromSetting();
   WORLD.start = pickStart(Z.mulberry32(seed ^ (title ? 0x7171 : 0x51a7)));
 }
 

@@ -137,6 +137,7 @@ function goBack(esc) {
   if (!$('cxDetail').hidden) { closeDetail(); return; }
   if (!$('codex').hidden) { closeCodex(); return; }
   if (!$('lb').hidden) { closeLB(); return; }
+  if (!$('coop').hidden) { closeCoop(); return; }
   if (G.mode === 'play') pauseGame(); else if (G.mode === 'pause') resumeGame();
 }
 window.addEventListener('keydown', e => {
@@ -250,9 +251,9 @@ function padRumble(ms) {
 }
 
 /* ---------- menus with a controller (and arrow keys) ---------- */
-const LAYERS = ['settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'skull', 'upgrade', 'pause', 'over', 'title'];
+const LAYERS = ['settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'coop', 'skull', 'upgrade', 'pause', 'over', 'title'];
 const shown = e => !!e && !e.hidden && e.getClientRects().length > 0;
-function sheetOpen() { return shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')); }
+function sheetOpen() { return shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')) || shown($('coop')); }
 function menuOpen() { if (typeof INTRO !== 'undefined' && INTRO.on) return false; return (G.mode !== 'play' && G.mode !== 'cine') || shown($('settings')) || shown($('radioPanel')); }
 function menuLayer() { for (const id of LAYERS) { const e = $(id); if (shown(e)) return e; } return null; }
 function focusables(L) {

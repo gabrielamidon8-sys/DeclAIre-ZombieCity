@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zombie City Launcher</title>
+<!--__FONTS__-->
+<style>
+:root{--night:#0b0d10;--panel:#14181e;--bone:#ebe5d6;--muted:#8f959e;--tape:#f2cc3a;--ink:#17140b;--blood:#d9434b;--line:rgba(235,229,214,.14);
+  --f-display:'Saira Stencil One',Impact,sans-serif;--f-ui:'Chakra Petch','Segoe UI',system-ui,sans-serif;--f-num:'Share Tech Mono',Consolas,monospace}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--night);color:var(--bone);font-family:var(--f-ui);overflow:hidden;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--tape);outline-offset:3px}
+#fx{position:fixed;inset:0;width:100%;height:100%;display:block}
+.sky{position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 110%, rgba(255,90,40,.22), transparent 60%),radial-gradient(ellipse 60% 50% at 15% -10%, rgba(41,230,255,.08), transparent 60%),linear-gradient(180deg,#07090c 0%,#0e1218 55%,#140f0e 100%)}
+.city{position:fixed;left:0;right:0;bottom:0;height:46vh;opacity:.9}
+.art{position:relative;flex:1 1 0;min-height:140px;animation:float 7s ease-in-out infinite}
+.art::before{content:"";position:absolute;inset:-12% 0;background:radial-gradient(circle closest-side, rgba(255,40,60,.3), rgba(255,40,60,0));animation:glow 2.6s ease-in-out infinite}
+.art svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 30px 50px rgba(0,0,0,.7))}
+.art .sk-maw{display:none}
+.art .sk-eye{animation:eye 2.6s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-12px) rotate(-1.5deg)}}
+@keyframes glow{50%{opacity:.55}}
+@keyframes eye{50%{opacity:.55}}
+@media (max-width:980px){.art{display:none}}
+.city svg{position:absolute;left:0;bottom:0;width:100%;height:100%}
+.tape{position:fixed;left:-10%;right:-10%;top:9vh;transform:rotate(-4deg);background:var(--tape);color:var(--ink);font-family:var(--f-display);font-size:15px;letter-spacing:.24em;text-transform:uppercase;white-space:nowrap;overflow:hidden;padding:7px 0;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.tape::before,.tape::after{content:"";position:absolute;left:0;right:0;height:5px;background:repeating-linear-gradient(-45deg,var(--ink) 0 8px,transparent 8px 16px)}
+.tape::before{top:0}.tape::after{bottom:0}
+.tape span{display:inline-block;animation:tape 50s linear infinite}
+@keyframes tape{to{transform:translateX(-50%)}}
+main{position:relative;z-index:2;height:100%;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:clamp(20px,4vw,64px);padding:clamp(80px,17vh,170px) clamp(24px,5vw,80px) 40px}
+.left{display:flex;flex-direction:column;justify-content:flex-end;gap:16px;min-width:0}
+.eyebrow{font-family:var(--f-num);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--tape)}
+h1{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(64px,10vw,150px);line-height:.84;color:var(--bone);text-shadow:0 8px 40px rgba(0,0,0,.7)}
+h1 span{display:block;color:var(--tape)}
+.tag{max-width:52ch;font-size:16px;line-height:1.5;color:#cfc9bb}
+.play{position:relative;align-self:flex-start;display:flex;align-items:center;gap:18px;min-width:min(420px,100%);padding:18px 30px 18px 26px;border:0;border-radius:3px;background:var(--tape);color:var(--ink);font-weight:700;font-size:26px;letter-spacing:.14em;text-transform:uppercase;box-shadow:0 14px 40px rgba(242,204,58,.25),inset 0 -4px 0 rgba(0,0,0,.18);transition:transform .15s ease, filter .15s}
+.play:hover{filter:brightness(1.07);transform:translateY(-2px)}
+.play:active{transform:translateY(1px)}
+.play:disabled{filter:grayscale(.6) brightness(.8);cursor:default;transform:none}
+.play svg{width:30px;height:30px;flex:none}
+.play small{margin-left:auto;font-family:var(--f-num);font-weight:400;font-size:13px;letter-spacing:.06em;opacity:.7}
+.status{display:flex;flex-direction:column;gap:8px;max-width:520px}
+.status p{margin:0;font-family:var(--f-num);font-size:13px;letter-spacing:.04em;color:#bdb7a8}
+.status p b{font-weight:400;color:var(--tape)}
+.bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--tape);transition:width .2s}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.ghost{padding:9px 14px;border:1px solid var(--line);border-radius:2px;background:rgba(14,17,21,.7);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.ghost:hover{border-color:rgba(235,229,214,.4)}
+.right{display:flex;flex-direction:column;justify-content:flex-end;gap:12px;min-width:0;overflow:hidden;padding-top:8px}
+.card{padding:16px 18px;background:linear-gradient(180deg,rgba(22,26,32,.92),rgba(12,14,18,.92));border:1px solid var(--line);border-radius:3px;box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.card h2{margin:0 0 10px;display:flex;justify-content:space-between;gap:10px;font-family:var(--f-num);font-weight:400;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--tape)}
+.card h2 em{font-style:normal;color:var(--muted);letter-spacing:.06em}
+.news{display:flex;flex-direction:column;gap:12px;max-height:34vh;overflow:auto;padding-right:4px}
+.news article{border-left:2px solid rgba(242,204,58,.5);padding-left:12px}
+.news h3{margin:0;font-size:16px}
+.news time{font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.news ul{margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.45;color:#cfc9bb}
+.news li::marker{color:var(--tape)}
+.news p{margin:6px 0 0;font-size:13px;color:#cfc9bb}
+.coop{display:flex;gap:14px;align-items:center}
+.coop svg{width:40px;height:40px;flex:none;color:var(--tape)}
+.coop p{margin:0;font-size:13px;line-height:1.45;color:#cfc9bb}
+.coop b{color:var(--bone)}
+footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-family:var(--f-num);font-size:11px;letter-spacing:.1em;color:#6d727a;text-transform:uppercase}
+@media (max-width:980px){main{grid-template-columns:1fr;overflow:auto}.right{justify-content:flex-start}}
+@media (prefers-reduced-motion:reduce){.tape span,.art,.art::before,.art .sk-eye{animation:none}}
+</style>
+</head>
+<body>
+<div class="sky"></div>
+<div class="city" aria-hidden="true"><svg viewBox="0 0 1600 420" preserveAspectRatio="none"><path fill="#07080a" d="M0 420V250h60v-60h40v40h50V140h70v60h30v-90h80v120h40V170h50v80h60V90h30V60h50v30h20v150h70V180h90v-40h40v120h60V120h80v90h40v-70h60v130h50V200h70V100h40v-30h60v190h50V160h80v90h60V210h50v-90h70v130h40V190h60v230z"/><g fill="#ffce78" opacity=".55"><rect x="250" y="160" width="6" height="8"/><rect x="270" y="190" width="6" height="8"/><rect x="520" y="110" width="6" height="8"/><rect x="540" y="150" width="6" height="8"/><rect x="760" y="200" width="6" height="8"/><rect x="1020" y="150" width="6" height="8"/><rect x="1040" y="190" width="6" height="8"/><rect x="1290" y="180" width="6" height="8"/><rect x="1450" y="230" width="6" height="8"/></g></svg></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="tape" aria-hidden="true"><span>Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183;</span></div>
+<main>
+  <section class="left">
+    <p class="eyebrow">DeclAIre Studios presents</p>
+    <h1>Zombie<span>City</span></h1>
+    <p class="tag">An endless quarantine zone: 1,000 mutations, 250 weapons, 50 bosses, storms and seasons, and Wi-Fi co-op for up to four.</p>
+    <button class="play" id="play" type="button" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg><span id="playTxt">Play</span><small id="playVer"></small></button>
+    <div class="status"><p id="status">Getting ready</p><div class="bar" id="bar" hidden><i id="barFill"></i></div></div>
+    <div class="row">
+      <button class="ghost" id="check" type="button">Check for updates</button>
+      <button class="ghost" id="site" type="button">Website</button>
+      <button class="ghost" id="fs" type="button">Window</button>
+      <button class="ghost" id="quit" type="button">Quit</button>
+    </div>
+  </section>
+  <section class="right">
+    <div class="art" aria-hidden="true"><!--__SKULL__--></div>
+    <div class="card"><h2><span>News</span><em id="newsWhen"></em></h2><div class="news" id="news"><p>Looking for news</p></div></div>
+    <div class="card coop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg><p><b>Wi-Fi co-op.</b> Open the game and choose Wi-Fi co-op on the main menu to host. Friends on the same Wi-Fi join from the Android app or this launcher.</p></div>
+  </section>
+</main>
+<footer>Made by DeclAIre Studios with Claude &#183; <span id="ver"></span></footer>
+<script>
+(() => {
+  'use strict';
+  const L = window.ZCLauncher, D = window.ZCDesktop, $ = id => document.getElementById(id);
+  let info = null, latest = null, busy = false;
+  const status = (t, b) => { const p = $('status'); p.textContent = ''; if (b) { const s = document.createElement('b'); s.textContent = b; p.append(s, ' '); } p.append(t); };
+  function vcmp(a, b) { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; }
+  function showVersion() { $('playVer').textContent = 'v' + info.current; $('ver').textContent = 'Game ' + info.current + ' · Launcher ' + info.launcher; $('fs').textContent = info.fullscreen ? 'Window' : 'Full screen'; }
+  function renderNews(list) {
+    const box = $('news'); box.textContent = '';
+    if (!list || !list.length) { const p = document.createElement('p'); p.textContent = 'No news yet. Check back after the next update.'; box.append(p); return; }
+    for (const r of list) {
+      const a = document.createElement('article'), h = document.createElement('h3'), t = document.createElement('time');
+      h.textContent = r.name; t.textContent = r.date ? new Date(r.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+      a.append(h, t);
+      const lines = String(r.body || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean).filter(s => !/^#/.test(s)).slice(0, 6);
+      const ul = document.createElement('ul');
+      for (const ln of lines) { const li = document.createElement('li'); li.textContent = ln.replace(/^[-*]\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/`/g, '').slice(0, 220); ul.append(li); }
+      if (lines.length) a.append(ul);
+      box.append(a);
+    }
+  }
+  async function check(auto) {
+    if (busy) return; busy = true; $('check').disabled = true; status(auto ? 'Checking for updates' : 'Checking for updates');
+    const r = await L.check();
+    busy = false; $('check').disabled = false;
+    if (!r.ok) { status('Could not check for updates right now, so you are playing the version on this PC.', 'Offline.'); renderNews(null); return; }
+    renderNews(r.news); $('newsWhen').textContent = 'From GitHub';
+    latest = r.latest;
+    if (latest && vcmp(latest.version, info.current) > 0) { status('Version ' + latest.version + ' is out. Press Update to get it (about ' + Math.max(1, Math.round((latest.size || 1300000) / 1048576)) + ' MB).', 'New update.'); $('playTxt').textContent = 'Update'; }
+    else status('You have the newest version.', 'Up to date.');
+  }
+  async function update() {
+    busy = true; $('play').disabled = true; $('bar').hidden = false; $('barFill').style.width = '0%'; status('Downloading version ' + latest.version);
+    L.onProgress(f => { $('barFill').style.width = (f * 100).toFixed(1) + '%'; });
+    const r = await L.update(latest);
+    busy = false; $('play').disabled = false; $('bar').hidden = true;
+    if (!r.ok) { status('The update did not finish (' + r.error + '). You can still play the version on this PC.', 'Update failed.'); $('playTxt').textContent = 'Play'; return; }
+    info = Object.assign(info, r); showVersion(); $('playTxt').textContent = 'Play'; status('Version ' + info.current + ' is ready.', 'Updated.');
+  }
+  async function go() {
+    if (busy) return;
+    if ($('playTxt').textContent === 'Update' && latest) { await update(); return; }
+    $('play').disabled = true; status('Starting the game'); await L.play();
+  }
+  $('play').addEventListener('click', go);
+  $('check').addEventListener('click', () => check(false));
+  $('site').addEventListener('click', () => L.open(info.website));
+  $('fs').addEventListener('click', () => { D.fullscreen(); setTimeout(() => { info.fullscreen = D.isFullscreen(); showVersion(); }, 300); });
+  $('quit').addEventListener('click', () => D.quit());
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') D.quit(); });
+  // a controller works here too: A or Start plays
+  let prev = [];
+  (function pad() { try { const g = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).find(x => x && x.connected); if (g) { const a = g.buttons[0] && g.buttons[0].pressed, s = g.buttons[9] && g.buttons[9].pressed; if ((a && !prev[0]) || (s && !prev[9])) go(); prev = [a, 0, 0, 0, 0, 0, 0, 0, 0, s]; } } catch (e) { } requestAnimationFrame(pad); })();
+  // embers drifting up from the burning city
+  const cv = $('fx'), g = cv.getContext('2d'); let W = 0, H = 0, P = [];
+  function size() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+  addEventListener('resize', size); size();
+  for (let i = 0; i < 70; i++) P.push({ x: Math.random() * W, y: Math.random() * H, v: 12 + Math.random() * 40, r: Math.random() * 1.8 + 0.4, ph: Math.random() * 6.28 });
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let last = performance.now();
+  (function tick(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now; g.clearRect(0, 0, W, H);
+    for (const p of P) { if (!still) { p.y -= p.v * dt; p.x += Math.sin(now / 900 + p.ph) * 12 * dt; } if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; } g.globalAlpha = 0.35 + 0.35 * Math.sin(now / 300 + p.ph); g.fillStyle = p.r > 1.6 ? '#ffb04a' : '#ff7a3a'; g.fillRect(p.x, p.y, p.r, p.r); }
+    g.globalAlpha = 1; requestAnimationFrame(tick);
+  })(last);
+  L.info().then(i => { info = i; showVersion(); status('Ready to play version ' + info.current + '.'); check(true); });
+})();
+</script>
+</body>
+</html>

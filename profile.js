@@ -111,3 +111,5 @@ function renderTitlePanel() {
 
 // the Windows app can be closed from the main menu
 if (window.ZCDesktop) { const q = $('quitApp'); q.hidden = false; q.addEventListener('click', () => { SFX.click(); window.ZCDesktop.quit(); }); }
+// the launcher (news and updates) is one click away from the main menu
+if (window.ZCDesktop && window.ZCDesktop.launcher) { const b = $('toLauncher'); b.hidden = false; b.addEventListener('click', () => { SFX.click(); if (NET.role) netLeave(); window.ZCDesktop.launcher(); }); }

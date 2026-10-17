@@ -73,6 +73,7 @@ function volley(a, mul) {
     });
   }
   p.flashT = 0.05;
+  if (NET.started) netShot(a, mx, my, n, S, w);   // co-op: teammates see the shot
 }
 function thunderStrike(t) {
   const S = G.p.S;
@@ -90,6 +91,7 @@ function updBullets(dt) {
   const p = G.p, S = p.S;
   for (const b of G.bullets) {
     if (b.dead) continue;
+    if (b.cos) { netCosBullet(b, dt); continue; }   // a teammate's shot: drawn, no damage here
     if (b.homing && b.boom !== 2 && (frameNo & 1) === 0) {
       const tg = nearestZ(b.x, b.y, 240, b.hit);
       if (tg) { const ta = Math.atan2(tg.y - b.y, tg.x - b.x), ca = Math.atan2(b.vy, b.vx), na = angLerp(ca, ta, Math.min(1, dt * 14)), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
@@ -467,6 +469,7 @@ function chooseCard(i, ev) {
   shootCard($('upGrid'), i, ev);
   setTimeout(() => {
     applyChoice(G.upChoices[i]); G.upChoices = null; G.picking = false;
+    if (NET.started) { netPicked(); return; }   // co-op: the next wave starts when the whole team has picked
     showOv(null); startWave(G.wave + 1);
   }, RM ? 350 : 1200);
 }

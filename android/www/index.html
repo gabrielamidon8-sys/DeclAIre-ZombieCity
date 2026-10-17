@@ -1269,6 +1269,45 @@ button.lcd{cursor:pointer}
 
 /* no sideways scrolling on any screen (the quarantine tape runs past the edges on purpose) */
 .ov{overflow-x:hidden}
+
+/* ---------- 1.9.70: Wi-Fi co-op ---------- */
+.coop-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px}
+.coop-card{display:flex;flex-direction:column;gap:10px;padding:16px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--tape);border-radius:3px}
+.coop-card.off{opacity:.62}
+.coop-card h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:24px;letter-spacing:.02em}
+.coop-card p{font-size:14px;color:#cfc9bb}
+.coop-addr{font-family:var(--f-num);font-size:clamp(26px, 5vw, 38px);color:var(--tape)!important;letter-spacing:.04em;padding:8px 12px;background:#0b0d10;border:1px dashed rgba(242,204,58,.4);border-radius:3px;text-align:center;-webkit-user-select:text;user-select:text}
+.coop-more{font-family:var(--f-num);font-size:12px;color:var(--muted)!important}
+.coop-players{display:flex;flex-direction:column;gap:6px}
+.coop-pl{display:grid;grid-template-columns:22px minmax(0, 1fr) auto;gap:10px;align-items:center;padding:8px 10px;background:#11141a;border:1px solid var(--line);border-left:3px solid var(--tc, var(--line));border-radius:2px}
+.coop-pl .dev-ic{color:var(--tc)}
+.coop-pl b{font-family:var(--f-num);font-weight:400;letter-spacing:.1em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.coop-pl em{font-style:normal;font-family:var(--f-num);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.coop-pl.empty{border-style:dashed;border-left-width:1px;grid-template-columns:1fr}
+.coop-pl.empty b{color:#5d636b}
+.coop-found{display:flex;flex-direction:column;gap:6px}
+.coop-game{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;text-align:left;background:#11141a;border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px}
+.coop-game b{font-size:15px}
+.coop-game span{font-family:var(--f-num);font-size:12px;color:var(--muted)}
+.coop-game:hover{border-color:rgba(242,204,58,.6)}
+.coop-none{font-size:13px;color:var(--muted)!important}
+.coop-join{display:flex;gap:8px}
+.coop-join input{flex:1 1 auto;min-width:0;height:44px;padding:0 12px;background:#0b0d10;border:1px solid var(--line);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:16px;-webkit-user-select:text;user-select:text}
+.coop-err{padding:10px 12px;background:rgba(217,67,75,.12);border:1px solid rgba(217,67,75,.5);border-radius:3px;font-size:14px;color:#ffb3b6}
+#coopLeave{align-self:flex-start}
+#upGrid.waiting .gcard{opacity:.25;pointer-events:none}
+/* teammates on the HUD */
+.hud-team{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.hud-team .tm{display:grid;grid-template-columns:minmax(0, 72px) 70px auto;gap:6px;align-items:center;font-family:var(--f-num);font-size:11px;letter-spacing:.08em;color:var(--bone);text-shadow:0 1px 2px #000}
+.hud-team .tm b{font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-left:2px solid var(--tc);padding-left:5px}
+.hud-team .tm i{display:block;height:4px;background:rgba(0,0,0,.55)}
+.hud-team .tm i s{display:block;height:100%;background:var(--tc)}
+.hud-team .tm em{font-style:normal;color:#bdb7a8}
+.hud-team .tm.down em{color:#ff6a6a}
+.hud-team .tm-hold{font-family:var(--f-num);font-size:11px;letter-spacing:.08em;color:var(--tape);text-transform:uppercase}
+
+.coop #toasts{top:172px}
+.coop.has-boss #toasts,.coop .has-boss #toasts{top:206px}
 </style>
 
 </head><body><div id="app">
@@ -1281,6 +1320,7 @@ button.lcd{cursor:pointer}
         <div class="hp"><i id="hpFill"></i></div>
         <div class="hp-row"><b id="hpText">100</b><span id="fxChips"></span></div>
         <div class="where" id="whereChip" aria-live="polite"></div>
+        <div class="hud-team" id="hudTeam" hidden></div>
       </div>
       <div class="wave"><span>Wave</span><b id="waveNum">1</b></div>
       <div class="score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
@@ -1320,9 +1360,10 @@ button.lcd{cursor:pointer}
           <button class="btn" id="codexBtn">Specimen log <em id="foundCount">0/1000</em></button>
           <button class="btn" id="bossLogBtn">Boss log <em id="bossCount">0/50</em></button>
           <button class="btn" id="lbBtn">Leaderboard</button>
+          <button class="btn" id="coopBtn">Wi-Fi co-op <em>2-4</em></button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
-        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
+        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="toLauncher" hidden>Launcher</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
       </div>
       <p class="best" id="loadLine"></p>
       <p class="hint" id="ctrlHint">Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.</p>
@@ -1904,6 +1945,37 @@ button.lcd{cursor:pointer}
   <div id="fmTicker" aria-live="polite" hidden></div>
   <input type="file" id="musicFile" accept="audio/*" multiple hidden>
 
+  <section id="coop" class="ov sheet" hidden aria-label="Wi-Fi co-op">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div><p class="eyebrow">Wi-Fi co-op</p><h2>Play together</h2></div>
+        <button class="icon-btn" id="coopClose" aria-label="Close co-op">&#215;</button>
+      </header>
+      <p class="strain-note">Up to four players on the same Wi-Fi fight the same waves and bosses. One PC hosts; phones (the Android app) and other PCs join. Everyone moves and shoots for themselves, the score is shared, and a player who goes down can be revived by a teammate standing next to them.</p>
+      <p class="coop-err" id="coopErr" hidden></p>
+      <div class="coop-grid">
+        <section class="coop-card" id="coopHostCard">
+          <h3>Host a game</h3>
+          <p id="coopHostNote"></p>
+          <button class="btn primary" id="coopHostBtn" type="button">Start hosting</button>
+          <div id="coopHostInfo" hidden>
+            <p class="coop-addr" id="coopAddr"></p>
+            <p class="coop-more" id="coopAddrMore"></p>
+            <div class="coop-players" id="coopHostPlayers"></div>
+            <button class="btn primary" id="coopStartBtn" type="button">Start the run</button>
+          </div>
+        </section>
+        <section class="coop-card" id="coopJoinCard">
+          <h3>Join a game</h3>
+          <p id="coopJoinNote"></p>
+          <div class="coop-found" id="coopFound"></div>
+          <form class="coop-join" id="coopJoinForm" autocomplete="off"><input id="coopIp" inputmode="decimal" spellcheck="false" placeholder="Host address, like 192.168.1.20" aria-label="Host address"><button class="btn" type="submit">Join</button></form>
+          <div class="coop-players" id="coopLobby" hidden></div>
+        </section>
+      </div>
+      <button class="btn ghost" id="coopLeave" type="button" hidden>Leave</button>
+    </div>
+  </section>
   <section id="lb" class="ov sheet" hidden aria-label="Leaderboard">
     <div class="sheet-inner">
       <header class="sheet-head">
@@ -5112,6 +5184,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
+const ZC_VERSION = '1.9.70';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -5257,7 +5330,11 @@ function cellBlocked(cx, cy) {
   return v;
 }
 function buildField() {
-  const p = G.p, n = FF_N, pcx = Math.floor(p.x / FF_CS), pcy = Math.floor(p.y / FF_CS);
+  let p = G.p; const n = FF_N;
+  // co-op: the field is centred between the players and flows to whichever is nearest
+  const srcs = NET.role === 'host' && NET.started ? netAlive() : null;
+  if (srcs && srcs.length > 1) { let sx = 0, sy = 0; for (const q of srcs) { sx += q.x; sy += q.y; } p = { x: sx / srcs.length, y: sy / srcs.length }; }
+  const pcx = Math.floor(p.x / FF_CS), pcy = Math.floor(p.y / FF_CS);
   FF.ox = pcx - (n >> 1); FF.oy = pcy - (n >> 1); FF.pcx = pcx; FF.pcy = pcy; FF.t = G.time;
   const dist = FF.dist, cost = FF.cost, open = FF.open;
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) open[j * n + i] = cellBlocked(FF.ox + i, FF.oy + j) ? 0 : 1;
@@ -5271,7 +5348,9 @@ function buildField() {
   }
   let hs = 0;
   const push = (id, k) => { let i = hs++; HI[i] = id; HK[i] = k; while (i > 0) { const pa = (i - 1) >> 1; if (HK[pa] <= HK[i]) break; const ti = HI[pa], tk = HK[pa]; HI[pa] = HI[i]; HK[pa] = HK[i]; HI[i] = ti; HK[i] = tk; i = pa; } };
-  const start = (n >> 1) * n + (n >> 1); dist[start] = 0; push(start, 0);
+  if (srcs && srcs.length > 1) {
+    for (const q of srcs) { const i = Math.floor(q.x / FF_CS) - FF.ox, j = Math.floor(q.y / FF_CS) - FF.oy; if (i >= 0 && j >= 0 && i < n && j < n) { const id = j * n + i; dist[id] = 0; push(id, 0); } }
+  } else { const start = (n >> 1) * n + (n >> 1); dist[start] = 0; push(start, 0); }
   while (hs > 0) {
     const id = HI[0], k = HK[0];
     hs--; if (hs > 0) { HI[0] = HI[hs]; HK[0] = HK[hs]; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < hs && HK[l] < HK[m]) m = l; if (r < hs && HK[r] < HK[m]) m = r; if (m === i) break; const ti = HI[m], tk = HK[m]; HI[m] = HI[i]; HK[m] = HK[i]; HI[i] = ti; HK[i] = tk; i = m; } }
@@ -5356,6 +5435,7 @@ window.zcBack = function () {
   if (!$('cxDetail').hidden) { closeDetail(); return true; }
   if (!$('codex').hidden) { closeCodex(); return true; }
   if (!$('lb').hidden) { closeLB(); return true; }
+  if (!$('coop').hidden) { closeCoop(); return true; }
   if (G.mode === 'play') { pauseGame(); return true; }
   if (G.mode === 'pause') { resumeGame(); return true; }
   if (G.mode === 'over') { toTitle(); return true; }
@@ -5440,13 +5520,15 @@ function spawnZombie(m, x, y, o) {
   if (z.abs.indexOf('juggernaut') >= 0) { z.dr = 1 - (1 - z.dr) * 0.6; z.kb = 0; }
   if (o.boss) z.kb = 0;
   if (z.abs.indexOf('warden') >= 0) { z.shieldMax = z.maxHp * 0.5; z.shield = z.shieldMax; }
+  z.nid = ++NET.zid;
+  if (NET.role === 'client' && !NET.spawning) return z;   // in co-op only the host makes zombies; a teammate's game shows them
   G.zs.push(z);
   return z;
 }
 function heal(z, a) { z.hp = Math.min(z.maxHp, z.hp + a); }
 // Just outside a random edge of the screen, so zombies walk in quickly but never pop in on camera.
 function spawnPos() {
-  const p = G.p, hw = W / ZOOM / 2, hh = H / ZOOM / 2;
+  const p = NET.role === 'host' ? netAnchor() : G.p, hw = W / ZOOM / 2, hh = H / ZOOM / 2;
   for (let i = 0; i < 20; i++) {
     const side = Math.floor(Math.random() * 4), off = rand(50, 130);
     let x, y;
@@ -5463,7 +5545,7 @@ function shoot(x, y, a, spd, dmg, r, k) { G.eshots.push({ x: x, y: y, vx: Math.c
 
 function bombBlast(z) {
   z.st.boomed = true; const R = 88 + z.r;
-  if (G.mode === 'play' && G.p && Math.hypot(G.p.x - z.x, G.p.y - z.y) < R) hurtPlayer(z.dmg * 2.2);
+  if (G.mode === 'play') netEach(p => { if (Math.hypot(p.x - z.x, p.y - z.y) < R) hurtPlayer(z.dmg * 2.2); });
   near(z.x, z.y, R, o => { if (o !== z && !o.dead && !o.boss && Math.hypot(o.x - z.x, o.y - z.y) < R) hurtZombie(o, 22 + G.wave * 4, { src: 'blast' }); });
   burst(z.x, z.y, 26, '#ffb347', 340, 5, 0.55); burst(z.x, z.y, 14, '#5a1a10', 200, 7, 0.8); worldBlast(z.x, z.y, R * 1.3, null);
   ring(z.x, z.y, z.r, R, 0.35, '255,140,50', 4); shakeIt(9); splat(z.x, z.y, z.r * 2, 'rgba(20,10,6,0.6)'); SFX.boom(true);
@@ -5700,6 +5782,7 @@ function onHitEffect(z) {
 }
 
 function hurtZombie(z, dmg, o) {
+  if (NET.role === 'client') { if (NET.cosmetic) return false; if (z.puppet) return netHit(z, dmg, o); }
   if (z.dead) return false;
   if (z.st.under || z.st.down > 0) return 'pass';
   if (z.rb && !z.rb.ill) {
@@ -5733,15 +5816,18 @@ function hurtZombie(z, dmg, o) {
   return true;
 }
 function killZombie(z) {
-  if (z.dead) return; z.dead = true;
-  const m = z.m, gore = m.S.gore;
+  if (z.dead) return;
+  if (NET.role === 'client') { if (z.puppet && !NET.cosmetic) netSend({ t: 'kz', z: z.nid }); return; }
+  z.dead = true;
+  if (NET.role === 'host') { NET.kills.push([z.nid, NET.lastHitBy]); NET.zmap.delete(z.nid); }
+  const m = z.m, gore = m.S.gore, mine = NET.lastHitBy === 1;
   if (z.illusion) { burst(z.x, z.y, 10, '#efe9dc', 120, 4, 0.4); return; }
   if (!z.fly) {
-    G.kills++; dashOnKill();
+    G.kills++; if (mine) dashOnKill();
     const cm = chainKill();
     const pts = Math.round(m.threat * 10 * (1 + G.wave * 0.1) * (z.boss ? 12 : (z.minion || z.child) ? 0.4 : 1) * cm * (G.p ? G.p.scoreMul : 1));
     G.score += pts;
-    if (G.p && G.p.killHeal) healPlayer(G.p.killHeal);
+    if (mine && G.p && G.p.killHeal && !G.p.remote) healPlayer(G.p.killHeal);
     if (!z.minion && !m.unique) discover(m);
     if (z.boss) G.texts.push({ x: z.x, y: z.y - z.r - 10, t: 0, life: 1.4, s: '+' + pts, c: '#f2cc3a', big: true });
   }
@@ -5755,7 +5841,7 @@ function killZombie(z) {
   if (!z.fly && G.chain >= 25 && G.mode === 'play') burst(z.x, z.y, 6 + Math.min(14, Math.floor(G.chain / 25) * 3), chainColor(G.chain), 260, 3, 0.45);
   const dp = m.S.p.death;
   if (!z.fly && !z.minion) {
-    if (dp === 'bile') { if (G.mode === 'play' && Math.hypot(G.p.x - z.x, G.p.y - z.y) < 70 + z.r) hurtPlayer(10 + G.wave); burst(z.x, z.y, 18, '#b7c25a', 220, 5, 0.5); ring(z.x, z.y, z.r, 70 + z.r, 0.3, '183,194,90', 3); }
+    if (dp === 'bile') { if (G.mode === 'play') netEach(p => { if (Math.hypot(p.x - z.x, p.y - z.y) < 70 + z.r) hurtPlayer(10 + G.wave); }); burst(z.x, z.y, 18, '#b7c25a', 220, 5, 0.5); ring(z.x, z.y, z.r, 70 + z.r, 0.3, '183,194,90', 3); }
     if (dp === 'sludge') G.haz.push({ k: 'sludge', x: z.x, y: z.y, r: z.r * 2.2, life: 5, max: 5 });
     if (dp === 'fire') G.haz.push({ k: 'fire', x: z.x, y: z.y, r: z.r * 1.8, life: 3.5, max: 3.5, dps: 10 + G.wave * 0.6 });
     if (dp === 'spores') G.haz.push({ k: 'spore', x: z.x, y: z.y, r: 72, life: 3.5, max: 3.5 });
@@ -5772,7 +5858,8 @@ function killZombie(z) {
     G.boss = null; shakeIt(14);
     if (G.grab && G.grab.z === z) endGrab(true);
     const ovl = z.rb && z.rb.def.overlord;
-    if (G.p) G.p.hp = ovl ? G.p.maxHp : Math.min(G.p.maxHp, G.p.hp + 30);
+    if (G.p && !G.p.remote && !G.p.down) G.p.hp = ovl ? G.p.maxHp : Math.min(G.p.maxHp, G.p.hp + 30);
+    if (NET.role === 'host') for (const pr of NET.peers.values()) if (pr.p && !pr.p.down) pr.p.out.heal += ovl ? pr.p.maxHp : 30;
     if (z.rb) { if (ovl) store.set('zc_overlord', store.get('zc_overlord', 0) + 1); else { bossKilled.add(z.rb.def.id); saveBosses(); } }
     if (ovl) { const bonus = 5000 * Math.max(1, G.wave); G.score += bonus; SFX.milestone(); shakeIt(22); banner('Overlord slain', 'Fully healed · +' + bonus.toLocaleString()); }
     else banner(z.rb ? z.rb.def.name + ' destroyed' : m.unique ? 'The Snatcher is down' : 'Alpha down', 'Healed 30');
@@ -5837,6 +5924,7 @@ function snatcherTick(z, dt, dx, dy, d, c) {
   s.t -= dt; if (s.t <= 0) s.state = 'idle';
 }
 function startGrab(z) {
+  if (G.p && G.p.remote) { netHeavy(G.p, z); return; }   // a teammate can't be held from here: it lands as a heavy hit
   const p = G.p, ovl = !!(z.rb && z.rb.def.overlord), need = 5 + Math.floor(G.wave / 15) + (ovl ? 2 : 0), tt = ovl ? 3.4 : 4.6;
   G.grab = { z: z, need: need, got: 0, t: tt, max: tt, ql: 0, last: null, fast: ovl };
   if (z.snatch) z.snatch.state = 'holding'; else if (z.rb) z.rb.state = 'holding';
@@ -5898,6 +5986,8 @@ $('qteBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPro
 /* ================= player ================= */
 function hurtPlayer(a) {
   const p = G.p; if (G.mode !== 'play' || !p) return false;
+  if (p.remote) return netHurtProxy(p, a);
+  if (p.down) return false;
   if (p.iframe > 0 || p.dashT > 0 || G.grab) return false;
   if (dashDodge(p)) { p.iframe = 0.25; G.texts.push({ x: p.x, y: p.y - 26, t: 0, life: 0.6, s: 'dodge', c: dashDef(p).hex }); return false; }
   p.hp -= a * p.taken; p.iframe = 0.3; G.hurtFlash = 0.35; shakeIt(6); SFX.hurt(); buzz(22);
@@ -5905,7 +5995,7 @@ function hurtPlayer(a) {
   if (p.hp <= 0) die();
   return true;
 }
-function dotPlayer(a) { const p = G.p; if (G.mode !== 'play' || !p) return; p.hp -= a * p.taken; if (p.hp <= 0) die(); }
+function dotPlayer(a) { const p = G.p; if (G.mode !== 'play' || !p) return; if (p.remote) { netDotProxy(p, a); return; } if (p.down) return; p.hp -= a * p.taken; if (p.hp <= 0) die(); }
 
 function updPlayer(dt) {
   const p = G.p;
@@ -5923,6 +6013,7 @@ function updPlayer(dt) {
   if (p.selfDps && p.hp > 1) { p.hp = Math.max(1, p.hp - p.selfDps * dt); if (Math.random() < dt * 8) burst(p.x, p.y, 1, '#ff9a3a', 40, 3, 0.4); }
   if (p.queue.length) { for (const q of p.queue) q.t -= dt; const due = p.queue.filter(q => q.t <= 0); if (due.length) { p.queue = p.queue.filter(q => q.t > 0); if (p.jamT <= 0 && p.frozenT <= 0 && !G.grab) due.forEach(q => volley(p.aim, q.mul)); } }
   if (G.grab) { updGrab(dt); return; }
+  if (p.down) { p.ix = p.iy = 0; p.kvx = p.kvy = 0; return; }   // co-op: down until a teammate revives you
   let vx, vy;
   if (p.dashT > 0) { const sp = dashVel(p, dt); p.dashT -= dt; vx = p.dashDx * sp; vy = p.dashDy * sp; if (p.dashT <= 0) dashEnd(p); }
   else if (p.frozenT > 0 || p.rootT > 0) { vx = 0; vy = 0; }
@@ -6079,6 +6170,7 @@ function spawnBoss() {
 function waveCleared() {
   G.score += G.wave * 100; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
   SFX.waveClear();
+  if (NET.role === 'host') netCardsOpen();
   openCards();
 }
 
@@ -6109,8 +6201,9 @@ function banner(a, b) {
 /* ================= screens ================= */
 const OVS = ['title', 'upgrade', 'pause', 'over'];
 function showOv(id) { OVS.forEach(o => { $(o).hidden = o !== id; }); $('hud').hidden = !(G.mode === 'play' || G.mode === 'upgrade' || G.mode === 'pause' || G.mode === 'skull' || G.mode === 'cine'); }
-function newRun() {
-  startWorld(false);
+function newRun(o) {
+  o = o || {};
+  startWorld(false, o.world);
   $('skull').hidden = true;
   Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
@@ -6119,11 +6212,16 @@ function newRun() {
   worldReset();
   $('toasts').textContent = '';
   wxReset();
-  G.mode = 'play'; showOv(null); startWave(1);
+  if (o.client) {
+    // co-op: a teammate's game joins the host's run (same city, same wave), next to the host
+    const a = (NET.slot || NET.me || 2) * 1.7, at = o.at || WORLD.start;
+    for (let r = 46; r < 200; r += 30) { const x = at.x + Math.cos(a) * r, y = at.y + Math.sin(a) * r; if (!blocked(x, y, 14)) { G.p.x = x; G.p.y = y; break; } }
+    cam.x = G.p.x; cam.y = G.p.y; G.wave = o.wave || 1; G.mode = 'play'; showOv(null);
+  } else { G.mode = 'play'; showOv(null); startWave(1); }
   try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* not allowed */ }
 }
 function pauseGame() {
-  if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · run in progress';
+  if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · ' + (NET.role === 'client' ? 'co-op: the game keeps going while you are here' : NET.role === 'host' ? 'co-op: paused for everyone' : 'run in progress');
   const st = $('pauseStats'); st.textContent = '';
   const tm = Math.floor(G.time || 0);
   [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', Math.floor(tm / 60) + ':' + String(tm % 60).padStart(2, '0')]].forEach(([k, v]) => {
@@ -6132,10 +6230,11 @@ function pauseGame() {
   toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio();
 }
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
-function toTitle() { if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
+function toTitle() { if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); if (NET.role) netLeave(); G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
 function die() {
   if (G.mode !== 'play') return;
   const p = G.p;
+  if (NET.role && NET.started && !NET.finishing && !p.cs.phoenix) { netDown(); return; }
   if (p.cs.phoenix > 0) {
     p.cs.phoenix--; p.hp = p.maxHp * 0.5; p.iframe = 2.5; p.kvx = p.kvy = 0;
     if (G.grab) endGrab(true);
@@ -6169,7 +6268,7 @@ function refreshTitle() {
   updNameUi(); updDevUi();
 }
 $('playBtn').addEventListener('click', newRun);
-$('againBtn').addEventListener('click', newRun);
+$('againBtn').addEventListener('click', () => { if (NET.role === 'host') netHostRun(); else if (NET.role === 'client') return; else newRun(); });
 $('resumeBtn').addEventListener('click', resumeGame);
 $('quitBtn').addEventListener('click', toTitle);
 $('menuBtn').addEventListener('click', toTitle);
@@ -6437,7 +6536,7 @@ function render() {
   }
   LODQ.length = Math.min(LODQ.length, 256);
   for (const z of G.zs) if (!z.dead && z.boss) drawZ(z);
-  if (G.p && G.mode !== 'title') { drawDashActors(G.p); drawPlayer(G.p); }
+  if (G.p && G.mode !== 'title') { drawDashActors(G.p); if (!G.p.down) drawPlayer(G.p); if (NET.started) netDrawPlayers(); }
   // bullets
   ctx.lineCap = 'round';
   ctx.globalCompositeOperation = 'lighter';
@@ -6883,20 +6982,24 @@ function updHud() {
 
 /* ================= loop ================= */
 function update(dt) {
+  if (NET.role === 'client') { netClientUpdate(dt); return; }
   G.time += dt; if (G.hintT > 0) G.hintT -= dt;
   DEV.useT[DEV.kind] += dt;
   updPlayer(dt);
+  const host = NET.role === 'host' && NET.started;
+  if (host) netHostPre(dt);
   spawner(dt);
   buildGrid();
   { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS);
     if (!FF.ready || G.time - FF.t > 0.35 || Math.abs(pcx - FF.pcx) + Math.abs(pcy - FF.pcy) >= 2) buildField(); }
   if (G.cineT > 0) G.cineT -= dt;
   let nf = 0; for (const z of G.zs) if (z.fly && !z.dead) nf++; G.nFly = nf;
-  const fr = Math.max(W, H) / ZOOM * 0.75 + 220, far2 = fr * fr, px = G.p.x, py = G.p.y;
+  const fr = Math.max(W, H) / ZOOM * 0.75 + 220, far2 = fr * fr, px = G.p.x, py = G.p.y, me = G.p;
   for (let i = 0; i < G.zs.length; i++) {
     const z = G.zs[i]; if (z.dead) continue;
+    if (host) G.p = netTarget(z);   // co-op: each zombie goes after the nearest standing player
     if (Q.sim > 1 && !z.boss && !z.rb && !z.m.unique) {
-      const dx = z.x - px, dy = z.y - py;
+      const dx = z.x - G.p.x, dy = z.y - G.p.y;
       if (dx * dx + dy * dy > far2) {
         z.lodAcc = (z.lodAcc || 0) + dt;
         if (((frameNo + ((z.bob * 1000) | 0)) % Q.sim) !== 0 && z.lodAcc < 0.12) continue;
@@ -6905,12 +7008,15 @@ function update(dt) {
     }
     if (z.lodAcc) { const d = Math.min(0.15, z.lodAcc + dt); z.lodAcc = 0; updZ(z, d); } else updZ(z, dt);
   }
+  G.p = me;
   updBullets(dt); updEshots(dt); updHaz(dt); updPicks(dt); updBlasts(dt); updJets(dt); updDash(dt); updAirFx(dt); updWorld(dt);
   catchUp(dt);
+  if (host) netHostPost();
   G.zs = G.zs.filter(z => !z.dead);
   updFx(dt);
   if (G.boss && G.boss.dead) G.boss = null;
-  const k = Math.min(1, dt * 7); cam.x += (G.p.x - cam.x) * k; cam.y += (G.p.y - cam.y) * k;
+  const ct = host && G.p.down ? (netAlive()[0] || G.p) : G.p;   // down in co-op: the camera follows a teammate
+  const k = Math.min(1, dt * 7); cam.x += (ct.x - cam.x) * k; cam.y += (ct.y - cam.y) * k;
   if (G.skullPending && G.mode === 'play') { openSkull(); return; }
   if (G.mode === 'play' && G.spawnQ <= 0 && !G.bossPending && !G.zs.some(z => !z.illusion)) waveCleared();
 }
@@ -6922,7 +7028,7 @@ function catchUp(dt) {
   for (const z of G.zs) {
     if (z.dead || z.illusion || (z.snatch && z.snatch.state !== 'idle') || (z.rb && z.rb.state !== 'idle' && z.rb.state !== 'chase')) continue;
     const dx = z.x - p.x, dy = z.y - p.y;
-    if (dx * dx + dy * dy < far2) { z.farT = 0; continue; }
+    if ((NET.role === 'host' ? netNearD2(z.x, z.y) : dx * dx + dy * dy) < far2) { z.farT = 0; continue; }
     z.farT = (z.farT || 0) + dt;
     if (z.farT > (z.boss ? 2 : 3.5)) { const s = spawnPos(); z.x = s.x; z.y = s.y; z.vx = z.vy = z.kvx = z.kvy = 0; z.farT = 0; z.losT = 0; }
   }
@@ -6944,6 +7050,7 @@ function frame(now) {
   try {
     if (SFX.tick) SFX.tick();
     padPoll(rdt);
+    netTick(rdt);
     vzNow = vizFrame();
     if (G.mode === 'play') update(dt);
     else if (G.mode === 'cine') updCine(dt);
@@ -7035,11 +7142,12 @@ function seasonFromSetting() {
   return s === 'spring' ? 0 : s === 'summer' ? 1 : s === 'fall' ? 2 : s === 'winter' ? 3 : realSeason();
 }
 // a fresh world for a run (or the title screen): a new seed unless the player fixed one, the season, a start point
-function startWorld(title) {
-  WORLD.mix = SET.world || 'mixed';
-  const seed = SET.seedMode === 'fixed' && SET.seed ? (SET.seed | 0) : (Math.random() * 1e9) | 0;
+function startWorld(title, o) {
+  // o (co-op): the host's seed, map type and season, so every player walks the same city
+  WORLD.mix = (o && o.mix) || SET.world || 'mixed';
+  const seed = o && o.seed != null ? (o.seed | 0) : SET.seedMode === 'fixed' && SET.seed ? (SET.seed | 0) : (Math.random() * 1e9) | 0;
   worldSeed(seed); WORLD.lastSeed = seed;
-  WORLD.season = seasonFromSetting();
+  WORLD.season = o && o.season != null ? o.season : seasonFromSetting();
   WORLD.start = pickStart(Z.mulberry32(seed ^ (title ? 0x7171 : 0x51a7)));
 }
 
@@ -8994,6 +9102,7 @@ function volley(a, mul) {
     });
   }
   p.flashT = 0.05;
+  if (NET.started) netShot(a, mx, my, n, S, w);   // co-op: teammates see the shot
 }
 function thunderStrike(t) {
   const S = G.p.S;
@@ -9011,6 +9120,7 @@ function updBullets(dt) {
   const p = G.p, S = p.S;
   for (const b of G.bullets) {
     if (b.dead) continue;
+    if (b.cos) { netCosBullet(b, dt); continue; }   // a teammate's shot: drawn, no damage here
     if (b.homing && b.boom !== 2 && (frameNo & 1) === 0) {
       const tg = nearestZ(b.x, b.y, 240, b.hit);
       if (tg) { const ta = Math.atan2(tg.y - b.y, tg.x - b.x), ca = Math.atan2(b.vy, b.vx), na = angLerp(ca, ta, Math.min(1, dt * 14)), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
@@ -9388,6 +9498,7 @@ function chooseCard(i, ev) {
   shootCard($('upGrid'), i, ev);
   setTimeout(() => {
     applyChoice(G.upChoices[i]); G.upChoices = null; G.picking = false;
+    if (NET.started) { netPicked(); return; }   // co-op: the next wave starts when the whole team has picked
     showOv(null); startWave(G.wave + 1);
   }, RM ? 350 : 1200);
 }
@@ -10484,11 +10595,11 @@ function finishMutation(z) {
 }
 /* ---------- blasts (meteors, bombs, frost, lightning) and quake rings ---------- */
 function updBlasts(dt) {
-  const p = G.p;
   for (const b of G.blasts) {
     b.t -= dt; if (b.t > 0) continue; b.dead = true;
-    const d = Math.hypot(p.x - b.x, p.y - b.y), hit = G.mode === 'play' && d < b.r + p.r * 0.4;
-    if (hit && hurtPlayer(b.dmg)) { if (b.kind === 'frost') { p.frozenT = Math.max(p.frozenT, 0.7); } if (b.haz === 'fire') p.burnT = Math.max(p.burnT, 2); }
+    if (G.mode === 'play') netEach(p => {
+      if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + p.r * 0.4 && hurtPlayer(b.dmg)) { if (b.kind === 'frost') { p.frozenT = Math.max(p.frozenT, 0.7); } if (b.haz === 'fire') p.burnT = Math.max(p.burnT, 2); }
+    });
     near(b.x, b.y, b.r, o => { if (!o.dead && !o.boss && Math.hypot(o.x - b.x, o.y - b.y) < b.r) hurtZombie(o, b.dmg * 0.5, { src: 'blast' }); });
     const col = b.col || '#ff8a3a';
     if (b.kind === 'bolt') { bolt(b.x + rand(-30, 30), b.y - 320, b.x, b.y, '#fff36b'); bolt(b.x + rand(-30, 30), b.y - 320, b.x, b.y, '#ffffff'); SFX.zap(); }
@@ -10500,8 +10611,8 @@ function updBlasts(dt) {
   G.blasts = G.blasts.filter(b => !b.dead);
   for (const q of G.quakes) {
     q.t += dt; if (q.t < 0) continue; if (q.t > q.max) { q.dead = true; continue; }
-    const R = q.R * q.t / q.max, d = Math.hypot(p.x - q.x, p.y - q.y);
-    if (!q.hit && G.mode === 'play' && Math.abs(d - R) < q.w + p.r * 0.5) { q.hit = true; hurtPlayer(q.dmg); }
+    const R = q.R * q.t / q.max;
+    if (!q.hit && G.mode === 'play') netEach(p => { if (!q.hit && Math.abs(Math.hypot(p.x - q.x, p.y - q.y) - R) < q.w + p.r * 0.5) { q.hit = true; hurtPlayer(q.dmg); } });
   }
   G.quakes = G.quakes.filter(q => !q.dead);
 }
@@ -10626,7 +10737,8 @@ function updAirBtn() {
 }
 function grantAir() { G.air = Math.min(2, (G.air || 0) + 1); updAirBtn(); SFX.airReady(); toast('Chain x' + G.chain, 'A-10 Warthog ready', '#9fd36a'); }
 function callAirstrike() {
-  if (G.mode !== 'play' || !(G.air > 0) || G.jets.some(j => !j.mini)) return;
+  if (NET.role === 'client') { if (G.mode === 'play' && G.air > 0) netSend({ t: 'air' }); return; }   // co-op: the host flies it
+  if (G.mode !== 'play' || !(G.air > 0) || G.jets.some(j => !j.mini && !j.cos)) return;
   G.air--; updAirBtn();
   const p = G.p; let cx = p.x + Math.cos(p.aim) * 160, cy = p.y + Math.sin(p.aim) * 160, n = 0, sx = 0, sy = 0;
   for (const z of G.zs) { if (z.dead || z.fly) continue; const d = Math.hypot(z.x - p.x, z.y - p.y); if (d < 520) { sx += z.x; sy += z.y; n++; } }
@@ -10644,9 +10756,11 @@ function callAirstrike() {
 // a gun run along angle a through (cx, cy): three jets, or one for the Warthog Run dash
 function launchStrafe(cx, cy, a, o) {
   const ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux, mini = !!o.mini;
+  if (!o.cos && NET.role === 'host') NET.evs.push(['air', Math.round(cx), Math.round(cy), Math.round(a * 1000) / 1000, mini ? 1 : 0, NET.airBy || 1]);
+  if (!o.cos && NET.role === 'client' && mini) netSend({ t: 'airv', cx: Math.round(cx), cy: Math.round(cy), a: Math.round(a * 1000) / 1000 });
   const form = mini ? [[0, 0]] : [[0, 0], [-80, -70], [-80, 70]];
   form.forEach((f, i) => G.jets.push({ x: cx - ux * (1000 - f[0]) + vx * f[1], y: cy - uy * (1000 - f[0]) + vy * f[1], ux: ux, uy: uy, t: 0, fireT: 0, smT: 0, rounds: 0,
-    tx: cx + vx * f[1] * 0.5, ty: cy + vy * f[1] * 0.5, firing: false, shot: false, k: i, mini: mini, len: mini ? 380 : 840, dmgMul: mini ? 0.6 : 1, tr: [] }));
+    tx: cx + vx * f[1] * 0.5, ty: cy + vy * f[1] * 0.5, firing: false, shot: false, k: i, mini: mini, len: mini ? 380 : 840, dmgMul: mini ? 0.6 : 1, tr: [], cos: !!o.cos }));
   if (mini) SFX.a10Jet(2.2, true);
 }
 function puff(x, y, r0, r1, life, c, vx, vy) { if (!G.smoke) G.smoke = []; if (G.smoke.length > 520) G.smoke.splice(0, 40); G.smoke.push({ x: x, y: y, r0: r0, r1: r1, t: 0, life: life, c: c, vx: vx || 0, vy: vy || 0 }); }
@@ -10672,7 +10786,7 @@ function updJets(dt) {
         const ix = j.x + j.ux * 260 + px * rand(-24, 24) + j.ux * rand(-16, 16), iy = j.y + j.uy * 260 + py * rand(-24, 24) + j.uy * rand(-16, 16);
         // every round is high explosive: a small burst with splash damage, stronger in the middle
         const R = 34, big = j.rounds % 6 === 0;
-        near(ix, iy, R + 50, o => {
+        if (!j.cos) near(ix, iy, R + 50, o => {
           if (o.dead) return; const d = Math.hypot(o.x - ix, o.y - iy); if (d > (big ? 56 : R) + o.r) return;
           const f = 1 - Math.min(1, d / (R + o.r)) * 0.5;
           hurtZombie(o, dmg * j.dmgMul * f * (o.boss ? 0.35 : 1) * (big ? 1.4 : 1), { src: 'a10', kx: j.ux * 70 + (o.x - ix) / (d || 1) * 120, ky: j.uy * 70 + (o.y - iy) / (d || 1) * 120 });
@@ -11592,6 +11706,7 @@ function goBack(esc) {
   if (!$('cxDetail').hidden) { closeDetail(); return; }
   if (!$('codex').hidden) { closeCodex(); return; }
   if (!$('lb').hidden) { closeLB(); return; }
+  if (!$('coop').hidden) { closeCoop(); return; }
   if (G.mode === 'play') pauseGame(); else if (G.mode === 'pause') resumeGame();
 }
 window.addEventListener('keydown', e => {
@@ -11705,9 +11820,9 @@ function padRumble(ms) {
 }
 
 /* ---------- menus with a controller (and arrow keys) ---------- */
-const LAYERS = ['settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'skull', 'upgrade', 'pause', 'over', 'title'];
+const LAYERS = ['settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'coop', 'skull', 'upgrade', 'pause', 'over', 'title'];
 const shown = e => !!e && !e.hidden && e.getClientRects().length > 0;
-function sheetOpen() { return shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')); }
+function sheetOpen() { return shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')) || shown($('coop')); }
 function menuOpen() { if (typeof INTRO !== 'undefined' && INTRO.on) return false; return (G.mode !== 'play' && G.mode !== 'cine') || shown($('settings')) || shown($('radioPanel')); }
 function menuLayer() { for (const id of LAYERS) { const e = $(id); if (shown(e)) return e; } return null; }
 function focusables(L) {
@@ -12112,6 +12227,748 @@ function renderTitlePanel() {
 
 // the Windows app can be closed from the main menu
 if (window.ZCDesktop) { const q = $('quitApp'); q.hidden = false; q.addEventListener('click', () => { SFX.click(); window.ZCDesktop.quit(); }); }
+// the launcher (news and updates) is one click away from the main menu
+if (window.ZCDesktop && window.ZCDesktop.launcher) { const b = $('toLauncher'); b.hidden = false; b.addEventListener('click', () => { SFX.click(); if (NET.role) netLeave(); window.ZCDesktop.launcher(); }); }
+
+/* ================= Wi-Fi co-op: up to 4 players on the same network =================
+   One PC hosts (the Windows app runs a small relay server, desktop/lan.js). The host's game runs the zombies, waves,
+   bosses and the score; every player moves, aims and shoots for themselves and tells the host what they hit. The host
+   sends everyone the state of the street 15 times a second, and each player's own hits and hurts are sent to them.
+   Phones (the Android app) and other PCs join by picking the game from the list or typing the host's address. */
+const NET = {
+  role: null, ws: null, me: 1, status: 'off', err: '', hostName: '', port: 0, ips: [], token: '',
+  peers: new Map(), others: new Map(), zmap: new Map(), lobby: [],
+  started: false, zid: 0, spawning: false, cosmetic: false, lastHitBy: 1, finishing: false, local: null,
+  sendT: 0, snapT: 0, hudT: 0, scanT: 0, hold: 0, md: 0,
+  hits: [], zfx: [], shots: [], kills: [], evs: [], blastsDone: new Set(), cardsAt: 0, picked: new Set(), found: [], shotSfx: new Map()
+};
+const NET_PORT = 47777, NET_MAX = 4;
+const NET_COLS = ['#f2cc3a', '#29e6ff', '#ff3df2', '#7dff4a'];
+const NET_SK = ['acid', 'wisp', 'shard', 'spike', 'fire', 'ice', 'void', 'shock', 'spirit', 'web', 'bolt'];
+const NET_HK = ['acid', 'fire', 'sludge', 'ice', 'spore', 'vortex'];
+const netCol = id => NET_COLS[(Math.max(1, id) - 1) % NET_COLS.length];
+// On Android the game is a secure (https) page and WebView won't let it open a plain ws:// connection to a PC on the
+// Wi-Fi, so the app makes the connection (ZCNative.wsOpen) and this wraps it to look like a WebSocket.
+const netNativeWs = () => !!(window.ZCNative && window.ZCNative.wsOpen);
+class NativeWS {
+  constructor(url) {
+    this.readyState = 0; this.onopen = this.onmessage = this.onclose = null;
+    this.id = +window.ZCNative.wsOpen(String(url)) || 0;
+    if (!this.id) { setTimeout(() => this._closed(1006), 0); return; }
+    NativeWS.all.set(this.id, this); NativeWS.pump();
+  }
+  send(s) { if (this.readyState === 1) window.ZCNative.wsSend(this.id, String(s)); }
+  close() { if (this.readyState >= 2) return; this.readyState = 2; if (this.id) try { window.ZCNative.wsClose(this.id); } catch (e) { } setTimeout(() => this._closed(1000), 0); }
+  _closed(code) { if (this.readyState === 3) return; this.readyState = 3; NativeWS.all.delete(this.id); if (this.onclose) this.onclose({ code: code }); }
+  static pump() {
+    if (NativeWS.t) return;
+    NativeWS.t = setInterval(() => {
+      if (!NativeWS.all.size) { clearInterval(NativeWS.t); NativeWS.t = 0; return; }
+      let evs; try { evs = JSON.parse(window.ZCNative.wsPoll() || '[]'); } catch (e) { return; }
+      for (const ev of evs) {
+        const w = NativeWS.all.get(ev[0]); if (!w || w.readyState === 3) continue;
+        if (ev[1] === 'o') { if (w.readyState === 0) { w.readyState = 1; if (w.onopen) w.onopen({}); } }
+        else if (ev[1] === 'm') { if (w.readyState === 1 && w.onmessage) w.onmessage({ data: ev[2] }); }
+        else if (ev[1] === 'c') w._closed(ev[2] || 1006);
+      }
+    }, 16);
+  }
+}
+NativeWS.all = new Map(); NativeWS.t = 0;
+const netCan = {
+  host: () => !!(window.ZCDesktop && window.ZCDesktop.lanHost),
+  // browsers block a secure page from talking to a plain local address, so the web page can't join; the apps can
+  join: () => (netNativeWs() || (typeof WebSocket !== 'undefined' && (IS_APP || PLATFORM === 'win' || location.protocol === 'file:' || location.protocol === 'http:'))),
+  scan: () => !!((window.ZCDesktop && window.ZCDesktop.lanScan) || (window.ZCNative && window.ZCNative.lanScan))
+};
+function netReset() {
+  if (NET.ws) { try { NET.ws.onclose = null; NET.ws.close(); } catch (e) { } }
+  Object.assign(NET, { role: null, ws: null, me: 1, status: 'off', started: false, hold: 0, md: 0, local: null, finishing: false, hits: [], zfx: [], shots: [], kills: [], evs: [] });
+  NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.picked.clear(); NET.blastsDone.clear(); NET.lobby = [];
+  $('app').classList.remove('coop');
+}
+
+/* ---------- connecting ---------- */
+async function netHost() {
+  if (!netCan.host()) return;
+  NET.err = ''; NET.status = 'starting'; renderCoop();
+  let r;
+  try { r = await window.ZCDesktop.lanHost(getTag(), NET_PORT); } catch (e) { r = { ok: false, error: String(e && e.message || e) }; }
+  if (!r || !r.ok) { NET.status = 'off'; NET.err = 'Could not start hosting: ' + ((r && r.error) || 'unknown error'); renderCoop(); return; }
+  NET.port = r.port; NET.ips = r.ips || []; NET.token = r.token;
+  const ws = new WebSocket('ws://127.0.0.1:' + r.port + '/?host=' + r.token);
+  NET.ws = ws;
+  ws.onopen = () => { NET.role = 'host'; NET.me = 1; NET.status = 'lobby'; NET.lobby = [{ id: 1, name: getTag(), dev: DEV.kind }]; $('app').classList.add('coop'); renderCoop(); };
+  ws.onmessage = e => { try { netHostRecv(e.data); } catch (err) { perfError(err); } };
+  ws.onclose = () => { if (NET.role === 'host') netEnd('The co-op server stopped.'); else { NET.status = 'off'; NET.err = 'Could not open the co-op server.'; renderCoop(); } };
+}
+function netJoin(ip, port) {
+  if (!netCan.join()) return;
+  ip = String(ip || '').trim(); if (!ip) return;
+  const m = /^(\[[^\]]+\]|[^:]+)(?::(\d+))?$/.exec(ip); if (!m) { NET.err = 'That does not look like an address.'; renderCoop(); return; }
+  const host = m[1], prt = +(port || m[2] || NET_PORT);
+  store.set('zc_lastip', ip);
+  NET.err = ''; NET.status = 'connecting'; renderCoop();
+  let ws;
+  const url = 'ws://' + host + ':' + prt + '/?name=' + encodeURIComponent(getTag()) + '&dev=' + DEV.kind + '&ver=' + encodeURIComponent(ZC_VERSION);
+  try { ws = netNativeWs() ? new NativeWS(url) : new WebSocket(url); }
+  catch (e) { NET.status = 'off'; NET.err = 'Could not connect to ' + host + '.'; renderCoop(); return; }
+  NET.ws = ws; let opened = false;
+  const giveUp = setTimeout(() => { if (!opened) { try { ws.close(); } catch (e) { } } }, 6000);
+  ws.onopen = () => { opened = true; clearTimeout(giveUp); NET.role = 'client'; NET.status = 'joining'; renderCoop(); };
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } try { netClientRecv(m); } catch (err) { perfError(err); } };
+  ws.onclose = () => {
+    clearTimeout(giveUp);
+    if (!opened) { NET.ws = null; NET.status = 'off'; NET.err = 'Could not reach a game at ' + host + '. Check that the host is hosting, you are on the same Wi-Fi, and Windows allowed Zombie City through its firewall.'; renderCoop(); return; }
+    if (NET.role === 'client') netEnd('Lost the connection to the host.');
+  };
+}
+function netLeave() {
+  const wasHost = NET.role === 'host';
+  if (NET.role === 'client' && NET.ws && NET.ws.readyState === 1) try { NET.ws.send(JSON.stringify({ t: 'bye' })); } catch (e) { }
+  netReset();
+  if (wasHost && window.ZCDesktop && window.ZCDesktop.lanStop) window.ZCDesktop.lanStop();
+  renderCoop();
+}
+function netEnd(why) {
+  const inRun = G.mode !== 'title' && G.p;
+  netLeave();
+  if (inRun) { toTitle(); }
+  NET.err = why || ''; toast('Co-op', why || 'The game ended', '#e5484d');
+  if (!$('coop').hidden) renderCoop();
+}
+function hostSend(to, obj) { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(to + '|' + JSON.stringify(obj)); }
+function netSend(obj) { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.stringify(obj)); }
+
+/* ---------- players ---------- */
+// every player the host knows about: its own (local) player and a stand-in (proxy) for each teammate
+function netPlayers() {
+  const out = []; const L = NET.local || G.p; if (L) out.push(L);
+  for (const pr of NET.peers.values()) if (pr.p) out.push(pr.p);
+  return out;
+}
+function netAlive() { return netPlayers().filter(p => !p.down); }
+function netTarget(z) {
+  let best = null, bd = Infinity;
+  for (const p of netPlayers()) { if (p.down) continue; const d = (p.x - z.x) * (p.x - z.x) + (p.y - z.y) * (p.y - z.y); if (d < bd) { bd = d; best = p; } }
+  return best || NET.local || G.p;
+}
+function netNearD2(x, y) { let bd = Infinity; for (const p of netPlayers()) { const d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y); if (d < bd) bd = d; } return bd; }
+function netAnchor() { const a = netAlive(); return a.length ? a[(Math.random() * a.length) | 0] : (NET.local || G.p); }
+// run fn for every standing player, with G.p pointing at them (host); just the local player otherwise
+function netEach(fn) {
+  if (NET.role !== 'host') { if (G.p && !G.p.down) fn(G.p); return; }
+  const keep = G.p;
+  for (const p of netPlayers()) { if (p.down) continue; G.p = p; fn(p); }
+  G.p = keep;
+}
+function netProxy(peer) {
+  if (peer.p) return peer.p;
+  const p = newPlayer(); p.remote = true; p.nid = peer.id; p.tx = p.x = (NET.local || G.p || WORLD.start).x; p.ty = p.y = (NET.local || G.p || WORLD.start).y;
+  p.out = { h: [], dot: 0, heal: 0, fx: null, kv: [0, 0], rev: 0, heavy: 0 }; p.rv = 0; p.name = peer.name; p.col = peer.col;
+  peer.p = p; return p;
+}
+// zombies hit a teammate's stand-in: the hit is sent to that player's game, which applies it (dodges, armor, dashes)
+function netHurtProxy(p, a) {
+  if (p.down || p.iframe > 0 || p.dashT > 0 || G.mode !== 'play') return false;
+  p.iframe = 0.32; p.out.h.push(Math.round(a * 10) / 10); return true;
+}
+function netDotProxy(p, a) { if (!p.down) p.out.dot += a; }
+function netHeavy(p, z) {
+  p.out.heavy = Math.max(p.out.heavy, Math.round(p.maxHp * 0.25)); p.iframe = 1.2;
+  const S = z.snatch || z.rb; if (S) { S.state = 'recover'; S.t = 1.2; }
+  ring(p.x, p.y, 10, 70, 0.4, '229,72,77', 5); shakeIt(6);
+}
+
+/* ---------- the host ---------- */
+function netHostRecv(str) {
+  const i = str.indexOf('|'); if (i < 0) return;
+  const from = +str.slice(0, i); let m; try { m = JSON.parse(str.slice(i + 1)); } catch (e) { return; }
+  if (from === 0) {
+    if (m.t === 'join') {
+      if (NET.peers.size >= NET_MAX - 1) { hostSend(m.id, { t: 'kick', why: 'The game is full.' }); return; }
+      const used = new Set([1, ...Array.from(NET.peers.values()).map(p => p.slot)]); let slot = 2; while (used.has(slot)) slot++;
+      const peer = { id: m.id, slot: slot, name: cleanTag(m.name), dev: m.dev || 'kbm', col: NET_COLS[slot - 1], p: null };
+      NET.peers.set(m.id, peer);
+      hostSend(m.id, { t: 'hello', id: m.id, slot: slot, host: getTag(), started: NET.started });
+      netLobby(); toast('Co-op', peer.name + ' joined', peer.col); SFX.click();
+      if (NET.started) netSendStart(m.id);
+    } else if (m.t === 'leave') {
+      const peer = NET.peers.get(m.id); if (!peer) return;
+      NET.peers.delete(m.id); NET.picked.delete(m.id); netLobby();
+      toast('Co-op', peer.name + ' left', '#8f959e');
+      if (G.mode === 'upgrade') netCheckPicks();
+    }
+    return;
+  }
+  const peer = NET.peers.get(from); if (!peer) return;
+  switch (m.t) {
+    case 'p': {
+      const p = netProxy(peer);
+      p.tx = +m.x || 0; p.ty = +m.y || 0; p.aim = +m.a || 0; p.hp = +m.hp || 0; p.maxHp = +m.mh || 100; p.walk = +m.wk || 0;
+      const wasDown = p.down; p.down = !!m.dn; if (p.down && !wasDown) { p.rv = 0; burst(p.x, p.y, 30, '#9e1c22', 200, 6, 0.8); toast('Co-op', peer.name + ' is down. Stand next to them to revive.', peer.col); }
+      p.dashT = m.d ? 0.1 : 0; p.dashK = m.dk || p.dashK; if (m.w != null && WEAPONS[m.w]) p.weapon = WEAPONS[m.w];
+      if (Math.hypot(p.tx - p.x, p.ty - p.y) > 220) { p.x = p.tx; p.y = p.ty; }
+      break;
+    }
+    case 'sh': netCosShot(from, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp); NET.shots.push([from, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp]); if (peer.p) peer.p.flashT = 0.05; break;
+    case 'h':
+      for (const h of m.h || []) {
+        const z = NET.zmap.get(h[0]); if (!z || z.dead) continue;
+        NET.lastHitBy = from; hurtZombie(z, Math.min(+h[1] || 0, 99999), { src: h[5] || 'bullet', crit: !!h[2], kx: +h[3] || 0, ky: +h[4] || 0 }); NET.lastHitBy = 1;
+      }
+      break;
+    case 'zf':
+      for (const f of m.f || []) {
+        const z = NET.zmap.get(f[0]); if (!z || z.dead) continue;
+        if (f[1] > 0) { z.burnT = Math.max(z.burnT || 0, f[1]); z.burnDps = Math.max(z.burnDps || 0, f[2] || 0); }
+        if (f[3] > 0) { z.poisonT = Math.max(z.poisonT || 0, f[3]); z.poisonDps = Math.max(z.poisonDps || 0, f[4] || 0); }
+        if (f[5] > 0) { z.slowT = Math.max(z.slowT, f[5]); z.slowMul = Math.min(z.slowMul || 1, f[6] || 1); }
+        if (f[7] > 0 && !z.boss) { z.stun = Math.max(z.stun, f[7]); if (f[8]) z.frozen = 1; }
+        if (f[9] || f[10]) { z.kvx += f[9] || 0; z.kvy += f[10] || 0; }
+      }
+      break;
+    case 'kz': { const z = NET.zmap.get(m.z); if (z && !z.dead) { NET.lastHitBy = from; killZombie(z); NET.lastHitBy = 1; } break; }
+    // a joiner calls the team's A-10: the host flies it from where they stand, and everyone (the caller too) sees it
+    case 'air': if (peer.p && G.air > 0 && G.mode === 'play') { const keep = G.p; G.p = peer.p; callAirstrike(); G.p = keep; } break;
+    case 'airv': launchStrafe(+m.cx, +m.cy, +m.a, { mini: true, cos: true }); NET.evs.push(['air', +m.cx, +m.cy, +m.a, 1, from]); break;
+    case 'pick': NET.picked.add(from); netCheckPicks(); break;
+    case 'bye': break;
+  }
+}
+function netLobby() {
+  NET.lobby = [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0] }].concat(Array.from(NET.peers.values()).map(p => ({ id: p.id, name: p.name, dev: p.dev, col: p.col })));
+  hostSend('*', { t: 'lobby', pl: NET.lobby, started: NET.started });
+  renderCoop();
+}
+function netSendStart(to) {
+  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, wave: G.wave, wx: WX.kind, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
+}
+// the host presses Start: a normal run, and everyone else starts in the same city
+function netHostRun() {
+  if (NET.role !== 'host') return;
+  NET.started = true; if (window.ZCDesktop && window.ZCDesktop.lanInfo) window.ZCDesktop.lanInfo({ run: true });
+  for (const peer of NET.peers.values()) { peer.p = null; }
+  $('coop').hidden = true;
+  newRun();
+  NET.local = G.p; NET.picked.clear();
+  for (const peer of NET.peers.values()) { const p = netProxy(peer); const a = peer.slot * 1.7; p.x = p.tx = G.p.x + Math.cos(a) * 40; p.y = p.ty = G.p.y + Math.sin(a) * 40; }
+  netSendStart('*'); netLobby();
+}
+// called each host frame after its own player moved, before the zombies
+function netHostPre(dt) {
+  NET.local = G.p;
+  for (const peer of NET.peers.values()) {
+    const p = peer.p; if (!p) continue;
+    const k = Math.min(1, dt * 16); p.x += (p.tx - p.x) * k; p.y += (p.ty - p.y) * k;
+    p.iframe -= dt; if (p.flashT > 0) p.flashT -= dt;
+    for (const f of ['poisonT', 'burnT', 'slowT', 'jamT', 'weakT', 'frozenT', 'rootT', 'blindT', 'bleedT']) if (p[f] > 0) p[f] = Math.max(0, p[f] - dt);
+    p._b = [p.poisonT, p.burnT, p.slowT, p.jamT, p.weakT, p.frozenT, p.rootT, p.blindT, p.bleedT, p.slowMul];
+    p.kvx = p.kvy = 0; p.extX = p.extY = 0;
+    if (p.down) continue;
+    // enemy shots, hazards and health packs, for teammates (the host's own player is handled as before)
+    for (const s of G.eshots) {
+      if (s.dead || Math.hypot(p.x - s.x, p.y - s.y) > s.r + p.r) continue;
+      s.dead = true; const keep = G.p; G.p = p;
+      if (hurtPlayer(s.dmg)) {
+        if (s.k === 'acid') p.poisonT = Math.max(p.poisonT, 1.5); else if (s.k === 'fire') p.burnT = Math.max(p.burnT, 2);
+        else if (s.k === 'ice') { p.slowT = Math.max(p.slowT, 1.5); p.slowMul = Math.min(p.slowMul, 0.6); } else if (s.k === 'void') p.weakT = Math.max(p.weakT, 2.5); else if (s.k === 'shock') p.jamT = Math.max(p.jamT, 0.5);
+      }
+      if (s.k === 'web') p.rootT = Math.max(p.rootT, 1.1);
+      G.p = keep; burst(s.x, s.y, 5, SHOT_COL[s.k] || '#d9cfb4', 100, 3, 0.3);
+    }
+    for (const h of G.haz) {
+      const d = Math.hypot(p.x - h.x, p.y - h.y); if (d > h.r) continue;
+      if (h.k === 'acid' || h.k === 'fire') p.out.dot += h.dps * dt;
+      else if (h.k === 'sludge') { p.slowT = Math.max(p.slowT, 0.2); p.slowMul = Math.min(p.slowMul, 0.55); }
+      else if (h.k === 'ice') { p.slowT = Math.max(p.slowT, 0.25); p.slowMul = Math.min(p.slowMul, 0.42); p.out.dot += h.dps * 0.4 * dt; }
+      else if (h.k === 'spore') p.poisonT = Math.max(p.poisonT, 1.2);
+      else if (h.k === 'vortex') { const f = (1 - d / h.r) * 230 + 50; p.out.kv[0] += (h.x - p.x) / (d || 1) * f * dt; p.out.kv[1] += (h.y - p.y) / (d || 1) * f * dt; }
+    }
+    for (const k of G.picks) if (!k.dead && Math.hypot(p.x - k.x, p.y - k.y) < p.r + 16) { k.dead = true; p.out.heal += 25; SFX.heal(); ring(k.x, k.y, 6, 40, 0.35, '110,230,120', 3); }
+  }
+  // reviving: stand next to a downed teammate for a couple of seconds
+  const all = netPlayers();
+  for (const d of all) {
+    if (!d.down) { d.rv = 0; continue; }
+    const helper = all.some(a => !a.down && a !== d && Math.hypot(a.x - d.x, a.y - d.y) < 80);
+    d.rv = helper ? (d.rv || 0) + dt : Math.max(0, (d.rv || 0) - dt * 0.5);
+    if (d.rv >= 2.4) netRevive(d, 0.4);
+  }
+}
+function netRevive(p, frac) {
+  p.rv = 0;
+  if (p.remote) { p.out.rev = Math.max(p.out.rev, Math.round(p.maxHp * frac)); p.down = false; }
+  else if (p.down) { p.down = false; p.hp = Math.max(1, p.maxHp * frac); p.iframe = 2; banner('Back on your feet', ''); SFX.escape(); }
+  ring(p.x, p.y, 8, 90, 0.5, '110,230,120', 5); burst(p.x, p.y, 20, '#7bd88a', 180, 4, 0.6);
+}
+// called each host frame after everything moved: what happened to each teammate goes back to them
+function netHostPost() {
+  if (NET.local) G.p = NET.local;
+  const F = ['poisonT', 'burnT', 'slowT', 'jamT', 'weakT', 'frozenT', 'rootT', 'blindT', 'bleedT'];
+  for (const peer of NET.peers.values()) {
+    const p = peer.p; if (!p || !p._b) continue;
+    let fx = null;
+    for (let i = 0; i < F.length; i++) if (p[F[i]] > p._b[i] + 0.01) { fx = fx || {}; fx[F[i]] = Math.round(p[F[i]] * 100) / 100; }
+    if (p.slowMul < p._b[9] - 0.001) { fx = fx || {}; fx.slowMul = p.slowMul; }
+    if (fx) p.out.fx = Object.assign(p.out.fx || {}, fx);
+    if (p.kvx || p.kvy) { p.out.kv[0] += p.kvx; p.out.kv[1] += p.kvy; p.kvx = p.kvy = 0; }
+    if (p.extX || p.extY) { p.out.kv[0] += p.extX * 0.016; p.out.kv[1] += p.extY * 0.016; }
+  }
+  // everyone down: the run is over for the whole team
+  if (G.mode === 'play' && G.time > 1) { const pl = netPlayers(); if (pl.length && pl.every(p => p.down)) netGameOver(); }
+}
+function netGameOver() {
+  const msg = { t: 'over', sc: G.score, w: G.wave, k: G.kills, bc: G.bestChain, n: 1 + NET.peers.size };
+  hostSend('*', msg); netFinish(msg);
+}
+// wave cleared: everyone picks a card, and the next wave starts once all have
+function netCardsOpen() {
+  NET.picked.clear(); NET.cardsAt = performance.now();
+  for (const peer of NET.peers.values()) if (peer.p && peer.p.down) netRevive(peer.p, 0.5);
+  if (G.p.down) netRevive(G.p, 0.5);
+  hostSend('*', { t: 'cards', w: G.wave });
+}
+function netPicked() {
+  if (NET.role === 'host') { NET.picked.add(1); netCheckPicks(); }
+  else netSend({ t: 'pick' });
+  $('upSub').textContent = 'Waiting for your team to pick';
+  $('upGrid').classList.add('waiting');
+}
+function netCheckPicks() {
+  if (NET.role !== 'host' || G.mode !== 'upgrade') return;
+  const need = [1].concat(Array.from(NET.peers.values()).filter(p => p.p).map(p => p.id));
+  const late = performance.now() - NET.cardsAt > 45000;
+  if (!(need.every(id => NET.picked.has(id)) || (late && NET.picked.has(1)))) return;
+  NET.picked.clear(); $('upGrid').classList.remove('waiting');
+  showOv(null); startWave(G.wave + 1);
+  hostSend('*', { t: 'go', w: G.wave });
+}
+function netTickHost(rdt) {
+  if (!NET.started) return;
+  NET.snapT -= rdt;
+  if (NET.snapT <= 0) { NET.snapT = 1 / 15; netSnapshot(); }
+  // each teammate's own hits, hurts and pickups
+  for (const peer of NET.peers.values()) {
+    const p = peer.p; if (!p) continue; const o = p.out;
+    if (!o.h.length && !o.dot && !o.heal && !o.fx && !o.kv[0] && !o.kv[1] && !o.rev && !o.heavy) continue;
+    const u = { t: 'u' };
+    if (o.h.length) u.h = o.h; if (o.dot) u.dot = Math.round(o.dot * 100) / 100; if (o.heal) u.heal = o.heal; if (o.fx) u.fx = o.fx;
+    if (o.kv[0] || o.kv[1]) u.kv = [Math.round(o.kv[0]), Math.round(o.kv[1])]; if (o.rev) u.rev = o.rev; if (o.heavy) u.heavy = o.heavy;
+    hostSend(peer.id, u);
+    p.out = { h: [], dot: 0, heal: 0, fx: null, kv: [0, 0], rev: 0, heavy: 0 };
+  }
+}
+function zFlags(z) {
+  return (z.boss ? 1 : 0) | (z.fly ? 2 : 0) | (z.minion ? 4 : 0) | (z.child ? 8 : 0) | (z.illusion ? 16 : 0) | (z.st.under ? 32 : 0) | (z.st.down > 0 ? 64 : 0) | (z.st.phased ? 128 : 0)
+    | (z.frozen && z.stun > 0 ? 256 : 0) | (z.burnT > 0 ? 512 : 0) | (z.poisonT > 0 ? 1024 : 0) | (z.slowT > 0 ? 2048 : 0) | (z.buffT > 0 ? 4096 : 0) | (z.warn > 0 ? 8192 : 0) | (z.st.fuse > 0 ? 16384 : 0) | (z.st.surgeT > 0 ? 32768 : 0);
+}
+const NUM = v => typeof v === 'number' && isFinite(v);
+function plainNums(o) { const r = {}; if (!o) return r; for (const k in o) { const v = o[k]; if (NUM(v)) r[k] = Math.round(v * 100) / 100; else if (typeof v === 'boolean') r[k] = v; else if (Array.isArray(v) && v.length < 40 && v.every(NUM)) r[k] = v.map(x => Math.round(x * 10) / 10); } return r; }
+function netSnapshot() {
+  const r1 = v => Math.round(v);
+  NET.zmap.clear();
+  const zs = [];
+  for (const z of G.zs) { if (z.dead) continue; NET.zmap.set(z.nid, z); zs.push([z.nid, z.m.id, r1(z.x), r1(z.y), r1(z.ang * 100), r1(clamp(z.hp / z.maxHp, 0, 1) * 1000), zFlags(z), r1(z.r * 10), z.shield > 1 ? r1(z.shield / z.shieldMax * 100) : 0]); }
+  const b = G.boss && !G.boss.dead ? G.boss : null; let B = null;
+  if (b) {
+    B = { id: b.nid, ab2: b.abs[1] || '' };
+    if (b.rb) { const rb = b.rb; B.rb = { d: rb.def.id, f: rb.form, s: rb.state, mv: rb.mv, t: Math.round(rb.t * 100) / 100, mut: Math.round(rb.mutT * 100) / 100, hide: !!rb.hide, al: rb.alpha, sh: rb.shieldT > 0 ? 1 : 0, roam: !!rb.roam, D: plainNums(rb.d), seg: rb.seg ? rb.seg.map(s => [r1(s[0]), r1(s[1])]) : null }; }
+    if (b.snatch) B.sn = plainNums(b.snatch), B.sn.state = b.snatch.state;
+  }
+  const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000]);
+  const s = {
+    t: 's', tm: Math.round(G.time * 100) / 100, w: G.wave, sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
+    wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zs, B: B, pl: pl,
+    e: G.eshots.filter(q => !q.dead).slice(0, 160).map(q => [r1(q.x), r1(q.y), r1(q.vx), r1(q.vy), NET_SK.indexOf(q.k), q.r]),
+    hz: G.haz.slice(0, 60).map(h => [NET_HK.indexOf(h.k), r1(h.x), r1(h.y), r1(h.r), Math.round(h.life * 10) / 10, h.max]),
+    pk: G.picks.filter(k => !k.dead).map(k => [r1(k.x), r1(k.y), Math.round(k.life * 10) / 10]),
+    bl: G.blasts.slice(0, 40).map(q => [q.nid || (q.nid = ++NET.zid), r1(q.x), r1(q.y), r1(q.r), Math.round(q.t * 100) / 100, q.max, q.kind || '', q.col || '', q.haz || ''])
+  };
+  if (NET.kills.length) { s.kl = NET.kills; NET.kills = []; }
+  if (NET.shots.length) { s.sh = NET.shots; NET.shots = []; }
+  if (NET.evs.length) { s.ev = NET.evs; NET.evs = []; }
+  hostSend('*', s);
+}
+
+/* ---------- a teammate's game (client) ---------- */
+function netClientRecv(m) {
+  switch (m.t) {
+    case 'hello': NET.me = m.id; NET.slot = m.slot; NET.hostName = m.host; NET.status = 'lobby'; $('app').classList.add('coop'); renderCoop(); break;
+    case 'lobby': NET.lobby = m.pl || []; renderCoop(); break;
+    case 'kick': NET.err = m.why || 'The host closed the door.'; netLeave(); break;
+    case 'end': netEnd('The host ended the game.'); break;
+    case 'start': netClientStart(m); break;
+    case 's': if (NET.started) netApply(m); break;
+    case 'u': if (NET.started) netYou(m); break;
+    case 'cards': if (NET.started && G.mode === 'play' && G.p) { G.eshots = []; if (G.p.down) netYouRevive(Math.round(G.p.maxHp * 0.5)); SFX.waveClear(); openCards(); } break;
+    case 'go': if (NET.started) { $('upGrid').classList.remove('waiting'); if (G.mode === 'upgrade') showOv(null); G.wave = m.w; G.mode = 'play'; SFX.waveStart(m.w % 5 === 0); banner('Wave ' + m.w, m.w % 5 === 0 ? 'A boss is coming' : 'Hold the line'); } break;
+    case 'over': if (NET.started) netFinish(m); break;
+  }
+}
+function netClientStart(m) {
+  NET.started = true; NET.hostName = m.host || NET.hostName; NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
+  $('coop').hidden = true;
+  newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season }, wave: m.wave, at: { x: m.x, y: m.y } });
+  WX.kind = m.wx || WX.kind; WX.t = 999;
+  banner('Co-op', 'In ' + NET.hostName + "'s game · wave " + m.wave);
+}
+function netMakePuppet(e, B) {
+  const [nid, mid, x, y] = e, f = e[6];
+  let z = null; NET.spawning = true;
+  try {
+    if (mid === -1) { z = spawnZombie(SNATCHER, x, y, { boss: true }); z.abs = []; z.snatch = { state: 'idle', t: 0, grabCd: 10, slamCd: 4, zx: 0, zy: 0, zr: 0, lx: 0, ly: 0 }; G.boss = z; SFX.roar(); banner('The Snatcher', 'Stay out of the red circle'); }
+    else if (mid <= -100) { const def = ROSTER_BY_ID.get(-100 - mid); if (!def) return null; z = spawnRoster(def, !!(B && B.rb && B.rb.roam), { x: x, y: y }); }
+    else {
+      const m = MUTS[mid]; if (!m) return null;
+      z = spawnZombie(m, x, y, { boss: !!(f & 1), fly: !!(f & 2), minion: !!(f & 4), child: !!(f & 8), illusion: !!(f & 16) });
+      if (f & 1) { G.boss = z; if (B && B.ab2) z.abs.push(B.ab2); SFX.roar(); banner('Alpha ' + m.name, B && B.ab2 ? 'Extra mutation: ' + ((ABILITIES.find(a => a.key === B.ab2) || {}).name || '') : ''); }
+    }
+  } finally { NET.spawning = false; }
+  z.puppet = true; z.nid = nid; z.tx = x; z.ty = y; z.ang = e[4] / 100; z.tang = z.ang; z.maxHp = 1000; z.hp = e[5] || 1;
+  if (z.illusion) z.life = 1;
+  NET.zmap.set(nid, z); return z;
+}
+const ZSTAT = ['burnT', 'poisonT', 'slowT', 'stun'];
+function netApply(s) {
+  NET.md = s.md; NET.hold = s.md === 2 || s.md === 3 || s.md === 4 ? s.md : 0;
+  G.wave = s.w; G.score = s.sc; G.kills = s.k; G.bestChain = Math.max(G.bestChain, s.bc || 0);
+  if (s.ch > G.chain || (s.ch && s.ch < G.chain)) G.lastKill = G.time;
+  G.chain = s.ch; G.air = s.air; G.warpT = s.warp ? 0.2 : 0;
+  if (s.wx && WX.kind !== s.wx) WX.kind = s.wx; WX.t = 999;
+  if (s.ss != null && WORLD.season !== s.ss) setSeason(s.ss, true);
+  // zombies: move the ones we have toward where the host has them, make new ones, drop the gone ones
+  const seen = new Set();
+  for (const e of s.z) {
+    let z = NET.zmap.get(e[0]);
+    if (!z || z.dead) { z = netMakePuppet(e, s.B); if (!z) continue; }
+    seen.add(e[0]);
+    z.tx = e[2]; z.ty = e[3]; z.tang = e[4] / 100; z.hp = e[5]; const f = e[6];
+    if (Math.hypot(z.tx - z.x, z.ty - z.y) > 260) { z.x = z.tx; z.y = z.ty; }
+    z.r = e[7] / 10; z.st.under = !!(f & 32); z.st.down = f & 64 ? 1 : 0; z.st.phased = !!(f & 128);
+    z.frozen = f & 256 ? 1 : 0; z.stun = f & 256 ? 0.2 : 0; z.burnT = f & 512 ? 1 : 0; z.poisonT = f & 1024 ? 1 : 0; z.slowT = f & 2048 ? 0.2 : 0; z.buffT = f & 4096 ? 1 : 0;
+    z.warn = f & 8192 ? 0.2 : 0; z.st.fuse = f & 16384 ? 0.3 : 0; z.st.surgeT = f & 32768 ? 1 : 0;
+    if (e[8]) { z.shieldMax = z.shieldMax || 100; z.shield = e[8] / 100 * z.shieldMax; } else z.shield = 0;
+    z.kvx = z.kvy = 0; z.slowMul = 1; z.burnDps = z.poisonDps = 0;
+    z.nb = [z.burnT, z.poisonT, z.slowT, z.stun];
+  }
+  for (const k of s.kl || []) { const z = NET.zmap.get(k[0]); if (z && !z.dead) netKillFx(z, k[1]); }
+  for (const z of G.zs) if (!z.dead && z.puppet && !seen.has(z.nid)) { z.dead = true; NET.zmap.delete(z.nid); }
+  // the boss's moves and telegraphs
+  if (s.B) {
+    const z = NET.zmap.get(s.B.id);
+    if (z && !z.dead) {
+      G.boss = z;
+      if (s.B.rb && z.rb) { const R = s.B.rb, rb = z.rb; if (rb.form !== R.f) { rb.form = R.f; applyForm(z); } rb.state = R.s; rb.mv = R.mv; rb.t = R.t; rb.mutT = R.mut; rb.hide = R.hide; rb.alpha = R.al == null ? 1 : R.al; rb.shieldT = R.sh ? 1 : 0; rb.d = Object.assign(rb.d || {}, R.D); if (R.seg) rb.seg = R.seg; }
+      if (s.B.sn && z.snatch) Object.assign(z.snatch, s.B.sn);
+    }
+  }
+  if (G.boss && G.boss.dead) G.boss = null;
+  // enemy shots, hazards, health packs and boss blasts are drawn as the host has them
+  G.eshots = (s.e || []).map(q => ({ x: q[0], y: q[1], vx: q[2], vy: q[3], k: NET_SK[q[4]] || 'spike', r: q[5], life: 1, dmg: 0 }));
+  G.haz = (s.hz || []).map(h => ({ k: NET_HK[h[0]] || 'acid', x: h[1], y: h[2], r: h[3], life: h[4], max: h[5], dps: 0 }));
+  G.picks = (s.pk || []).map(k => ({ x: k[0], y: k[1], life: k[2], k: 'med' }));
+  const bl = []; for (const q of s.bl || []) if (!NET.blastsDone.has(q[0])) bl.push({ nid: q[0], x: q[1], y: q[2], r: q[3], t: q[4], max: q[5], kind: q[6] || undefined, col: q[7] || undefined, haz: q[8] || undefined });
+  G.blasts = bl;
+  // teammates (and the host)
+  const live = new Set();
+  for (const q of s.pl || []) {
+    const id = q[0]; if (id === NET.me) { const me = G.p; if (me && q[9] != null) me.rv = q[9] / 100 * 2.4; continue; }
+    live.add(id);
+    let o = NET.others.get(id);
+    if (!o) { o = { id: id, x: q[1], y: q[2], r: 12, aim: 0, walk: 0, iframe: 0, dashT: 0, dashK: 'sprint', db: { stealthT: 0 }, flashT: 0, frozenT: 0, rootT: 0, jamT: 0, weapon: WEAPONS[0], col: netCol(id) }; NET.others.set(id, o); }
+    const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.col = info && info.col ? info.col : netCol(id);
+    o.tx = q[1]; o.ty = q[2]; o.aim = q[3] / 100; o.hp = q[4]; o.maxHp = q[5]; o.down = !!q[6]; o.dashT = q[7] ? 0.1 : 0; o.weapon = WEAPONS[q[8]] || o.weapon; o.rv = q[9] / 100 * 2.4; o.dashK = q[10] || 'sprint'; o.walk = q[11] / 10;
+    if (Math.hypot(o.tx - o.x, o.ty - o.y) > 260) { o.x = o.tx; o.y = o.ty; }
+  }
+  for (const id of Array.from(NET.others.keys())) if (!live.has(id)) NET.others.delete(id);
+  for (const q of s.sh || []) if (q[0] !== NET.me) { netCosShot(q[0], q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8]); const o = NET.others.get(q[0]); if (o) o.flashT = 0.05; }
+  for (const e of s.ev || []) if (e[0] === 'air' && e[5] !== NET.me) { launchStrafe(e[1], e[2], e[3], { mini: !!e[4], cos: true }); if (!e[4]) { SFX.radio(); SFX.a10Jet(2.8); banner('A-10 inbound', 'Danger close'); } }
+}
+// a puppet zombie the host says is dead: blood, the specimen log, and the boss's end
+function netKillFx(z, by) {
+  z.dead = true; NET.zmap.delete(z.nid);
+  const m = z.m, gore = m.S.gore;
+  if (z.illusion) { burst(z.x, z.y, 10, '#efe9dc', 120, 4, 0.4); return; }
+  burst(z.x, z.y, z.boss ? 40 : z.fly ? 3 : 10, gore, z.boss ? 260 : 150, z.fly ? 2 : 5, 0.6);
+  if (!z.fly) { splat(z.x, z.y, z.r * rand(0.9, 1.4), gore); netChainFx(); }
+  if (!z.fly && !z.minion && !m.unique) discover(m);
+  if (by === NET.me && !z.fly) dashOnKill();
+  if (z.boss) {
+    shakeIt(14); G.boss = null;
+    if (z.rb && !z.rb.def.overlord) { bossKilled.add(z.rb.def.id); saveBosses(); }
+    banner(z.rb ? z.rb.def.name + ' destroyed' : m.unique ? 'The Snatcher is down' : 'Alpha down', '');
+  }
+}
+function netChainFx() {
+  const c = G.chain; SFX.kill(Math.max(1, c));
+  if (c >= 25 && c % 25 === 0 && netChainFx.last !== c) { netChainFx.last = c; SFX.tierUp(c / 25); G.tierFlash = 1; }
+}
+// what happened to this player on the host: hits, burns and pushes, health packs, a revive
+function netYou(m) {
+  const p = G.p; if (!p) return;
+  if (m.rev) netYouRevive(m.rev);
+  if (p.down) return;
+  if (m.heavy) { p.iframe = 0; hurtPlayer(m.heavy); p.rootT = Math.max(p.rootT, 0.9); shakeIt(12); G.hurtFlash = 0.5; }
+  if (m.h) for (const a of m.h) hurtPlayer(+a || 0);
+  if (m.dot) dotPlayer(+m.dot || 0);
+  if (m.heal) { healPlayer(m.heal); SFX.heal(); G.texts.push({ x: p.x, y: p.y - 20, t: 0, life: 0.8, s: '+' + m.heal, c: '#7bd88a' }); }
+  if (m.fx) for (const k in m.fx) { if (!(k in p)) continue; if (k === 'slowMul') p.slowMul = Math.min(p.slowMul, m.fx[k]); else p[k] = Math.max(p[k] || 0, m.fx[k]); }
+  if (m.kv) { p.kvx += m.kv[0] || 0; p.kvy += m.kv[1] || 0; }
+}
+function netYouRevive(hp) { const p = G.p; if (!p || !p.down) return; p.down = false; p.hp = Math.max(1, hp); p.iframe = 2; banner('Back on your feet', ''); SFX.escape(); ring(p.x, p.y, 8, 90, 0.5, '110,230,120', 5); }
+// a teammate's game each frame: your own player moves and shoots; zombies follow the host
+function netClientUpdate(dt) {
+  G.time += dt; if (G.hintT > 0) G.hintT -= dt; if (G.cineT > 0) G.cineT -= dt; DEV.useT[DEV.kind] += dt;
+  const p = G.p;
+  if (!NET.hold) updPlayer(dt);
+  else if (p) { p.fireCd -= dt; }
+  const k = Math.min(1, dt * 14);
+  for (const z of G.zs) {
+    if (z.dead) continue;
+    z.x += (z.tx - z.x) * k; z.y += (z.ty - z.y) * k; z.ang = angLerp(z.ang, z.tang, k); z.flash = Math.max(0, z.flash - dt);
+    if (z.illusion) z.life = 1;
+  }
+  for (const o of NET.others.values()) { o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k; if (o.flashT > 0) o.flashT -= dt; }
+  for (const s of G.eshots) { s.x += s.vx * dt; s.y += s.vy * dt; }
+  for (const h of G.haz) h.life -= dt;
+  for (const q of G.picks) q.life -= dt;
+  buildGrid();
+  updBullets(dt); updDash(dt);
+  NET.cosmetic = true;
+  try { updJets(dt); netBlastsFx(dt); } finally { NET.cosmetic = false; }
+  updAirFx(dt); updWorld(dt);
+  netZDiff();
+  G.zs = G.zs.filter(z => !z.dead);
+  updFx(dt);
+  if (G.boss && G.boss.dead) G.boss = null;
+  const t = p && p.down ? (Array.from(NET.others.values()).find(o => !o.down) || p) : p;
+  if (t) { const c = Math.min(1, dt * 7); cam.x += (t.x - cam.x) * c; cam.y += (t.y - cam.y) * c; }
+}
+// boss blasts land on a teammate's screen too (the damage was the host's call)
+function netBlastsFx(dt) {
+  for (const b of G.blasts) {
+    b.t -= dt; if (b.t > 0 || NET.blastsDone.has(b.nid)) continue;
+    NET.blastsDone.add(b.nid); b.dead = true; const col = b.col || '#ff8a3a';
+    if (b.kind === 'bolt') { bolt(b.x + rand(-30, 30), b.y - 320, b.x, b.y, '#fff36b'); SFX.zap(); } else SFX.boom(b.kind === 'meteor');
+    ring(b.x, b.y, 6, b.r * 1.15, 0.4, hexRgb(col), 4); burst(b.x, b.y, 14, col, 200, 5, 0.5); shakeIt(b.kind === 'meteor' ? 5 : 3);
+  }
+  G.blasts = G.blasts.filter(b => !b.dead);
+  if (NET.blastsDone.size > 400) NET.blastsDone.clear();
+}
+// status effects this player put on puppets (burning, freezing, pushing) go to the host
+function netZDiff() {
+  for (const z of G.zs) {
+    if (z.dead || !z.puppet || !z.nb) continue;
+    let ch = false; for (let i = 0; i < ZSTAT.length; i++) if ((z[ZSTAT[i]] || 0) > z.nb[i] + 0.05) { ch = true; break; }
+    if (!ch && Math.abs(z.kvx) < 1 && Math.abs(z.kvy) < 1) continue;
+    NET.zfx.push([z.nid, z.burnT > z.nb[0] ? Math.round(z.burnT * 10) / 10 : 0, Math.round((z.burnDps || 0) * 10) / 10, z.poisonT > z.nb[1] ? Math.round(z.poisonT * 10) / 10 : 0, Math.round((z.poisonDps || 0) * 10) / 10,
+      z.slowT > z.nb[2] ? Math.round(z.slowT * 10) / 10 : 0, Math.round((z.slowMul || 1) * 100) / 100, z.stun > z.nb[3] ? Math.round(z.stun * 10) / 10 : 0, z.frozen ? 1 : 0, Math.round(z.kvx), Math.round(z.kvy)]);
+    z.nb = [z.burnT || 0, z.poisonT || 0, z.slowT || 0, z.stun || 0]; z.kvx = z.kvy = 0;
+  }
+}
+// a hit on a puppet: shown at once, applied by the host
+function netHit(z, dmg, o) {
+  if (z.dead) return false;
+  NET.hits.push([z.nid, Math.round(dmg * 10) / 10, o.crit ? 1 : 0, Math.round(o.kx || 0), Math.round(o.ky || 0), o.src && o.src !== 'bullet' ? o.src : 0]);
+  z.flash = 0.09;
+  if (o.crit) G.texts.push({ x: z.x + rand(-6, 6), y: z.y - z.r, t: 0, life: 0.6, s: String(Math.round(dmg)), c: '#f2cc3a' });
+  return true;
+}
+function netTickClient(rdt) {
+  if (!NET.started || !G.p || NET.ws.readyState !== 1) return;
+  NET.sendT -= rdt;
+  if (NET.hits.length) { netSend({ t: 'h', h: NET.hits }); NET.hits = []; }
+  if (NET.zfx.length) { netSend({ t: 'zf', f: NET.zfx }); NET.zfx = []; }
+  if (NET.sendT <= 0) {
+    NET.sendT = 1 / 20; const p = G.p;
+    netSend({ t: 'p', x: Math.round(p.x), y: Math.round(p.y), a: Math.round(p.aim * 100) / 100, hp: Math.round(p.hp), mh: Math.round(p.maxHp), dn: p.down ? 1 : 0, d: p.dashT > 0 ? 1 : 0, dk: p.dashK, w: p.weapon.id, wk: Math.round(p.walk * 10) / 10 });
+  }
+}
+// called every frame from the game loop, whatever the screen
+function netTick(rdt) {
+  if (NET.role === 'host') netTickHost(rdt);
+  else if (NET.role === 'client') netTickClient(rdt);
+  NET.hudT -= rdt; if (NET.hudT <= 0) { NET.hudT = 0.2; if (NET.started && G.p) netHud(); }
+  if (!$('coop').hidden) { NET.scanT -= rdt; if (NET.scanT <= 0) { NET.scanT = 1; netScan(); } }
+}
+
+/* ---------- shots from teammates (drawn, no damage) ---------- */
+function netShot(a, x, y, n, S, w) {
+  const m = { t: 'sh', x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, w: w.id, n: n, s: Math.round(S.speed), r: Math.round(S.range), sp: Math.round(S.spread * 1000) / 1000 };
+  if (NET.role === 'client') netSend(m); else NET.shots.push([1, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp]);
+}
+function netCosShot(pid, x, y, a, wid, n, spd, rng, spr) {
+  const w = WEAPONS[wid] || WEAPONS[0]; n = clamp(n | 0, 1, 12); spd = spd || w.speed; rng = rng || w.range;
+  if (G.bullets.length > 600) return;
+  const cone = w.F.key === 'shotgun' || w.kind === 'flame', gap = 0.11 * Math.min(1, 6 / Math.max(1, n));
+  for (let i = 0; i < n; i++) {
+    let ang = a; if (n > 1) ang += cone ? (i / (n - 1) - 0.5) * spr : (i - (n - 1) / 2) * gap;
+    ang += rand(-1, 1) * (w.kind === 'flame' ? spr * 0.5 : spr * 0.35);
+    const sp = spd * (w.kind === 'flame' ? rand(0.75, 1.15) : 1), life = rng / sp;
+    G.bullets.push({ cos: true, x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: life, max: life, kind: w.kind, col: w.color, dmg: 0, pierce: 0, bounce: 0, split: 0, hit: null });
+  }
+  const now = performance.now(), last = NET.shotSfx.get(pid) || 0;
+  if (now - last > 110 && G.p && Math.hypot(x - G.p.x, y - G.p.y) < 700) { NET.shotSfx.set(pid, now); SFX.shot(w.F.key, w.M.key); }
+}
+function netCosBullet(b, dt) {
+  b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+  if (b.life <= 0 || pointInRect(b.x, b.y)) { b.dead = true; return; }
+  if (b.kind === 'flame') return;
+  near(b.x, b.y, 40, z => { if (b.dead || z.dead || Math.hypot(z.x - b.x, z.y - b.y) > z.r + 3) return; b.dead = true; burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25); return false; });
+}
+
+/* ---------- drawing teammates ---------- */
+function netDrawOne(o, isMe) {
+  const col = o.col || netCol(o.id);
+  ctx.strokeStyle = hexA(col, 0.75); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(o.x, o.y + 4, 17, 13, 0, 0, TAU); ctx.stroke();
+  if (o.down) {
+    ctx.save(); ctx.globalAlpha = 0.55; ctx.translate(o.x, o.y); ctx.rotate(1.3); ctx.translate(-o.x, -o.y); drawPlayer(o); ctx.restore(); ctx.globalAlpha = 1;
+    const f = clamp((o.rv || 0) / 2.4, 0, 1);
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(o.x, o.y, 30, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = '#7bd88a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(o.x, o.y, 30, -Math.PI / 2, -Math.PI / 2 + TAU * f); ctx.stroke();
+    if (!isMe) { ctx.fillStyle = '#ff6a6a'; ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DOWN · STAND HERE', o.x, o.y + 46); }
+  } else if (!isMe) drawPlayer(o);
+  if (isMe) return;
+  ctx.font = "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const name = o.name || 'SURVIVOR', w = ctx.measureText(name).width + 12;
+  ctx.fillStyle = 'rgba(8,10,13,0.72)'; ctx.fillRect(o.x - w / 2, o.y - 40, w, 16);
+  ctx.fillStyle = col; ctx.fillRect(o.x - w / 2, o.y - 40, 2, 16); ctx.fillText(name, o.x + 1, o.y - 31.5);
+  if (o.maxHp && !o.down) { const f = clamp(o.hp / o.maxHp, 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(o.x - 16, o.y - 22, 32, 3); ctx.fillStyle = f > 0.35 ? '#7bd88a' : '#e5484d'; ctx.fillRect(o.x - 16, o.y - 22, 32 * f, 3); }
+}
+function netDrawPlayers() {
+  if (!NET.started) return;
+  if (NET.role === 'host') { for (const peer of NET.peers.values()) if (peer.p) netDrawOne(peer.p, false); }
+  else for (const o of NET.others.values()) netDrawOne(o, false);
+  if (G.p) { const me = G.p; me.col = netCol(NET.role === 'host' ? 1 : (NET.slot || NET.me)); if (me.down) netDrawOne(me, true); else { ctx.strokeStyle = hexA(me.col, 0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(me.x, me.y + 4, 17, 13, 0, 0, TAU); ctx.stroke(); } }
+}
+// the team on the HUD, under your name
+function netHud() {
+  const box = $('hudTeam'); if (!box) return;
+  const rows = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p).map(p => ({ name: p.name, col: p.col, hp: p.p.hp, mh: p.p.maxHp, down: p.p.down }))
+    : Array.from(NET.others.values()).map(o => ({ name: o.name, col: o.col, hp: o.hp, mh: o.maxHp, down: o.down }));
+  const key = rows.map(r => r.name + (r.down ? 'D' : Math.round(clamp(r.hp / (r.mh || 1), 0, 1) * 20))).join('|') + NET.hold;
+  if (box.dataset.k === key) return; box.dataset.k = key;
+  box.textContent = '';
+  for (const r of rows) {
+    const d = el('div', 'tm' + (r.down ? ' down' : '')); d.style.setProperty('--tc', r.col);
+    const bar = el('i'); const fill = el('s'); fill.style.width = (r.down ? 0 : clamp(r.hp / (r.mh || 1), 0, 1) * 100) + '%'; bar.append(fill);
+    d.append(el('b', null, r.name), bar, el('em', null, r.down ? 'DOWN' : Math.max(0, Math.round(r.hp)) + ''));
+    box.append(d);
+  }
+  if (NET.hold) box.append(el('div', 'tm-hold', NET.hold === 2 ? 'The skull is with ' + NET.hostName : NET.hold === 3 ? NET.hostName + ' paused the game' : 'Boss incoming'));
+  box.hidden = !rows.length && !NET.hold;
+}
+
+/* ---------- down, not out ---------- */
+function netDown() {
+  const p = G.p; if (!p || p.down) return;
+  p.down = true; p.hp = 0; p.rv = 0; p.dashT = 0; p.kvx = p.kvy = 0;
+  if (G.grab) endGrab(false);
+  SFX.death(); burst(p.x, p.y, 30, '#9e1c22', 200, 6, 0.8); shakeIt(12);
+  banner("You're down", 'A teammate can revive you: they stand next to you');
+}
+// the whole team is down: the normal end screen, with the team's score
+function netFinish(m) {
+  const p = G.p; if (!p) return;
+  G.score = m.sc; G.wave = m.w; G.kills = m.k; G.bestChain = Math.max(G.bestChain, m.bc || 0);
+  p.down = false; p.cs.phoenix = 0; NET.finishing = true; G.mode = 'play'; p.iframe = 0;
+  try { die(); } finally { NET.finishing = false; }
+  if (G.lastEntry) G.lastEntry.co = m.n || 2;
+  const ag = $('againBtn');
+  if (NET.role === 'client') { ag.disabled = true; ag.textContent = 'Waiting for ' + NET.hostName; }
+  NET.started = NET.role === 'client' ? false : NET.started;
+  $('ovEyebrow').textContent = 'Co-op run over · ' + (m.n || 2) + ' players';
+}
+
+/* ---------- finding games on the Wi-Fi ---------- */
+function netScan() {
+  let list = [];
+  try {
+    if (window.ZCDesktop && window.ZCDesktop.lanScan) { window.ZCDesktop.lanScan().then(l => { NET.found = l || []; renderCoopFound(); }).catch(() => { }); return; }
+    // the app passes on each host's announcement as it heard it; only the expected fields are kept
+    if (window.ZCNative && window.ZCNative.lanScan) for (const f of JSON.parse(window.ZCNative.lanScan() || '[]')) {
+      try {
+        const m = typeof f.b === 'string' ? JSON.parse(f.b) : f; if (!m || m.zc !== 'lan' || !/^[\d.]{7,15}$/.test(f.ip)) continue;
+        list.push({ ip: f.ip, port: (m.port | 0) || NET_PORT, name: String(m.name || '').slice(0, 20), n: m.n | 0, max: m.max | 0, run: !!m.run });
+      } catch (e) { }
+    }
+  } catch (e) { list = []; }
+  NET.found = list; renderCoopFound();
+}
+
+/* ---------- the co-op screen ---------- */
+function openCoop() {
+  $('coop').hidden = false; $('coop').scrollTop = 0; renderCoop(); SFX.click();
+  if (window.ZCDesktop && window.ZCDesktop.lanScanStart) window.ZCDesktop.lanScanStart();
+  if (window.ZCNative && window.ZCNative.lanScanStart) try { window.ZCNative.lanScanStart(); } catch (e) { }
+  NET.scanT = 0;
+}
+function closeCoop() {
+  $('coop').hidden = true;
+  if (window.ZCDesktop && window.ZCDesktop.lanScanStop) window.ZCDesktop.lanScanStop();
+  if (window.ZCNative && window.ZCNative.lanScanStop) try { window.ZCNative.lanScanStop(); } catch (e) { }
+}
+function renderCoop() {
+  const sec = $('coop'); if (!sec) return;
+  const host = NET.role === 'host', cl = NET.role === 'client';
+  // hosting
+  const hc = $('coopHostCard'), hb = $('coopHostBtn'), hi = $('coopHostInfo');
+  hc.classList.toggle('off', !netCan.host() || cl);
+  $('coopHostNote').textContent = !netCan.host() ? 'Hosting needs the PC version of Zombie City (the Windows launcher). Phones and the web page can join a PC that hosts.'
+    : cl ? 'You are in someone else’s game.' : host ? 'Your game is open. Tell the others to pick it from their list, or to type this address:' : 'Open a game on this PC that phones and other PCs on the same Wi-Fi can join. If Windows asks, allow Zombie City on private networks.';
+  hb.hidden = host || cl || !netCan.host(); hb.disabled = NET.status === 'starting'; hb.textContent = NET.status === 'starting' ? 'Starting' : 'Start hosting';
+  hi.hidden = !host;
+  if (host) {
+    $('coopAddr').textContent = (NET.ips[0] || 'this PC') + (NET.port !== NET_PORT ? ':' + NET.port : '');
+    $('coopAddrMore').textContent = NET.ips.length > 1 ? 'Also: ' + NET.ips.slice(1).join(', ') : '';
+    renderCoopLobby($('coopHostPlayers'));
+    const st = $('coopStartBtn'); st.textContent = NET.started ? (G.mode === 'over' ? 'Play again' : 'Run in progress') : 'Start the run'; st.disabled = NET.started && G.mode !== 'over';
+  }
+  // joining
+  const jc = $('coopJoinCard');
+  jc.classList.toggle('off', host || !netCan.join());
+  $('coopJoinNote').textContent = !netCan.join() ? 'This web page can’t join Wi-Fi games: browsers block secure pages from talking to devices on your network. Use the Android app or the PC launcher to join.'
+    : host ? 'You are hosting.' : cl ? (NET.status === 'lobby' ? 'Connected to ' + NET.hostName + '’s game. Waiting for them to start the run.' : 'Joining') : NET.status === 'connecting' ? 'Connecting' : 'Pick a game from the list, or type the address the host sees on their screen.';
+  $('coopJoinForm').hidden = host || cl || !netCan.join();
+  $('coopFound').hidden = host || cl || !netCan.join() || !netCan.scan();
+  const lob = $('coopLobby'); lob.hidden = !cl; if (cl) renderCoopLobby(lob);
+  $('coopLeave').hidden = !(host || cl);
+  $('coopLeave').textContent = host ? 'Stop hosting' : 'Leave the game';
+  $('coopErr').textContent = NET.err || ''; $('coopErr').hidden = !NET.err;
+  const ip = $('coopIp'); if (ip && !ip.value) ip.value = store.get('zc_lastip', '');
+  renderCoopFound();
+}
+function renderCoopLobby(box) {
+  box.textContent = '';
+  const list = NET.lobby.length ? NET.lobby : [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0] }];
+  for (const p of list) {
+    const r = el('div', 'coop-pl'); r.style.setProperty('--tc', p.col || netCol(p.id));
+    r.append(devIcon(p.dev || 'kbm'), el('b', null, p.name), el('em', null, p.id === 1 ? 'Host' : p.id === NET.me && NET.role === 'client' ? 'You' : ''));
+    box.append(r);
+  }
+  for (let i = list.length; i < NET_MAX; i++) { const r = el('div', 'coop-pl empty'); r.append(el('b', null, 'Open slot')); box.append(r); }
+}
+function renderCoopFound() {
+  const box = $('coopFound'); if (!box || box.hidden) return;
+  const key = JSON.stringify(NET.found.map(f => [f.ip, f.port, f.n, f.run]));
+  if (box.dataset.k === key) return; box.dataset.k = key;
+  box.textContent = '';
+  if (!NET.found.length) { box.append(el('p', 'coop-none', 'Looking for games on your Wi-Fi…')); return; }
+  for (const f of NET.found) {
+    const b = el('button', 'coop-game'); b.type = 'button';
+    b.append(el('b', null, f.name || 'Zombie City'), el('span', null, f.ip + ' · ' + f.n + '/' + (f.max || 4) + ' players' + (f.run ? ' · run in progress' : '')));
+    b.disabled = f.n >= (f.max || 4);
+    b.addEventListener('click', () => netJoin(f.ip, f.port));
+    box.append(b);
+  }
+}
+$('coopBtn').addEventListener('click', openCoop);
+$('coopClose').addEventListener('click', closeCoop);
+$('coopHostBtn').addEventListener('click', netHost);
+$('coopStartBtn').addEventListener('click', () => { if (NET.role === 'host') netHostRun(); });
+$('coopLeave').addEventListener('click', () => { if (G.mode !== 'title' && G.p) toTitle(); else netLeave(); });
+$('coopJoinForm').addEventListener('submit', e => { e.preventDefault(); netJoin($('coopIp').value); });
 
 /* ================= intro: DeclAIre Studios, then "Made with Claude" =================
    Card 1: a road is laid block by block, the player sprints across it with a stampede of the game's zombies behind,

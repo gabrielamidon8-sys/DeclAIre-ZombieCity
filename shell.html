@@ -914,6 +914,45 @@ button.lcd{cursor:pointer}
 
 /* no sideways scrolling on any screen (the quarantine tape runs past the edges on purpose) */
 .ov{overflow-x:hidden}
+
+/* ---------- 1.9.70: Wi-Fi co-op ---------- */
+.coop-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px}
+.coop-card{display:flex;flex-direction:column;gap:10px;padding:16px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--tape);border-radius:3px}
+.coop-card.off{opacity:.62}
+.coop-card h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:24px;letter-spacing:.02em}
+.coop-card p{font-size:14px;color:#cfc9bb}
+.coop-addr{font-family:var(--f-num);font-size:clamp(26px, 5vw, 38px);color:var(--tape)!important;letter-spacing:.04em;padding:8px 12px;background:#0b0d10;border:1px dashed rgba(242,204,58,.4);border-radius:3px;text-align:center;-webkit-user-select:text;user-select:text}
+.coop-more{font-family:var(--f-num);font-size:12px;color:var(--muted)!important}
+.coop-players{display:flex;flex-direction:column;gap:6px}
+.coop-pl{display:grid;grid-template-columns:22px minmax(0, 1fr) auto;gap:10px;align-items:center;padding:8px 10px;background:#11141a;border:1px solid var(--line);border-left:3px solid var(--tc, var(--line));border-radius:2px}
+.coop-pl .dev-ic{color:var(--tc)}
+.coop-pl b{font-family:var(--f-num);font-weight:400;letter-spacing:.1em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.coop-pl em{font-style:normal;font-family:var(--f-num);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.coop-pl.empty{border-style:dashed;border-left-width:1px;grid-template-columns:1fr}
+.coop-pl.empty b{color:#5d636b}
+.coop-found{display:flex;flex-direction:column;gap:6px}
+.coop-game{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;text-align:left;background:#11141a;border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px}
+.coop-game b{font-size:15px}
+.coop-game span{font-family:var(--f-num);font-size:12px;color:var(--muted)}
+.coop-game:hover{border-color:rgba(242,204,58,.6)}
+.coop-none{font-size:13px;color:var(--muted)!important}
+.coop-join{display:flex;gap:8px}
+.coop-join input{flex:1 1 auto;min-width:0;height:44px;padding:0 12px;background:#0b0d10;border:1px solid var(--line);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:16px;-webkit-user-select:text;user-select:text}
+.coop-err{padding:10px 12px;background:rgba(217,67,75,.12);border:1px solid rgba(217,67,75,.5);border-radius:3px;font-size:14px;color:#ffb3b6}
+#coopLeave{align-self:flex-start}
+#upGrid.waiting .gcard{opacity:.25;pointer-events:none}
+/* teammates on the HUD */
+.hud-team{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.hud-team .tm{display:grid;grid-template-columns:minmax(0, 72px) 70px auto;gap:6px;align-items:center;font-family:var(--f-num);font-size:11px;letter-spacing:.08em;color:var(--bone);text-shadow:0 1px 2px #000}
+.hud-team .tm b{font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-left:2px solid var(--tc);padding-left:5px}
+.hud-team .tm i{display:block;height:4px;background:rgba(0,0,0,.55)}
+.hud-team .tm i s{display:block;height:100%;background:var(--tc)}
+.hud-team .tm em{font-style:normal;color:#bdb7a8}
+.hud-team .tm.down em{color:#ff6a6a}
+.hud-team .tm-hold{font-family:var(--f-num);font-size:11px;letter-spacing:.08em;color:var(--tape);text-transform:uppercase}
+
+.coop #toasts{top:172px}
+.coop.has-boss #toasts,.coop .has-boss #toasts{top:206px}
 </style>
 
 <div id="app">
@@ -926,6 +965,7 @@ button.lcd{cursor:pointer}
         <div class="hp"><i id="hpFill"></i></div>
         <div class="hp-row"><b id="hpText">100</b><span id="fxChips"></span></div>
         <div class="where" id="whereChip" aria-live="polite"></div>
+        <div class="hud-team" id="hudTeam" hidden></div>
       </div>
       <div class="wave"><span>Wave</span><b id="waveNum">1</b></div>
       <div class="score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
@@ -965,9 +1005,10 @@ button.lcd{cursor:pointer}
           <button class="btn" id="codexBtn">Specimen log <em id="foundCount">0/1000</em></button>
           <button class="btn" id="bossLogBtn">Boss log <em id="bossCount">0/50</em></button>
           <button class="btn" id="lbBtn">Leaderboard</button>
+          <button class="btn" id="coopBtn">Wi-Fi co-op <em>2-4</em></button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
-        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
+        <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="toLauncher" hidden>Launcher</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
       </div>
       <p class="best" id="loadLine"></p>
       <p class="hint" id="ctrlHint">Drag on the left side to move. Your gun aims and fires on its own. Tap the right side to dash.</p>
@@ -1237,6 +1278,37 @@ button.lcd{cursor:pointer}
   <div id="fmTicker" aria-live="polite" hidden></div>
   <input type="file" id="musicFile" accept="audio/*" multiple hidden>
 
+  <section id="coop" class="ov sheet" hidden aria-label="Wi-Fi co-op">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div><p class="eyebrow">Wi-Fi co-op</p><h2>Play together</h2></div>
+        <button class="icon-btn" id="coopClose" aria-label="Close co-op">&#215;</button>
+      </header>
+      <p class="strain-note">Up to four players on the same Wi-Fi fight the same waves and bosses. One PC hosts; phones (the Android app) and other PCs join. Everyone moves and shoots for themselves, the score is shared, and a player who goes down can be revived by a teammate standing next to them.</p>
+      <p class="coop-err" id="coopErr" hidden></p>
+      <div class="coop-grid">
+        <section class="coop-card" id="coopHostCard">
+          <h3>Host a game</h3>
+          <p id="coopHostNote"></p>
+          <button class="btn primary" id="coopHostBtn" type="button">Start hosting</button>
+          <div id="coopHostInfo" hidden>
+            <p class="coop-addr" id="coopAddr"></p>
+            <p class="coop-more" id="coopAddrMore"></p>
+            <div class="coop-players" id="coopHostPlayers"></div>
+            <button class="btn primary" id="coopStartBtn" type="button">Start the run</button>
+          </div>
+        </section>
+        <section class="coop-card" id="coopJoinCard">
+          <h3>Join a game</h3>
+          <p id="coopJoinNote"></p>
+          <div class="coop-found" id="coopFound"></div>
+          <form class="coop-join" id="coopJoinForm" autocomplete="off"><input id="coopIp" inputmode="decimal" spellcheck="false" placeholder="Host address, like 192.168.1.20" aria-label="Host address"><button class="btn" type="submit">Join</button></form>
+          <div class="coop-players" id="coopLobby" hidden></div>
+        </section>
+      </div>
+      <button class="btn ghost" id="coopLeave" type="button" hidden>Leave</button>
+    </div>
+  </section>
   <section id="lb" class="ov sheet" hidden aria-label="Leaderboard">
     <div class="sheet-inner">
       <header class="sheet-head">

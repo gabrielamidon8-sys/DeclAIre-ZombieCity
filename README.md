@@ -4,11 +4,19 @@ A top-down zombie survival shooter for phones, PCs and controllers. You hold the
 
 ## Play
 
+- **Windows:** download `ZombieCity-Launcher-Windows.zip` from the [Releases](../../releases) page, unzip it anywhere and run `Zombie City Launcher.exe` from the `Zombie City` folder. Nothing is installed. The launcher shows the news, keeps the game up to date from this repository's releases and hosts Wi-Fi co-op games. (Windows may warn that the app is new: choose "More info", then "Run anyway". The first time you host, allow Zombie City on private networks.)
 - **Android:** download the latest `.apk` from the [Releases](../../releases) page and open it on your phone. Updates install over the old version and keep your saves.
-- **Windows:** download `ZombieCity-<version>-Windows.zip`, unzip it anywhere and run `ZombieCity.exe` from the `Zombie City` folder. Nothing is installed. (Windows may warn that the app is new: choose "More info", then "Run anyway".)
-- **Browser:** open `zombie-city-offline.html` in any modern browser. It's a single self-contained file that needs no internet connection.
+- **Browser (Mac, Linux, iPhone, Chromebook and everything else):** play at [gabrielamidon8-sys.github.io/zombie-city](https://gabrielamidon8-sys.github.io/zombie-city/), or open `zombie-city-offline.html` in any modern browser. It's a single self-contained file that needs no internet connection.
+
+Website: [declairestudios.wordpress.com](https://declairestudios.wordpress.com)
 
 Every version is the same game. It works out what you are playing with (touch screen, keyboard and mouse, or a controller) and switches on the fly; on PC and controller you aim yourself, and every key and button can be changed in Settings > Controls.
+
+## Wi-Fi co-op
+
+Two to four players on the same Wi-Fi play one run together. A PC running the launcher hosts: on the main menu choose **Wi-Fi co-op**, then **Start hosting**. Phones (the Android app) and other PCs on the same network choose Wi-Fi co-op too, and the host's game shows up in their list (or they type the address the host sees). When everyone is in, the host presses **Start the run**.
+
+Everyone fights the same zombies, waves and bosses in the same city, and shares the score. When a player goes down, a teammate stands next to them for a couple of seconds to revive them; everyone is back on their feet when a wave is cleared, and the run ends only when the whole team is down. After each wave every player picks a card. The A-10 is the team's: anyone can call it in. The web page can't join (browsers don't let a secure page connect to devices on your network), but the apps can.
 
 ## What's in the game
 
@@ -27,12 +35,14 @@ Every version is the same game. It works out what you are playing with (touch sc
 - Settings with a simple Basic page and an Advanced page for graphics, sound (master, music, effects, gunfire, ambience and menu volume), gameplay, controls, accessibility and the system
 - Touch, keyboard and mouse, and controllers (Xbox, PlayStation, Switch and others), picked automatically from what you last used. Mouse aim with a crosshair, twin-stick aiming on a controller, optional aim assist or auto-aim, full key and button rebinding, controller rumble and menus you can drive with a controller
 - Your name on the main menu, at the top left during a run and on the leaderboard, with the device each score was played on
+- Wi-Fi co-op for 2 to 4 players: a PC hosts, phones and other PCs on the same Wi-Fi join, with revives, shared cards and a shared A-10
 - Tunes itself to your device: it detects the hardware, adjusts resolution, weather and world detail as you play, and cleans up its own caches
 
 ## Versions
 
 | Version | Highlights |
 |---|---|
+| **1.9.70** | Wi-Fi co-op: up to four players on the same Wi-Fi play one run together. A PC hosts from the Windows launcher, and phones and other PCs find the game in a list and join. Everyone fights the same zombies, bosses and weather in the same generated city, teammates show with their name and color, the score is shared, downed players are revived by standing next to them, every player picks a card after each wave, and the whole team can call in the A-10. The Windows app is now the Zombie City Launcher: a launcher screen with the news, a Play button and a check for updates, which downloads new versions of the game from GitHub, checks them and installs them, and still plays offline with the copy it carries. Back to the launcher and Quit sit on the main menu. |
 | **1.9.60** | Play on PC with a keyboard and mouse or on any device with a controller, and aim for yourself: the mouse aims with a crosshair (hold left click to fire), and on a controller the left stick moves and the right stick aims and fires. Aim assist, auto-aim and the firing style can be set separately for each, and V (or R3) switches auto-aim on the fly. The game detects whether you are on a touch screen, a keyboard and mouse or a controller and switches the moment you pick up something else, changing the HUD and the hints to match. Every key, mouse button and controller button can be reassigned in Settings > Controls (with swapping, clearing and reset), the controller drives every menu (A chooses, B goes back, LB and RB flip tabs) and rumbles on big hits. Type your name on the main menu: it shows at the top left during a run and goes on the leaderboard together with what you played on, and the board can be filtered by phone, PC or controller. The main menu has a survivor file with your record, a controls card and the top of the board on wide screens, the armory has a loadout panel beside the racks, and the intro's road now runs through a city that builds itself around it. New Windows app. |
 | **1.9.50** | The city is now a procedurally generated world, different every run. It is split into named districts: downtown, burning districts full of fires, riot zones with barricades and police lights, destroyed blocks of rubble and craters, grey ash towns, leafy suburbs, deserts with mesas and cacti, and the snowy frozen north. Rivers wind through everything; roads cross them on bridges, and wading through the water slows you (and the zombies) down. In the desert they are dry washes, up north they freeze over. The weather changes as you play: rain, thunderstorms whose lightning strikes the street (and conducts through water), fog, snow, blizzards, sandstorms and ashfall, and the season turns from spring to winter. Bushes and grass shake when you or the zombies push through, trees drop leaves, cones and trash cans get kicked around, red barrels explode when shot, parked cars set off alarms that pull zombies in, crows take off as you get close, and you leave footprints in snow and sand. Every gun has a new layered sound with shell casings and echoes that follow the district. New Settings: a Basic page and an Advanced page with Graphics, Sound (sliders for master, music, effects, gunfire, ambience and menus), Gameplay, Controls, Accessibility and System. The quality governor now also trims weather and tree animation, builds new streets ahead of you, and scales world detail to the device. |
 | **1.9.10** | 25 dashes, each with its own effect on you and the zombies plus an always-on passive: Sprint, Shoulder Charge, Baseball Slide, Smoke Bomb, Adrenaline Rush, Frost Step, Flame Dash, Thunder Dash, Toxic Trail, Blink, Phantom Walk, Shockwave Slam, Blood Rush, Gravity Well, Hologram Decoy, Rocket Boots, Time Warp, Berserker, Holy Ground, Ninja Vanish, Meteor Strike, Dragon's Breath, Void Rift, Storm Rider and Warthog Run. Find them on cards during a run and pick your starting dash in the armory. The A-10 is louder and more epic: a deep GAU-8 BRRRT that echoes off the buildings after the rounds land, engine smoke trails, a gun smoke cloud, tracers, and high-explosive rounds that splash damage and leave bullet holes in the road. |
@@ -74,27 +84,31 @@ The game is plain JavaScript split into modules that `build.js` joins into one p
 | `intro.js` | The DeclAIre Studios intro (with the city that builds itself around the road) and the "Made with Claude" card |
 | `input.js` | Touch, keyboard and mouse, and controller input: device detection, aiming, rebinding and menu navigation |
 | `profile.js` | Your name, your record across runs and the main menu's side panel |
-| `desktop/` | The Windows app: Electron's `main.js` and `preload.js`, the packaging script and the exe icon patcher |
+| `net.js` | Wi-Fi co-op: hosting and joining, the host's snapshots of the run, teammates, revives, shared cards and the co-op screen |
+| `desktop/` | The Windows launcher: Electron's `main.js` and `preload.js`, the launcher screen (`launcher.html`), the Wi-Fi co-op server (`lan.js`), the packaging script and the exe icon patcher |
+| `index.html`, `.nojekyll` | The GitHub Pages entry point, which opens `zombie-city.html` (turn on Pages for the main branch, root folder) |
 | `fonts/` | The three fonts (embedded into the page at build time) and their licenses |
 | `media/` | The intro card's music clip (embedded into the page at build time) |
 
 ```sh
 node build.js          # browser version -> zombie-city.html (+ zombie-city-offline.html)
 node build.js app      # Android page    -> android/www/index.html
-node build.js win      # Windows page    -> desktop/app/index.html
+node build.js win      # Windows launcher -> desktop/app/ (launcher.html, game/index.html, game/game.json)
 ```
 
-To build the Windows app, download Electron's Windows x64 zip (`electron-v33.2.1-win32-x64.zip` from Electron's GitHub releases) and run:
+To build the Windows launcher, download Electron's Windows x64 zip (`electron-v33.2.1-win32-x64.zip` from Electron's GitHub releases) and run:
 
 ```sh
-python3 desktop/build_win.py electron-v33.2.1-win32-x64.zip ZombieCity-1.9.60-Windows.zip 1.9.60
+python3 desktop/build_win.py electron-v33.2.1-win32-x64.zip out 1.9.70
 ```
+
+It writes `out/ZombieCity-Launcher-Windows.zip` plus `zombie-city-game.html` and `game.json`. To ship a game update to everyone who has the launcher, attach those two files (with exactly those names) to a new release on this repository; the launcher reads the newest release that has them, checks the download against the checksum in `game.json` and installs it. The repository has to be public for the launcher to see its releases.
 
 To build the Android app you also need `aapt2`, `android.jar` (API 34), `dx.jar` and Python's `cryptography` package:
 
 ```sh
 cd android
-javac --release 8 -cp android.jar -d build/classes src/com/zombiecity/app/MainActivity.java
+javac --release 8 -cp android.jar -d build/classes src/com/zombiecity/app/MainActivity.java   # the Wi-Fi co-op scanner and connection live in it too
 java -jar dx.jar --dex --output=build/classes.dex build/classes
 ZC_KEY=/path/to/zombie-city-signing-key.p12 ZC_KEY_PASS=... python3 build_apk.py
 ```
