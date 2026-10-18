@@ -6,7 +6,7 @@ const { app, BrowserWindow, Menu, shell, ipcMain, session, net } = require('elec
 const path = require('path'), fs = require('fs'), crypto = require('crypto');
 const lan = require('./lan.js');
 
-const REPO = 'gabrielamidon8-sys/zombie-city';
+const REPO = 'gabrielamidon8-sys/DeclAIre-ZombieCity';
 const WEBSITE = 'https://declairestudios.wordpress.com';   // the game's website (WordPress)
 const ACCOUNT = 'https://headless-iilujwebfcb-gabrielamidon8-140e.wix-site-host.com/';   // the DeclAIre account page
 // DeclAIre accounts (Wix): the only addresses the game may reach through the app

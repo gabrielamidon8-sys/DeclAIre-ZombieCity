@@ -5625,7 +5625,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.80';
+const ZC_VERSION = '1.9.82';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -12712,7 +12712,7 @@ function renderTitlePanel() {
   rows.forEach((r, i) => { const li = el('li', live && r.id === LB.uid ? 'me' : ''); li.append(el('span', 'rk', '#' + (i + 1)), el('span', 'tg', cleanTag(r.tag)), el('span', 'sc', Number(r.score || 0).toLocaleString())); if (r.dev) li.append(devIcon(r.dev)); ol.append(li); });
   bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : LB.status === 'loading' ? 'Connecting to the global board.' : LB.src === 'wix' ? 'No connection to the global board right now.' : 'The global board is not available on this page.'));
   // what's new
-  const n = card('tp-new', 'New in 1.9.80');
+  const n = card('tp-new', 'New in 1.9.82');
   const nl = el('ul');
   ['DeclAIre accounts: your progress saved to the cloud, on every device', 'One global board for the website, Android and Windows', 'A name filter that keeps the board clean (and has opinions)', 'Wi-Fi co-op for 2 to 4 players'].forEach(t => nl.append(el('li', null, t)));
   n.append(nl);
