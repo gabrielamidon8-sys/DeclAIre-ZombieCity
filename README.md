@@ -18,6 +18,15 @@ Two to four players on the same Wi-Fi play one run together. A PC running the la
 
 Everyone fights the same zombies, waves and bosses in the same city, and shares the score. When a player goes down, a teammate stands next to them for a couple of seconds to revive them; everyone is back on their feet when a wave is cleared, and the run ends only when the whole team is down. After each wave every player picks a card. The A-10 is the team's: anyone can call it in. The web page can't join (browsers don't let a secure page connect to devices on your network), but the apps can.
 
+## Accounts and cloud saves
+
+A free DeclAIre Studios account keeps your progress on every device. Make one on the [account page](https://headless-iilujwebfcb-gabrielamidon8-140e.wix-site-host.com/), then log in from **Account** on the game's main menu (browser, Android app or Windows launcher). After every run the game merges this device's progress with the cloud: unlocks from every device add up, bests are kept, and each device keeps its own totals.
+
+- Accounts run on Wix (members and a data collection). Passwords are never stored by the game; Wix stores only a one-way hash.
+- Each account's save is encrypted on the device with AES-GCM under a random 256-bit key made for that account. That key is wrapped with a key derived from the password (PBKDF2-SHA256, 600,000 rounds, a random salt per account) before it is uploaded, so the stored save can't be read without the password. Changing the password re-wraps the key; after a password reset the game asks once for the old password, or starts a new cloud save from the device's progress.
+- One season leaderboard for every platform: your best run each month goes up under your account name.
+- Names (survivor, board and co-op) go through a filter for slurs, swearing, threats and personal details (emails, phone numbers, links), with 50 different remarks for anyone trying to sneak something past it.
+
 ## What's in the game
 
 - 1,000 zombie mutations and 250 weapons
@@ -36,12 +45,14 @@ Everyone fights the same zombies, waves and bosses in the same city, and shares 
 - Touch, keyboard and mouse, and controllers (Xbox, PlayStation, Switch and others), picked automatically from what you last used. Mouse aim with a crosshair, twin-stick aiming on a controller, optional aim assist or auto-aim, full key and button rebinding, controller rumble and menus you can drive with a controller
 - Your name on the main menu, at the top left during a run and on the leaderboard, with the device each score was played on
 - Wi-Fi co-op for 2 to 4 players: a PC hosts, phones and other PCs on the same Wi-Fi join, with revives, shared cards and a shared A-10
+- Free accounts with encrypted cloud saves across devices, one global season board, and a name filter
 - Tunes itself to your device: it detects the hardware, adjusts resolution, weather and world detail as you play, and cleans up its own caches
 
 ## Versions
 
 | Version | Highlights |
 |---|---|
+| **1.9.80** | DeclAIre Studios accounts: make a free account with an email and password and your progress follows you to every phone and PC. Saves are merged after every run (unlocks add up, bests are kept, totals count every device) and encrypted on the device with a key made for each account and locked with its password. One global season board for the website, Android and Windows, under your account name. A filter keeps slurs, swearing and personal details out of every name, with 50 remarks for those who try. The account page on the website shows your stats and changes your name or password, or deletes the account. The launcher shows who is signed in and explains why an update check failed. |
 | **1.9.70** | Wi-Fi co-op: up to four players on the same Wi-Fi play one run together. A PC hosts from the Windows launcher, and phones and other PCs find the game in a list and join. Everyone fights the same zombies, bosses and weather in the same generated city, teammates show with their name and color, the score is shared, downed players are revived by standing next to them, every player picks a card after each wave, and the whole team can call in the A-10. The Windows app is now the Zombie City Launcher: a launcher screen with the news, a Play button and a check for updates, which downloads new versions of the game from GitHub, checks them and installs them, and still plays offline with the copy it carries. Back to the launcher and Quit sit on the main menu. |
 | **1.9.60** | Play on PC with a keyboard and mouse or on any device with a controller, and aim for yourself: the mouse aims with a crosshair (hold left click to fire), and on a controller the left stick moves and the right stick aims and fires. Aim assist, auto-aim and the firing style can be set separately for each, and V (or R3) switches auto-aim on the fly. The game detects whether you are on a touch screen, a keyboard and mouse or a controller and switches the moment you pick up something else, changing the HUD and the hints to match. Every key, mouse button and controller button can be reassigned in Settings > Controls (with swapping, clearing and reset), the controller drives every menu (A chooses, B goes back, LB and RB flip tabs) and rumbles on big hits. Type your name on the main menu: it shows at the top left during a run and goes on the leaderboard together with what you played on, and the board can be filtered by phone, PC or controller. The main menu has a survivor file with your record, a controls card and the top of the board on wide screens, the armory has a loadout panel beside the racks, and the intro's road now runs through a city that builds itself around it. New Windows app. |
 | **1.9.50** | The city is now a procedurally generated world, different every run. It is split into named districts: downtown, burning districts full of fires, riot zones with barricades and police lights, destroyed blocks of rubble and craters, grey ash towns, leafy suburbs, deserts with mesas and cacti, and the snowy frozen north. Rivers wind through everything; roads cross them on bridges, and wading through the water slows you (and the zombies) down. In the desert they are dry washes, up north they freeze over. The weather changes as you play: rain, thunderstorms whose lightning strikes the street (and conducts through water), fog, snow, blizzards, sandstorms and ashfall, and the season turns from spring to winter. Bushes and grass shake when you or the zombies push through, trees drop leaves, cones and trash cans get kicked around, red barrels explode when shot, parked cars set off alarms that pull zombies in, crows take off as you get close, and you leave footprints in snow and sand. Every gun has a new layered sound with shell casings and echoes that follow the district. New Settings: a Basic page and an Advanced page with Graphics, Sound (sliders for master, music, effects, gunfire, ambience and menus), Gameplay, Controls, Accessibility and System. The quality governor now also trims weather and tree animation, builds new streets ahead of you, and scales world detail to the device. |
@@ -85,6 +96,10 @@ The game is plain JavaScript split into modules that `build.js` joins into one p
 | `input.js` | Touch, keyboard and mouse, and controller input: device detection, aiming, rebinding and menu navigation |
 | `profile.js` | Your name, your record across runs and the main menu's side panel |
 | `net.js` | Wi-Fi co-op: hosting and joining, the host's snapshots of the run, teammates, revives, shared cards and the co-op screen |
+| `acct-core.js` | Accounts: Wix sign-in over REST, the per-account keys and encryption, save records and the global board (shared with the account page) |
+| `account.js` | The game's Account sheet, merging this device's progress with the cloud save, and syncing after runs |
+| `filter.js`, `filterdata.js` | The name filter and its 50 remarks. `filterdata.js` is generated by `tools/make_filter_data.py` from the [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) English list (CC BY 4.0) |
+| `site/` | The account page (log in, sign up, stats, name and password changes, account deletion, the global board, privacy policy). `python3 tools/build_site.py` writes `site/dist/` for upload to the Wix site |
 | `desktop/` | The Windows launcher: Electron's `main.js` and `preload.js`, the launcher screen (`launcher.html`), the Wi-Fi co-op server (`lan.js`), the packaging script and the exe icon patcher |
 | `index.html`, `.nojekyll` | The GitHub Pages entry point, which opens `zombie-city.html` (turn on Pages for the main branch, root folder) |
 | `fonts/` | The three fonts (embedded into the page at build time) and their licenses |
@@ -99,7 +114,7 @@ node build.js win      # Windows launcher -> desktop/app/ (launcher.html, game/i
 To build the Windows launcher, download Electron's Windows x64 zip (`electron-v33.2.1-win32-x64.zip` from Electron's GitHub releases) and run:
 
 ```sh
-python3 desktop/build_win.py electron-v33.2.1-win32-x64.zip out 1.9.70
+python3 desktop/build_win.py electron-v33.2.1-win32-x64.zip out 1.9.80
 ```
 
 It writes `out/ZombieCity-Launcher-Windows.zip` plus `zombie-city-game.html` and `game.json`. To ship a game update to everyone who has the launcher, attach those two files (with exactly those names) to a new release on this repository; the launcher reads the newest release that has them, checks the download against the checksum in `game.json` and installs it. The repository has to be public for the launcher to see its releases.

@@ -940,6 +940,33 @@ button.lcd{cursor:pointer}
 .coop-join input{flex:1 1 auto;min-width:0;height:44px;padding:0 12px;background:#0b0d10;border:1px solid var(--line);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:16px;-webkit-user-select:text;user-select:text}
 .coop-err{padding:10px 12px;background:rgba(217,67,75,.12);border:1px solid rgba(217,67,75,.5);border-radius:3px;font-size:14px;color:#ffb3b6}
 #coopLeave{align-self:flex-start}
+/* DeclAIre account */
+.acct-msg{padding:10px 12px;background:rgba(242,204,58,.08);border:1px solid rgba(242,204,58,.4);border-radius:3px;font-size:14px;color:var(--bone)}
+.acct-msg.bad{background:rgba(217,67,75,.12);border-color:rgba(217,67,75,.5);color:#ffb3b6}
+.acct-card.warn{border-top-color:var(--blood)}
+.acct-form{display:flex;flex-direction:column;gap:10px}
+.acct-field{display:flex;flex-direction:column;gap:4px}
+.acct-field span{font-family:var(--f-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.acct-field input{height:44px;padding:0 12px;background:#0b0d10;border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:16px;-webkit-user-select:text;user-select:text}
+.acct-field input:focus{outline:none;border-color:var(--tape)}
+.acct-check{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#cfc9bb}
+.acct-check input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--tape);flex:none}
+.acct-link{align-self:flex-start;padding:4px 0;background:none;border:0;color:var(--tape);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.acct-row{display:flex;flex-wrap:wrap;gap:8px}
+.coop-card .acct-id{font-family:var(--f-display);font-size:28px;line-height:1.1;color:var(--bone)}
+.acct-id span{font-family:var(--f-num);font-size:16px;color:var(--muted)}
+.acct-stats{display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;margin:0}
+.acct-stats div{padding:8px 10px;background:#11141a;border:1px solid var(--line);border-radius:2px}
+.acct-stats dt{font-family:var(--f-num);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.acct-stats dd{margin:2px 0 0;font-family:var(--f-num);font-size:16px}
+.acct-note{font-size:12px!important;color:var(--muted)!important}
+#acctBtn.acct-on em{color:var(--tape)}
+.name-err{max-width:440px;padding:8px 10px;background:rgba(217,67,75,.14);border-left:3px solid var(--blood);font-size:13px;color:#ffc2c5}
+.name-err.pop{animation:nameerr .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes nameerr{0%{transform:translateX(-10px);opacity:0}60%{transform:translateX(4px)}100%{transform:none;opacity:1}}
+.tp-acct{display:block;width:100%;margin:2px 0 6px;padding:6px 8px;text-align:left;background:#11141a;border:1px dashed rgba(242,204,58,.45);border-radius:2px;font-family:var(--f-num);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tape)}
+.tp-acct.on{border-style:solid;border-color:rgba(120,200,120,.5);color:#9fe09f}
+.tp-acct.warn{border-color:rgba(217,67,75,.6);color:#ff9a9f}
 #upGrid.waiting .gcard{opacity:.25;pointer-events:none}
 /* teammates on the HUD */
 .hud-team{display:flex;flex-direction:column;gap:3px;margin-top:2px}
@@ -998,6 +1025,7 @@ button.lcd{cursor:pointer}
           <label for="nameInput">Your name</label>
           <div class="pf-row"><input id="nameInput" maxlength="14" spellcheck="false" autocomplete="off" autocapitalize="characters" placeholder="Type your name" enterkeyhint="done"><button class="btn small" id="nameSave" type="submit">Save</button></div>
           <p class="dev-badge" id="devBadge" aria-live="polite"></p>
+          <p class="name-err" id="nameErr" role="alert" hidden></p>
         </form>
         <div class="btns">
           <button class="btn primary" id="playBtn">Enter the city</button>
@@ -1006,6 +1034,7 @@ button.lcd{cursor:pointer}
           <button class="btn" id="bossLogBtn">Boss log <em id="bossCount">0/50</em></button>
           <button class="btn" id="lbBtn">Leaderboard</button>
           <button class="btn" id="coopBtn">Wi-Fi co-op <em>2-4</em></button>
+          <button class="btn" id="acctBtn">Account <em id="acctBtnEm">Log in</em></button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
         <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="toLauncher" hidden>Launcher</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
@@ -1307,6 +1336,17 @@ button.lcd{cursor:pointer}
         </section>
       </div>
       <button class="btn ghost" id="coopLeave" type="button" hidden>Leave</button>
+    </div>
+  </section>
+  <section id="acct" class="ov sheet" hidden aria-label="DeclAIre account">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div><p class="eyebrow">DeclAIre Studios</p><h2>Your account</h2></div>
+        <button class="icon-btn" id="acctClose" aria-label="Close account">&#215;</button>
+      </header>
+      <p class="strain-note">One free account for every version of Zombie City: the website, the Android app and the Windows launcher. It saves your weapons, dashes, specimens, bosses and record to the cloud so they follow you to every device, and it puts your name on the global board. Your save is encrypted with a key that only your password can open, so nobody else can read it. Not even us.</p>
+      <p class="acct-msg" id="acctMsg" role="status" hidden></p>
+      <div id="acctBody"></div>
     </div>
   </section>
   <section id="lb" class="ov sheet" hidden aria-label="Leaderboard">

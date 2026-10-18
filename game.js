@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.70';
+const ZC_VERSION = '1.9.80';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -265,6 +265,7 @@ window.zcBack = function () {
   if (!$('codex').hidden) { closeCodex(); return true; }
   if (!$('lb').hidden) { closeLB(); return true; }
   if (!$('coop').hidden) { closeCoop(); return true; }
+  if (!$('acct').hidden) { closeAcct(); return true; }
   if (G.mode === 'play') { pauseGame(); return true; }
   if (G.mode === 'pause') { resumeGame(); return true; }
   if (G.mode === 'over') { toTitle(); return true; }
@@ -1080,11 +1081,18 @@ function die() {
   $('ovKills').textContent = G.kills; $('ovFound').textContent = G.runFound.length; $('ovChain').textContent = 'x' + G.bestChain;
   $('ovWeapon').textContent = p.weapon.name; $('ovWeapon').style.color = WRAR[p.weapon.rarity].color;
   $('callsign').value = entry.tag; $('postBtn').disabled = false; $('postBtn').textContent = 'Post score';
-  $('postStatus').textContent = LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
+  $('postStatus').textContent = LB.src === 'wix' ? (ACCT.status === 'in' ? 'Saved on this device and to your account. Post it to the global board.' : 'Saved on this device. Log in to your free DeclAIre account (main menu) to post it to the global board.') : LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
   setTimeout(() => { if (G.mode === 'over') showOv('over'); }, 700);
 }
 function getTag() { const t = store.get('zc_tag', ''); return t || 'SURVIVOR'; }
-function cleanTag(s) { s = String(s || '').toUpperCase().replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14); return s || 'SURVIVOR'; }
+// a callsign as the game shows it: capitals, digits and a few marks, 14 at most, and never anything the name filter catches
+const TAG_OK = new Map();
+function cleanTag(s) {
+  s = String(s || '').toUpperCase().replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14);
+  if (!s) return 'SURVIVOR';
+  let ok = TAG_OK.get(s); if (ok === undefined) { ok = ZCF.safe(s) === s; if (TAG_OK.size > 500) TAG_OK.clear(); TAG_OK.set(s, ok); }
+  return ok ? s : 'SURVIVOR';
+}
 function refreshTitle() {
   if ($('bossCount')) $('bossCount').textContent = bossSeen.size + '/' + ZB.ROSTER.length;
   $('seasonName').textContent = SEASON_NAME; $('seasonLeft').textContent = seasonLeft();
@@ -1104,22 +1112,42 @@ $('menuBtn').addEventListener('click', toTitle);
 
 /* ================= leaderboard ================= */
 function saveLocal(e) { const k = 'zc_lb_' + SEASON, a = store.get(k, []); a.push(e); a.sort((x, y) => y.score - x.score); store.set(k, a.slice(0, 25)); }
-const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: 'global', dev: 'all' };
+const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: 'global', dev: 'all', src: null, at: 0 };
+// Two boards: inside Claude the page has its own shared board; everywhere else (the website, the Android app, the
+// Windows launcher) it is the DeclAIre board, which anyone can read and players with an account post to.
 (async function initDb() {
   try {
-    if (!window.claude || typeof window.claude.use !== 'function') { LB.status = 'off'; renderLB(); return; }
-    const db = await window.claude.use('db');
-    if (!db) { LB.status = 'off'; renderLB(); return; }
-    const user = await window.claude.use('user');
-    LB.uid = user ? await user.id() : null;
-    LB.db = db; LB.status = 'live';
-    db.collection('scores').where('season', '==', SEASON).orderBy('score', 'desc').limit(50).onSnapshot(s => {
-      LB.rows = s.docs.map(d => Object.assign({ id: d.id }, d.data())); renderLB(); if (G.mode === 'title') renderTitlePanel();
-    }, () => { LB.status = 'error'; renderLB(); });
-    renderLB(); adoptOnlineName();
-  } catch (e) { LB.status = 'off'; renderLB(); }
+    if (window.claude && typeof window.claude.use === 'function') {
+      const db = await window.claude.use('db');
+      if (db) {
+        const user = await window.claude.use('user');
+        LB.src = 'claude'; LB.uid = user ? await user.id() : null;
+        LB.db = db; LB.status = 'live';
+        db.collection('scores').where('season', '==', SEASON).orderBy('score', 'desc').limit(50).onSnapshot(s => {
+          LB.rows = s.docs.map(d => Object.assign({ id: d.id }, d.data())); renderLB(); if (G.mode === 'title') renderTitlePanel();
+        }, () => { LB.status = 'error'; renderLB(); });
+        renderLB(); adoptOnlineName(); return;
+      }
+    }
+  } catch (e) { /* use the DeclAIre board */ }
+  LB.src = 'wix'; setTimeout(() => lbRefresh(true), 0);   // after the whole game has loaded (the apps plug in their network first)
 })();
+// the DeclAIre board, fetched when someone looks at it (at most every 30 seconds)
+async function lbRefresh(force) {
+  if (LB.src !== 'wix' || (!force && Date.now() - LB.at < 30000)) return;
+  LB.at = Date.now();
+  if (LB.status !== 'live') { LB.status = 'loading'; renderLB(); }
+  try { LB.rows = await AcctCore.board(SEASON, 50); LB.status = 'live'; }
+  catch (e) { if (LB.status !== 'live') LB.status = 'error'; }
+  LB.uid = ACCT.member ? ACCT.member.id : null;
+  renderLB(); if (G.mode === 'title') renderTitlePanel();
+}
 async function postGlobal(entry) {
+  if (LB.src === 'wix') {
+    if (ACCT.status !== 'in') return 'needacct';
+    try { const r = await AcctCore.postScore(SEASON, ACCT.member.id, Object.assign({}, entry, { tag: cleanTag(ACCT.member.username) })); lbRefresh(true); return r; }
+    catch (e) { return 'failed'; }
+  }
   if (!LB.db || !LB.uid) return 'local';
   if (LB.ro) return 'readonly';
   try {
@@ -1132,7 +1160,9 @@ async function postGlobal(entry) {
 $('postForm').addEventListener('submit', async e => {
   e.preventDefault();
   const entry = G.lastEntry; if (!entry) return;
-  const tag = cleanTag($('callsign').value); $('callsign').value = tag; store.set('zc_tag', tag); updNameUi();
+  const raw = $('callsign').value, chk = ZCF.check(raw);
+  if (!chk.ok) { $('postStatus').textContent = chk.msg; $('callsign').focus(); return; }
+  const tag = cleanTag(raw); $('callsign').value = tag; store.set('zc_tag', tag); updNameUi(); acctRename(tag);
   entry.tag = tag;
   const k = 'zc_lb_' + SEASON, a = store.get(k, []), mine = a.find(x => x.at === entry.at); if (mine) { mine.tag = tag; store.set(k, a); }
   $('postBtn').disabled = true; $('postBtn').textContent = 'Posting';
@@ -1141,13 +1171,14 @@ $('postForm').addEventListener('submit', async e => {
     posted: 'Posted to the global board for ' + SEASON_NAME + '.',
     kept: 'Saved. Your best on the global board this season is higher, so it stays.',
     local: PLATFORM !== 'web' ? 'Saved on this device.' : 'Saved on this device. The global board is not available on this page.',
+    needacct: 'Saved on this device. Log in to your free DeclAIre account (main menu) to post to the global board.',
     readonly: 'Saved on this device. You can view the global board but not post to it.',
     failed: 'Could not reach the global board. Your score is saved on this device.'
   }[res];
   $('postStatus').textContent = msg;
   $('postBtn').textContent = res === 'posted' || res === 'kept' ? 'Posted' : 'Saved';
 });
-function openLB() { $('lb').hidden = false; LB.tab = LB.status === 'live' ? LB.tab : 'local'; renderLB(); }
+function openLB() { $('lb').hidden = false; LB.tab = LB.status === 'live' || LB.src === 'wix' ? LB.tab : 'local'; renderLB(); lbRefresh(); }
 function closeLB() { $('lb').hidden = true; }
 $('lbBtn').addEventListener('click', openLB); $('overLbBtn').addEventListener('click', openLB); $('lbClose').addEventListener('click', closeLB);
 $('tabGlobal').addEventListener('click', () => { LB.tab = 'global'; renderLB(); });
@@ -1162,12 +1193,12 @@ function renderLB() {
   const list = $('lbList'); list.textContent = '';
   let rows, note = '';
   if (LB.tab === 'global') {
-    if (LB.status === 'live') { rows = LB.rows; note = 'One entry per player: your best run this season.'; }
-    else { rows = []; note = LB.status === 'loading' ? 'Connecting to the global board.' : PLATFORM !== 'web' ? 'The app keeps scores on this device (the global board is on the web version). Your runs are on the This device tab.' : 'The global board is not available on this page. Your runs are on the This device tab.'; }
+    if (LB.status === 'live') { rows = LB.rows; note = 'One entry per player: your best run this season.' + (LB.src === 'wix' && ACCT.status !== 'in' ? ' Log in to your free DeclAIre account to post yours.' : ''); }
+    else { rows = []; note = LB.status === 'loading' ? 'Connecting to the global board.' : LB.src === 'wix' ? 'Could not reach the global board. Check your internet connection. Your runs are on the This device tab.' : 'The global board is not available on this page. Your runs are on the This device tab.'; }
   } else { rows = store.get('zc_lb_' + SEASON, []); note = 'Runs played in this browser this season.'; }
   if (!rows.length || (LB.dev !== 'all' && !rows.some(r => r.dev === LB.dev))) {
     const li = document.createElement('li'); li.className = 'empty';
-    li.textContent = LB.tab === 'global' && LB.status !== 'live' ? 'No global board here.' : LB.dev !== 'all' && rows.length ? 'No ' + DEV_SHORT[LB.dev].toLowerCase() + ' scores yet this season.' : 'No scores yet this season. Be the first.';
+    li.textContent = LB.tab === 'global' && LB.status !== 'live' ? (LB.status === 'loading' ? 'Loading the board.' : 'No connection to the global board.') : LB.dev !== 'all' && rows.length ? 'No ' + DEV_SHORT[LB.dev].toLowerCase() + ' scores yet this season.' : 'No scores yet this season. Be the first.';
     list.appendChild(li);
   }
   if (LB.dev !== 'all') rows = rows.filter(r => r.dev === LB.dev);

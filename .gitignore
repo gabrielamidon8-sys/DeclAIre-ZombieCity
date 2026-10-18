@@ -19,3 +19,6 @@ zc-test-body.html
 
 # Built Windows app page (node build.js win)
 desktop/app/
+
+# Built account page (python3 tools/build_site.py)
+site/dist/

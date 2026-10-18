@@ -79,12 +79,13 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
   <section class="left">
     <p class="eyebrow">DeclAIre Studios presents</p>
     <h1>Zombie<span>City</span></h1>
-    <p class="tag">An endless quarantine zone: 1,000 mutations, 250 weapons, 50 bosses, storms and seasons, and Wi-Fi co-op for up to four.</p>
+    <p class="tag">An endless quarantine zone: 1,000 mutations, 250 weapons, 50 bosses, storms and seasons, Wi-Fi co-op for up to four, and a free account that saves your progress everywhere.</p>
     <button class="play" id="play" type="button" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg><span id="playTxt">Play</span><small id="playVer"></small></button>
     <div class="status"><p id="status">Getting ready</p><div class="bar" id="bar" hidden><i id="barFill"></i></div></div>
     <div class="row">
       <button class="ghost" id="check" type="button">Check for updates</button>
       <button class="ghost" id="site" type="button">Website</button>
+      <button class="ghost" id="acct" type="button">Account</button>
       <button class="ghost" id="fs" type="button">Window</button>
       <button class="ghost" id="quit" type="button">Quit</button>
     </div>
@@ -92,6 +93,7 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
   <section class="right">
     <div class="art" aria-hidden="true"><!--__SKULL__--></div>
     <div class="card"><h2><span>News</span><em id="newsWhen"></em></h2><div class="news" id="news"><p>Looking for news</p></div></div>
+    <div class="card coop acct-card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><p id="acctLine"><b>DeclAIre account.</b> Log in from the game's main menu (Account) and your progress saves to the cloud and follows you to your phone.</p></div>
     <div class="card coop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg><p><b>Wi-Fi co-op.</b> Open the game and choose Wi-Fi co-op on the main menu to host. Friends on the same Wi-Fi join from the Android app or this launcher.</p></div>
   </section>
 </main>
@@ -122,7 +124,12 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
     if (busy) return; busy = true; $('check').disabled = true; status(auto ? 'Checking for updates' : 'Checking for updates');
     const r = await L.check();
     busy = false; $('check').disabled = false;
-    if (!r.ok) { status('Could not check for updates right now, so you are playing the version on this PC.', 'Offline.'); renderNews(null); return; }
+    if (!r.ok) {
+      const msg = r.why === 'norepo' ? ['Online updates are not published yet. You are playing the version that came with this launcher.', 'No updates yet.']
+        : r.why === 'limit' ? ['GitHub is busy right now. Try Check for updates again in a little while.', 'Try later.']
+        : ['Could not check for updates right now, so you are playing the version on this PC.', 'Offline.'];
+      status(msg[0], msg[1]); renderNews(null); return;
+    }
     renderNews(r.news); $('newsWhen').textContent = 'From GitHub';
     latest = r.latest;
     if (latest && vcmp(latest.version, info.current) > 0) { status('Version ' + latest.version + ' is out. Press Update to get it (about ' + Math.max(1, Math.round((latest.size || 1300000) / 1048576)) + ' MB).', 'New update.'); $('playTxt').textContent = 'Update'; }
@@ -144,6 +151,16 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
   $('play').addEventListener('click', go);
   $('check').addEventListener('click', () => check(false));
   $('site').addEventListener('click', () => L.open(info.website));
+  $('acct').addEventListener('click', () => L.open(info.account + (member() ? '' : '?join=1')));
+  // the game and this screen share storage, so the launcher knows who is signed in
+  function member() { try { const m = JSON.parse(localStorage.getItem('dcl_member') || 'null'); const t = JSON.parse(localStorage.getItem('dcl_tokens') || 'null'); return m && t && t.role === 'member' ? m : null; } catch (e) { return null; } }
+  function showAcct() {
+    const m = member(), p = $('acctLine'); p.textContent = '';
+    const b = document.createElement('b');
+    if (m) { b.textContent = 'Signed in as ' + String(m.username || 'SURVIVOR').slice(0, 14) + (m.tag ? ' #' + m.tag : '') + '.'; p.append(b, ' Your progress saves to the cloud after every run.'); $('acct').textContent = 'Account'; }
+    else { b.textContent = 'DeclAIre account.'; p.append(b, " Free. Log in from the game's main menu (Account) and your progress saves to the cloud and follows you to your phone."); $('acct').textContent = 'Create account'; }
+  }
+  showAcct();
   $('fs').addEventListener('click', () => { D.fullscreen(); setTimeout(() => { info.fullscreen = D.isFullscreen(); showVersion(); }, 300); });
   $('quit').addEventListener('click', () => D.quit());
   window.addEventListener('keydown', e => { if (e.key === 'Escape') D.quit(); });

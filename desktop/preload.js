@@ -1,6 +1,7 @@
 'use strict';
 // What the launcher screen and the game can ask the Windows app to do: quit, switch full screen, go back to the
-// launcher, run and find Wi-Fi co-op games, and (on the launcher screen) check for and install game updates.
+// launcher, run and find Wi-Fi co-op games, sign in to a DeclAIre account, and (on the launcher screen) check for and
+// install game updates.
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('ZCDesktop', {
   quit: () => ipcRenderer.send('zc-quit'),
@@ -12,7 +13,10 @@ contextBridge.exposeInMainWorld('ZCDesktop', {
   lanInfo: o => ipcRenderer.invoke('zc-lan-info', o && typeof o === 'object' ? { run: !!o.run, name: o.name ? String(o.name) : undefined } : {}),
   lanScanStart: () => ipcRenderer.invoke('zc-lan-scan-start'),
   lanScan: () => ipcRenderer.invoke('zc-lan-scan'),
-  lanScanStop: () => ipcRenderer.invoke('zc-lan-scan-stop')
+  lanScanStop: () => ipcRenderer.invoke('zc-lan-scan-stop'),
+  // DeclAIre accounts: the game's sign-in and cloud-save requests, and opening the account page in the browser
+  http: req => ipcRenderer.invoke('zc-http', { method: String(req && req.method || 'GET'), url: String(req && req.url || ''), headers: req && req.headers && typeof req.headers === 'object' ? Object.assign({}, req.headers) : {}, body: req && req.body != null ? String(req.body) : null }),
+  open: url => ipcRenderer.invoke('zc-open', String(url || ''))
 });
 contextBridge.exposeInMainWorld('ZCLauncher', {
   info: () => ipcRenderer.invoke('zl-info'),

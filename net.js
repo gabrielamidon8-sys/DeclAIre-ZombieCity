@@ -362,8 +362,8 @@ function netSnapshot() {
 /* ---------- a teammate's game (client) ---------- */
 function netClientRecv(m) {
   switch (m.t) {
-    case 'hello': NET.me = m.id; NET.slot = m.slot; NET.hostName = m.host; NET.status = 'lobby'; $('app').classList.add('coop'); renderCoop(); break;
-    case 'lobby': NET.lobby = m.pl || []; renderCoop(); break;
+    case 'hello': NET.me = m.id; NET.slot = m.slot; NET.hostName = cleanTag(m.host); NET.status = 'lobby'; $('app').classList.add('coop'); renderCoop(); break;
+    case 'lobby': NET.lobby = (m.pl || []).map(p => Object.assign({}, p, { name: cleanTag(p.name) })); renderCoop(); break;
     case 'kick': NET.err = m.why || 'The host closed the door.'; netLeave(); break;
     case 'end': netEnd('The host ended the game.'); break;
     case 'start': netClientStart(m); break;
@@ -375,7 +375,7 @@ function netClientRecv(m) {
   }
 }
 function netClientStart(m) {
-  NET.started = true; NET.hostName = m.host || NET.hostName; NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
+  NET.started = true; NET.hostName = m.host ? cleanTag(m.host) : NET.hostName; NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
   $('coop').hidden = true;
   newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season }, wave: m.wave, at: { x: m.x, y: m.y } });
   WX.kind = m.wx || WX.kind; WX.t = 999;
@@ -658,7 +658,7 @@ function netScan() {
     if (window.ZCNative && window.ZCNative.lanScan) for (const f of JSON.parse(window.ZCNative.lanScan() || '[]')) {
       try {
         const m = typeof f.b === 'string' ? JSON.parse(f.b) : f; if (!m || m.zc !== 'lan' || !/^[\d.]{7,15}$/.test(f.ip)) continue;
-        list.push({ ip: f.ip, port: (m.port | 0) || NET_PORT, name: String(m.name || '').slice(0, 20), n: m.n | 0, max: m.max | 0, run: !!m.run });
+        list.push({ ip: f.ip, port: (m.port | 0) || NET_PORT, name: ZCF.safe(String(m.name || '').slice(0, 20), 'Zombie City'), n: m.n | 0, max: m.max | 0, run: !!m.run });
       } catch (e) { }
     }
   } catch (e) { list = []; }

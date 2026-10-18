@@ -1295,6 +1295,33 @@ button.lcd{cursor:pointer}
 .coop-join input{flex:1 1 auto;min-width:0;height:44px;padding:0 12px;background:#0b0d10;border:1px solid var(--line);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:16px;-webkit-user-select:text;user-select:text}
 .coop-err{padding:10px 12px;background:rgba(217,67,75,.12);border:1px solid rgba(217,67,75,.5);border-radius:3px;font-size:14px;color:#ffb3b6}
 #coopLeave{align-self:flex-start}
+/* DeclAIre account */
+.acct-msg{padding:10px 12px;background:rgba(242,204,58,.08);border:1px solid rgba(242,204,58,.4);border-radius:3px;font-size:14px;color:var(--bone)}
+.acct-msg.bad{background:rgba(217,67,75,.12);border-color:rgba(217,67,75,.5);color:#ffb3b6}
+.acct-card.warn{border-top-color:var(--blood)}
+.acct-form{display:flex;flex-direction:column;gap:10px}
+.acct-field{display:flex;flex-direction:column;gap:4px}
+.acct-field span{font-family:var(--f-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.acct-field input{height:44px;padding:0 12px;background:#0b0d10;border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px;color:var(--bone);font-family:var(--f-num);font-size:16px;-webkit-user-select:text;user-select:text}
+.acct-field input:focus{outline:none;border-color:var(--tape)}
+.acct-check{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#cfc9bb}
+.acct-check input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--tape);flex:none}
+.acct-link{align-self:flex-start;padding:4px 0;background:none;border:0;color:var(--tape);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.acct-row{display:flex;flex-wrap:wrap;gap:8px}
+.coop-card .acct-id{font-family:var(--f-display);font-size:28px;line-height:1.1;color:var(--bone)}
+.acct-id span{font-family:var(--f-num);font-size:16px;color:var(--muted)}
+.acct-stats{display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;margin:0}
+.acct-stats div{padding:8px 10px;background:#11141a;border:1px solid var(--line);border-radius:2px}
+.acct-stats dt{font-family:var(--f-num);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.acct-stats dd{margin:2px 0 0;font-family:var(--f-num);font-size:16px}
+.acct-note{font-size:12px!important;color:var(--muted)!important}
+#acctBtn.acct-on em{color:var(--tape)}
+.name-err{max-width:440px;padding:8px 10px;background:rgba(217,67,75,.14);border-left:3px solid var(--blood);font-size:13px;color:#ffc2c5}
+.name-err.pop{animation:nameerr .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes nameerr{0%{transform:translateX(-10px);opacity:0}60%{transform:translateX(4px)}100%{transform:none;opacity:1}}
+.tp-acct{display:block;width:100%;margin:2px 0 6px;padding:6px 8px;text-align:left;background:#11141a;border:1px dashed rgba(242,204,58,.45);border-radius:2px;font-family:var(--f-num);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tape)}
+.tp-acct.on{border-style:solid;border-color:rgba(120,200,120,.5);color:#9fe09f}
+.tp-acct.warn{border-color:rgba(217,67,75,.6);color:#ff9a9f}
 #upGrid.waiting .gcard{opacity:.25;pointer-events:none}
 /* teammates on the HUD */
 .hud-team{display:flex;flex-direction:column;gap:3px;margin-top:2px}
@@ -1353,6 +1380,7 @@ button.lcd{cursor:pointer}
           <label for="nameInput">Your name</label>
           <div class="pf-row"><input id="nameInput" maxlength="14" spellcheck="false" autocomplete="off" autocapitalize="characters" placeholder="Type your name" enterkeyhint="done"><button class="btn small" id="nameSave" type="submit">Save</button></div>
           <p class="dev-badge" id="devBadge" aria-live="polite"></p>
+          <p class="name-err" id="nameErr" role="alert" hidden></p>
         </form>
         <div class="btns">
           <button class="btn primary" id="playBtn">Enter the city</button>
@@ -1361,6 +1389,7 @@ button.lcd{cursor:pointer}
           <button class="btn" id="bossLogBtn">Boss log <em id="bossCount">0/50</em></button>
           <button class="btn" id="lbBtn">Leaderboard</button>
           <button class="btn" id="coopBtn">Wi-Fi co-op <em>2-4</em></button>
+          <button class="btn" id="acctBtn">Account <em id="acctBtnEm">Log in</em></button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
         <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="toLauncher" hidden>Launcher</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
@@ -1974,6 +2003,17 @@ button.lcd{cursor:pointer}
         </section>
       </div>
       <button class="btn ghost" id="coopLeave" type="button" hidden>Leave</button>
+    </div>
+  </section>
+  <section id="acct" class="ov sheet" hidden aria-label="DeclAIre account">
+    <div class="sheet-inner">
+      <header class="sheet-head">
+        <div><p class="eyebrow">DeclAIre Studios</p><h2>Your account</h2></div>
+        <button class="icon-btn" id="acctClose" aria-label="Close account">&#215;</button>
+      </header>
+      <p class="strain-note">One free account for every version of Zombie City: the website, the Android app and the Windows launcher. It saves your weapons, dashes, specimens, bosses and record to the cloud so they follow you to every device, and it puts your name on the global board. Your save is encrypted with a key that only your password can open, so nobody else can read it. Not even us.</p>
+      <p class="acct-msg" id="acctMsg" role="status" hidden></p>
+      <div id="acctBody"></div>
     </div>
   </section>
   <section id="lb" class="ov sheet" hidden aria-label="Leaderboard">
@@ -5169,6 +5209,407 @@ var ZB = (function () {
 
 </script>
 <script>
+/* Generated by tools/make_filter_data.py from the English "List of Dirty, Naughty, Obscene, and Otherwise Bad Words"
+   (https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words, CC BY 4.0), checked against the
+   hunspell English dictionary. ROT13 + base64 so the source is not a readable word list. Do not edit by hand. */
+const ZCF_DATA = {"sub": "bnBlYmdiemJjdXZ5dm4gbnlub256bnViZ2NicHhyZyBueW5meG5hY3Zjcnl2YXIgbmF2eXZhdGhmIG5jcmZ1dmcgbmVmcnVieXIgbmZmdWJ5ciBuZmZ6aGFwdSBuaGdicmViZ3ZwIG9ub3J5bmFxIG9ub2xvbmdncmUgb25vbHdodnByIG9ueXl0bnQgb255eXRlbmlsIG9ueXl4dnB4dmF0IG9ueXl5dnB4dmF0IG9ueXlmbnB4IG9ueXlmaHB4dmF0IG9uYXRvZWJmIG9uYXRvaGYgb25lcm9ucHggb25lcnlseXJ0bnkgb25lcmFueHJxIG9uZmduZXEgb25mZ25lcWIgb25mZ3ZhbnFiIG9xZnogb3JuYXJlIG9ybmFyZWYgb3JuZmd2bnl2Z2wgb3JuaXJlcHlybmlyZSBvcm5pcmV5dmNmIG9yZmd2bnl2Z2wgb3Z0b3lucHggb3Z0b2VybmZnZiBvdnR4YWJweHJlZiBvdnRndmdmIG92em9iZiBvdmVxeWJweCBvdmdwdSBvdmdwdXJmIG95bnB4cGJweCBveWJhcXJucGd2YmEgb3liYXFyYmFveWJhcXJucGd2YmEgb3liandibyBveWJqbGJoZXlibnEgb3locmpuc3N5ciBveWh6Y3h2YSBvYnl5YnB4ZiBvYmFxbnRyIG9iYXJlIG9iYm9mIG9iYmdscG55eSBvZWJqYWZ1YmpyZWYgb2VoYXJnZ3JucGd2YmEgb2h4eG54ciBvaHl5cWx4ciBvaHl5cmdpdm9yIG9oeXlmdXZnIG9oYXR1YnlyIG9oZmdsIG9oZ2dwdXJyeGYgb2hnZ3VieXIgcG56cnlnYnIgcG56dHZleSBwbnpmeWhnIHBuemp1YmVyIHBuZWNyZ3poYXB1cmUgcHVicGJ5bmdyZWJmcm9ocWYgcHZueXZmIHB2ZXB5cndyZXggcHlyaXJ5bmFxZmdybnpyZSBweXZnYmV2ZiBweWJpcmVweW56Y2YgcHloZmdyZXNocHggcGJweGYgcGJiYWYgcGJjZWJ5bnRhdm4gcGJjZWJjdXZ5dm4gcGJlYXVieXIgcGVybnpjdnIgcGh6enZhdCBwaHpmdWJnIHBoemZ1YmdmIHBoYWF2eXZhdGhmIHFuZXh2ciBxbmdyZW5jciBxcnJjZ3VlYm5nIHFyYXFlYmN1dnl2biBxdnlxYiBxdmF0eXJvcmVldnJmIHF2YXR5cm9yZWVsIHF2ZWdsY3Z5eWJqZiBxdmVnbGZuYXB1cm0gcWJ0dHZyZmdseXIgcWJ0dGxmZ2x5ciBxYnRmZ2x5ciBxYnlwcmdnIHFienZhbmd2YmEgcWJ6dmFuZ2V2ayBxYnp6cmYgcWJheHJsY2hhcHUgcWJob3lycWJhdCBxYmhveXJjcmFyZ2VuZ3ZiYSBxY25wZ3ZiYSBxZWx1aHpjIHFpcW4gcm5nemxuZmYgcnBwdXYgcnducGh5bmd2YmEgcmViZ3ZwIHJlYmd2ZnogcmZwYmVnIHJoYWhwdSBzbnR0Ymcgc3Jwbnkgc3J5cHUgc3J5eW5ndmIgc3J5Z3B1IHNyem55cmZkaHZlZ3ZhdCBzcnpxYnogc3Z0dHZhdCBzdmF0cmVvbmF0IHN2YXRyZXZhdCBzdmZndmF0IHNiYmdzcmd2ZnUgc2JiZ3dibyBzZWJnZ3ZhdCBzaHB4b2hnZ2JhZiBzaHB4dmEgc2hweHZhdCBzaHB4Z25lcWYgc2hxdHJjbnB4cmUgc2hnbmFuZXYgdG5hdG9uYXQgdG5sZnJrIHRyYXZnbnlmIHR2bmFncGJweCB0dmV5YmEgdHZleWJhZ2JjIHR2ZXlmcGhjIHR2ZXlmdGJhcmp2eXEgdGJuZ3BrIHRibmdmciB0YnFxbnphIHRicXZyIHRieHhoYSB0YnlxcmFmdWJqcmUgdGJicWNiYmMgdGJidHZleSB0YmVydG5meiB0ZWJjciB0ZWJoY2ZyayB0ZmNiZyB1bmFxd2JvIHVuZXFwYmVyIHVyYWdudiB1YnpicmViZ3ZwIHViYXhybCB1YmJ4cmUgdWJlYWwgdWJncG5leSB1YmdwdXZweCB1YmpnYnh2eXkgdWJqZ2J6aGVxcmUgdWh0cnNuZyB1aHpjdmF0IHZhcHJmZyB2YWdyZXBiaGVmciB3bnB4YnNzIHdudnlvbnZnIHdyeXlscWJhaGcgd3JleGJzcyB3dnRub2JiIHd2dHRub2JiIHd2dHRyZW9iYiB3dm1tIHdodHRmIHh2eHIgeHZ5eWhlZnJ5cyB4dnl5bGJoZWZyeXMgeHZhb254aCB4dmF4ZmdyZSB4dmF4bCB4YWJvb3ZhdCB5cm5ndXJlZXJmZ2VudmFnIHlybmd1cmVmZ2VudnR1Z3ducHhyZyB5cnpiYWNuZWdsIHl2aXJmcmsgeWJ5dmduIHliaXJ6bnh2YXQgem54cnpycGJ6ciB6bnlyZmRodmVndmF0IHpuZmdoZW9uZ3Igem5mZ2hlb25ndmF0IHpuZmdoZW9uZ3ZiYSB6cmFudHJuZ2VidmYgenZmZnZiYW5lbGNiZnZndmJhIHpiZ3VyZXNocHhyZSB6YmhhcWJzaXJhaGYgemV1bmFxZiB6aHNzcXZpcmUgemhzc3F2aXZhdCBhbnpveW4gYW5qbmZ1diBhcnRlYiBhcmJhbm12IGF2dHRuIGF2dHRyZSBhdnRhYnQgYXZ6Y3Viem5hdm4gYXZjY3lyIGF2Y2N5cmYgYWZzaiBhZnNqdnpudHJmIGFocXZnbCBhaGdncmEgYWx6Y3ViIGFsemN1YnpuYXZuIGJwZ2JjaGZmbCBiemJlbmZ1diBiYXJwaGNnamJ0dmV5ZiBiYXJ0aGxiYXJ3bmUgYmV0bmZ6IGNucnFiY3V2eXIgY25hZ3ZyZiBjbmFnbCBjcnFib3JuZSBjcnFiY3V2eXIgY3J0dHZhdCBjcmF2ZiBjdWJhcmZyayBjdnJwcmJzZnV2ZyBjdnhybCBjdmZmdmF0IGN2ZmZjdnQgY3lubG9ibCBjeXJuZmhlcnB1cmZnIGNieXJmemJ4cmUgY2JhbGN5bmwgY2JiYWduYXQgY2JiY3B1aGdyIGNiZWFiIGNiZWFidGVuY3VsIGNldmFwcm55b3JlZ2N2cmVwdmF0IGNndXAgY2hvcmYgY2hhbmFsIGNoZmZsIGRocm5zIGRocnJzIGVudHVybnEgZW50dmF0b2JhcmUgZW5jdmF0IGVuY3ZmZyBlcnBnaHogZXJpcmVmcnBianR2ZXkgZXZ6d2JvIGV2enp2YXQgZWJmbGNueXogZWJmbGNueXpuYXF1cmVmdmZncmVmIGVoZmdsZ2Viem9iYXIgZm5xdmZ6IGZuYWdiZWh6IGZwdXliYXQgZnB2ZmZiZXZhdCBmcmtwbnogZnJraG55IGZya2hueXZnbCBmcmtobnl5bCBmcmtsIGZ1bmlycW9ybmlyZSBmdW5pcnFjaGZmbCBmdXJ6bnlyIGZ1dm9uZXYgZnV2Z295dnpjIGZ1dmdnbCBmdWJnbiBmdWV2emN2YXQgZnhycmcgZnluYWdybHIgZmFuZ3B1IGZhYmpvbnl5dmF0IGZicWJ6dm1yIGZicWJ6bCBmY25mZ3ZwIGZjeWJidHIgZmN5YmJ0cnpiYmZyIGZjYmJ0ciBmY2VybnF5cnRmIGZjaGF4IGZnZW5jYmEgZmdlbmNjbnFiIGZnZXZjcHlobyBmZ2x5cnFidHRsIGZocHhmIGZodnB2cXJ0dmV5ZiBmaHlnZWxqYnpyYSBmam5mZ3Z4biBmanZhdHJlIGdudmFncnF5YmlyIGduZmdyemwgZ3Jub250dHZhdCBndWVycmZienIgZ3VlYm5ndmF0IGd1aHpvbXZ5eW4gZ3ZycWhjIGd2dHVnanV2Z3IgZ3ZnZ3ZyZiBndmdnbCBnYmF0aHJ2YW4gZ2JjeXJmZiBnYmZmcmUgZ2Jqcnl1cm5xIGdlbmFhbCBnZXZvbnF2ZnogZ2hvdHZleSBnaGZ1bCBnanZheCBnanZheHZyIGdqYnR2ZXlmYmFycGhjIGhhbnl2aXJsYmhlZnJ5cyBoYXFlcmZmdmF0IGhjZnh2ZWcgaGVyZ3VlbmN5bmwgaGViY3V2eXZuIGludHZhbiBpcmFoZnpiaGFxIGl2bnRlbiBpdm9lbmdiZSBpdmJ5cmdqbmFxIGliZW5lcmN1dnl2biBpYmxyaGUgaWJscmhlanJvIGlibGhyZSBpaHlpbiBqcmdvbnB4IGpyZ3Flcm56IGp1dmdyY2JqcmUganViZXIgamJleXFmcmsgamVuY2N2YXR6cmEgamV2YXh5cnFmZ25lc3ZmdSBsbmJ2IGxyeXliamZ1YmpyZWYgbHZzc2wgbWJiY3V2eXZu", "word": "bmFueSBuYWhmIG5mZiBvb2ogb2JibyBvaGdnIHB5dmcgcGJweCBwYmJhIHBoeiBwaGFnIHF2cHggc250IHNocHggdGhlYiB4bGYgenZ5cyB6YmF0IGFocXIgYmV0bCBjbnh2IGNiYnMgY2JiYSBjYmVhIGRodnogZW5jciBmcG5nIGZyenJhIGZyayBmcmtiIGZ1dmcgZnloZyBmemhnIGZjdnAgZmhweCBndmcgZ3ZnZiBnam5nIGpuYXgga2tr", "mask": "bmViem5ndXJlbmN2ZmcgbmViem5ndXJlbmN2ZmdmIG5lZ3JldmJmcHlyZWJndnAgbmVncmV2YmZweXJlYmd2cGYgbmZya2hueSBuZnJraG55dmdsIG5mcmtobnl2Z2xmIG5mcmtobnlmIG5ndXJlYmZweXJlYmd2cCBuZ3VyZWJmcHlyZWJndnBmIG5oZ2JyZWJndnB2ZnogbmhnYnJlYmd2cHZmemYgbmhnYnJlYmd2cGYgbmhnYnJlYmd2ZnogbmhnYnJlYmd2ZnpmIG9ueXlwYnB4ZiBvbmVlbnBiYmFmIG9uZmduZXF2bW5ndmJhIG9uZmduZXF2bW5ndmJhZiBvbmZnbmVxdm1yIG9uZmduZXF2bXJmIG9uZmduZXFsZiBvbmpwYnB4ZiBvcm5hcmVsZiBvdm9wYnB4ZiBvdnl5bHBicHhmIG92ZW5wdm55dmZ6IG92ZW5wdm55dmZ6ZiBvdmZya2hueSBvdmZya2hueXZmeiBvdmZya2hueXZmemYgb3Zmcmtobnl2Z2wgb3Zmcmtobnl2Z2xmIG92ZnJraG55ZiBvdmdwdXZ5bCBvdmdwdXZ5bGYgb3ZncHV2YXJmZiBvdmdwdXZhcmZmZiBvdmdwdWxmIG95bnB4cGJweGYgb2V2enp2YXQgb2V2enp2YXRmIG9oeXlmdXZnZ3JxIG9oeXlmdXZnZ3JxZiBvaHl5ZnV2Z2dyZSBvaHl5ZnV2Z2dyZWYgb2h5eWZ1dmdndmF0IG9oeXlmdXZnZ3ZhdGYgcHVyemJndXJlbmN2ZmcgcHVyemJndXJlbmN2ZmdmIHBicHhmcGJ6byBwYnB4ZnBiem9mIHBicHhmdWwgcGJweGZ1bGYgcGJweGZjaGUgcGJweGZjaGVmIHBicHhmaHB4cmUgcGJweGZocHhyZWYgcGJweGZoZXIgcGJweGZoZXJmIHBicHhmam52YSBwYnB4ZmpudmFmIHBicGJiYWYgcGJ6enJlcHZueXZmeiBwYnp6cmVwdm55dmZ6ZiBwYnp6cmVwdm55dmZnIHBienpyZXB2bnl2Zmd2cCBwYnp6cmVwdm55dmZndnBmIHBienpyZXB2bnl2ZmdmIHBiYmFmeHZhIHBiYmFmeHZhZiBwaHp6dmF0ZmYgcXJmcmtobnl2bXIgcXJmcmtobnl2bXJmIHF2eXFicmZmIHFlbnRlYmNyIHFlbnRlYmNyZiByY3ZmY25mZ3ZwIHJjdmZjbmZndnBmIHJlYmd2cG4gcmViZ3Zwbnl5bCByZWJndnBueXlsZiByZWJndnBuZiByZWJndnB2ZnogcmViZ3ZwdmZ6ZiByZWJndnB2ZmcgcmViZ3ZwdmZnZiByZnBiZWdycWYgcmhhaHB1dm1yIHJoYWhwdXZtcmYgcmhhaHB1YnZxdmZ6IHJoYWhwdWJ2cXZmemYgcmhhaHB1ZmYgcmludHZhbmdyIHJpbnR2YW5ncmYgc3J5eW5ndmJhIHNyeXluZ3ZiYWYgdG56cnBicHhmIHR5bnB2bnl2ZmcgdHlucHZueXZmZ2YgdGJlcGJweGYgdGViY3JlIHRlYmNyZWYgdW5hcGJweGYgdW5scGJweGYgdXJncmViZnJraG55IHVyZ3JlYmZya2hueXZnbCB1cmdyZWJmcmtobnl2Z2xmIHVyZ3JlYmZya2hueWYgdXZncHVwYnB4ZiB1YnpicmViZ3ZwdmZ6IHViemJyZWJndnB2ZnpmIHViemJyZWJndnBmIHViemJmcmtobnkgdWJ6YmZya2hueXZnbCB1YnpiZnJraG55dmdsZiB1YnpiZnJraG55ZiB1bGNhYmd1cmVuY3ZmZyB1bGNhYmd1cmVuY3ZmZ2YgdmFwcmZnaGJoZiB2YXByZmdoYmhmYXJmZiB2YXByZmdoYmhmYXJmZmYgdmFwcmZnaGJoZmYgdmFncmVmcmtobnkgdmFncmVmcmtobnlmIHZhaW50dmFuZ3IgdmFpbnR2YW5ncmYgeW5icGJiYWYgeXJucGJweGYgemJhZ3JhcnRlYiB6YmFncmFydGViZiB6Ymd1cmVzaHB4dmF0IHpiZ3VyZXNocHh2YXRmIHpoeWd2aXZvZW5nYmUgemh5Z3Zpdm9lbmdiZWYgYXJ0ZWJyZmYgYXJ0ZWJ2cSBhcnRlYnZxZiBhcnRlYmN1Ym9yIGFydGViY3Vib3JmIGFydGViZmYgYXZ0dG5lcSBhdnR0bmVxeXZhcmZmIGF2dHRuZXF5dmFyZmZmIGF2dHRuZXFmIGF2dHRubSBhdnR0bm1mIGF2Y3ZmZnZhdCBhdmN2ZmZ2YXRmIGFiYXZhZ3JlcGJoZWZyIGFiYXZhZ3JlcGJoZWZyZiBhYmFmcmtobnkgYWJhZnJraG55ZiBhYmFmY3Jwdm55dmZnIGFiYWZjcnB2bnl2ZmdmIGFsemN1YnlyY2ZsIGFsemN1YnlyY2ZsZiBhbHpjdWJ6bmF2bnAgYWx6Y3Viem5hdm5wbnkgYWx6Y3Viem5hdm5wbnlmIGFsemN1YnpuYXZucGYgYWx6Y3Viem5hdm5mIGJzc3Zwdm55dmZ6IGJzc3Zwdm55dmZ6ZiBiZXRuZnp2cCBiZXRuZnp2cG55eWwgYmV0bmZ6dnBueXlsZiBiZXRuZnp2cGYgY25hZ2x1YmZyIGNuYWdsdWJmcmYgY25hZ2x5dmFyZSBjbmFnbHl2YXJlZiBjbmFnbGpudmZnIGNuYWdsam52ZmdmIGNybnBicHhmIGNyYXZmZ2JhciBjcmdwYnB4ZiBjdWxmdmJndXJlbmN2ZmcgY3VsZnZiZ3VyZW5jdmZnZiBjdmFwdXBicHhmIGNiY2NscGJweGYgY2JlYWJwZW5wbCBjYmVhYnBlbnBsZiBjYmVhYnRlbmN1cmUgY2JlYWJ0ZW5jdXJlZiBjYmVhYnRlbmN1dnAgY2JlYWJ0ZW5jdXZwbnl5bCBjYmVhYnRlbmN1dnBueXlsZiBjYmVhYnRlbmN1dnBmIGNiZWFidGVuY3VsZiBjYmZnYmV0bmZ6dnAgY2JmZ2JldG5menZwZiBjYmZnY2hvcmZwcmFwciBjYmZnY2hvcmZwcmFwcmYgY2JmZ2Nob3JmcHJhZyBjYmZnY2hvcmZwcmFnZiBjZXJjaG9yZnByYXByIGNlcmNob3JmcHJhcHJmIGNlcmNob3JmcHJhZyBjZXJjaG9yZnByYWdmIGNldnpidHJhdmdueWYgY2ViaXZhcHZueXZmeiBjZWJpdmFwdm55dmZ6ZiBjZWJpdmFwdm55dmZnIGNlYml2YXB2bnl2ZmdmIGNmbHB1YmZya2hueSBjZmxwdWJmcmtobnlmIGNmbHB1Ymd1cmVuY3ZmZyBjZmxwdWJndXJlbmN2ZmdmIGNob3JmcHJhcHIgY2hvcmZwcmFwcmYgY2hvcmZwcmFnIGNob3JmcHJhZ2YgY2hwcGJiYWYgY2hmZmxwbmcgY2hmZmxwbmdmIGNoZmZsc2JiZyBjaGZmbHNiYmdmIGVucHBiYmFmIGVucHZueXZmeiBlbnB2bnl2ZnpmIGVucHZueXZmZyBlbnB2bnl2Zmd2cCBlbnB2bnl2Zmd2cGYgZW5wdm55dmZnZiBlbnF2Ymd1cmVuY3ZmZyBlbnF2Ymd1cmVuY3ZmZ2YgZnB5cmViZ3ZwIGZweXJlYmd2cGYgZnBoenp2YXQgZnBoenp2YXRmIGZybnBicHhmIGZya2hueXZnbGYgZnVoZ2d5cnBicHhmIGZhbmdwdWxmIGZhdnR0cmUgZmF2dHRyZXJlIGZhdnR0cmVyZWYgZmF2dHRyZXZhdHlsIGZhdnR0cmV2YXR5bGYgZmJwdm55dmZ6IGZicHZueXZmemYgZmJwdm55dmZnIGZicHZueXZmZ3ZwIGZicHZueXZmZ3Zwbnl5bCBmYnB2bnl2Zmd2cG55eWxmIGZicHZueXZmZ3ZwZiBmYnB2bnl2ZmdmIGZiYWZic292Z3B1cmYgZmJhZmJzb3ZncHVyZmYgZmNuZmd2cG55eWwgZmNuZmd2cG55eWxmIGZjbmZndnB2Z2wgZmNuZmd2cHZnbGYgZmNycHZueXZmeiBmY3Jwdm55dmZ6ZiBmY3Jwdm55dmZnIGZjcnB2bnl2Zmd2cCBmY3Jwdm55dmZndnBmIGZjcnB2bnl2ZmdmIGZjaGF4bGYgZmdiY3BicHhmIGZob2ZjcnB2bnl2ZmcgZmhvZmNycHZueXZmZ2YgZ3VyZW5jdmZnIGd1cmVuY3ZmZ2YgZ3ViZWFsIGd1YmVhbGYgZ3VoemN2YXQgZ3VoemN2YXRmIGdlbmFmZnJraG55IGdlbmFmZnJraG55dmZ6IGdlbmFmZnJraG55dmZ6ZiBnZW5hZmZya2hueXZnbCBnZW5hZmZya2hueXZnbGYgZ2VuYWZmcmtobnlmIGdldnp6dmF0IGdldnp6dmF0ZiBnZXZ6enZhdGZmIGdqdmF4dnJmZiBnanZheHlyIGdqdmF4eXJmIGdqdmF4eXZhdCBnanZheHl2YXRmIGdscGJiYWYgaGF2ZnJraG55IGhhdmZya2hueWYgaGFmcmtobnkgaGFmcmtobnlmIGhlYnRyYXZnbnlmIGludG5vYmFxbnRyIGludG5vYmFxbnRyZiBpbnR2YW5yIGludHZhbnkgaW50dmFueWYgaW50dmFuZ3IgaW50dmFuZ3JmIGl2b2VuZ2JlbGYgaWJscmhldmZ6IGlibHJoZXZmemYgaWJscmhldmZndnAgaWJscmhldmZndnBueXlsIGlibHJoZXZmZ3Zwbnl5bGYgaWJscmhldmZndnBmIGloeWluciBpaHlpbnkgaWh5aW55ZiBpaHlpbmUgaWh5aW5lZiBqcm5ndXJlcGJweGYganViZXJxYnoganViZXJxYnpmIGp1YmVydWJoZnIganViZXJ1YmhmcmYganViZXJ2ZnUganViZXJ2ZnVmIGp1YmVyem5mZ3JlIGp1YmVyem5mZ3JlZiBqdWJlcmZiYSBqdWJlcmZiYWYganZhcnRlYmpyZSBqdmFydGVianJlZiBqYmJxcGJweGYgbXJwcHV2YWIgbXJwcHV2YWJm"};
+
+/* ================= name filter =================
+   Every name a player types (their callsign, their DeclAIre account name, the name teammates see in co-op) and every
+   name shown from someone else (the global board) goes through here. It catches slurs, swearing, sexual words and
+   threats even when they are hidden with numbers or symbols, spaces, dots or stretched letters, without tripping on
+   ordinary words that happen to contain one. It also keeps personal details out of public names (emails, phone
+   numbers, links) and keeps names that pretend to be the DeclAIre team for the team.
+   Someone who keeps trying gets a different joke each time, 50 of them. The word data is in filterdata.js.
+   Shared by the game and the account page. */
+const ZCF = (function () {
+  const unpack = s => { try { return atob(s).replace(/[a-z]/g, c => String.fromCharCode((c.charCodeAt(0) - 84) % 26 + 97)).split(' ').filter(Boolean); } catch (e) { return []; } };
+  const D = typeof ZCF_DATA !== 'undefined' ? ZCF_DATA : { sub: '', word: '', mask: '' };
+  let SUB = unpack(D.sub), WORD = new Set(unpack(D.word)), MASK = unpack(D.mask).sort((a, b) => b.length - a.length);
+  // the account page has no built-in list: it loads the public list and hands the words over here
+  function setWords(sub, word, mask) { SUB = sub.slice(); WORD = new Set(word); MASK = mask.slice().sort((a, b) => b.length - a.length); }
+  // look-alike characters, two readings where a character can stand for two letters
+  const LEET_A = { '0': 'o', '1': 'i', '2': 'z', '3': 'e', '4': 'a', '5': 's', '6': 'g', '7': 't', '8': 'b', '9': 'g', '@': 'a', '$': 's', '!': 'i', '|': 'i', '+': 't', '\u20ac': 'e', '\u00a3': 'l', '\u00a1': 'i' };
+  const LEET_B = Object.assign({}, LEET_A, { '1': 'l', '|': 'l', '!': 'l', '9': 'q', '6': 'b' });
+  function letters(raw, map) {
+    const s = String(raw || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    let out = '';
+    for (const ch of s) out += map[ch] || ch;
+    return out;
+  }
+  const squash = s => s.replace(/[^a-z]/g, '');
+  const unmask = s => { for (const m of MASK) if (s.includes(m)) s = s.split(m).join('#'); return s; };
+  // words in the name: split on anything that isn't a letter, then glue runs of single letters back together (A.S.S, F U)
+  function tokens(s) {
+    const parts = s.split(/[^a-z]+/).filter(Boolean), out = parts.slice();
+    let run = '';
+    for (const p of parts.concat([''])) { if (p.length === 1) run += p; else { if (run.length > 1) out.push(run); run = ''; } }
+    return out;
+  }
+  // letters stretched out (FUUUUN) are read both squeezed to one and to two, so ordinary double letters stay as they are
+  function rudeIn(s0) {
+    for (const s of [s0, s0.replace(/([a-z])\1{2,}/g, '$1'), s0.replace(/([a-z])\1{2,}/g, '$1$1')]) {
+      const sq = squash(s), um = unmask(sq);
+      for (const w of SUB) if (um.includes(w)) return true;
+      const tk = tokens(s); tk.push(sq);
+      for (const t of tk) if (WORD.has(t)) return true;
+    }
+    return false;
+  }
+  function isRude(raw) { return rudeIn(letters(raw, LEET_A)) || rudeIn(letters(raw, LEET_B)); }
+
+  // personal details: emails, links, phone numbers, social handles
+  function personal(raw) {
+    const s = String(raw || '').toLowerCase(), sq = squash(letters(raw, LEET_A));
+    if (/[a-z0-9]@[a-z0-9]/.test(s) || /(^|[^a-z])(at|dot)([^a-z]|$).*(com|net|org)/.test(s)) return true;
+    if (/(https?|www)|\.(com|net|org|gg|io|tv|co|me|xyz|ly)\b/.test(s)) return true;
+    if ((s.match(/\d/g) || []).length >= 7) return true;
+    return /(gmail|yahoo|hotmail|outlook|icloud|protonmail|discordgg|snapchat|instagram|tiktok|whatsapp|telegram|onlyfans)/.test(sq);
+  }
+  // names that pretend to speak for the studio
+  function reserved(raw) {
+    const s = letters(raw, LEET_A), sq = squash(s).replace(/badminton/g, '');
+    if (/(admin|moderator|declaire|declairestudio|anthropic|official|gamemaster|customersupport|supportteam|devteam|staffmember)/.test(sq)) return true;
+    return tokens(s).some(t => t === 'mod' || t === 'mods' || t === 'staff' || t === 'support');
+  }
+
+  const REMARKS = [
+    'Whoa there. Zombies have tiny ears. Try a cleaner name.',
+    'That name got bitten and turned. Pick another one.',
+    'Our name scanner just fainted. Try something else.',
+    'Nice try. The armory keeper spat out his coffee.',
+    "That word isn't allowed in the bunker.",
+    "Even the zombies think that's rude, and they eat people.",
+    'Denied. The radio DJ had to bleep that.',
+    'Rejected. Your survivor file is blushing.',
+    'The A-10 refuses to fly for that callsign.',
+    "Let's keep the apocalypse family friendly.",
+    'Your keyboard needs a bar of soap.',
+    'Bold move. Wrong move.',
+    'The armory keeper just wrote your name in his naughty book.',
+    "Zombies can't read, but if they could, they'd be offended.",
+    "That's a hard no from the whole horde.",
+    'Put that on the leaderboard and the leaderboard would quit.',
+    'Error 404: clean name not found.',
+    'Our filter has seen things. That was one of them.',
+    "That name is banned on all 7 radio channels.",
+    'The skull laughed. Then it said no.',
+    'Somewhere, a grandma just felt a disturbance.',
+    'The Overlord has rejected your offering.',
+    'Mutation detected: Potty Mouth. Not a playable strain.',
+    'Plot twist: the filter is the final boss.',
+    'Try a name your mom could yell across a parking lot.',
+    'We fed that name to a zombie. It spat it back out.',
+    'The keeper is now reciting Shakespeare at you. Out of spite.',
+    "That's not a callsign, that's a cry for soap.",
+    'Our lawyers (two raccoons in a trench coat) said no.',
+    "Achievement unlocked: absolutely nothing.",
+    'The filter is getting tired. Please let it rest.',
+    'Every time you try that, a pixel in the city cries.',
+    'Your persistence is impressive. Your vocabulary, less so.',
+    "Fun fact: SIR CHOMPS-A-LOT is still available.",
+    'Attempt number {n}. The horde is taking notes.',
+    "Try DEFINITELY_NOT_RUDE. It's free.",
+    "The bunker's swear jar is full. It's a swear barrel now.",
+    "This message is the filter rolling its eyes at you.",
+    "We reported you to the authorities. The authorities are a pigeon. It doesn't care.",
+    'You could be shooting zombies right now. Just saying.',
+    "OK, at this point we're just two friends who argue.",
+    'The filter has started a support group because of you.',
+    'Still no. But we admire the stamina.',
+    'Insert clever rejection #44 here. We are running low.',
+    'The zombies have formed a union and demand that you stop.',
+    "Fine. Your name is now PERSISTENT CHAOS. Kidding. Pick a real one.",
+    'Even the lag thinks this is too much.',
+    "We're writing a song about your attempts. It's called \"No.\"",
+    'Second to last joke. After this, the jokes get recycled.',
+    "That's 50. You've heard every joke we have. Now pick a name that won't scare the zombies."
+  ];
+  const tries = () => { try { return +localStorage.getItem('zc_naughty') || 0; } catch (e) { return 0; } };
+  function nextRemark() {
+    let n = tries() + 1;
+    try { localStorage.setItem('zc_naughty', String(n)); } catch (e) { /* storage blocked: the jokes still rotate this session */ }
+    if (n > REMARKS.length) n = REMARKS.length + 1 + Math.floor(Math.random() * REMARKS.length);   // after 50, a random rerun
+    const i = (n - 1) % REMARKS.length;
+    return REMARKS[i].replace('{n}', String(n));
+  }
+
+  return {
+    REMARKS: REMARKS,
+    setWords: setWords,
+    get ready() { return SUB.length > 0 || WORD.size > 0; },
+    isRude: isRude,
+    personal: personal,
+    reserved: reserved,
+    // check(name) -> { ok: true } or { ok: false, kind: 'rude' | 'personal' | 'reserved', msg }
+    check(raw) {
+      const s = String(raw || '');
+      if (!s.trim()) return { ok: true };
+      if (isRude(s)) return { ok: false, kind: 'rude', msg: nextRemark() };
+      if (personal(s)) return { ok: false, kind: 'personal', msg: "For your safety, keep emails, phone numbers and links out of your name." };
+      if (reserved(s)) return { ok: false, kind: 'reserved', msg: 'That name is saved for the DeclAIre Studios team. Pick your own.' };
+      return { ok: true };
+    },
+    // a name from someone else, safe to show: unchanged when clean, otherwise a stand-in
+    safe(raw, stand) { const s = String(raw || ''); return !s || isRude(s) || personal(s) || reserved(s) ? (stand || 'SURVIVOR') : s; }
+  };
+})();
+
+/* ================= DeclAIre Studios accounts: the shared core =================
+   One account works everywhere: the game in a browser, the Android app, the Windows launcher and the account page on
+   the web. Accounts live in a Wix Headless project (DeclAIre Studios); Wix checks passwords and stores only a one-way
+   hash of each one, never the password itself. On top of that, every account's save is encrypted with its own random
+   256-bit key (AES-GCM). That key is locked with the player's password (PBKDF2-SHA256, 600,000 rounds, a salt made
+   for that account) before it leaves the device, so the save in the cloud can only be opened by someone who knows the
+   password: not other players, and not the studio either.
+   Used by the game (account.js) and the account page. No dependencies; the page or app plugs in how to reach the
+   network (setHttp) where a plain fetch can't (the Android app and the Windows launcher). */
+const ACCT_CFG = {
+  clientId: 'faefb3f0-8b4f-4401-8dc5-0421e699b869',
+  api: 'https://www.wixapis.com',
+  site: 'https://headless-iilujwebfcb-gabrielamidon8-140e.wix-site-host.com',
+  saves: 'PlayerSaves',
+  scores: 'Scores',
+  kdfIter: 600000
+};
+const AcctCore = (function () {
+  const C = ACCT_CFG;
+  /* ---------- storage (one key per thing, prefixed so it never collides with the game's own keys) ---------- */
+  const ls = {
+    get(k, d) { try { const v = localStorage.getItem('dcl_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { if (v == null) localStorage.removeItem('dcl_' + k); else localStorage.setItem('dcl_' + k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } }
+  };
+
+  /* ---------- the network ---------- */
+  // http(method, url, headers, body) -> { status, text }. A page uses fetch; the apps swap in their native bridge.
+  let http = async (method, url, headers, body) => {
+    const r = await fetch(url, { method: method, headers: headers, body: body, credentials: 'omit', cache: 'no-store' });
+    return { status: r.status, text: await r.text() };
+  };
+  let nativeHttp = false;
+  function setHttp(fn) { http = fn; nativeHttp = true; }
+
+  class AcctError extends Error {
+    constructor(message, status, code, details) { super(message); this.status = status; this.code = code; this.details = details; }
+  }
+  const parse = t => { try { return t ? JSON.parse(t) : null; } catch (e) { return null; } };
+
+  /* ---------- tokens: an anonymous visitor until login, then the member ---------- */
+  // { accessToken, refreshToken, expiresAt, role: 'visitor' | 'member' }
+  let tok = ls.get('tokens', null);
+  function saveTokens(t) { tok = t; ls.set('tokens', t); }
+  async function mint(body, role) {
+    const r = await http('POST', C.api + '/oauth2/token', { 'Content-Type': 'application/json' }, JSON.stringify(Object.assign({ clientId: C.clientId }, body)));
+    const d = parse(r.text);
+    if (r.status !== 200 || !d || !d.access_token) throw new AcctError('Could not reach DeclAIre accounts (' + r.status + ').', r.status, d && d.error);
+    return { accessToken: d.access_token, refreshToken: d.refresh_token, expiresAt: Date.now() + (d.expires_in || 14400) * 1000, role: role };
+  }
+  let minting = null;
+  async function accessToken() {
+    if (tok && tok.accessToken && tok.expiresAt - 60000 > Date.now()) return tok.accessToken;
+    if (minting) return minting;
+    minting = (async () => {
+      let fresh = null;
+      if (tok && tok.refreshToken) {
+        try { fresh = await mint({ grantType: 'refresh_token', refreshToken: tok.refreshToken }, tok.role || 'visitor'); }
+        catch (e) { if (tok.role === 'member' && e.status >= 400 && e.status < 500) { ls.set('member', null); signedOut('expired'); } }
+      }
+      if (!fresh) fresh = await mint({ grantType: 'anonymous' }, 'visitor');
+      saveTokens(fresh);
+      return fresh.accessToken;
+    })();
+    try { return await minting; } finally { minting = null; }
+  }
+  let onSignedOut = null;
+  function signedOut(why) { if (onSignedOut) try { onSignedOut(why); } catch (e) { /* the page's handler failed; the tokens are gone either way */ } }
+
+  // every Wix call: the raw access token in Authorization (no "Bearer")
+  async function wix(path, opts) {
+    opts = opts || {};
+    const url = C.api + path + (opts.query ? '?' + new URLSearchParams(opts.query).toString() : '');
+    const headers = { Authorization: await accessToken(), 'Content-Type': 'application/json' };
+    const r = await http(opts.method || 'POST', url, headers, opts.body === undefined ? undefined : JSON.stringify(opts.body));
+    const d = parse(r.text);
+    if (r.status < 200 || r.status >= 300) {
+      throw new AcctError((d && d.message) || ('Request failed (' + r.status + ').'), r.status, d && d.details && d.details.applicationError && d.details.applicationError.code, d && d.details);
+    }
+    return d;
+  }
+
+  /* ---------- signing in ---------- */
+  const CODES = { '-19971': 'captcha', '-19970': 'captcha', '-19995': 'exists', '-19976': 'password', '-19973': 'reset' };
+  // a login/registration/verification answer -> { state: 'ok' | 'verify' | 'pending' | 'fail', reason?, message?, stateToken? }
+  async function authCall(path, body) {
+    let d;
+    try { d = await wix(path, { body: body }); }
+    catch (e) {
+      const reason = CODES[e.code] || (e.details && e.details.validationError ? 'invalid' : e.status === 404 || e.status === 401 ? 'notfound' : e.status >= 500 || !e.status ? 'network' : 'unknown');
+      return { state: 'fail', reason: reason, message: e.message };
+    }
+    const st = d && d.state;
+    if (st === 'SUCCESS' && d.sessionToken) {
+      await finishLogin(d.sessionToken);
+      return { state: 'ok', identity: d.identity || null };
+    }
+    if (st === 'REQUIRE_EMAIL_VERIFICATION') return { state: 'verify', stateToken: d.stateToken };
+    if (st === 'REQUIRE_OWNER_APPROVAL') return { state: 'pending' };
+    return { state: 'fail', reason: 'unknown', message: 'Sign-in did not finish.' };
+  }
+  function captcha(t) { return t ? { captchaTokens: [t.visible ? { Recaptcha: t.token } : { InvisibleRecaptcha: t.token }] } : {}; }
+  const login = (email, password, cap) => authCall('/_api/iam/authentication/v2/login', Object.assign({ loginId: { email: email }, password: password }, captcha(cap)));
+  const register = (email, password, nickname, cap) => authCall('/_api/iam/authentication/v2/register', Object.assign({ loginId: { email: email }, password: password, profile: nickname ? { nickname: nickname } : undefined }, captcha(cap)));
+  const verifyEmail = (code, stateToken) => authCall('/_api/iam/verification/v1/auth/verify', { code: String(code).trim(), stateToken: stateToken });
+
+  // the one-shot session token -> the member's own access and refresh tokens (PKCE, as the Wix docs order it)
+  const b64url = bytes => { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const randStr = () => b64url(crypto.getRandomValues(new Uint8Array(32)));
+  async function finishLogin(sessionToken) {
+    const verifier = randStr(), state = randStr();
+    const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+    const rs = await wix('/headless/v1/redirect-session', { body: { auth: { authRequest: {
+      clientId: C.clientId, codeChallenge: challenge, codeChallengeMethod: 'S256', responseMode: 'web_message',
+      responseType: 'code', scope: 'offline_access', state: state, sessionToken: sessionToken }, prompt: 'none' } } });
+    const url = rs && rs.redirectSession && rs.redirectSession.fullUrl;
+    if (!url) throw new AcctError('Login could not finish: no authorization address came back.');
+    const code = await authorizationCode(url, state);
+    saveTokens(await mint({ grantType: 'authorization_code', code: code, codeVerifier: verifier }, 'member'));
+  }
+  // The authorization page hands back { code, state, error }: read straight from the page where the network allows
+  // it (the apps' native bridge, or the account page, which is on the same site), otherwise through a hidden frame.
+  async function authorizationCode(url, state) {
+    const sameSite = typeof location !== 'undefined' && new URL(url).origin === location.origin;
+    if (nativeHttp || sameSite || typeof document === 'undefined') {
+      const r = await http('GET', url, { Accept: 'text/html' });
+      const field = n => { const m = r.text.match(new RegExp("'" + n + "':\\s*'([^']*)'")); return m ? m[1] : undefined; };
+      if (field('error')) throw new AcctError('Login was refused: ' + field('error'));
+      const code = field('code');
+      if (!code || field('state') !== state) throw new AcctError('Login could not finish (no authorization code, status ' + r.status + ').');
+      return code;
+    }
+    return new Promise((resolve, reject) => {
+      const frame = document.createElement('iframe');
+      frame.style.display = 'none'; frame.setAttribute('aria-hidden', 'true');
+      const done = () => { window.removeEventListener('message', onMsg); clearTimeout(timer); frame.remove(); };
+      const onMsg = e => {
+        const d = e.data;
+        if (!d || typeof d !== 'object' || d.state !== state) return;
+        done();
+        if (d.error) reject(new AcctError('Login was refused: ' + d.error));
+        else if (d.code) resolve(d.code);
+        else reject(new AcctError('Login could not finish: no authorization code.'));
+      };
+      const timer = setTimeout(() => { done(); reject(new AcctError('Login timed out. Check your connection and try again.')); }, 45000);
+      window.addEventListener('message', onMsg);
+      frame.src = url;
+      document.body.appendChild(frame);
+    });
+  }
+  function signOut() { saveTokens(null); ls.set('member', null); }
+  const isMember = () => !!(tok && tok.role === 'member' && tok.refreshToken);
+  async function sendReset(email, returnUrl) {
+    await wix('/_api/iam/recovery/v1/send-email', { body: { email: email, redirect: { url: returnUrl || (C.site + '/'), clientId: C.clientId } } });
+  }
+  const changePassword = pw => wix('/_api/iam/authentication/v2/change-password', { body: { newPassword: pw } });
+  const deleteMe = () => wix('/members/v1/members/my', { method: 'DELETE' });
+
+  /* ---------- the account key ---------- */
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  const toB64 = buf => { const b = new Uint8Array(buf); let s = ''; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
+  const fromB64 = s => { const bin = atob(s), b = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i); return b; };
+  async function kek(password, saltB64, iter) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(password.normalize('NFKC')), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: fromB64(saltB64), iterations: iter }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function seal(keyObj, bytes, aad) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(aad || '') }, keyObj, bytes);
+    const out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
+    return toB64(out);
+  }
+  async function open(keyObj, b64, aad) {
+    const all = fromB64(b64);
+    return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: all.subarray(0, 12), additionalData: enc.encode(aad || '') }, keyObj, all.subarray(12)));
+  }
+  const dataKeyObj = b64 => crypto.subtle.importKey('raw', fromB64(b64), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  // a brand-new account key, locked with the password
+  async function newKeys(password) {
+    const dk = crypto.getRandomValues(new Uint8Array(32)), salt = toB64(crypto.getRandomValues(new Uint8Array(16)));
+    const k = await kek(password, salt, C.kdfIter);
+    return { dataKey: toB64(dk), kdfSalt: salt, kdfIter: C.kdfIter, wrappedKey: await seal(k, dk, 'dcl-key') };
+  }
+  // open the account key with the password; null when the password doesn't fit (it was reset since)
+  async function unlockKey(password, rec) {
+    try { const k = await kek(password, rec.kdfSalt, rec.kdfIter || C.kdfIter); return toB64(await open(k, rec.wrappedKey, 'dcl-key')); }
+    catch (e) { return null; }
+  }
+  // the same account key, locked again with a new password (new salt too)
+  async function relock(password, dataKey) {
+    const salt = toB64(crypto.getRandomValues(new Uint8Array(16)));
+    const k = await kek(password, salt, C.kdfIter);
+    return { kdfSalt: salt, kdfIter: C.kdfIter, wrappedKey: await seal(k, fromB64(dataKey), 'dcl-key') };
+  }
+  // the save itself, bound to the account it belongs to
+  async function encryptSave(dataKey, obj, owner) { return seal(await dataKeyObj(dataKey), enc.encode(JSON.stringify(obj)), 'dcl-save:' + owner); }
+  async function decryptSave(dataKey, b64, owner) {
+    if (!b64) return null;
+    try { return JSON.parse(dec.decode(await open(await dataKeyObj(dataKey), b64, 'dcl-save:' + owner))); } catch (e) { return undefined; }
+  }
+
+  /* ---------- the player's record (only its owner can read or change it) ---------- */
+  async function myRecord() {
+    const d = await wix('/wix-data/v2/items/query', { body: { dataCollectionId: C.saves, query: { paging: { limit: 5 } } } });
+    const items = (d && d.dataItems) || [];
+    if (!items.length) return null;
+    items.sort((a, b) => (b.data.updatedAt || 0) - (a.data.updatedAt || 0));
+    return { id: items[0].id || items[0].data._id, data: items[0].data };
+  }
+  async function writeRecord(rec, data) {
+    if (rec && rec.id) {
+      const merged = Object.assign({}, rec.data, data, { _id: rec.id });
+      const d = await wix('/wix-data/v2/items/' + encodeURIComponent(rec.id), { method: 'PUT', body: { dataCollectionId: C.saves, dataItem: { id: rec.id, data: merged } } });
+      return { id: rec.id, data: d.dataItem.data };
+    }
+    const d = await wix('/wix-data/v2/items', { body: { dataCollectionId: C.saves, dataItem: { data: data } } });
+    return { id: d.dataItem.id || d.dataItem.data._id, data: d.dataItem.data };
+  }
+  const newTag = () => String(1000 + (crypto.getRandomValues(new Uint16Array(1))[0] % 9000));
+
+  /* ---------- the global board (anyone can read it; members post their own best) ---------- */
+  async function board(season, limit) {
+    const d = await wix('/wix-data/v2/items/query', { body: { dataCollectionId: C.scores, query: { filter: { season: { $eq: season } }, sort: [{ fieldName: 'score', order: 'DESC' }], paging: { limit: limit || 50 } } } });
+    return ((d && d.dataItems) || []).map(it => ({ id: it.data._owner, item: it.id, tag: it.data.tag, score: it.data.score | 0, wave: it.data.wave | 0, kills: it.data.kills | 0, dev: it.data.dev, plat: it.data.plat, at: it.data.at }));
+  }
+  // one entry per player per season: their best run. Returns 'posted' or 'kept'.
+  async function postScore(season, owner, entry) {
+    const d = await wix('/wix-data/v2/items/query', { body: { dataCollectionId: C.scores, query: { filter: { season: { $eq: season }, _owner: { $eq: owner } }, paging: { limit: 1 } } } });
+    const cur = d && d.dataItems && d.dataItems[0];
+    const data = { season: season, tag: entry.tag, score: entry.score | 0, wave: entry.wave | 0, kills: entry.kills | 0, dev: entry.dev || '', plat: entry.plat || '', at: entry.at || Date.now() };
+    if (cur) {
+      if ((cur.data.score | 0) >= data.score) {
+        if (cur.data.tag !== entry.tag) await wix('/wix-data/v2/items/' + encodeURIComponent(cur.id), { method: 'PUT', body: { dataCollectionId: C.scores, dataItem: { id: cur.id, data: Object.assign({}, cur.data, { tag: entry.tag }) } } });
+        return 'kept';
+      }
+      await wix('/wix-data/v2/items/' + encodeURIComponent(cur.id), { method: 'PUT', body: { dataCollectionId: C.scores, dataItem: { id: cur.id, data: Object.assign({}, cur.data, data) } } });
+      return 'posted';
+    }
+    await wix('/wix-data/v2/items', { body: { dataCollectionId: C.scores, dataItem: { data: data } } });
+    return 'posted';
+  }
+  async function renameScores(owner, tag) {
+    const d = await wix('/wix-data/v2/items/query', { body: { dataCollectionId: C.scores, query: { filter: { _owner: { $eq: owner } }, paging: { limit: 50 } } } });
+    for (const it of (d && d.dataItems) || []) if (it.data.tag !== tag) await wix('/wix-data/v2/items/' + encodeURIComponent(it.id), { method: 'PUT', body: { dataCollectionId: C.scores, dataItem: { id: it.id, data: Object.assign({}, it.data, { tag: tag }) } } });
+  }
+
+  return {
+    CFG: C, ls: ls, AcctError: AcctError, setHttp: setHttp, wix: wix, accessToken: accessToken,
+    login: login, register: register, verifyEmail: verifyEmail, signOut: signOut, isMember: isMember, sendReset: sendReset,
+    changePassword: changePassword, deleteMe: deleteMe, set onSignedOut(fn) { onSignedOut = fn; },
+    newKeys: newKeys, unlockKey: unlockKey, relock: relock, encryptSave: encryptSave, decryptSave: decryptSave,
+    myRecord: myRecord, writeRecord: writeRecord, newTag: newTag,
+    board: board, postScore: postScore, renameScores: renameScores
+  };
+})();
+
 (function () {
 'use strict';
 
@@ -5184,7 +5625,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.70';
+const ZC_VERSION = '1.9.80';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -5436,6 +5877,7 @@ window.zcBack = function () {
   if (!$('codex').hidden) { closeCodex(); return true; }
   if (!$('lb').hidden) { closeLB(); return true; }
   if (!$('coop').hidden) { closeCoop(); return true; }
+  if (!$('acct').hidden) { closeAcct(); return true; }
   if (G.mode === 'play') { pauseGame(); return true; }
   if (G.mode === 'pause') { resumeGame(); return true; }
   if (G.mode === 'over') { toTitle(); return true; }
@@ -6251,11 +6693,18 @@ function die() {
   $('ovKills').textContent = G.kills; $('ovFound').textContent = G.runFound.length; $('ovChain').textContent = 'x' + G.bestChain;
   $('ovWeapon').textContent = p.weapon.name; $('ovWeapon').style.color = WRAR[p.weapon.rarity].color;
   $('callsign').value = entry.tag; $('postBtn').disabled = false; $('postBtn').textContent = 'Post score';
-  $('postStatus').textContent = LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
+  $('postStatus').textContent = LB.src === 'wix' ? (ACCT.status === 'in' ? 'Saved on this device and to your account. Post it to the global board.' : 'Saved on this device. Log in to your free DeclAIre account (main menu) to post it to the global board.') : LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
   setTimeout(() => { if (G.mode === 'over') showOv('over'); }, 700);
 }
 function getTag() { const t = store.get('zc_tag', ''); return t || 'SURVIVOR'; }
-function cleanTag(s) { s = String(s || '').toUpperCase().replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14); return s || 'SURVIVOR'; }
+// a callsign as the game shows it: capitals, digits and a few marks, 14 at most, and never anything the name filter catches
+const TAG_OK = new Map();
+function cleanTag(s) {
+  s = String(s || '').toUpperCase().replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14);
+  if (!s) return 'SURVIVOR';
+  let ok = TAG_OK.get(s); if (ok === undefined) { ok = ZCF.safe(s) === s; if (TAG_OK.size > 500) TAG_OK.clear(); TAG_OK.set(s, ok); }
+  return ok ? s : 'SURVIVOR';
+}
 function refreshTitle() {
   if ($('bossCount')) $('bossCount').textContent = bossSeen.size + '/' + ZB.ROSTER.length;
   $('seasonName').textContent = SEASON_NAME; $('seasonLeft').textContent = seasonLeft();
@@ -6275,22 +6724,42 @@ $('menuBtn').addEventListener('click', toTitle);
 
 /* ================= leaderboard ================= */
 function saveLocal(e) { const k = 'zc_lb_' + SEASON, a = store.get(k, []); a.push(e); a.sort((x, y) => y.score - x.score); store.set(k, a.slice(0, 25)); }
-const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: 'global', dev: 'all' };
+const LB = { db: null, uid: null, rows: [], status: 'loading', ro: false, tab: 'global', dev: 'all', src: null, at: 0 };
+// Two boards: inside Claude the page has its own shared board; everywhere else (the website, the Android app, the
+// Windows launcher) it is the DeclAIre board, which anyone can read and players with an account post to.
 (async function initDb() {
   try {
-    if (!window.claude || typeof window.claude.use !== 'function') { LB.status = 'off'; renderLB(); return; }
-    const db = await window.claude.use('db');
-    if (!db) { LB.status = 'off'; renderLB(); return; }
-    const user = await window.claude.use('user');
-    LB.uid = user ? await user.id() : null;
-    LB.db = db; LB.status = 'live';
-    db.collection('scores').where('season', '==', SEASON).orderBy('score', 'desc').limit(50).onSnapshot(s => {
-      LB.rows = s.docs.map(d => Object.assign({ id: d.id }, d.data())); renderLB(); if (G.mode === 'title') renderTitlePanel();
-    }, () => { LB.status = 'error'; renderLB(); });
-    renderLB(); adoptOnlineName();
-  } catch (e) { LB.status = 'off'; renderLB(); }
+    if (window.claude && typeof window.claude.use === 'function') {
+      const db = await window.claude.use('db');
+      if (db) {
+        const user = await window.claude.use('user');
+        LB.src = 'claude'; LB.uid = user ? await user.id() : null;
+        LB.db = db; LB.status = 'live';
+        db.collection('scores').where('season', '==', SEASON).orderBy('score', 'desc').limit(50).onSnapshot(s => {
+          LB.rows = s.docs.map(d => Object.assign({ id: d.id }, d.data())); renderLB(); if (G.mode === 'title') renderTitlePanel();
+        }, () => { LB.status = 'error'; renderLB(); });
+        renderLB(); adoptOnlineName(); return;
+      }
+    }
+  } catch (e) { /* use the DeclAIre board */ }
+  LB.src = 'wix'; setTimeout(() => lbRefresh(true), 0);   // after the whole game has loaded (the apps plug in their network first)
 })();
+// the DeclAIre board, fetched when someone looks at it (at most every 30 seconds)
+async function lbRefresh(force) {
+  if (LB.src !== 'wix' || (!force && Date.now() - LB.at < 30000)) return;
+  LB.at = Date.now();
+  if (LB.status !== 'live') { LB.status = 'loading'; renderLB(); }
+  try { LB.rows = await AcctCore.board(SEASON, 50); LB.status = 'live'; }
+  catch (e) { if (LB.status !== 'live') LB.status = 'error'; }
+  LB.uid = ACCT.member ? ACCT.member.id : null;
+  renderLB(); if (G.mode === 'title') renderTitlePanel();
+}
 async function postGlobal(entry) {
+  if (LB.src === 'wix') {
+    if (ACCT.status !== 'in') return 'needacct';
+    try { const r = await AcctCore.postScore(SEASON, ACCT.member.id, Object.assign({}, entry, { tag: cleanTag(ACCT.member.username) })); lbRefresh(true); return r; }
+    catch (e) { return 'failed'; }
+  }
   if (!LB.db || !LB.uid) return 'local';
   if (LB.ro) return 'readonly';
   try {
@@ -6303,7 +6772,9 @@ async function postGlobal(entry) {
 $('postForm').addEventListener('submit', async e => {
   e.preventDefault();
   const entry = G.lastEntry; if (!entry) return;
-  const tag = cleanTag($('callsign').value); $('callsign').value = tag; store.set('zc_tag', tag); updNameUi();
+  const raw = $('callsign').value, chk = ZCF.check(raw);
+  if (!chk.ok) { $('postStatus').textContent = chk.msg; $('callsign').focus(); return; }
+  const tag = cleanTag(raw); $('callsign').value = tag; store.set('zc_tag', tag); updNameUi(); acctRename(tag);
   entry.tag = tag;
   const k = 'zc_lb_' + SEASON, a = store.get(k, []), mine = a.find(x => x.at === entry.at); if (mine) { mine.tag = tag; store.set(k, a); }
   $('postBtn').disabled = true; $('postBtn').textContent = 'Posting';
@@ -6312,13 +6783,14 @@ $('postForm').addEventListener('submit', async e => {
     posted: 'Posted to the global board for ' + SEASON_NAME + '.',
     kept: 'Saved. Your best on the global board this season is higher, so it stays.',
     local: PLATFORM !== 'web' ? 'Saved on this device.' : 'Saved on this device. The global board is not available on this page.',
+    needacct: 'Saved on this device. Log in to your free DeclAIre account (main menu) to post to the global board.',
     readonly: 'Saved on this device. You can view the global board but not post to it.',
     failed: 'Could not reach the global board. Your score is saved on this device.'
   }[res];
   $('postStatus').textContent = msg;
   $('postBtn').textContent = res === 'posted' || res === 'kept' ? 'Posted' : 'Saved';
 });
-function openLB() { $('lb').hidden = false; LB.tab = LB.status === 'live' ? LB.tab : 'local'; renderLB(); }
+function openLB() { $('lb').hidden = false; LB.tab = LB.status === 'live' || LB.src === 'wix' ? LB.tab : 'local'; renderLB(); lbRefresh(); }
 function closeLB() { $('lb').hidden = true; }
 $('lbBtn').addEventListener('click', openLB); $('overLbBtn').addEventListener('click', openLB); $('lbClose').addEventListener('click', closeLB);
 $('tabGlobal').addEventListener('click', () => { LB.tab = 'global'; renderLB(); });
@@ -6333,12 +6805,12 @@ function renderLB() {
   const list = $('lbList'); list.textContent = '';
   let rows, note = '';
   if (LB.tab === 'global') {
-    if (LB.status === 'live') { rows = LB.rows; note = 'One entry per player: your best run this season.'; }
-    else { rows = []; note = LB.status === 'loading' ? 'Connecting to the global board.' : PLATFORM !== 'web' ? 'The app keeps scores on this device (the global board is on the web version). Your runs are on the This device tab.' : 'The global board is not available on this page. Your runs are on the This device tab.'; }
+    if (LB.status === 'live') { rows = LB.rows; note = 'One entry per player: your best run this season.' + (LB.src === 'wix' && ACCT.status !== 'in' ? ' Log in to your free DeclAIre account to post yours.' : ''); }
+    else { rows = []; note = LB.status === 'loading' ? 'Connecting to the global board.' : LB.src === 'wix' ? 'Could not reach the global board. Check your internet connection. Your runs are on the This device tab.' : 'The global board is not available on this page. Your runs are on the This device tab.'; }
   } else { rows = store.get('zc_lb_' + SEASON, []); note = 'Runs played in this browser this season.'; }
   if (!rows.length || (LB.dev !== 'all' && !rows.some(r => r.dev === LB.dev))) {
     const li = document.createElement('li'); li.className = 'empty';
-    li.textContent = LB.tab === 'global' && LB.status !== 'live' ? 'No global board here.' : LB.dev !== 'all' && rows.length ? 'No ' + DEV_SHORT[LB.dev].toLowerCase() + ' scores yet this season.' : 'No scores yet this season. Be the first.';
+    li.textContent = LB.tab === 'global' && LB.status !== 'live' ? (LB.status === 'loading' ? 'Loading the board.' : 'No connection to the global board.') : LB.dev !== 'all' && rows.length ? 'No ' + DEV_SHORT[LB.dev].toLowerCase() + ' scores yet this season.' : 'No scores yet this season. Be the first.';
     list.appendChild(li);
   }
   if (LB.dev !== 'all') rows = rows.filter(r => r.dev === LB.dev);
@@ -11820,9 +12292,9 @@ function padRumble(ms) {
 }
 
 /* ---------- menus with a controller (and arrow keys) ---------- */
-const LAYERS = ['settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'coop', 'skull', 'upgrade', 'pause', 'over', 'title'];
+const LAYERS = ['settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'coop', 'acct', 'skull', 'upgrade', 'pause', 'over', 'title'];
 const shown = e => !!e && !e.hidden && e.getClientRects().length > 0;
-function sheetOpen() { return shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')) || shown($('coop')); }
+function sheetOpen() { return shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')) || shown($('coop')) || shown($('acct')); }
 function menuOpen() { if (typeof INTRO !== 'undefined' && INTRO.on) return false; return (G.mode !== 'play' && G.mode !== 'cine') || shown($('settings')) || shown($('radioPanel')); }
 function menuLayer() { for (const id of LAYERS) { const e = $(id); if (shown(e)) return e; } return null; }
 function focusables(L) {
@@ -12119,10 +12591,20 @@ function updDevUi() {
    leaderboard with your scores, together with what you played on (phone, PC or controller). The global board on
    the web page is one board for every device. */
 function hasName() { return !!store.get('zc_tag', ''); }
+// returns the saved name, or null when the name filter turned it down (the reason shows under the name box)
 function setName(v) {
+  const chk = ZCF.check(v);
+  if (!chk.ok) { nameErr(chk.msg); return null; }
+  nameErr('');
   const t = cleanTag(v); store.set('zc_tag', t);
-  updNameUi(); syncNameOnline(t);
+  updNameUi(); syncNameOnline(t); acctRename(t);
   return t;
+}
+let nameErrTimer = 0, nameRejected = '';
+function nameErr(msg) {
+  const e = $('nameErr'); if (!e) return;
+  e.textContent = msg; e.hidden = !msg; clearTimeout(nameErrTimer);
+  if (msg) { e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop'); nameErrTimer = setTimeout(() => { e.hidden = true; }, 7000); }
 }
 // the leaderboard keeps one entry per player; a new name renames it there too
 async function syncNameOnline(tag) {
@@ -12148,12 +12630,19 @@ $('nameForm').addEventListener('submit', e => {
   e.preventDefault();
   const inp = $('nameInput'), raw = inp.value.trim();
   if (!raw) { inp.focus(); return; }
-  const t = setName(raw); inp.value = t; inp.blur();
+  const t = setName(raw);
+  if (!t) { nameRejected = raw; inp.value = hasName() ? getTag() : ''; inp.focus(); return; }
+  inp.value = t; inp.blur();
   const b = $('nameSave'); b.textContent = 'Saved'; b.classList.add('ok'); SFX.click();
   setTimeout(() => { b.textContent = 'Save'; b.classList.remove('ok'); }, 1400);
 });
 $('nameInput').addEventListener('input', e => { const v = e.target.value.toUpperCase().replace(/[^A-Z0-9 _.\-]/g, ''); if (v !== e.target.value) e.target.value = v; });
-$('nameInput').addEventListener('blur', () => { const v = $('nameInput').value.trim(); if (v && cleanTag(v) !== getTag()) setName(v); else if (!v) updNameUi(); });
+$('nameInput').addEventListener('blur', () => {
+  const v = $('nameInput').value.trim();
+  if (v && v === nameRejected) return;
+  if (v && cleanTag(v) !== getTag()) { if (!setName(v)) { nameRejected = v; $('nameInput').value = hasName() ? getTag() : ''; } }
+  else if (!v) updNameUi();
+});
 
 /* ---------- your record across runs ---------- */
 const STATS = Object.assign({ runs: 0, kills: 0, time: 0, bestWave: 0, bestChain: 0, bestScore: 0, sid: 0 }, store.get('zc_stats', {}) || {});
@@ -12163,6 +12652,7 @@ function recordRun() {
   STATS.runs++; STATS.kills += G.kills || 0; STATS.time += Math.floor(G.time || 0);
   STATS.bestWave = Math.max(STATS.bestWave, G.wave || 0); STATS.bestChain = Math.max(STATS.bestChain, G.bestChain || 0); STATS.bestScore = Math.max(STATS.bestScore, G.score || 0);
   store.set('zc_stats', STATS);
+  acctSoon(2500);
 }
 function fmtTime(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? h + 'h ' + String(m).padStart(2, '0') + 'm' : m + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
 function fmtK(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n); }
@@ -12198,11 +12688,14 @@ function renderTitlePanel() {
   if (!P.dataset.once && G.mode === 'title' && $('intro').hidden) { P.dataset.once = '1'; P.classList.add('fresh'); setTimeout(() => P.classList.remove('fresh'), 1200); }   // the cards rise in once, not on every update
   const card = (cls, title, sub) => { const c = el('section', 'tp-card ' + cls), h = el('div', 'tp-head'); h.append(el('span', null, title)); if (sub) h.append(el('em', null, sub)); c.append(h); P.append(c); return c; };
   // survivor file
-  const f = card('tp-file', 'Survivor file', 'No. ' + String(STATS.sid).padStart(4, '0'));
+  const signed = ACCT.status === 'in', T = acctTotals();
+  const f = card('tp-file', 'Survivor file', signed && ACCT.member.tag ? '#' + ACCT.member.tag : 'No. ' + String(STATS.sid).padStart(4, '0'));
   const id = el('div', 'tp-id'); const nm = el('b', 'tp-name' + (hasName() ? '' : ' none'), hasName() ? getTag() : 'No name yet'); id.append(nm, devIcon(DEV.kind)); f.append(id);
   f.append(el('p', 'tp-dev', devLine()));
+  const ac = el('button', 'tp-acct' + (signed ? ' on' : ACCT.status === 'locked' ? ' warn' : ''), signed ? 'Cloud save on' + (T.devices > 1 ? ' · ' + T.devices + ' devices' : '') : ACCT.status === 'locked' ? 'Cloud save locked: tap to unlock' : 'Log in to save your progress to the cloud');
+  ac.type = 'button'; ac.addEventListener('click', () => { SFX.click(); openAcct(); }); f.append(ac);
   const dl = el('dl', 'tp-stats');
-  [['Runs', fmtK(STATS.runs)], ['Best wave', STATS.bestWave || '—'], ['Kills', fmtK(STATS.kills)], ['Time alive', STATS.time ? fmtTime(STATS.time) : '—'], ['Best chain', STATS.bestChain ? 'x' + STATS.bestChain : '—'], ['Best score', STATS.bestScore ? STATS.bestScore.toLocaleString() : '—']]
+  [['Runs', fmtK(T.runs)], ['Best wave', STATS.bestWave || '—'], ['Kills', fmtK(T.kills)], ['Time alive', T.time ? fmtTime(T.time) : '—'], ['Best chain', STATS.bestChain ? 'x' + STATS.bestChain : '—'], ['Best score', STATS.bestScore ? STATS.bestScore.toLocaleString() : '—']]
     .forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, String(v))); dl.append(d); });
   f.append(dl);
   // controls for the device in use
@@ -12217,11 +12710,11 @@ function renderTitlePanel() {
   const ol = el('ol', 'tp-rows');
   if (!rows.length) ol.append(el('li', 'tp-empty', 'No scores yet this season. Be the first.'));
   rows.forEach((r, i) => { const li = el('li', live && r.id === LB.uid ? 'me' : ''); li.append(el('span', 'rk', '#' + (i + 1)), el('span', 'tg', cleanTag(r.tag)), el('span', 'sc', Number(r.score || 0).toLocaleString())); if (r.dev) li.append(devIcon(r.dev)); ol.append(li); });
-  bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : PLATFORM === 'web' ? 'The global board is not available on this page.' : 'The global board is on the web version. Scores here stay on this device.'));
+  bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : LB.status === 'loading' ? 'Connecting to the global board.' : LB.src === 'wix' ? 'No connection to the global board right now.' : 'The global board is not available on this page.'));
   // what's new
-  const n = card('tp-new', 'New in 1.9.60');
+  const n = card('tp-new', 'New in 1.9.80');
   const nl = el('ul');
-  ['Play with a mouse and keyboard or a controller, and aim yourself', 'Change every key and button in Settings', 'Your name at the top left and on the board', 'A Windows app for PC'].forEach(t => nl.append(el('li', null, t)));
+  ['DeclAIre accounts: your progress saved to the cloud, on every device', 'One global board for the website, Android and Windows', 'A name filter that keeps the board clean (and has opinions)', 'Wi-Fi co-op for 2 to 4 players'].forEach(t => nl.append(el('li', null, t)));
   n.append(nl);
 }
 
@@ -12229,6 +12722,346 @@ function renderTitlePanel() {
 if (window.ZCDesktop) { const q = $('quitApp'); q.hidden = false; q.addEventListener('click', () => { SFX.click(); window.ZCDesktop.quit(); }); }
 // the launcher (news and updates) is one click away from the main menu
 if (window.ZCDesktop && window.ZCDesktop.launcher) { const b = $('toLauncher'); b.hidden = false; b.addEventListener('click', () => { SFX.click(); if (NET.role) netLeave(); window.ZCDesktop.launcher(); }); }
+
+/* ================= your DeclAIre account in the game =================
+   Log in (or create a free account) from the main menu and your progress follows you: weapons, dashes, specimens,
+   bosses, your best runs and your record, merged across every phone and PC you play on. It saves on its own after
+   every run and whenever the game goes to the background. Your name on the global board is your account name.
+   The talking to Wix and the encryption are in acct-core.js; this file is the screen and the merging. */
+const ACCT = { member: AcctCore.ls.get('member', null), dk: AcctCore.ls.get('dk', null), status: 'out', busy: false, lastSync: AcctCore.ls.get('synced', 0), msg: null, view: 'login', pending: null, rec: null, others: null };
+ACCT.status = ACCT.member && ACCT.dk && AcctCore.isMember() ? 'in' : 'out';
+if (ACCT.status === 'out' && ACCT.member) { ACCT.member = null; AcctCore.ls.set('member', null); }
+const ACCT_PAGE = ACCT_CFG.site + '/';
+let DEVID = store.get('zc_devid', ''); if (!DEVID) { DEVID = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join(''); store.set('zc_devid', DEVID); }
+
+/* ---------- reaching the network from the apps ---------- */
+// The Windows launcher and the Android app make the account calls themselves (a page there can't call Wix directly).
+if (window.ZCDesktop && window.ZCDesktop.http) AcctCore.setHttp(async (m, u, h, b) => {
+  const r = await window.ZCDesktop.http({ method: m, url: u, headers: h, body: b });
+  if (!r || (!r.status && r.error)) throw new AcctCore.AcctError(r && r.error === 'blocked' ? 'That address is not allowed.' : 'No connection. Check your internet and try again.', 0);
+  return r;
+});
+else if (window.ZCNative && typeof window.ZCNative.httpStart === 'function') {
+  AcctCore.setHttp((m, u, h, b) => new Promise((resolve, reject) => {
+    const id = window.ZCNative.httpStart(m, u, JSON.stringify(h || {}), b == null ? '' : String(b));
+    if (id < 0) { reject(new AcctCore.AcctError('That address is not allowed.')); return; }
+    const t0 = Date.now();
+    const poll = () => {
+      const r = window.ZCNative.httpPoll(id);
+      if (r) { const o = JSON.parse(r); if (o.error) reject(new AcctCore.AcctError('No connection. Check your internet and try again.', 0)); else resolve({ status: o.status, text: o.text }); return; }
+      if (Date.now() - t0 > 40000) { reject(new AcctCore.AcctError('The connection timed out.', 0)); return; }
+      setTimeout(poll, 60);
+    };
+    setTimeout(poll, 30);
+  }));
+}
+function openWeb(url) {
+  if (window.ZCDesktop && window.ZCDesktop.open) window.ZCDesktop.open(url);
+  else if (window.ZCNative && window.ZCNative.openUrl) window.ZCNative.openUrl(url);
+  else window.open(url, '_blank', 'noopener');
+}
+AcctCore.onSignedOut = why => { ACCT.member = null; ACCT.dk = null; ACCT.status = 'out'; AcctCore.ls.set('dk', null); if (why === 'expired') ACCT.msg = { t: 'Your sign-in expired. Log in again to keep saving to the cloud.', bad: true }; renderAcct(); updAcctUi(); };
+
+/* ---------- your progress as one save ---------- */
+function acctSnapshot() {
+  return {
+    v: 1, found: Array.from(found), guns: Array.from(guns), dashes: Array.from(dashes), bosses: Array.from(bossSeen), bossk: Array.from(bossKilled),
+    overlord: store.get('zc_overlord', 0) | 0, keeper: store.get('zc_keeper', 0) | 0, loadout: store.get('zc_loadout', 0), dash: store.get('zc_dash', 'sprint'),
+    best: { wave: STATS.bestWave | 0, chain: STATS.bestChain | 0, score: STATS.bestScore | 0 },
+    devices: { [DEVID]: { runs: STATS.runs | 0, kills: STATS.kills | 0, time: STATS.time | 0, plat: PLATFORM, at: Date.now() } },
+    lb: { [SEASON]: store.get('zc_lb_' + SEASON, []) }
+  };
+}
+// cloud + this device → one save: everything unlocked anywhere stays unlocked, bests are the best, each device keeps its own totals
+function acctMerge(cloud, local) {
+  cloud = cloud || {};
+  const u = (a, b) => Array.from(new Set([].concat(a || [], b || [])));
+  const lb = {};
+  for (const src of [cloud.lb || {}, local.lb || {}]) for (const k of Object.keys(src)) { lb[k] = (lb[k] || []).concat(src[k] || []); }
+  const keep = Object.keys(lb).sort().slice(-2), lbOut = {};
+  for (const k of keep) { const seen = new Set(); lbOut[k] = lb[k].filter(e => e && !seen.has(e.at + ':' + e.score) && seen.add(e.at + ':' + e.score)).sort((a, b) => b.score - a.score).slice(0, 25); }
+  const cb = cloud.best || {}, lbst = local.best || {};
+  return {
+    v: 1, found: u(cloud.found, local.found), guns: u(cloud.guns, local.guns), dashes: u(cloud.dashes, local.dashes), bosses: u(cloud.bosses, local.bosses), bossk: u(cloud.bossk, local.bossk),
+    overlord: Math.max(cloud.overlord | 0, local.overlord | 0), keeper: Math.max(cloud.keeper | 0, local.keeper | 0),
+    loadout: local.loadout != null ? local.loadout : cloud.loadout, dash: local.dash || cloud.dash,
+    best: { wave: Math.max(cb.wave | 0, lbst.wave | 0), chain: Math.max(cb.chain | 0, lbst.chain | 0), score: Math.max(cb.score | 0, lbst.score | 0) },
+    devices: Object.assign({}, cloud.devices || {}, local.devices || {}), lb: lbOut
+  };
+}
+// put a merged save into the game (only ever adds)
+function acctApply(s) {
+  let changed = false;
+  const add = (set, arr, save) => { let n = 0; for (const x of arr || []) if (!set.has(x)) { set.add(x); n++; } if (n) { save(); changed = true; } };
+  add(found, s.found, saveFound); add(guns, s.guns, saveGuns); add(dashes, s.dashes, saveDashes);
+  add(bossSeen, s.bosses, saveBosses); add(bossKilled, s.bossk, saveBosses);
+  if ((s.overlord | 0) > (store.get('zc_overlord', 0) | 0)) { store.set('zc_overlord', s.overlord | 0); changed = true; }
+  if ((s.keeper | 0) > (store.get('zc_keeper', 0) | 0)) store.set('zc_keeper', s.keeper | 0);
+  const b = s.best || {};
+  if (b.wave > STATS.bestWave || b.chain > STATS.bestChain || b.score > STATS.bestScore) {
+    STATS.bestWave = Math.max(STATS.bestWave, b.wave | 0); STATS.bestChain = Math.max(STATS.bestChain, b.chain | 0); STATS.bestScore = Math.max(STATS.bestScore, b.score | 0);
+    store.set('zc_stats', STATS); changed = true;
+  }
+  const cur = (s.lb || {})[SEASON];
+  if (cur && cur.length) { const k = 'zc_lb_' + SEASON, had = store.get(k, []); if (cur.length !== had.length || (cur[0] && had[0] && cur[0].score !== had[0].score) || (cur[0] && !had[0])) { store.set(k, cur); changed = true; } }
+  ACCT.others = Object.entries(s.devices || {}).filter(([id]) => id !== DEVID).map(([, d]) => d);
+  return changed;
+}
+// runs, kills and time played across every device on the account (this device counted live)
+function acctTotals() {
+  const t = { runs: STATS.runs | 0, kills: STATS.kills | 0, time: STATS.time | 0, devices: 1 };
+  if (ACCT.status === 'in' && ACCT.others) for (const d of ACCT.others) { t.runs += d.runs | 0; t.kills += d.kills | 0; t.time += d.time | 0; t.devices++; }
+  return t;
+}
+function acctSummary(s) {
+  const t = acctTotals();
+  return { bestWave: s.best.wave, bestScore: s.best.score, bestChain: s.best.chain, runs: t.runs, kills: t.kills, time: t.time, devices: t.devices,
+    weapons: s.guns.length, dashes: s.dashes.length, specimens: s.found.length, bosses: s.bosses.length, version: ZC_VERSION, plat: PLATFORM };
+}
+
+/* ---------- saving to the cloud ---------- */
+let acctSyncing = null, acctSyncTimer = 0;
+function acctSoon(ms) { if (ACCT.status !== 'in') return; clearTimeout(acctSyncTimer); acctSyncTimer = setTimeout(() => acctSync('auto'), ms || 3000); }
+async function acctSync(why) {
+  if (ACCT.status !== 'in' || !ACCT.member || !ACCT.dk) return false;
+  if (acctSyncing) return acctSyncing;
+  acctSyncing = (async () => {
+    try {
+      const rec = await AcctCore.myRecord();
+      const cloud = rec ? await AcctCore.decryptSave(ACCT.dk, rec.data.save, ACCT.member.id) : null;
+      if (cloud === undefined) { ACCT.status = 'locked'; ACCT.rec = rec; renderAcct(); updAcctUi(); return false; }
+      const merged = acctMerge(cloud, acctSnapshot());
+      const changed = acctApply(merged);
+      const blob = await AcctCore.encryptSave(ACCT.dk, merged, ACCT.member.id);
+      ACCT.rec = await AcctCore.writeRecord(rec, { save: blob, saveVer: ((rec && rec.data.saveVer) | 0) + 1, summary: JSON.stringify(acctSummary(merged)), updatedAt: Date.now() });
+      ACCT.lastSync = Date.now(); AcctCore.ls.set('synced', ACCT.lastSync);
+      if (ACCT.msg && ACCT.msg.sync) ACCT.msg = null;
+      if (changed && G.mode === 'title') refreshTitle();
+      return true;
+    } catch (e) {
+      if (why !== 'auto' || !ACCT.msg) ACCT.msg = { t: e.status === 0 || !e.status ? 'Could not reach the cloud save. Your progress is safe on this device and saves next time.' : 'Cloud save failed: ' + e.message, bad: true, sync: true };
+      return false;
+    } finally { acctSyncing = null; if (ACCT.status === 'in' || ACCT.status === 'locked') renderAcct(); else acctMsgShow(); updAcctUi(); }
+  })();
+  return acctSyncing;
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && ACCT.status === 'in') acctSync('auto'); });
+
+/* ---------- signing in ---------- */
+const AUTH_TEXT = {
+  password: 'Wrong email or password.', notfound: 'Wrong email or password.', unknown: 'Wrong email or password.',
+  exists: 'There is already an account with that email. Log in instead.', invalid: 'That email or password was not accepted. Passwords need at least 6 characters.',
+  reset: 'This account needs a new password. Use "Forgot password" to set one.', network: 'Could not reach DeclAIre accounts. Check your internet and try again.',
+  captcha: 'One quick robot check is needed, and it only works on the website.'
+};
+let acctFails = 0, acctWait = 0;
+async function acctAfterAuth(email, password, wantName) {
+  let rec = await AcctCore.myRecord(), dk;
+  if (!rec) {
+    const keys = await AcctCore.newKeys(password);
+    dk = keys.dataKey;
+    const name = cleanTag(wantName || (hasName() ? getTag() : 'SURVIVOR'));
+    rec = await AcctCore.writeRecord(null, { username: name, tag: AcctCore.newTag(), kdfSalt: keys.kdfSalt, kdfIter: keys.kdfIter, wrappedKey: keys.wrappedKey, save: '', saveVer: 0, summary: '{}', updatedAt: Date.now() });
+  } else {
+    dk = await AcctCore.unlockKey(password, rec.data);
+  }
+  ACCT.member = { id: rec.data._owner, email: email, username: rec.data.username || 'SURVIVOR', tag: rec.data.tag || '' };
+  AcctCore.ls.set('member', ACCT.member);
+  ACCT.rec = rec;
+  if (!dk) { ACCT.status = 'locked'; ACCT.dk = null; ACCT.pwNow = password; renderAcct(); updAcctUi(); return; }
+  ACCT.dk = dk; AcctCore.ls.set('dk', dk); ACCT.status = 'in';
+  store.set('zc_tag', cleanTag(ACCT.member.username)); nameErr(''); updNameUi();
+  ACCT.msg = { t: 'Welcome, ' + ACCT.member.username + '. Your progress is saving to the cloud.' };
+  await acctSync('login');
+  lbRefresh(true);
+}
+async function acctLogin(email, password) {
+  if (Date.now() < acctWait) { acctSay('Too many tries. Wait ' + Math.ceil((acctWait - Date.now()) / 1000) + ' seconds.', true); return; }
+  const r = await AcctCore.login(email, password);
+  if (r.state === 'ok') { acctFails = 0; await acctAfterAuth(email, password); return; }
+  if (r.state === 'verify') { ACCT.pending = { stateToken: r.stateToken, email: email, password: password }; ACCT.view = 'verify'; acctSay('We emailed you a code. Type it below to finish logging in.'); return; }
+  if (r.state === 'pending') { acctSay('Your account is waiting for approval. Try again later.', true); return; }
+  if (++acctFails >= 5) { acctWait = Date.now() + 30000; acctFails = 0; }
+  if (r.reason === 'captcha') { ACCT.view = 'captcha'; ACCT.pending = { email: email, mode: 'login' }; renderAcct(); return; }
+  acctSay(AUTH_TEXT[r.reason] || r.message || 'Could not log in.', true);
+}
+async function acctRegister(name, email, password) {
+  const r = await AcctCore.register(email, password, name);
+  if (r.state === 'ok') { await acctAfterAuth(email, password, name); return; }
+  if (r.state === 'verify') { ACCT.pending = { stateToken: r.stateToken, email: email, password: password, name: name }; ACCT.view = 'verify'; acctSay('We emailed you a code. Type it below to finish.'); return; }
+  if (r.state === 'pending') { acctSay('Your account was created and is waiting for approval.', true); return; }
+  if (r.reason === 'captcha') { ACCT.view = 'captcha'; ACCT.pending = { email: email, name: name, mode: 'signup' }; renderAcct(); return; }
+  acctSay(AUTH_TEXT[r.reason] || r.message || 'Could not create the account.', true);
+}
+async function acctVerify(code) {
+  const p = ACCT.pending; if (!p) return;
+  const r = await AcctCore.verifyEmail(code, p.stateToken);
+  if (r.state === 'ok') { ACCT.pending = null; ACCT.view = 'login'; await acctAfterAuth(p.email, p.password, p.name); return; }
+  acctSay(r.state === 'fail' ? 'That code did not work. Check the email and try again.' : 'Could not finish. Try logging in again.', true);
+}
+// Unlock with the password the save was locked with. If that was an old password (from before a reset), the key is
+// locked again with the current one, so the other devices open it with the password they know.
+async function acctUnlock(password) {
+  const rec = await AcctCore.myRecord() || ACCT.rec;
+  const dk = rec && await AcctCore.unlockKey(password, rec.data);
+  if (!dk) { acctSay('That password does not open this save.', true); return; }
+  if (ACCT.pwNow && ACCT.pwNow !== password) ACCT.rec = await AcctCore.writeRecord(rec, Object.assign(await AcctCore.relock(ACCT.pwNow, dk), { updatedAt: Date.now() }));
+  ACCT.pwNow = null;
+  ACCT.dk = dk; AcctCore.ls.set('dk', dk); ACCT.status = 'in'; ACCT.msg = { t: 'Save unlocked.' };
+  store.set('zc_tag', cleanTag(ACCT.member.username)); updNameUi();
+  await acctSync('unlock');
+}
+// the old password is gone: start a new key, and the cloud save is rebuilt from this device's progress
+async function acctFreshKey(password) {
+  const rec = ACCT.rec || await AcctCore.myRecord();
+  const keys = await AcctCore.newKeys(password);
+  ACCT.rec = await AcctCore.writeRecord(rec, { kdfSalt: keys.kdfSalt, kdfIter: keys.kdfIter, wrappedKey: keys.wrappedKey, save: '', updatedAt: Date.now() });
+  ACCT.dk = keys.dataKey; AcctCore.ls.set('dk', keys.dataKey); ACCT.status = 'in'; ACCT.pwNow = null; ACCT.msg = { t: 'New cloud save started from this device.' };
+  await acctSync('fresh');
+}
+async function acctLogout() {
+  if (ACCT.status === 'in') await acctSync('logout');
+  AcctCore.signOut(); AcctCore.ls.set('dk', null);
+  ACCT.member = null; ACCT.dk = null; ACCT.pwNow = null; ACCT.status = 'out'; ACCT.others = null; ACCT.view = 'login';
+  ACCT.msg = { t: 'Logged out. Your progress stays on this device too.' };
+  renderAcct(); updAcctUi(); lbRefresh(true);
+}
+// a new name while logged in renames the account and its board entries too
+async function acctRename(tag) {
+  if (ACCT.status !== 'in' || !ACCT.member || ACCT.member.username === tag) return;
+  ACCT.member.username = tag; AcctCore.ls.set('member', ACCT.member);
+  try { ACCT.rec = await AcctCore.writeRecord(ACCT.rec || await AcctCore.myRecord(), { username: tag, updatedAt: Date.now() }); await AcctCore.renameScores(ACCT.member.id, tag); lbRefresh(true); }
+  catch (e) { /* renamed here; the cloud catches up on the next save */ }
+}
+
+/* ---------- the account sheet ---------- */
+// a message under the heading; the forms stay as typed
+function acctSay(t, bad) { ACCT.msg = { t: t, bad: !!bad }; acctMsgShow(); }
+function acctMsgShow() { const m = $('acctMsg'); if (!m) return; m.hidden = !ACCT.msg; if (ACCT.msg) { m.textContent = ACCT.msg.t; m.classList.toggle('bad', !!ACCT.msg.bad); } }
+const acctKey = () => ACCT.status + '|' + ACCT.view;
+function openAcct(view) { if (view) ACCT.view = view; $('acct').hidden = false; $('acct').scrollTop = 0; renderAcct(); if (ACCT.status === 'in') acctSync('open'); }
+function closeAcct() { $('acct').hidden = true; if (G.mode === 'title') refreshTitle(); }
+function field(label, type, name, auto, extra) {
+  const l = el('label', 'acct-field'); l.append(el('span', null, label));
+  const i = document.createElement('input'); i.type = type; i.name = name; i.autocomplete = auto; i.spellcheck = false; i.required = true;
+  Object.assign(i, extra || {}); l.append(i); return [l, i];
+}
+function busyRun(btn, fn) {
+  return async e => {
+    if (e) e.preventDefault();
+    if (ACCT.busy) return;
+    ACCT.busy = true; const t = btn.textContent, k0 = acctKey(); btn.disabled = true; btn.textContent = 'Working';
+    try { await fn(); } catch (err) { acctSay(err && err.message ? err.message : 'Something went wrong. Try again.', true); }
+    finally { ACCT.busy = false; btn.disabled = false; btn.textContent = t; if (acctKey() !== k0 || ACCT.status === 'in') renderAcct(); else acctMsgShow(); updAcctUi(); }
+  };
+}
+function renderAcct() {
+  const body = $('acctBody'); if (!body || $('acct').hidden) return;
+  body.textContent = '';
+  acctMsgShow();
+  const card = (title, cls) => { const c = el('section', 'coop-card acct-card' + (cls ? ' ' + cls : '')); c.append(el('h3', null, title)); body.append(c); return c; };
+  if (ACCT.status === 'in') {
+    const c = card(ACCT.member.username);
+    const id = el('p', 'acct-id'); id.append(el('b', null, ACCT.member.username), el('span', null, ACCT.member.tag ? ' #' + ACCT.member.tag : '')); c.firstChild.replaceWith(id);
+    c.append(el('p', null, ACCT.member.email));
+    const t = acctTotals();
+    const dl = el('dl', 'acct-stats');
+    [['Cloud save', ACCT.lastSync ? 'Saved ' + new Date(ACCT.lastSync).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Not yet'], ['Devices', String(t.devices)], ['Runs', fmtK(t.runs)], ['Best wave', String(STATS.bestWave || '—')]]
+      .forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, v)); dl.append(d); });
+    c.append(dl);
+    const row = el('div', 'acct-row');
+    const sync = el('button', 'btn primary', 'Save now'); sync.type = 'button'; sync.addEventListener('click', busyRun(sync, async () => { if (await acctSync('manual')) acctSay('Saved to the cloud.'); }));
+    const web = el('button', 'btn', 'Manage on the website'); web.type = 'button'; web.addEventListener('click', () => openWeb(ACCT_PAGE));
+    const out = el('button', 'btn ghost', 'Log out'); out.type = 'button'; out.addEventListener('click', busyRun(out, acctLogout));
+    row.append(sync, web, out); c.append(row);
+    c.append(el('p', 'acct-note', 'Change your name on the main menu; it changes here and on the global board. Change your password or delete your account on the website.'));
+    return;
+  }
+  if (ACCT.status === 'locked') {
+    const c = card('Unlock your save', 'warn');
+    c.append(el('p', null, ACCT.pwNow
+      ? 'Your cloud save is still locked with your old password, from before it was reset. Type the old password once to open it; it is then locked with your new one. Or start a new cloud save from the progress on this device.'
+      : 'Your cloud save was locked again on another device. Type your current account password to open it here.'));
+    const f = document.createElement('form'); f.className = 'acct-form';
+    const [l1, p1] = field(ACCT.pwNow ? 'Old password' : 'Account password', 'password', 'password', 'current-password');
+    const go = el('button', 'btn primary', 'Unlock'); go.type = 'submit';
+    f.append(l1, go); f.addEventListener('submit', busyRun(go, () => acctUnlock(p1.value))); c.append(f);
+    const f2 = document.createElement('form'); f2.className = 'acct-form';
+    const [l2, p2] = field('Your current password', 'password', 'newpw', 'current-password');
+    const fresh = el('button', 'btn danger', 'Start a new cloud save'); fresh.type = 'submit';
+    f2.append(l2, fresh); f2.addEventListener('submit', busyRun(fresh, async () => {
+      const r = await AcctCore.login(ACCT.member.email, p2.value);
+      if (r.state !== 'ok') { acctSay('That is not your current password.', true); return; }
+      await acctFreshKey(p2.value);
+    }));
+    c.append(el('p', 'acct-note', 'Starting a new cloud save replaces the old locked one. Everything on this device is kept and uploaded.'), f2);
+    const out = el('button', 'btn ghost', 'Log out'); out.type = 'button'; out.addEventListener('click', busyRun(out, acctLogout)); c.append(out);
+    return;
+  }
+  if (ACCT.view === 'verify' && ACCT.pending) {
+    const c = card('Check your email');
+    c.append(el('p', null, 'We sent a code to ' + ACCT.pending.email + '.'));
+    const f = document.createElement('form'); f.className = 'acct-form';
+    const [l, i] = field('Code', 'text', 'code', 'one-time-code', { inputMode: 'numeric', maxLength: 10 });
+    const go = el('button', 'btn primary', 'Finish'); go.type = 'submit';
+    f.append(l, go); f.addEventListener('submit', busyRun(go, () => acctVerify(i.value))); c.append(f);
+    const back = el('button', 'btn ghost', 'Back'); back.type = 'button'; back.addEventListener('click', () => { ACCT.view = 'login'; ACCT.pending = null; ACCT.msg = null; renderAcct(); }); c.append(back);
+    return;
+  }
+  if (ACCT.view === 'captcha' && ACCT.pending) {
+    const c = card(ACCT.pending.mode === 'signup' ? 'Finish on the website' : 'Log in on the website once');
+    c.append(el('p', null, ACCT.pending.mode === 'signup'
+      ? 'New accounts need a quick robot check, and the game can\'t show one. Open the account page, create your account there (it takes a minute), then come back and log in here with the same email and password.'
+      : 'Wix asked for a quick robot check before this login. Open the account page and log in there once, then come back and log in here.'));
+    const open = el('button', 'btn primary', 'Open the account page'); open.type = 'button';
+    open.addEventListener('click', () => openWeb(ACCT_PAGE + (ACCT.pending.mode === 'signup' ? '?join=1' : '') + '#email=' + encodeURIComponent(ACCT.pending.email || '') + (ACCT.pending.name ? '&name=' + encodeURIComponent(ACCT.pending.name) : '')));
+    const back = el('button', 'btn ghost', 'Back to log in'); back.type = 'button'; back.addEventListener('click', () => { ACCT.view = 'login'; ACCT.msg = null; renderAcct(); });
+    const row = el('div', 'acct-row'); row.append(open, back); c.append(row);
+    return;
+  }
+  // logged out: log in, or create an account
+  const grid = el('div', 'coop-grid'); body.append(grid);
+  const lc = el('section', 'coop-card acct-card'); lc.append(el('h3', null, 'Log in')); grid.append(lc);
+  const lf = document.createElement('form'); lf.className = 'acct-form'; lf.autocomplete = 'on';
+  const [le, ei] = field('Email', 'email', 'email', 'username'), [lp, pi] = field('Password', 'password', 'password', 'current-password');
+  const lb = el('button', 'btn primary', 'Log in'); lb.type = 'submit';
+  lf.append(le, lp, lb); lf.addEventListener('submit', busyRun(lb, () => acctLogin(ei.value.trim(), pi.value))); lc.append(lf);
+  const forgot = el('button', 'acct-link', 'Forgot password?'); forgot.type = 'button';
+  forgot.addEventListener('click', busyRun(forgot, async () => {
+    const em = ei.value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { acctSay('Type your email above first, then press Forgot password.', true); ei.focus(); return; }
+    await AcctCore.sendReset(em, ACCT_PAGE);
+    acctSay('If there is an account for ' + em + ', a link to set a new password is on its way. Check your email.');
+  }));
+  lc.append(forgot);
+  const rc = el('section', 'coop-card acct-card'); rc.append(el('h3', null, 'Create a free account')); grid.append(rc);
+  const rf = document.createElement('form'); rf.className = 'acct-form'; rf.autocomplete = 'on';
+  const [rn, ni] = field('Name on the board', 'text', 'nickname', 'nickname', { maxLength: 14, autocapitalize: 'characters', value: hasName() ? getTag() : '' });
+  const [re, ri] = field('Email', 'email', 'email', 'username'), [rp, rpi] = field('Password (6 or more characters)', 'password', 'new-password', 'new-password', { minLength: 6 });
+  const age = el('label', 'acct-check'); const ab = document.createElement('input'); ab.type = 'checkbox'; ab.required = true;
+  age.append(ab, el('span', null, 'I am 13 or older and agree to the privacy policy.'));
+  const pol = el('button', 'acct-link', 'Read the privacy policy'); pol.type = 'button'; pol.addEventListener('click', () => openWeb(ACCT_PAGE + '#privacy'));
+  const rb = el('button', 'btn primary', 'Create account'); rb.type = 'submit';
+  ni.addEventListener('input', () => { const v = ni.value.toUpperCase().replace(/[^A-Z0-9 _.\-]/g, ''); if (v !== ni.value) ni.value = v; });
+  rf.append(rn, re, rp, age, rb); rc.append(rf, pol);
+  rf.addEventListener('submit', busyRun(rb, async () => {
+    const name = cleanTag(ni.value);
+    const chk = ZCF.check(ni.value);
+    if (!chk.ok) { acctSay(chk.msg, true); ni.focus(); return; }
+    if (ni.value.trim().length < 3) { acctSay('Pick a name with at least 3 characters.', true); return; }
+    if (rpi.value.length < 6) { acctSay('Passwords need at least 6 characters.', true); return; }
+    await acctRegister(name, ri.value.trim(), rpi.value);
+  }));
+}
+function updAcctUi() {
+  const em = $('acctBtnEm'); if (em) em.textContent = ACCT.status === 'in' ? ACCT.member.username : ACCT.status === 'locked' ? 'Locked' : 'Log in';
+  const b = $('acctBtn'); if (b) b.classList.toggle('acct-on', ACCT.status === 'in');
+  if (G.mode === 'title') renderTitlePanel();
+}
+$('acctBtn').addEventListener('click', () => { SFX.click(); openAcct(); });
+$('acctClose').addEventListener('click', closeAcct);
+updAcctUi();
+// signed in from before: check in with the cloud shortly after the game starts
+if (ACCT.status === 'in') setTimeout(() => acctSync('start'), 6000);
 
 /* ================= Wi-Fi co-op: up to 4 players on the same network =================
    One PC hosts (the Windows app runs a small relay server, desktop/lan.js). The host's game runs the zombies, waves,
@@ -12594,8 +13427,8 @@ function netSnapshot() {
 /* ---------- a teammate's game (client) ---------- */
 function netClientRecv(m) {
   switch (m.t) {
-    case 'hello': NET.me = m.id; NET.slot = m.slot; NET.hostName = m.host; NET.status = 'lobby'; $('app').classList.add('coop'); renderCoop(); break;
-    case 'lobby': NET.lobby = m.pl || []; renderCoop(); break;
+    case 'hello': NET.me = m.id; NET.slot = m.slot; NET.hostName = cleanTag(m.host); NET.status = 'lobby'; $('app').classList.add('coop'); renderCoop(); break;
+    case 'lobby': NET.lobby = (m.pl || []).map(p => Object.assign({}, p, { name: cleanTag(p.name) })); renderCoop(); break;
     case 'kick': NET.err = m.why || 'The host closed the door.'; netLeave(); break;
     case 'end': netEnd('The host ended the game.'); break;
     case 'start': netClientStart(m); break;
@@ -12607,7 +13440,7 @@ function netClientRecv(m) {
   }
 }
 function netClientStart(m) {
-  NET.started = true; NET.hostName = m.host || NET.hostName; NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
+  NET.started = true; NET.hostName = m.host ? cleanTag(m.host) : NET.hostName; NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
   $('coop').hidden = true;
   newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season }, wave: m.wave, at: { x: m.x, y: m.y } });
   WX.kind = m.wx || WX.kind; WX.t = 999;
@@ -12890,7 +13723,7 @@ function netScan() {
     if (window.ZCNative && window.ZCNative.lanScan) for (const f of JSON.parse(window.ZCNative.lanScan() || '[]')) {
       try {
         const m = typeof f.b === 'string' ? JSON.parse(f.b) : f; if (!m || m.zc !== 'lan' || !/^[\d.]{7,15}$/.test(f.ip)) continue;
-        list.push({ ip: f.ip, port: (m.port | 0) || NET_PORT, name: String(m.name || '').slice(0, 20), n: m.n | 0, max: m.max | 0, run: !!m.run });
+        list.push({ ip: f.ip, port: (m.port | 0) || NET_PORT, name: ZCF.safe(String(m.name || '').slice(0, 20), 'Zombie City'), n: m.n | 0, max: m.max | 0, run: !!m.run });
       } catch (e) { }
     }
   } catch (e) { list = []; }

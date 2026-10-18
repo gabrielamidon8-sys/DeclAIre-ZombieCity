@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeclAIre Studios Account</title>
+<meta name="description" content="Your free DeclAIre Studios account: cloud saves for Zombie City on the web, Android and Windows, and your name on the global board.">
+<meta name="theme-color" content="#0b0d10">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Saira+Stencil+One&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--night:#0b0d10;--panel:#14181e;--panel2:#1b2028;--bone:#ebe5d6;--muted:#9aa3ad;--tape:#f2cc3a;--ink:#17140b;--blood:#d9434b;--line:rgba(235,229,214,.14);
+  --f-d:'Saira Stencil One',Impact,sans-serif;--f-ui:'Chakra Petch','Segoe UI',system-ui,sans-serif;--f-n:'Share Tech Mono',ui-monospace,Menlo,monospace;color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--night)}
+body{margin:0;background:var(--night);color:var(--bone);font:16px/1.55 var(--f-ui);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(1100px 520px at 85% -10%,rgba(242,204,58,.09),transparent 60%),radial-gradient(900px 600px at -10% 110%,rgba(217,67,75,.10),transparent 60%)}
+a{color:var(--tape)}
+h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
+p{margin:0}
+.wrap{position:relative;z-index:1;width:min(1120px,100%);margin:0 auto;padding:0 20px}
+header.top{position:sticky;top:0;z-index:5;background:rgba(11,13,16,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:62px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--bone);font-family:var(--f-d);font-size:22px;letter-spacing:.02em}
+.brand i{display:inline-grid;place-items:center;width:30px;height:30px;background:var(--tape);color:var(--ink);font-style:normal;font-size:17px;transform:rotate(-6deg)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{padding:8px 12px;color:var(--bone);text-decoration:none;font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;border:1px solid transparent}
+nav a:hover{border-color:var(--line)}
+.tape{position:relative;z-index:1;overflow:hidden;background:var(--tape);color:var(--ink);transform:rotate(-1.2deg);margin:26px -20px 0;border-block:2px solid #11100a;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.tape span{display:block;white-space:nowrap;padding:7px 0;font:700 13px var(--f-ui);letter-spacing:.32em;text-transform:uppercase;animation:roll 38s linear infinite}
+@keyframes roll{to{transform:translateX(-50%)}}
+.hero{padding:44px 0 10px}
+.eyebrow{font-family:var(--f-n);font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--tape)}
+.hero h1{font-family:var(--f-d);font-size:clamp(40px,7vw,76px);line-height:.95;margin:8px 0 14px}
+.hero h1 span{color:var(--tape)}
+.hero p.lede{max-width:640px;color:#d4cfc2;font-size:17px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chips span{padding:6px 10px;border:1px solid var(--line);background:rgba(20,24,30,.8);font-family:var(--f-n);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#cfc9bb}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:22px;align-items:start;padding:28px 0 10px}
+#panel{display:flex;flex-direction:column;gap:14px}
+.card{padding:22px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--tape);border-radius:3px}
+.card h2{font-family:var(--f-d);font-size:30px;line-height:1.05;margin-bottom:12px}
+.card h3{font-family:var(--f-d);font-size:22px;margin-bottom:10px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.tabs{display:flex;gap:6px}
+.tab{padding:10px 16px;border:1px solid var(--line);background:var(--panel);color:var(--bone);font:600 13px var(--f-ui);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:2px}
+.tab.on{border-color:var(--tape);color:var(--tape)}
+.form{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+.form.row{flex-direction:row;align-items:flex-end;flex-wrap:wrap}
+.form.row .field{flex:1 1 220px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field span{font-family:var(--f-n);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.field input{height:46px;padding:0 12px;background:#0b0d10;border:1px solid var(--line);border-left:3px solid var(--tape);border-radius:2px;color:var(--bone);font:16px var(--f-n)}
+.field input:focus{outline:none;border-color:var(--tape)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#cfc9bb}
+.check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--tape);flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:10px 20px;border:1px solid var(--line);border-radius:2px;background:var(--panel2);color:var(--bone);font:600 14px var(--f-ui);letter-spacing:.1em;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:transform .12s,filter .2s,border-color .2s}
+.btn:hover{border-color:rgba(235,229,214,.4)}
+.btn:active{transform:translateY(1px) scale(.98)}
+.btn.primary{background:var(--tape);border-color:var(--tape);color:var(--ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;align-self:flex-start}
+.btn.danger{border-color:rgba(217,67,75,.6);color:#ff9a9f;background:transparent}
+.btn:disabled{opacity:.6;cursor:default}
+.link{align-self:flex-start;margin-top:12px;padding:0;background:none;border:0;color:var(--tape);font:14px var(--f-ui);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--tape);outline-offset:2px}
+#msg{padding:12px 14px;border:1px solid rgba(242,204,58,.45);background:rgba(242,204,58,.08);border-radius:3px}
+#msg.bad{border-color:rgba(217,67,75,.55);background:rgba(217,67,75,.12);color:#ffc2c5}
+.rc{padding:12px;border:1px dashed rgba(242,204,58,.4);border-radius:3px}
+.rc-note{font-size:14px;margin-bottom:8px}
+.me-name{font-family:var(--f-d)!important;font-size:40px!important}
+.me-name span{font-family:var(--f-n);font-size:20px;color:var(--muted)}
+.me-top{margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:0 0 10px}
+.stats div{padding:10px 12px;background:#0f1217;border:1px solid var(--line);border-radius:2px}
+.stats dt{font-family:var(--f-n);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.stats dd{margin:3px 0 0;font:18px var(--f-n)}
+.empty,.warn{display:flex;flex-direction:column;gap:10px;padding:16px;background:#0f1217;border:1px dashed var(--line);border-radius:3px}
+.empty .btn{align-self:flex-start}
+.warn{border:1px solid rgba(217,67,75,.5);background:rgba(217,67,75,.08);margin-bottom:14px}
+.danger-zone{border-top-color:var(--blood)}
+aside.side{display:flex;flex-direction:column;gap:14px;position:sticky;top:84px}
+.lock{counter-reset:s;display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.lock li{counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start;font-size:14px;color:#d4cfc2}
+.lock li::before{content:counter(s);display:grid;place-items:center;width:34px;height:34px;background:var(--tape);color:var(--ink);font:700 16px var(--f-n)}
+.lock b{display:block;color:var(--bone);font-size:15px}
+.perks{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.perks li{position:relative;padding-left:22px;font-size:14px;color:#d4cfc2}
+.perks li::before{content:"";position:absolute;left:0;top:7px;width:10px;height:10px;background:var(--tape);transform:rotate(45deg)}
+section.block{padding:40px 0 10px}
+.block-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.block-head h2{font-family:var(--f-d);font-size:clamp(30px,4.5vw,44px);line-height:1}
+.board{margin:0;padding:0;list-style:none;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.board li{display:grid;grid-template-columns:56px minmax(0,1fr) 110px 56px 90px;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);font-family:var(--f-n)}
+.board li:first-child{border-top:0}
+.board li.top .rk{color:var(--tape)}
+.board li.me{background:rgba(242,204,58,.08)}
+.board .tg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.08em}
+.board .sc{text-align:right}
+.board .wv,.board .dv{color:var(--muted);font-size:13px}
+.board li.empty{display:block;color:var(--muted);font-family:var(--f-ui)}
+.policy{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.policy div{padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:3px}
+.policy h3{font-family:var(--f-ui);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--tape);margin-bottom:6px}
+.policy p{font-size:14px;color:#d4cfc2}
+footer{position:relative;z-index:1;margin-top:46px;padding:26px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media (max-width:860px){.grid{grid-template-columns:1fr}aside.side{position:static}.board li{grid-template-columns:40px minmax(0,1fr) 84px 44px;}.board .dv{display:none}nav a{padding:6px 8px;font-size:12px}}
+@media (max-width:520px){header.top .wrap{flex-direction:column;align-items:flex-start;padding-block:10px;gap:4px}.card{padding:16px}.me-name{font-size:32px!important}}
+@media (prefers-reduced-motion:reduce){.tape span{animation:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><i>D</i>DeclAIre Studios</a>
+    <nav aria-label="Main">
+      <a href="https://declairestudios.wordpress.com">Zombie City</a>
+      <a href="#board">Global board</a>
+      <a href="#privacy">Privacy</a>
+    </nav>
+  </div>
+</header>
+<div class="tape" aria-hidden="true"><span>Survivor accounts &#183; Cloud saves &#183; Global board &#183; Survivor accounts &#183; Cloud saves &#183; Global board &#183; Survivor accounts &#183; Cloud saves &#183; Global board &#183; Survivor accounts &#183; Cloud saves &#183; Global board &#183; Survivor accounts &#183; Cloud saves &#183; Global board &#183; Survivor accounts &#183; Cloud saves &#183; Global board &#183;</span></div>
+<main class="wrap">
+  <section class="hero">
+    <p class="eyebrow">DeclAIre Studios</p>
+    <h1>Your survivor <span>account</span></h1>
+    <p class="lede">One free account for Zombie City everywhere: in the browser, on Android and on Windows. Your weapons, dashes, specimens, bosses and best runs follow you to every device, and your name goes on the global board.</p>
+    <div class="chips"><span>Free</span><span>Cloud saves</span><span>Encrypted per account</span><span>Web &#183; Android &#183; Windows</span></div>
+  </section>
+  <div class="grid">
+    <div>
+      <p id="msg" role="status" hidden></p>
+      <div id="panel"></div>
+    </div>
+    <aside class="side">
+      <section class="card">
+        <h3>How your save is protected</h3>
+        <ol class="lock">
+          <li><span><b>Your password is never stored.</b>Wix, which runs the accounts, keeps only a one-way hash of it, so even we can't see it.</span></li>
+          <li><span><b>Every account gets its own key.</b>Your save is locked with a random 256-bit key made just for your account (AES-GCM).</span></li>
+          <li><span><b>Only your password opens that key.</b>The key itself is locked with your password (600,000 rounds of PBKDF2 with a salt of its own) before it leaves your device. Nobody else can read your save, not even DeclAIre Studios.</span></li>
+        </ol>
+      </section>
+      <section class="card">
+        <h3>What your account does</h3>
+        <ul class="perks">
+          <li>Saves your progress on its own after every run.</li>
+          <li>Merges progress from every phone and PC you play on.</li>
+          <li>Puts your name and best run on the global board.</li>
+          <li>Lets your browser or phone remember your login, so you stay signed in.</li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+
+  <section class="block" id="board" aria-labelledby="boardTitle">
+    <div class="block-head">
+      <div><p class="eyebrow"><span id="boardSeason">This</span> season</p><h2 id="boardTitle">Global board</h2></div>
+      <p class="muted small">One best run per player. Resets on the 1st of each month (UTC), in <b id="boardLeft">&#x2014;</b>.</p>
+    </div>
+    <ol class="board" id="boardList" aria-live="polite"><li class="empty">Loading the board&#x2026;</li></ol>
+  </section>
+
+  <section class="block" id="privacy" aria-labelledby="privacyTitle">
+    <div class="block-head"><div><p class="eyebrow">Plain words</p><h2 id="privacyTitle">Privacy policy</h2></div><p class="muted small">Last updated October 2026</p></div>
+    <div class="policy">
+      <div><h3>What we keep</h3><p>Your email, the name you show on the board, your encrypted save, a short summary of it (best wave, runs, unlock counts) and your board scores. Nothing else: no location, no contacts, no ads, no tracking.</p></div>
+      <div><h3>Where it lives</h3><p>Accounts and saves are stored by Wix, which runs DeclAIre Studios accounts. Your password is handled by Wix and never seen by us. Your save is encrypted on your device with a key only your password opens.</p></div>
+      <div><h3>Who can see what</h3><p>Everyone can see your board name and scores. Only you can see your email and your save. We never sell or share your data.</p></div>
+      <div><h3>Names on the board</h3><p>A filter keeps slurs, swearing, threats and personal details (emails, phone numbers, links) out of names. It uses the open "List of Dirty, Naughty, Obscene and Otherwise Bad Words" (CC BY 4.0), loaded from the jsDelivr CDN.</p></div>
+      <div><h3>Age</h3><p>You need to be 13 or older to make an account. If you think a child under 13 has an account, contact us and we will delete it.</p></div>
+      <div><h3>Delete everything</h3><p>Log in and press Delete my account: your sign-in, your cloud save and your board entries are removed. Questions? Reach us through <a href="https://declairestudios.wordpress.com">declairestudios.wordpress.com</a>.</p></div>
+    </div>
+  </section>
+</main>
+<footer><div class="wrap"><span>&#169; 2026 DeclAIre Studios &#183; Made with Claude</span><span>Zombie City is free to play. <a href="https://declairestudios.wordpress.com">Get the game</a></span></div></footer>
+<script src="filterpage.js"></script>
+<script src="filter.js"></script>
+<script src="acct-core.js"></script>
+<script src="page.js"></script>
+</body>
+</html>

@@ -33,7 +33,10 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
+import org.json.JSONObject;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Iterator;
@@ -157,6 +160,84 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void wsSend(int id, String text) { sockets.send(id, text); }
         @JavascriptInterface public void wsClose(int id) { sockets.close(id); }
         @JavascriptInterface public String wsPoll() { return sockets.poll(); }
+
+        /** DeclAIre accounts: sign-in and cloud saves go through the app (only to the accounts servers). */
+        @JavascriptInterface public int httpStart(String method, String url, String headers, String body) { return http.start(method, url, headers, body); }
+        @JavascriptInterface public String httpPoll(int id) { return http.poll(id); }
+        /** Opens a web page (the account page) in the phone's browser. */
+        @JavascriptInterface public void openUrl(String url) {
+            if (url == null || !url.startsWith("https://")) return;
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception e) { /* no browser */ }
+        }
+    }
+
+    final Http http = new Http();
+
+    /** Requests to the DeclAIre accounts servers, each on its own thread; the page polls for the answer. */
+    static final class Http {
+        static final Pattern ALLOWED = Pattern.compile("^https://(www\\.wixapis\\.com|[a-z0-9-]+\\.wix-site-host\\.com)/.*");
+        static final int MAX_BODY = 4 * 1024 * 1024;
+        final AtomicInteger ids = new AtomicInteger(1), running = new AtomicInteger(0);
+        final ConcurrentHashMap<Integer, String> done = new ConcurrentHashMap<Integer, String>();
+
+        int start(final String method, final String url, final String headers, final String body) {
+            if (url == null || !ALLOWED.matcher(url).matches() || running.get() >= 8) return -1;
+            final int id = ids.getAndIncrement();
+            running.incrementAndGet();
+            Thread t = new Thread(new Runnable() {
+                @Override public void run() {
+                    try { done.put(id, fetch(method, url, headers, body)); } finally { running.decrementAndGet(); }
+                }
+            }, "zc-http");
+            t.setDaemon(true);
+            t.start();
+            return id;
+        }
+
+        String poll(int id) { String r = done.remove(id); return r == null ? "" : r; }
+
+        static String fetch(String method, String url, String headers, String body) {
+            HttpURLConnection c = null;
+            try {
+                String m = method == null ? "GET" : method.toUpperCase(Locale.ROOT);
+                if (!m.equals("GET") && !m.equals("POST") && !m.equals("PUT") && !m.equals("DELETE")) m = "GET";
+                c = (HttpURLConnection) new URL(url).openConnection();
+                c.setConnectTimeout(15000);
+                c.setReadTimeout(30000);
+                c.setUseCaches(false);
+                c.setRequestMethod(m);
+                if (headers != null && headers.length() > 0) {
+                    JSONObject h = new JSONObject(headers);
+                    Iterator<String> keys = h.keys();
+                    while (keys.hasNext()) {
+                        String k = keys.next(), lk = k.toLowerCase(Locale.ROOT);
+                        if (lk.equals("authorization") || lk.equals("content-type") || lk.equals("accept")) c.setRequestProperty(k, h.getString(k));
+                    }
+                }
+                if (body != null && body.length() > 0 && (m.equals("POST") || m.equals("PUT"))) {
+                    byte[] bytes = body.getBytes("UTF-8");
+                    c.setDoOutput(true);
+                    c.setFixedLengthStreamingMode(bytes.length);
+                    OutputStream out = c.getOutputStream();
+                    try { out.write(bytes); } finally { out.close(); }
+                }
+                int status = c.getResponseCode();
+                InputStream in = status >= 400 ? c.getErrorStream() : c.getInputStream();
+                String text = "";
+                if (in != null) {
+                    ByteArrayOutputStream buf = new ByteArrayOutputStream();
+                    byte[] chunk = new byte[16384];
+                    int n;
+                    try { while ((n = in.read(chunk)) > 0) { buf.write(chunk, 0, n); if (buf.size() > MAX_BODY) break; } } finally { in.close(); }
+                    text = buf.size() > MAX_BODY ? "" : buf.toString("UTF-8");
+                }
+                return "{\"status\":" + status + ",\"text\":" + Lan.str(text) + "}";
+            } catch (Exception e) {
+                return "{\"status\":0,\"error\":" + Lan.str(String.valueOf(e.getMessage())) + "}";
+            } finally {
+                if (c != null) c.disconnect();
+            }
+        }
     }
 
     /* ---------- Wi-Fi co-op ----------

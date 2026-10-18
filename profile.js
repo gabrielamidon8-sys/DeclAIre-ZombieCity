@@ -3,10 +3,20 @@
    leaderboard with your scores, together with what you played on (phone, PC or controller). The global board on
    the web page is one board for every device. */
 function hasName() { return !!store.get('zc_tag', ''); }
+// returns the saved name, or null when the name filter turned it down (the reason shows under the name box)
 function setName(v) {
+  const chk = ZCF.check(v);
+  if (!chk.ok) { nameErr(chk.msg); return null; }
+  nameErr('');
   const t = cleanTag(v); store.set('zc_tag', t);
-  updNameUi(); syncNameOnline(t);
+  updNameUi(); syncNameOnline(t); acctRename(t);
   return t;
+}
+let nameErrTimer = 0, nameRejected = '';
+function nameErr(msg) {
+  const e = $('nameErr'); if (!e) return;
+  e.textContent = msg; e.hidden = !msg; clearTimeout(nameErrTimer);
+  if (msg) { e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop'); nameErrTimer = setTimeout(() => { e.hidden = true; }, 7000); }
 }
 // the leaderboard keeps one entry per player; a new name renames it there too
 async function syncNameOnline(tag) {
@@ -32,12 +42,19 @@ $('nameForm').addEventListener('submit', e => {
   e.preventDefault();
   const inp = $('nameInput'), raw = inp.value.trim();
   if (!raw) { inp.focus(); return; }
-  const t = setName(raw); inp.value = t; inp.blur();
+  const t = setName(raw);
+  if (!t) { nameRejected = raw; inp.value = hasName() ? getTag() : ''; inp.focus(); return; }
+  inp.value = t; inp.blur();
   const b = $('nameSave'); b.textContent = 'Saved'; b.classList.add('ok'); SFX.click();
   setTimeout(() => { b.textContent = 'Save'; b.classList.remove('ok'); }, 1400);
 });
 $('nameInput').addEventListener('input', e => { const v = e.target.value.toUpperCase().replace(/[^A-Z0-9 _.\-]/g, ''); if (v !== e.target.value) e.target.value = v; });
-$('nameInput').addEventListener('blur', () => { const v = $('nameInput').value.trim(); if (v && cleanTag(v) !== getTag()) setName(v); else if (!v) updNameUi(); });
+$('nameInput').addEventListener('blur', () => {
+  const v = $('nameInput').value.trim();
+  if (v && v === nameRejected) return;
+  if (v && cleanTag(v) !== getTag()) { if (!setName(v)) { nameRejected = v; $('nameInput').value = hasName() ? getTag() : ''; } }
+  else if (!v) updNameUi();
+});
 
 /* ---------- your record across runs ---------- */
 const STATS = Object.assign({ runs: 0, kills: 0, time: 0, bestWave: 0, bestChain: 0, bestScore: 0, sid: 0 }, store.get('zc_stats', {}) || {});
@@ -47,6 +64,7 @@ function recordRun() {
   STATS.runs++; STATS.kills += G.kills || 0; STATS.time += Math.floor(G.time || 0);
   STATS.bestWave = Math.max(STATS.bestWave, G.wave || 0); STATS.bestChain = Math.max(STATS.bestChain, G.bestChain || 0); STATS.bestScore = Math.max(STATS.bestScore, G.score || 0);
   store.set('zc_stats', STATS);
+  acctSoon(2500);
 }
 function fmtTime(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? h + 'h ' + String(m).padStart(2, '0') + 'm' : m + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
 function fmtK(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n); }
@@ -82,11 +100,14 @@ function renderTitlePanel() {
   if (!P.dataset.once && G.mode === 'title' && $('intro').hidden) { P.dataset.once = '1'; P.classList.add('fresh'); setTimeout(() => P.classList.remove('fresh'), 1200); }   // the cards rise in once, not on every update
   const card = (cls, title, sub) => { const c = el('section', 'tp-card ' + cls), h = el('div', 'tp-head'); h.append(el('span', null, title)); if (sub) h.append(el('em', null, sub)); c.append(h); P.append(c); return c; };
   // survivor file
-  const f = card('tp-file', 'Survivor file', 'No. ' + String(STATS.sid).padStart(4, '0'));
+  const signed = ACCT.status === 'in', T = acctTotals();
+  const f = card('tp-file', 'Survivor file', signed && ACCT.member.tag ? '#' + ACCT.member.tag : 'No. ' + String(STATS.sid).padStart(4, '0'));
   const id = el('div', 'tp-id'); const nm = el('b', 'tp-name' + (hasName() ? '' : ' none'), hasName() ? getTag() : 'No name yet'); id.append(nm, devIcon(DEV.kind)); f.append(id);
   f.append(el('p', 'tp-dev', devLine()));
+  const ac = el('button', 'tp-acct' + (signed ? ' on' : ACCT.status === 'locked' ? ' warn' : ''), signed ? 'Cloud save on' + (T.devices > 1 ? ' · ' + T.devices + ' devices' : '') : ACCT.status === 'locked' ? 'Cloud save locked: tap to unlock' : 'Log in to save your progress to the cloud');
+  ac.type = 'button'; ac.addEventListener('click', () => { SFX.click(); openAcct(); }); f.append(ac);
   const dl = el('dl', 'tp-stats');
-  [['Runs', fmtK(STATS.runs)], ['Best wave', STATS.bestWave || '—'], ['Kills', fmtK(STATS.kills)], ['Time alive', STATS.time ? fmtTime(STATS.time) : '—'], ['Best chain', STATS.bestChain ? 'x' + STATS.bestChain : '—'], ['Best score', STATS.bestScore ? STATS.bestScore.toLocaleString() : '—']]
+  [['Runs', fmtK(T.runs)], ['Best wave', STATS.bestWave || '—'], ['Kills', fmtK(T.kills)], ['Time alive', T.time ? fmtTime(T.time) : '—'], ['Best chain', STATS.bestChain ? 'x' + STATS.bestChain : '—'], ['Best score', STATS.bestScore ? STATS.bestScore.toLocaleString() : '—']]
     .forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, String(v))); dl.append(d); });
   f.append(dl);
   // controls for the device in use
@@ -101,11 +122,11 @@ function renderTitlePanel() {
   const ol = el('ol', 'tp-rows');
   if (!rows.length) ol.append(el('li', 'tp-empty', 'No scores yet this season. Be the first.'));
   rows.forEach((r, i) => { const li = el('li', live && r.id === LB.uid ? 'me' : ''); li.append(el('span', 'rk', '#' + (i + 1)), el('span', 'tg', cleanTag(r.tag)), el('span', 'sc', Number(r.score || 0).toLocaleString())); if (r.dev) li.append(devIcon(r.dev)); ol.append(li); });
-  bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : PLATFORM === 'web' ? 'The global board is not available on this page.' : 'The global board is on the web version. Scores here stay on this device.'));
+  bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : LB.status === 'loading' ? 'Connecting to the global board.' : LB.src === 'wix' ? 'No connection to the global board right now.' : 'The global board is not available on this page.'));
   // what's new
-  const n = card('tp-new', 'New in 1.9.60');
+  const n = card('tp-new', 'New in 1.9.80');
   const nl = el('ul');
-  ['Play with a mouse and keyboard or a controller, and aim yourself', 'Change every key and button in Settings', 'Your name at the top left and on the board', 'A Windows app for PC'].forEach(t => nl.append(el('li', null, t)));
+  ['DeclAIre accounts: your progress saved to the cloud, on every device', 'One global board for the website, Android and Windows', 'A name filter that keeps the board clean (and has opinions)', 'Wi-Fi co-op for 2 to 4 players'].forEach(t => nl.append(el('li', null, t)));
   n.append(nl);
 }
 

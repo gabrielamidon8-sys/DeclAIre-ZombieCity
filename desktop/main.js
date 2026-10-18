@@ -8,6 +8,9 @@ const lan = require('./lan.js');
 
 const REPO = 'gabrielamidon8-sys/zombie-city';
 const WEBSITE = 'https://declairestudios.wordpress.com';   // the game's website (WordPress)
+const ACCOUNT = 'https://headless-iilujwebfcb-gabrielamidon8-140e.wix-site-host.com/';   // the DeclAIre account page
+// DeclAIre accounts (Wix): the only addresses the game may reach through the app
+const ACCT_URL = /^https:\/\/(www\.wixapis\.com|[a-z0-9-]+\.wix-site-host\.com)\//;
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');   // the intro music starts on its own
 app.setAppUserModelId('com.zombiecity.app');
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -59,6 +62,23 @@ ipcMain.on('zc-fullscreen', (e, on) => { if (win) win.setFullScreen(on == null ?
 ipcMain.on('zc-is-fullscreen', e => { e.returnValue = !!(win && win.isFullScreen()); });
 ipcMain.on('zc-launcher', () => { if (win) win.loadFile(path.join(__dirname, 'launcher.html')); });
 
+/* ---------- DeclAIre accounts ----------
+   The game runs from a file, so it signs in and saves through the app instead of calling the accounts server itself.
+   Only the accounts addresses are allowed, only a few headers pass, and nothing is kept here. */
+ipcMain.handle('zc-http', async (e, req) => {
+  try {
+    const url = String(req && req.url || '');
+    if (!ACCT_URL.test(url)) return { status: 0, text: '', error: 'blocked' };
+    const method = /^(GET|POST|PUT|PATCH|DELETE)$/.test(req.method) ? req.method : 'GET';
+    const headers = {};
+    for (const [k, v] of Object.entries(req.headers || {})) if (/^(authorization|content-type|accept)$/i.test(k)) headers[k] = String(v);
+    const r = await net.fetch(url, { method: method, headers: headers, body: method === 'GET' || req.body == null ? undefined : String(req.body), credentials: 'omit' });
+    const text = await r.text();
+    return { status: r.status, text: text.length > 4e6 ? '' : text };
+  } catch (err) { return { status: 0, text: '', error: String(err && err.message || err) }; }
+});
+ipcMain.handle('zc-open', (e, url) => { if (/^https:\/\//.test(String(url))) shell.openExternal(String(url)); return true; });
+
 /* ---------- Wi-Fi co-op ---------- */
 ipcMain.handle('zc-lan-host', async (e, name, port) => {
   if (server) { server.stop(); server = null; }
@@ -77,10 +97,10 @@ ipcMain.handle('zc-lan-scan-stop', () => { scanner.stop(); return true; });
 /* ---------- the launcher ---------- */
 async function getJson(url) {
   const r = await net.fetch(url, { headers: { 'User-Agent': 'ZombieCityLauncher', Accept: 'application/vnd.github+json' } });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
+  if (!r.ok) { const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
   return r.json();
 }
-ipcMain.handle('zl-info', () => Object.assign(games(), { fullscreen: !!(win && win.isFullScreen()), website: WEBSITE, repo: REPO, launcher: app.getVersion() }));
+ipcMain.handle('zl-info', () => Object.assign(games(), { fullscreen: !!(win && win.isFullScreen()), website: WEBSITE, account: ACCOUNT, repo: REPO, launcher: app.getVersion() }));
 // the latest release on GitHub: its game.json says which version it holds and the game file's checksum
 ipcMain.handle('zl-check', async () => {
   try {
@@ -91,7 +111,11 @@ ipcMain.handle('zl-check', async () => {
     const ga = rel.assets.find(a => a.name === 'game.json'), ha = rel.assets.find(a => a.name === 'zombie-city-game.html');
     const meta = await getJson(ga.browser_download_url);
     return { ok: true, news: news, latest: { version: String(meta.version), sha256: String(meta.sha256 || ''), size: meta.size | 0, url: ha ? ha.browser_download_url : null, notes: rel.body || '', tag: rel.tag_name } };
-  } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  } catch (err) {
+    // 404: the releases aren't public yet; 403/429: GitHub's hourly limit; anything else: no connection
+    const why = err && err.status === 404 ? 'norepo' : err && (err.status === 403 || err.status === 429) ? 'limit' : 'offline';
+    return { ok: false, why: why, error: String(err && err.message || err) };
+  }
 });
 // download the new game, check it, and only then put it in place (an interrupted download never breaks the old one)
 ipcMain.handle('zl-update', async (e, latest) => {
