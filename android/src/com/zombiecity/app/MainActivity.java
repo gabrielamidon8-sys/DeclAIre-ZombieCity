@@ -271,7 +271,7 @@ public class MainActivity extends Activity {
 
     /** The networking itself. Plain Java only (no Android classes), so it can be tested on its own. */
     static final class Lan {
-        static final int BEACON_PORT = 47778, MAX_FRAME = 8 * 1024 * 1024, MAX_PENDING = 3000, MAX_CONNS = 4;
+        static final int BEACON_PORT = 47778, MAX_FRAME = 8 * 1024 * 1024, MAX_PENDING = 20000, MAX_CONNS = 4;
         static final String GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         static final SecureRandom RNG = new SecureRandom();
         static final Pattern PORT = Pattern.compile("\"port\"\\s*:\\s*(\\d{1,5})");
@@ -424,6 +424,13 @@ public class MainActivity extends Activity {
                     if (b.length() > 1) b.append(',');
                     b.append(e);
                 }
+                // only the newest snapshot of the street is handed over; older ones would just be drawn and replaced
+                for (Conn c : conns.values()) {
+                    String s = c.snap.getAndSet(null);
+                    if (s == null) continue;
+                    if (b.length() > 1) b.append(',');
+                    b.append("[").append(c.id).append(",\"m\",").append(str(s)).append("]");
+                }
                 return b.append(']').toString();
             }
 
@@ -434,6 +441,7 @@ public class MainActivity extends Activity {
                 final String host, path;
                 final Socket sock = new Socket();
                 final LinkedBlockingQueue<byte[]> out = new LinkedBlockingQueue<byte[]>();
+                final java.util.concurrent.atomic.AtomicReference<String> snap = new java.util.concurrent.atomic.AtomicReference<String>();
                 volatile boolean open, done;
                 volatile int why;
                 OutputStream os;
@@ -504,7 +512,9 @@ public class MainActivity extends Activity {
                         if ((b0 & 0x80) != 0) {
                             String s = new String(msg.toByteArray(), "UTF-8");
                             msg.reset();
-                            // the page has stopped reading (the app is in the background): give up rather than pile up
+                            // snapshots of the street replace each other; everything else is queued in order
+                            if (s.startsWith("{\"t\":\"s\"")) { snap.set(s); continue; }
+                            // the page has stopped reading for a long time (the app is in the background): give up rather than pile up
                             if (pending.get() > MAX_PENDING) { why = 4001; return 4001; }
                             emit("[" + id + ",\"m\"," + str(s) + "]");
                         }

@@ -32,35 +32,61 @@ function games() {
     file: useInstalled ? path.join(GAME_DIR(), 'index.html') : path.join(__dirname, 'game', 'index.html') };
 }
 
-let win = null, server = null;
+let win = null, server = null;   // win: the window on screen (the launcher, or the game once you press Play)
+let launcherWin = null, gameWin = null;
 const scanner = lan.createScanner();
-function create() {
-  const prefs = loadPrefs();
-  win = new BrowserWindow({
-    width: 1280, height: 800, minWidth: 900, minHeight: 560, backgroundColor: '#0b0d10', title: 'Zombie City',
-    icon: path.join(__dirname, 'icon.png'), show: false, fullscreen: !!prefs.fullscreen, autoHideMenuBar: true,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false, spellcheck: false }
-  });
-  Menu.setApplicationMenu(null);
-  win.once('ready-to-show', () => win.show());
-  win.loadFile(path.join(__dirname, 'launcher.html'));
-  // F11 or Alt+Enter switch between full screen and a window
-  win.webContents.on('before-input-event', (e, input) => {
-    if (input.type === 'keyDown' && (input.key === 'F11' || (input.alt && input.key === 'Enter'))) { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); }
-  });
-  win.on('enter-full-screen', () => savePrefs({ fullscreen: true }));
-  win.on('leave-full-screen', () => savePrefs({ fullscreen: false }));
-  // links open in the normal web browser, never inside the game window
-  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
-  win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file:')) { e.preventDefault(); if (/^https?:/i.test(url)) shell.openExternal(url); } });
-  win.on('closed', () => { win = null; });
+// both windows: links open in the normal web browser, never inside the app
+function harden(wc) {
+  wc.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  wc.on('will-navigate', (e, url) => { if (!url.startsWith('file:')) { e.preventDefault(); if (/^https?:/i.test(url)) shell.openExternal(url); } });
 }
+const WEB = { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false, spellcheck: false };
+// the launcher: a borderless window of its own (its own title bar, drag to move), the size of a big poster
+function createLauncher() {
+  if (launcherWin) { launcherWin.show(); launcherWin.focus(); return launcherWin; }
+  launcherWin = new BrowserWindow({
+    width: 1180, height: 740, resizable: false, maximizable: false, fullscreenable: false, frame: false, center: true, backgroundColor: '#0b0d10',
+    title: 'Zombie City Launcher', icon: path.join(__dirname, 'icon.png'), show: false, roundedCorners: true, webPreferences: WEB
+  });
+  launcherWin.once('ready-to-show', () => { launcherWin.show(); win = launcherWin; if (gameWin) gameWin.close(); });
+  launcherWin.loadFile(path.join(__dirname, 'launcher.html'));
+  harden(launcherWin.webContents);
+  launcherWin.on('closed', () => { const was = win === launcherWin; launcherWin = null; if (was) win = gameWin; });
+  return launcherWin;
+}
+// the game: full screen (borderless) by default, or a normal window; the launcher closes once the game is on screen
+function createGame() {
+  if (gameWin) { gameWin.loadFile(games().file); return gameWin; }
+  const prefs = loadPrefs();
+  gameWin = new BrowserWindow({
+    width: 1280, height: 800, minWidth: 900, minHeight: 560, backgroundColor: '#0b0d10', title: 'Zombie City',
+    icon: path.join(__dirname, 'icon.png'), show: false, fullscreen: !!prefs.fullscreen, autoHideMenuBar: true, webPreferences: WEB
+  });
+  gameWin.once('ready-to-show', () => { gameWin.show(); gameWin.focus(); win = gameWin; if (launcherWin) launcherWin.close(); });
+  gameWin.loadFile(games().file);
+  harden(gameWin.webContents);
+  // F11 or Alt+Enter switch between full screen and a window
+  gameWin.webContents.on('before-input-event', (e, input) => {
+    if (input.type === 'keyDown' && (input.key === 'F11' || (input.alt && input.key === 'Enter'))) { gameWin.setFullScreen(!gameWin.isFullScreen()); e.preventDefault(); }
+  });
+  gameWin.on('enter-full-screen', () => savePrefs({ fullscreen: true }));
+  gameWin.on('leave-full-screen', () => savePrefs({ fullscreen: false }));
+  gameWin.on('closed', () => { const was = win === gameWin; gameWin = null; if (was) win = launcherWin; });
+  return gameWin;
+}
+const fromSender = e => BrowserWindow.fromWebContents(e.sender);
+function create() { Menu.setApplicationMenu(null); createLauncher(); }
 
 /* ---------- the game asks the app ---------- */
 ipcMain.on('zc-quit', () => app.quit());
-ipcMain.on('zc-fullscreen', (e, on) => { if (win) win.setFullScreen(on == null ? !win.isFullScreen() : !!on); });
-ipcMain.on('zc-is-fullscreen', e => { e.returnValue = !!(win && win.isFullScreen()); });
-ipcMain.on('zc-launcher', () => { if (win) win.loadFile(path.join(__dirname, 'launcher.html')); });
+ipcMain.on('zc-fullscreen', (e, on) => { const w = fromSender(e); if (w && w === gameWin) w.setFullScreen(on == null ? !w.isFullScreen() : !!on); });
+ipcMain.on('zc-is-fullscreen', e => { const w = fromSender(e); e.returnValue = !!(w && w === gameWin && w.isFullScreen()); });
+ipcMain.on('zc-launcher', () => { createLauncher(); });
+// the launcher's own title bar
+ipcMain.on('zl-min', e => { const w = fromSender(e); if (w) w.minimize(); });
+ipcMain.on('zl-close', () => app.quit());
+// how the game opens: full screen or in a window
+ipcMain.handle('zl-fspref', (e, on) => { if (on != null) savePrefs({ fullscreen: !!on }); return !!loadPrefs().fullscreen; });
 
 /* ---------- DeclAIre accounts ----------
    The game runs from a file, so it signs in and saves through the app instead of calling the accounts server itself.
@@ -100,17 +126,18 @@ async function getJson(url) {
   if (!r.ok) { const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
   return r.json();
 }
-ipcMain.handle('zl-info', () => Object.assign(games(), { fullscreen: !!(win && win.isFullScreen()), website: WEBSITE, account: ACCOUNT, repo: REPO, launcher: app.getVersion() }));
+ipcMain.handle('zl-info', () => Object.assign(games(), { fullscreen: !!loadPrefs().fullscreen, website: WEBSITE, account: ACCOUNT, repo: REPO, launcher: app.getVersion() }));
 // the latest release on GitHub: its game.json says which version it holds and the game file's checksum
-ipcMain.handle('zl-check', async () => {
+// test = true (the admin's test channel): pre-releases count too, so a version under test reaches the tester first
+ipcMain.handle('zl-check', async (e, test) => {
   try {
-    const rels = await getJson('https://api.github.com/repos/' + REPO + '/releases?per_page=6');
-    const news = (rels || []).filter(r => !r.draft).slice(0, 4).map(r => ({ name: r.name || r.tag_name, tag: r.tag_name, date: r.published_at, body: String(r.body || '').slice(0, 1200), url: r.html_url }));
-    const rel = (rels || []).find(r => !r.draft && !r.prerelease && (r.assets || []).some(a => a.name === 'game.json'));
+    const rels = await getJson('https://api.github.com/repos/' + REPO + '/releases?per_page=8');
+    const news = (rels || []).filter(r => !r.draft && (test || !r.prerelease)).slice(0, 4).map(r => ({ name: r.name || r.tag_name, tag: r.tag_name, date: r.published_at, body: String(r.body || '').slice(0, 1200), url: r.html_url, pre: !!r.prerelease }));
+    const rel = (rels || []).find(r => !r.draft && (test || !r.prerelease) && (r.assets || []).some(a => a.name === 'game.json'));
     if (!rel) return { ok: true, news: news, latest: null };
     const ga = rel.assets.find(a => a.name === 'game.json'), ha = rel.assets.find(a => a.name === 'zombie-city-game.html');
     const meta = await getJson(ga.browser_download_url);
-    return { ok: true, news: news, latest: { version: String(meta.version), sha256: String(meta.sha256 || ''), size: meta.size | 0, url: ha ? ha.browser_download_url : null, notes: rel.body || '', tag: rel.tag_name } };
+    return { ok: true, news: news, latest: { version: String(meta.version), sha256: String(meta.sha256 || ''), size: meta.size | 0, url: ha ? ha.browser_download_url : null, notes: rel.body || '', tag: rel.tag_name, pre: !!rel.prerelease } };
   } catch (err) {
     // 404: the releases aren't public yet; 403/429: GitHub's hourly limit; anything else: no connection
     const why = err && err.status === 404 ? 'norepo' : err && (err.status === 403 || err.status === 429) ? 'limit' : 'offline';
@@ -135,10 +162,10 @@ ipcMain.handle('zl-update', async (e, latest) => {
     return Object.assign({ ok: true }, games());
   } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
 });
-ipcMain.handle('zl-play', () => { if (win) win.loadFile(games().file); return true; });
+ipcMain.handle('zl-play', () => { createGame(); return true; });
 ipcMain.handle('zl-open', (e, url) => { if (/^https:\/\//.test(String(url))) shell.openExternal(String(url)); return true; });
 
-app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+app.on('second-instance', () => { const w = gameWin || launcherWin; if (w) { if (w.isMinimized()) w.restore(); w.focus(); } });
 app.whenReady().then(() => {
   // the game needs no permissions beyond full screen
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'fullscreen'));

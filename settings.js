@@ -11,7 +11,7 @@ const SET_DEF = {
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
   aimKbm: 'manual', fireKbm: 'hold', aimPad: 'assist', firePad: 'stick', padDead: 18, padSwap: false, padRumble: true, xhair: 'cross', xhairSize: 100, xhairColor: 'yellow',
   motion: 'auto', flash: false, hudScale: 100, contrast: false,
-  saver: 'auto'
+  saver: 'auto', netPing: true, netArrows: true
 };
 const SYS_RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const SET = Object.assign({}, SET_DEF, { flash: SYS_RM }, (function () {
@@ -132,6 +132,9 @@ const SET_ROWS = [
   { id: 'districts', tab: 'gameplay', type: 'seg', label: 'District names', desc: 'A note when you walk into a new part of the city.', opts: ON_OFF },
   { id: 'hints', tab: 'gameplay', type: 'seg', label: 'Hints', desc: 'Tips on the title screen and the movement guide.', opts: ON_OFF },
   { id: 'vibrate', tab: 'gameplay', type: 'seg', label: 'Vibration', desc: 'A buzz on big hits, explosions and lightning.', opts: ON_OFF, touch: true },
+  { tab: 'gameplay', group: 'Wi-Fi co-op' },
+  { id: 'netPing', tab: 'gameplay', type: 'seg', label: 'Show ping', desc: 'Each player’s connection speed next to their name during a co-op run. The lobby always shows it.', opts: ON_OFF },
+  { id: 'netArrows', tab: 'gameplay', type: 'seg', label: 'Teammate arrows', desc: 'Arrows on the edge of the screen point to teammates who are off screen, with how far away they are.', opts: ON_OFF },
   // controls: each device has its own section, shown once the game has seen that device (the one in use comes first)
   { tab: 'controls', info: 'devnow' },
   { tab: 'controls', group: 'Keyboard and mouse', dev: 'kbm' },

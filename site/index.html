@@ -111,6 +111,15 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 @media (max-width:860px){.grid{grid-template-columns:1fr}aside.side{position:static}.board li{grid-template-columns:40px minmax(0,1fr) 84px 44px;}.board .dv{display:none}nav a{padding:6px 8px;font-size:12px}}
 @media (max-width:520px){header.top .wrap{flex-direction:column;align-items:flex-start;padding-block:10px;gap:4px}.card{padding:16px}.me-name{font-size:32px!important}}
 @media (prefers-reduced-motion:reduce){.tape span{animation:none}}
+/* the studio admin's name (same look as in the game) */
+.nm-admin{display:inline-flex;align-items:baseline;gap:.12em;white-space:nowrap;font-weight:700}
+.nm-a{color:transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'%3E%3Cpath d='M14 0 L17 6 L13 11 L16 20 M50 2 L53 8 L59 10 L57 20 M88 0 L85 7 L90 12 L88 20' fill='none' stroke='%23400000' stroke-width='1.6'/%3E%3C/svg%3E"),linear-gradient(180deg,#ff7a6a,#e01414);background-size:auto 100%,100% 100%;background-repeat:repeat-x,no-repeat;-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 1.5px rgba(255,40,40,.9)) drop-shadow(0 0 6px rgba(255,0,0,.35));animation:nmFlick 3.4s infinite}
+.nm-bar{color:#8f959e;font-weight:400}
+.nm-d{color:#f1ead8;text-decoration:underline;text-decoration-color:#ff8a1a;text-decoration-thickness:.14em;text-underline-offset:.22em;text-shadow:0 0 6px rgba(255,138,26,.55)}
+@keyframes nmFlick{0%,91%,100%{opacity:1}92%{opacity:.7}94%{opacity:1}96%{opacity:.82}97%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.nm-a{animation:none}}
+.me-name .nm-admin{font-family:var(--f-n)}
+.admin-note{margin:2px 0 0;font-size:13px;color:#ffb38a;letter-spacing:.06em}
 </style>
 </head>
 <body>

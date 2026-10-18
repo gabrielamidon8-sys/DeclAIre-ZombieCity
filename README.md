@@ -4,7 +4,7 @@ A top-down zombie survival shooter for phones, PCs and controllers. You hold the
 
 ## Play
 
-- **Windows:** download `ZombieCity-Launcher-Windows.zip` from the [Releases](../../releases) page, unzip it anywhere and run `Zombie City Launcher.exe` from the `Zombie City` folder. Nothing is installed. The launcher shows the news, keeps the game up to date from this repository's releases and hosts Wi-Fi co-op games. (Windows may warn that the app is new: choose "More info", then "Run anyway". The first time you host, allow Zombie City on private networks.)
+- **Windows:** download `ZombieCity-Setup.exe` from the [Releases](../../releases) page and double-click it. It installs the Zombie City Launcher for your Windows account (no administrator password), adds it to the Start menu, offers a desktop shortcut and can start the game straight away; it also shows up in Settings > Apps for uninstalling (your saves are kept). The launcher is a borderless window with the news, your account, a check for updates and Play, which opens the game in its own window (full screen or windowed, your choice). It keeps the game up to date from this repository's releases and hosts Wi-Fi co-op games. Windows may warn that the app is new: choose "More info", then "Run anyway". The first time you host, allow Zombie City on private networks. Prefer nothing installed? `ZombieCity-Launcher-Windows.zip` is the same launcher: unzip it anywhere and run `Zombie City Launcher.exe`.
 - **Android:** download the latest `.apk` from the [Releases](../../releases) page and open it on your phone. Updates install over the old version and keep your saves.
 - **Browser (Mac, Linux, iPhone, Chromebook and everything else):** play at [gabrielamidon8-sys.github.io/DeclAIre-ZombieCity](https://gabrielamidon8-sys.github.io/DeclAIre-ZombieCity/), or open `zombie-city-offline.html` in any modern browser. It's a single self-contained file that needs no internet connection.
 
@@ -18,6 +18,12 @@ Two to four players on the same Wi-Fi play one run together. A PC running the la
 
 Everyone fights the same zombies, waves and bosses in the same city, and shares the score. When a player goes down, a teammate stands next to them for a couple of seconds to revive them; everyone is back on their feet when a wave is cleared, and the run ends only when the whole team is down. After each wave every player picks a card. The A-10 is the team's: anyone can call it in. The web page can't join (browsers don't let a secure page connect to devices on your network), but the apps can.
 
+- **Card rounds never freeze.** Each round has a number, the host sends the cards again until every player has them, and a 30-second timer picks a card for anyone who is away (in the pause menu, on another app, or disconnected). The waiting line shows who has picked.
+- **Ping.** The lobby shows every player's ping live. In a run it sits on the HUD; switch it off in the pause menu or in Settings > Gameplay > Wi-Fi co-op.
+- **Find your team.** When a teammate is off screen an arrow on the edge of the screen points to them, with their name and distance. Press G (LB on a controller, the pin button on a phone) to drop a marker for everyone.
+- **Drops are survivable.** If the Wi-Fi blips, the game reconnects by itself for 25 seconds and puts you back in the same slot of the same run; the host keeps your place for 30 seconds. Everyone must run the same version, and an older copy is told to update.
+- **What is local and what is shared.** Each device builds the city itself from the run's seed (streets, rivers, weather, props), so the world never travels over the network. Your own movement, aiming and shots run on your device for instant response. The host owns everything that must agree: zombies and bosses, the wave, the score, the cards and revives, and sends a compact snapshot 15 times a second. Late snapshots are dropped rather than queued, so a slow device catches up instead of falling behind.
+
 ## Accounts and cloud saves
 
 A free DeclAIre Studios account keeps your progress on every device. Make one on the [account page](https://headless-iilujwebfcb-gabrielamidon8-140e.wix-site-host.com/), then log in from **Account** on the game's main menu (browser, Android app or Windows launcher). After every run the game merges this device's progress with the cloud: unlocks from every device add up, bests are kept, and each device keeps its own totals.
@@ -25,7 +31,9 @@ A free DeclAIre Studios account keeps your progress on every device. Make one on
 - Accounts run on Wix (members and a data collection). Passwords are never stored by the game; Wix stores only a one-way hash.
 - Each account's save is encrypted on the device with AES-GCM under a random 256-bit key made for that account. That key is wrapped with a key derived from the password (PBKDF2-SHA256, 600,000 rounds, a random salt per account) before it is uploaded, so the stored save can't be read without the password. Changing the password re-wraps the key; after a password reset the game asks once for the old password, or starts a new cloud save from the device's progress.
 - One season leaderboard for every platform: your best run each month goes up under your account name.
-- Names (survivor, board and co-op) go through a filter for slurs, swearing, threats and personal details (emails, phone numbers, links), with 50 different remarks for anyone trying to sneak something past it.
+- Names (survivor, board and co-op) go through a filter for slurs, swearing, threats and personal details (emails, phone numbers, links), with 50 different remarks for anyone trying to sneak something past it. Names that pose as the studio (ADMIN, DECLAIRE, moderator, official and so on, in any spelling such as D3CLA1RE) are saved for the team.
+- The studio's admin account shows as **ADMIN|DECLAIRE** (ADMIN in cracked red, DECLAIRE underlined in orange). Only that account can use it: on the board the game checks the row's Wix owner, and in co-op teammates ask Wix to confirm it, so a copy shows as an ordinary name.
+- If someone else logs in on your device, your progress is put away and comes back when you log in again; their progress never mixes with yours.
 
 ## What's in the game
 
@@ -46,12 +54,14 @@ A free DeclAIre Studios account keeps your progress on every device. Make one on
 - Your name on the main menu, at the top left during a run and on the leaderboard, with the device each score was played on
 - Wi-Fi co-op for 2 to 4 players: a PC hosts, phones and other PCs on the same Wi-Fi join, with revives, shared cards and a shared A-10
 - Free accounts with encrypted cloud saves across devices, one global season board, and a name filter
+- Loading screens with tips that show what is being prepared (starting the game, after the intro, going into a run, joining co-op) and stay up only as long as the work takes
 - Tunes itself to your device: it detects the hardware, adjusts resolution, weather and world detail as you play, and cleans up its own caches
 
 ## Versions
 
 | Version | Highlights |
 |---|---|
+| **1.9.90** | Wi-Fi co-op fixed and built out: picking cards no longer freezes the host or the team (numbered rounds, resent cards, a 30-second timer that picks for anyone away), dropped connections reconnect into the same run, and phones and PCs keep up with the host instead of falling behind. Live ping in the lobby and on the HUD (switch it off in game), arrows on the screen edge that point to teammates, and markers you drop for the team with G. Loading screens everywhere: starting up, after the intro (watched or skipped), going into a run, joining a game and back to the menu. A Windows installer (`ZombieCity-Setup.exe`) with Start menu and desktop shortcuts, and a borderless launcher that opens the game in its own window. Maintenance mode and test builds, so updates go through dev, test and publish. The studio admin's name, and names that pose as the studio are refused. A different account logging in on the same device no longer mixes progress. |
 | **1.9.82** | The game's home is now the DeclAIre-ZombieCity repository: the launcher checks its releases for updates, and the browser version and the website's download buttons point to it. |
 | **1.9.80** | DeclAIre Studios accounts: make a free account with an email and password and your progress follows you to every phone and PC. Saves are merged after every run (unlocks add up, bests are kept, totals count every device) and encrypted on the device with a key made for each account and locked with its password. One global season board for the website, Android and Windows, under your account name. A filter keeps slurs, swearing and personal details out of every name, with 50 remarks for those who try. The account page on the website shows your stats and changes your name or password, or deletes the account. The launcher shows who is signed in and explains why an update check failed. |
 | **1.9.70** | Wi-Fi co-op: up to four players on the same Wi-Fi play one run together. A PC hosts from the Windows launcher, and phones and other PCs find the game in a list and join. Everyone fights the same zombies, bosses and weather in the same generated city, teammates show with their name and color, the score is shared, downed players are revived by standing next to them, every player picks a card after each wave, and the whole team can call in the A-10. The Windows app is now the Zombie City Launcher: a launcher screen with the news, a Play button and a check for updates, which downloads new versions of the game from GitHub, checks them and installs them, and still plays offline with the copy it carries. Back to the launcher and Quit sit on the main menu. |
@@ -96,12 +106,14 @@ The game is plain JavaScript split into modules that `build.js` joins into one p
 | `intro.js` | The DeclAIre Studios intro (with the city that builds itself around the road) and the "Made with Claude" card |
 | `input.js` | Touch, keyboard and mouse, and controller input: device detection, aiming, rebinding and menu navigation |
 | `profile.js` | Your name, your record across runs and the main menu's side panel |
+| `loader.js` | The loading screens: the steps, the progress bar and the tips |
 | `net.js` | Wi-Fi co-op: hosting and joining, the host's snapshots of the run, teammates, revives, shared cards and the co-op screen |
 | `acct-core.js` | Accounts: Wix sign-in over REST, the per-account keys and encryption, save records and the global board (shared with the account page) |
 | `account.js` | The game's Account sheet, merging this device's progress with the cloud save, and syncing after runs |
 | `filter.js`, `filterdata.js` | The name filter and its 50 remarks. `filterdata.js` is generated by `tools/make_filter_data.py` from the [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) English list (CC BY 4.0) |
 | `site/` | The account page (log in, sign up, stats, name and password changes, account deletion, the global board, privacy policy). `python3 tools/build_site.py` writes `site/dist/` for upload to the Wix site |
-| `desktop/` | The Windows launcher: Electron's `main.js` and `preload.js`, the launcher screen (`launcher.html`), the Wi-Fi co-op server (`lan.js`), the packaging script and the exe icon patcher |
+| `desktop/` | The Windows launcher: Electron's `main.js` (the borderless launcher window and the game window) and `preload.js`, the launcher screen (`launcher.html`), the Wi-Fi co-op server (`lan.js`), the packaging script (`build_win.py`), the exe icon patcher, and the installer (`installer/installer.nsi`, built by `build_setup.py`) |
+| `tools/` | `release.py` (the dev, test and publish phases), `build_site.py` (the account page), `make_filter_data.py` (the name filter's data) and `make_installer_art.py` (the installer's pictures and icon) |
 | `index.html`, `.nojekyll` | The GitHub Pages entry point, which opens `zombie-city.html` (turn on Pages for the main branch, root folder) |
 | `fonts/` | The three fonts (embedded into the page at build time) and their licenses |
 | `media/` | The intro card's music clip (embedded into the page at build time) |
@@ -115,10 +127,11 @@ node build.js win      # Windows launcher -> desktop/app/ (launcher.html, game/i
 To build the Windows launcher, download Electron's Windows x64 zip (`electron-v33.2.1-win32-x64.zip` from Electron's GitHub releases) and run:
 
 ```sh
-python3 desktop/build_win.py electron-v33.2.1-win32-x64.zip out 1.9.82
+python3 desktop/build_win.py electron-v33.2.1-win32-x64.zip out 1.9.90
+ZC_NSIS=/path/to/nsis python3 desktop/build_setup.py out/ZombieCity-Launcher-Windows.zip out 1.9.90
 ```
 
-It writes `out/ZombieCity-Launcher-Windows.zip` plus `zombie-city-game.html` and `game.json`. To ship a game update to everyone who has the launcher, attach those two files (with exactly those names) to a new release on this repository; the launcher reads the newest release that has them, checks the download against the checksum in `game.json` and installs it. The repository has to be public for the launcher to see its releases.
+The first writes `out/ZombieCity-Launcher-Windows.zip` plus `zombie-city-game.html` and `game.json`; the second turns the zip into `out/ZombieCity-Setup.exe` with [NSIS](https://nsis.sourceforge.io/) 3 (`makensis` on Windows or Linux; `ZC_NSIS` is the folder that holds NSIS's `Include`, `Contrib` and `Stubs`). To ship a game update to everyone who has the launcher, attach those two files (with exactly those names) to a new release on this repository; the launcher reads the newest release that has them, checks the download against the checksum in `game.json` and installs it. The repository has to be public for the launcher to see its releases.
 
 To build the Android app you also need `aapt2`, `android.jar` (API 34), `dx.jar` and Python's `cryptography` package:
 
@@ -130,3 +143,14 @@ ZC_KEY=/path/to/zombie-city-signing-key.p12 ZC_KEY_PASS=... python3 build_apk.py
 ```
 
 The signing key is kept out of this repository on purpose. Every update must be signed with the same key, or phones will refuse to install it over the old version, so keep your copy backed up somewhere safe.
+
+## Releasing an update
+
+Every update goes through three phases, so problems show up before players see them:
+
+1. **Dev.** Build everything (`node build.js`, `node build.js app`, `node build.js win`, the APK and the installer) and run the tests.
+2. **Test.** `python3 tools/release.py test` puts the new web version in `test/` (so [the test page](https://gabrielamidon8-sys.github.io/DeclAIre-ZombieCity/test/) gets it) while the main page keeps the published version. Commit and push, then make a GitHub release for the version with **Set as a pre-release** ticked and the five files attached (`ZombieCity-Setup.exe`, `ZombieCity-Launcher-Windows.zip`, `ZombieCity-Android.apk`, `zombie-city-game.html`, `game.json`). Only the admin's launcher sees pre-releases (its Test channel switch); players don't. Set **test** in the Game Status collection on Wix to the version, and the game shows "Test build". Anything wrong is fixed and tested again.
+3. **Publish.** Turn on maintenance (Game Status: **maintenance** on, a **message** and an **until** time): players see "Down for maintenance" (a run in progress finishes first) while the admin can still play. Run `python3 tools/release.py publish`, commit and push, then edit the GitHub release: untick pre-release and tick **Set as the latest release**. Set **stable** to the version (and **minVer** too when older versions can't play with it, such as a co-op change, so they are asked to update). Turn maintenance off.
+
+Game Status is the one-row collection on the DeclAIre Studios Wix project (Wix dashboard > CMS > Game Status). Everyone can read it, only the site's admins can change it, and the game checks it every few minutes.
+

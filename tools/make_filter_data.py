@@ -86,7 +86,11 @@ def main():
         h = 2166136261
         for ch in '\n'.join(entries):
             h = ((h ^ ord(ch)) * 16777619) & 0xffffffff
-        print(json.dumps({'count': len(entries), 'fnv': h, 'modes': modes, 'extra': EXTRA, 'mask': MANUAL_MASK}))
+        # the extra entries and the mask go in packed (rot13 + base64, as in filterdata.js) so the page's source
+        # doesn't spell them out; filter.js's ZCF.unpack reads them back
+        sq = lambda e: re.sub('[^a-z]', '', unicodedata.normalize('NFKD', e).lower())
+        packed = lambda lst: base64.b64encode(codecs.encode(' '.join(lst), 'rot13').encode()).decode()
+        print(json.dumps({'count': len(entries), 'fnv': h, 'modes': modes, 'extra': packed([sq(e) for e in EXTRA if sq(e)]), 'mask': packed(MANUAL_MASK)}))
         return
 
     def pack(lst):

@@ -10,6 +10,18 @@
   const GAME_SITE = 'https://declairestudios.wordpress.com';
   const S = { member: AcctCore.ls.get('member', null), rec: null, me: null, locked: false, msg: null, busy: false, view: 'login', pending: null, pwNow: null };
   const cleanName = s => String(s || '').toUpperCase().replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14);
+  // the studio's admin account: only that account shows ADMIN|DECLAIRE (red and cracked, then underlined in orange).
+  // Its id comes from Wix (the record's owner), which nobody can set for themselves, so the name can't be copied.
+  const ADMIN_ID = '8624cdfc-c3a3-46ea-bda7-552be319ee08', ADMIN_TAG = 'ADMIN|DECLAIRE';
+  const isAdminName = (name, id) => !!id && id === ADMIN_ID && String(name || '').toUpperCase() === ADMIN_TAG;
+  function nameNode(name, id) {
+    if (isAdminName(name, id)) {
+      const e = h('span', 'nm-admin'); e.setAttribute('aria-label', 'ADMIN DECLAIRE');
+      e.append(h('span', 'nm-a', 'ADMIN'), h('span', 'nm-bar', '|'), h('span', 'nm-d', 'DECLAIRE'));
+      return e;
+    }
+    return document.createTextNode(ZCF.safe(cleanName(name)));
+  }
   const fmtTime = s => { s = s | 0; const hh = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return hh ? hh + 'h ' + String(m).padStart(2, '0') + 'm' : m + 'm ' + String(s % 60).padStart(2, '0') + 's'; };
   const num = n => Number(n || 0).toLocaleString();
   // the game opens this page with ?join=1#email=...&name=... ; read it once, then tidy the address (the email shouldn't linger in it)
@@ -24,14 +36,14 @@
     try {
       const r = await fetch(LIST, { cache: 'force-cache' });
       const txt = await r.text();
-      const all = txt.split('\n').map(s => s.trim()).filter(Boolean).concat(PF.extra).map(squash).filter(s => s.length >= 3);
+      const all = txt.split('\n').map(s => s.trim()).filter(Boolean).concat(ZCF.unpack(PF.extra)).map(squash).filter(s => s.length >= 3);
       const entries = Array.from(new Set(all)).sort();
       let fnv = 2166136261 >>> 0;
       for (const ch of entries.join('\n')) fnv = Math.imul(fnv ^ ch.charCodeAt(0), 16777619) >>> 0;
       const same = entries.length === PF.count && fnv === PF.fnv;
       const sub = [], word = [];
       entries.forEach((e, i) => { if (same && PF.modes[i] === '1' && e.length >= 4) sub.push(e); else word.push(e); });
-      ZCF.setWords(sub, word, PF.mask);
+      ZCF.setWords(sub, word, ZCF.unpack(PF.mask));
       return true;
     } catch (e) { return false; }
   })();
@@ -210,7 +222,8 @@
     const d = S.rec.data, sum = (() => { try { return JSON.parse(d.summary || '{}'); } catch (e) { return {}; } })();
     const c = h('section', 'card me'); P.append(c);
     const top = h('div', 'me-top');
-    const nm = h('h2', 'me-name'); nm.append(S.member.username, h('span', null, S.member.tag ? ' #' + S.member.tag : ''));
+    const nm = h('h2', 'me-name'); nm.append(nameNode(S.member.username, S.member.id), h('span', null, S.member.tag ? ' #' + S.member.tag : ''));
+    if (S.member.id === ADMIN_ID) top.append(h('p', 'admin-note', 'Studio admin account'));
     top.append(nm, h('p', 'muted', S.member.email || (S.me && S.me.loginEmail) || ''));
     if (S.me && S.me.createdDate) top.append(h('p', 'muted small', 'Member since ' + new Date(S.me.createdDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })));
     c.append(top);
@@ -246,11 +259,12 @@
     const nc = h('section', 'card'); P.append(nc);
     nc.append(h('h3', null, 'Name on the board'));
     const nf = h('form', 'form row'); const [nl, ni] = input('New name', 'text', 'nickname', 'nickname', { maxLength: 14, value: S.member.username, autocapitalize: 'characters' });
-    ni.addEventListener('input', () => { const v = ni.value.toUpperCase().replace(/[^A-Z0-9 _.\-]/g, ''); if (v !== ni.value) ni.value = v; });
+    ni.addEventListener('input', () => { const v = ni.value.toUpperCase().replace(S.member.id === ADMIN_ID ? /[^A-Z0-9 _.\-|]/g : /[^A-Z0-9 _.\-]/g, ''); if (v !== ni.value) ni.value = v; });
     const nb = h('button', 'btn', 'Save name'); nb.type = 'submit'; nf.append(nl, nb); nc.append(nf);
     nf.addEventListener('submit', busy(nb, async () => {
-      const prob = await nameProblem(ni.value); if (prob) { say(prob, true); return; }
-      const name = cleanName(ni.value);
+      const admin = S.member.id === ADMIN_ID && ni.value.trim().toUpperCase() === ADMIN_TAG;
+      const prob = admin ? '' : await nameProblem(ni.value); if (prob) { say(prob, true); return; }
+      const name = admin ? ADMIN_TAG : cleanName(ni.value);
       S.rec = await AcctCore.writeRecord(await AcctCore.myRecord(), { username: name, updatedAt: Date.now() });
       await AcctCore.renameScores(S.member.id, name);
       S.member.username = name; AcctCore.ls.set('member', S.member);
@@ -305,7 +319,7 @@
       if (!rows.length) { B.append(h('li', 'empty', 'No scores yet this season. Be the first.')); return; }
       rows.forEach((r, i) => {
         const li = h('li', i < 3 ? 'top' : ''); if (S.member && r.id === S.member.id) li.classList.add('me');
-        li.append(h('span', 'rk', '#' + (i + 1)), h('span', 'tg', ZCF.safe(cleanName(r.tag)) + (S.member && r.id === S.member.id ? ' (you)' : '')), h('span', 'sc', num(r.score)), h('span', 'wv', 'W' + (r.wave || 0)), h('span', 'dv', DEV[r.dev] || ''));
+        li.append(h('span', 'rk', '#' + (i + 1)), (() => { const t = h('span', 'tg'); t.append(nameNode(r.tag, r.id), S.member && r.id === S.member.id ? ' (you)' : ''); return t; })(), h('span', 'sc', num(r.score)), h('span', 'wv', 'W' + (r.wave || 0)), h('span', 'dv', DEV[r.dev] || ''));
         B.append(li);
       });
     } catch (e) { B.textContent = ''; B.append(h('li', 'empty', 'The board could not load right now.')); }

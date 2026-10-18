@@ -68,9 +68,42 @@ h1 span{display:block;color:var(--tape)}
 footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-family:var(--f-num);font-size:11px;letter-spacing:.1em;color:#6d727a;text-transform:uppercase}
 @media (max-width:980px){main{grid-template-columns:1fr;overflow:auto}.right{justify-content:flex-start}}
 @media (prefers-reduced-motion:reduce){.tape span,.art,.art::before,.art .sk-eye{animation:none}}
+
+/* 1.9.90: borderless window (own title bar), loading screen */
+/* the launcher is a fixed-size window: a tighter layout that fits it */
+main{padding:84px 44px 58px;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr);gap:36px}
+h1{font-size:104px}
+.tag{font-size:15px;max-width:48ch}
+.play{min-width:0;width:100%;max-width:440px;padding:16px 26px 16px 22px;font-size:24px}
+.row{gap:6px}
+.ghost{padding:8px 11px;font-size:11px}
+.right{gap:10px}
+.card{padding:13px 16px}
+.news{max-height:150px}
+.coop p{font-size:13px}
+footer{left:44px;bottom:12px}
+.tape{top:58px}
+
+.tbar{position:fixed;top:0;left:0;right:0;height:34px;z-index:30;display:flex;align-items:center;gap:0;padding-left:14px;-webkit-app-region:drag;background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,0))}
+.tbar span{font-family:var(--f-num);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-right:auto}
+.tbar button{-webkit-app-region:no-drag;width:46px;height:34px;border:0;background:transparent;color:var(--bone);font-size:15px;display:grid;place-items:center;padding:0}
+.tbar button:hover{background:rgba(255,255,255,.08)}
+.tbar #wclose:hover{background:#c8323a}
+.tbar button svg{width:12px;height:12px}
+body::after{content:"";position:fixed;inset:0;border:1px solid rgba(242,204,58,.2);pointer-events:none;z-index:60}
+.lload{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(ellipse 80% 60% at 50% 118%, rgba(255,80,40,.2), transparent 60%),#0b0d10;transition:opacity .25s ease}
+.lload.out{opacity:0;pointer-events:none}
+.lload .ll-studio{margin:0;font-family:var(--f-num);font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+.lload .ll-logo{margin:0;font-family:var(--f-display);font-size:64px;line-height:.9;color:var(--bone);text-transform:uppercase}
+.lload .ll-logo span{color:var(--tape)}
+.lload .ll-bar{width:min(380px,70vw);height:6px;border-radius:3px;background:rgba(235,229,214,.1);overflow:hidden}
+.lload .ll-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#d9434b,var(--tape));transition:width .2s ease}
+.lload .ll-step{margin:0;font-family:var(--f-num);font-size:12px;letter-spacing:.08em;color:var(--muted)}
 </style>
 </head>
 <body>
+<div class="tbar"><span>Zombie City Launcher</span><button id="wmin" type="button" aria-label="Minimize"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6h10" stroke="currentColor" stroke-width="1.4"/></svg></button><button id="wclose" type="button" aria-label="Close"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.4"/></svg></button></div>
+<div class="lload" id="lload" role="status" aria-live="polite"><p class="ll-studio">DeclAIre Studios</p><p class="ll-logo">Zombie <span>City</span></p><div class="ll-bar"><i id="lloadFill"></i></div><p class="ll-step" id="lloadStep">Starting the launcher</p></div>
 <div class="sky"></div>
 <div class="city" aria-hidden="true"><svg viewBox="0 0 1600 420" preserveAspectRatio="none"><path fill="#07080a" d="M0 420V250h60v-60h40v40h50V140h70v60h30v-90h80v120h40V170h50v80h60V90h30V60h50v30h20v150h70V180h90v-40h40v120h60V120h80v90h40v-70h60v130h50V200h70V100h40v-30h60v190h50V160h80v90h60V210h50v-90h70v130h40V190h60v230z"/><g fill="#ffce78" opacity=".55"><rect x="250" y="160" width="6" height="8"/><rect x="270" y="190" width="6" height="8"/><rect x="520" y="110" width="6" height="8"/><rect x="540" y="150" width="6" height="8"/><rect x="760" y="200" width="6" height="8"/><rect x="1020" y="150" width="6" height="8"/><rect x="1040" y="190" width="6" height="8"/><rect x="1290" y="180" width="6" height="8"/><rect x="1450" y="230" width="6" height="8"/></g></svg></div>
 <canvas id="fx" aria-hidden="true"></canvas>
@@ -87,6 +120,7 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
       <button class="ghost" id="site" type="button">Website</button>
       <button class="ghost" id="acct" type="button">Account</button>
       <button class="ghost" id="fs" type="button">Window</button>
+      <button class="ghost" id="testCh" type="button" hidden>Test builds: off</button>
       <button class="ghost" id="quit" type="button">Quit</button>
     </div>
   </section>
@@ -105,7 +139,11 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
   let info = null, latest = null, busy = false;
   const status = (t, b) => { const p = $('status'); p.textContent = ''; if (b) { const s = document.createElement('b'); s.textContent = b; p.append(s, ' '); } p.append(t); };
   function vcmp(a, b) { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; }
-  function showVersion() { $('playVer').textContent = 'v' + info.current; $('ver').textContent = 'Game ' + info.current + ' · Launcher ' + info.launcher; $('fs').textContent = info.fullscreen ? 'Window' : 'Full screen'; }
+  function showVersion() { $('playVer').textContent = 'v' + info.current; $('ver').textContent = 'Game ' + info.current + ' · Launcher ' + info.launcher; $('fs').textContent = 'Opens: ' + (info.fullscreen ? 'full screen' : 'window'); }
+  // the loading screen: what the launcher is doing, and how far along
+  const lstep = (t, f) => { $('lloadStep').textContent = t; $('lloadFill').style.width = (f * 100).toFixed(0) + '%'; };
+  const lshow = t => { const e = $('lload'); e.hidden = false; e.classList.remove('out'); lstep(t, 0.3); };
+  const lhide = () => { const e = $('lload'); e.classList.add('out'); setTimeout(() => { e.hidden = true; }, 300); };
   function renderNews(list) {
     const box = $('news'); box.textContent = '';
     if (!list || !list.length) { const p = document.createElement('p'); p.textContent = 'No news yet. Check back after the next update.'; box.append(p); return; }
@@ -122,7 +160,7 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
   }
   async function check(auto) {
     if (busy) return; busy = true; $('check').disabled = true; status(auto ? 'Checking for updates' : 'Checking for updates');
-    const r = await L.check();
+    const r = await L.check(testOn());
     busy = false; $('check').disabled = false;
     if (!r.ok) {
       const msg = r.why === 'norepo' ? ['Online updates are not published yet. You are playing the version that came with this launcher.', 'No updates yet.']
@@ -132,7 +170,8 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
     }
     renderNews(r.news); $('newsWhen').textContent = 'From GitHub';
     latest = r.latest;
-    if (latest && vcmp(latest.version, info.current) > 0) { status('Version ' + latest.version + ' is out. Press Update to get it (about ' + Math.max(1, Math.round((latest.size || 1300000) / 1048576)) + ' MB).', 'New update.'); $('playTxt').textContent = 'Update'; }
+    if (latest && latest.pre && vcmp(latest.version, info.current) > 0) { status('Test build ' + latest.version + ' is ready for you to try. Press Update to get it.', 'Test channel.'); $('playTxt').textContent = 'Update'; }
+    else if (latest && vcmp(latest.version, info.current) > 0) { status('Version ' + latest.version + ' is out. Press Update to get it (about ' + Math.max(1, Math.round((latest.size || 1300000) / 1048576)) + ' MB).', 'New update.'); $('playTxt').textContent = 'Update'; }
     else status('You have the newest version.', 'Up to date.');
   }
   async function update() {
@@ -146,7 +185,8 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
   async function go() {
     if (busy) return;
     if ($('playTxt').textContent === 'Update' && latest) { await update(); return; }
-    $('play').disabled = true; status('Starting the game'); await L.play();
+    $('play').disabled = true; status('Starting the game'); lshow('Loading Zombie City ' + info.current); setTimeout(() => lstep('Loading Zombie City ' + info.current, 0.7), 200);
+    await L.play();   // the game opens in its own window, and this one closes once the game is on screen
   }
   $('play').addEventListener('click', go);
   $('check').addEventListener('click', () => check(false));
@@ -154,14 +194,22 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
   $('acct').addEventListener('click', () => L.open(info.account + (member() ? '' : '?join=1')));
   // the game and this screen share storage, so the launcher knows who is signed in
   function member() { try { const m = JSON.parse(localStorage.getItem('dcl_member') || 'null'); const t = JSON.parse(localStorage.getItem('dcl_tokens') || 'null'); return m && t && t.role === 'member' ? m : null; } catch (e) { return null; } }
+  // the admin's test channel: versions being tested (GitHub pre-releases) arrive here before everyone else gets them
+  const ADMIN_ID = '8624cdfc-c3a3-46ea-bda7-552be319ee08';
+  const isAdmin = () => { const m = member(); return !!(m && m.id === ADMIN_ID); };
+  const testOn = () => { try { return isAdmin() && localStorage.getItem('zl_test') === '1'; } catch (e) { return false; } };
+  function showTest() { const b = $('testCh'); b.hidden = !isAdmin(); b.textContent = 'Test builds: ' + (testOn() ? 'on' : 'off'); }
+  $('testCh').addEventListener('click', () => { try { localStorage.setItem('zl_test', testOn() ? '0' : '1'); } catch (e) { } showTest(); check(false); });
   function showAcct() {
     const m = member(), p = $('acctLine'); p.textContent = '';
     const b = document.createElement('b');
     if (m) { b.textContent = 'Signed in as ' + String(m.username || 'SURVIVOR').slice(0, 14) + (m.tag ? ' #' + m.tag : '') + '.'; p.append(b, ' Your progress saves to the cloud after every run.'); $('acct').textContent = 'Account'; }
     else { b.textContent = 'DeclAIre account.'; p.append(b, " Free. Log in from the game's main menu (Account) and your progress saves to the cloud and follows you to your phone."); $('acct').textContent = 'Create account'; }
   }
-  showAcct();
-  $('fs').addEventListener('click', () => { D.fullscreen(); setTimeout(() => { info.fullscreen = D.isFullscreen(); showVersion(); }, 300); });
+  showAcct(); showTest();
+  $('fs').addEventListener('click', async () => { info.fullscreen = await L.fullscreenPref(!info.fullscreen); showVersion(); });
+  $('wmin').addEventListener('click', () => L.minimize());
+  $('wclose').addEventListener('click', () => L.close());
   $('quit').addEventListener('click', () => D.quit());
   window.addEventListener('keydown', e => { if (e.key === 'Escape') D.quit(); });
   // a controller works here too: A or Start plays
@@ -179,7 +227,14 @@ footer{position:fixed;left:clamp(24px,5vw,80px);bottom:14px;z-index:2;font-famil
     for (const p of P) { if (!still) { p.y -= p.v * dt; p.x += Math.sin(now / 900 + p.ph) * 12 * dt; } if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; } g.globalAlpha = 0.35 + 0.35 * Math.sin(now / 300 + p.ph); g.fillStyle = p.r > 1.6 ? '#ffb04a' : '#ff7a3a'; g.fillRect(p.x, p.y, p.r, p.r); }
     g.globalAlpha = 1; requestAnimationFrame(tick);
   })(last);
-  L.info().then(i => { info = i; showVersion(); status('Ready to play version ' + info.current + '.'); check(true); });
+  (async () => {
+    lstep('Reading your games', 0.2);
+    info = await L.info(); showVersion(); status('Ready to play version ' + info.current + '.');
+    lstep('Checking for updates', 0.55);
+    // a slow GitHub never holds up the launcher: the check carries on in the background after a moment
+    await Promise.race([check(true), new Promise(r => setTimeout(r, 3000))]);
+    lstep('Ready', 1); setTimeout(lhide, 120);
+  })();
 })();
 </script>
 </body>

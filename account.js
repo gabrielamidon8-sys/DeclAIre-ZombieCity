@@ -61,8 +61,35 @@ function acctMerge(cloud, local) {
     overlord: Math.max(cloud.overlord | 0, local.overlord | 0), keeper: Math.max(cloud.keeper | 0, local.keeper | 0),
     loadout: local.loadout != null ? local.loadout : cloud.loadout, dash: local.dash || cloud.dash,
     best: { wave: Math.max(cb.wave | 0, lbst.wave | 0), chain: Math.max(cb.chain | 0, lbst.chain | 0), score: Math.max(cb.score | 0, lbst.score | 0) },
-    devices: Object.assign({}, cloud.devices || {}, local.devices || {}), lb: lbOut
+    devices: acctDevices(cloud.devices, local.devices), lb: lbOut
   };
+}
+// each device's totals: the larger of what the cloud and the device have
+function acctDevices(a, b) {
+  const out = Object.assign({}, a || {});
+  for (const [id, d] of Object.entries(b || {})) {
+    const c = out[id];
+    out[id] = !c ? d : { runs: Math.max(c.runs | 0, d.runs | 0), kills: Math.max(c.kills | 0, d.kills | 0), time: Math.max(c.time | 0, d.time | 0), plat: d.plat || c.plat, at: Math.max(c.at || 0, d.at || 0) };
+  }
+  return out;
+}
+// whose progress is on this device: the account that last saved it ('' while it is a guest's)
+const acctOwner = () => store.get('zc_owner', '');
+// A different account logging in on this device starts from its own cloud save. The progress the last player left here
+// is already in their own account; a copy is also kept on the device in case it hadn't finished saving, and goes back
+// into their account the next time they log in here. Nothing of theirs ends up in someone else's account.
+function acctPutAway(owner) {
+  try { store.set('zc_away_' + owner, acctSnapshot()); } catch (e) { /* storage full: the cloud copy still has it */ }
+  found.clear(); saveFound(); guns.clear(); guns.add(0); saveGuns(); dashes.clear(); dashes.add('sprint'); saveDashes();
+  bossSeen.clear(); bossKilled.clear(); saveBosses();
+  store.set('zc_overlord', 0); store.set('zc_keeper', 0); store.set('zc_loadout', 0); store.set('zc_dash', 'sprint');
+  Object.assign(STATS, { runs: 0, kills: 0, time: 0, bestWave: 0, bestChain: 0, bestScore: 0 }); store.set('zc_stats', STATS);
+  store.set('zc_lb_' + SEASON, []);
+}
+// this account's progress that was put away on this device earlier (when someone else logged in here)
+function acctTakeBack(id) {
+  const k = 'zc_away_' + id, s = store.get(k, null); if (!s) return false;
+  acctApply(acctMerge(s, acctSnapshot())); return true;
 }
 // put a merged save into the game (only ever adds)
 function acctApply(s) {
@@ -80,6 +107,12 @@ function acctApply(s) {
   const cur = (s.lb || {})[SEASON];
   if (cur && cur.length) { const k = 'zc_lb_' + SEASON, had = store.get(k, []); if (cur.length !== had.length || (cur[0] && had[0] && cur[0].score !== had[0].score) || (cur[0] && !had[0])) { store.set(k, cur); changed = true; } }
   ACCT.others = Object.entries(s.devices || {}).filter(([id]) => id !== DEVID).map(([, d]) => d);
+  // this device's own totals for this account (after switching accounts here, they come back from the cloud)
+  const mine = (s.devices || {})[DEVID];
+  if (mine && ((mine.runs | 0) > STATS.runs || (mine.kills | 0) > STATS.kills || (mine.time | 0) > STATS.time)) {
+    STATS.runs = Math.max(STATS.runs, mine.runs | 0); STATS.kills = Math.max(STATS.kills, mine.kills | 0); STATS.time = Math.max(STATS.time, mine.time | 0);
+    store.set('zc_stats', STATS); changed = true;
+  }
   return changed;
 }
 // runs, kills and time played across every device on the account (this device counted live)
@@ -108,8 +141,16 @@ async function acctSync(why) {
       const merged = acctMerge(cloud, acctSnapshot());
       const changed = acctApply(merged);
       const blob = await AcctCore.encryptSave(ACCT.dk, merged, ACCT.member.id);
-      ACCT.rec = await AcctCore.writeRecord(rec, { save: blob, saveVer: ((rec && rec.data.saveVer) | 0) + 1, summary: JSON.stringify(acctSummary(merged)), updatedAt: Date.now() });
+      const upd = { save: blob, saveVer: ((rec && rec.data.saveVer) | 0) + 1, summary: JSON.stringify(acctSummary(merged)), updatedAt: Date.now() };
+      // the account name: a rename made here while offline goes up; otherwise a rename made elsewhere comes down
+      const pend = ACCT.member.pendingName;
+      if (pend) upd.username = pend;
+      else if (rec && rec.data.username && rec.data.username !== ACCT.member.username) { ACCT.member.username = rec.data.username; AcctCore.ls.set('member', ACCT.member); store.set('zc_tag', cleanTag(ACCT.member.username, ACCT.member.id)); updNameUi(); }
+      ACCT.rec = await AcctCore.writeRecord(rec, upd);
+      if (pend) { delete ACCT.member.pendingName; AcctCore.ls.set('member', ACCT.member); AcctCore.renameScores(ACCT.member.id, pend).catch(() => { }); }
       ACCT.lastSync = Date.now(); AcctCore.ls.set('synced', ACCT.lastSync);
+      // the progress on this device now belongs to this account (a copy put away for it earlier is no longer needed)
+      store.set('zc_owner', ACCT.member.id); store.set('zc_away_' + ACCT.member.id, null);
       if (ACCT.msg && ACCT.msg.sync) ACCT.msg = null;
       if (changed && G.mode === 'title') refreshTitle();
       return true;
@@ -143,10 +184,14 @@ async function acctAfterAuth(email, password, wantName) {
   ACCT.member = { id: rec.data._owner, email: email, username: rec.data.username || 'SURVIVOR', tag: rec.data.tag || '' };
   AcctCore.ls.set('member', ACCT.member);
   ACCT.rec = rec;
+  // someone else's progress is on this device: put it away before anything is saved to this account
+  const owner = acctOwner(); ACCT.switched = false;
+  if (owner && owner !== ACCT.member.id) { acctPutAway(owner); ACCT.switched = true; }
+  acctTakeBack(ACCT.member.id);
   if (!dk) { ACCT.status = 'locked'; ACCT.dk = null; ACCT.pwNow = password; renderAcct(); updAcctUi(); return; }
   ACCT.dk = dk; AcctCore.ls.set('dk', dk); ACCT.status = 'in';
-  store.set('zc_tag', cleanTag(ACCT.member.username)); nameErr(''); updNameUi();
-  ACCT.msg = { t: 'Welcome, ' + ACCT.member.username + '. Your progress is saving to the cloud.' };
+  store.set('zc_tag', cleanTag(ACCT.member.username, ACCT.member.id)); nameErr(''); updNameUi();
+  ACCT.msg = { t: ACCT.switched ? 'Welcome, ' + ACCT.member.username + '. This device now has your progress; the last player’s progress stays in their own account.' : 'Welcome, ' + ACCT.member.username + '. Your progress is saving to the cloud.' };
   await acctSync('login');
   lbRefresh(true);
 }
@@ -183,7 +228,7 @@ async function acctUnlock(password) {
   if (ACCT.pwNow && ACCT.pwNow !== password) ACCT.rec = await AcctCore.writeRecord(rec, Object.assign(await AcctCore.relock(ACCT.pwNow, dk), { updatedAt: Date.now() }));
   ACCT.pwNow = null;
   ACCT.dk = dk; AcctCore.ls.set('dk', dk); ACCT.status = 'in'; ACCT.msg = { t: 'Save unlocked.' };
-  store.set('zc_tag', cleanTag(ACCT.member.username)); updNameUi();
+  store.set('zc_tag', cleanTag(ACCT.member.username, ACCT.member.id)); updNameUi();
   await acctSync('unlock');
 }
 // the old password is gone: start a new key, and the cloud save is rebuilt from this device's progress
@@ -204,9 +249,9 @@ async function acctLogout() {
 // a new name while logged in renames the account and its board entries too
 async function acctRename(tag) {
   if (ACCT.status !== 'in' || !ACCT.member || ACCT.member.username === tag) return;
-  ACCT.member.username = tag; AcctCore.ls.set('member', ACCT.member);
+  ACCT.member.username = tag; delete ACCT.member.pendingName; AcctCore.ls.set('member', ACCT.member);
   try { ACCT.rec = await AcctCore.writeRecord(ACCT.rec || await AcctCore.myRecord(), { username: tag, updatedAt: Date.now() }); await AcctCore.renameScores(ACCT.member.id, tag); lbRefresh(true); }
-  catch (e) { /* renamed here; the cloud catches up on the next save */ }
+  catch (e) { ACCT.member.pendingName = tag; AcctCore.ls.set('member', ACCT.member); /* renamed here; the cloud catches up on the next save */ }
 }
 
 /* ---------- the account sheet ---------- */
@@ -237,7 +282,8 @@ function renderAcct() {
   const card = (title, cls) => { const c = el('section', 'coop-card acct-card' + (cls ? ' ' + cls : '')); c.append(el('h3', null, title)); body.append(c); return c; };
   if (ACCT.status === 'in') {
     const c = card(ACCT.member.username);
-    const id = el('p', 'acct-id'); id.append(el('b', null, ACCT.member.username), el('span', null, ACCT.member.tag ? ' #' + ACCT.member.tag : '')); c.firstChild.replaceWith(id);
+    const id = el('p', 'acct-id'); id.append(nameEl(cleanTag(ACCT.member.username, ACCT.member.id), ACCT.member.id, 'b'), el('span', null, ACCT.member.tag ? ' #' + ACCT.member.tag : '')); c.firstChild.replaceWith(id);
+    if (meAdmin()) c.append(el('p', 'acct-admin', 'Admin account: your name shows in admin colors, and you can play during maintenance and get test builds.'));
     c.append(el('p', null, ACCT.member.email));
     const t = acctTotals();
     const dl = el('dl', 'acct-stats');
@@ -328,7 +374,7 @@ function renderAcct() {
   }));
 }
 function updAcctUi() {
-  const em = $('acctBtnEm'); if (em) em.textContent = ACCT.status === 'in' ? ACCT.member.username : ACCT.status === 'locked' ? 'Locked' : 'Log in';
+  const em = $('acctBtnEm'); if (em) { em.textContent = ''; if (ACCT.status === 'in') em.append(nameEl(cleanTag(ACCT.member.username, ACCT.member.id), ACCT.member.id)); else em.textContent = ACCT.status === 'locked' ? 'Locked' : 'Log in'; }
   const b = $('acctBtn'); if (b) b.classList.toggle('acct-on', ACCT.status === 'in');
   if (G.mode === 'title') renderTitlePanel();
 }
@@ -337,3 +383,54 @@ $('acctClose').addEventListener('click', closeAcct);
 updAcctUi();
 // signed in from before: check in with the cloud shortly after the game starts
 if (ACCT.status === 'in') setTimeout(() => acctSync('start'), 6000);
+
+/* ---------- maintenance and update phases ----------
+   One switch on the DeclAIre server (the GameStatus collection on Wix) runs every update:
+   - maintenance on: the game shows "Down for maintenance" (with a message and when it's back) instead of starting runs.
+     A run already going gets to finish first. The admin account can still play, to test the new version.
+   - minVer: anyone on an older version is asked to update before playing.
+   - stable / test: which version is published, and which one is being tested (the launcher's test channel and the
+     test copy of the web version get it first). The game shows a "Test build" tag when it is the test version.
+   Offline, none of this applies: the game plays as normal. */
+const STATUS = { maint: false, msg: '', until: 0, stable: '', test: '', minVer: '', ok: false, t: 0 };
+const vcmpG = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; };
+async function statusCheck() {
+  try {
+    const d = await AcctCore.wix('/wix-data/v2/items/query', { body: { dataCollectionId: ACCT_CFG.status, query: { filter: { key: { $eq: 'live' } }, paging: { limit: 1 } } } });
+    const it = d && d.dataItems && d.dataItems[0]; if (!it || !it.data) return;
+    const s = it.data;
+    Object.assign(STATUS, { maint: !!s.maintenance, msg: String(s.message || '').slice(0, 300), until: +s.until || 0, stable: String(s.stable || ''), test: String(s.test || ''), minVer: String(s.minVer || ''), ok: true, t: Date.now() });
+  } catch (e) { /* no connection: play on */ }
+  statusApply();
+}
+const statusOutdated = () => !!(STATUS.ok && STATUS.minVer && vcmpG(ZC_VERSION, STATUS.minVer) < 0);
+function statusBlocked() { return STATUS.ok && !meAdmin() && (STATUS.maint || statusOutdated()); }
+const statusInRun = () => ['play', 'pause', 'upgrade', 'skull', 'cine', 'loading'].indexOf(G.mode) >= 0;
+function statusApply() {
+  const ov = $('maint'); if (!ov) return;
+  const tb = $('testBadge'), isTest = STATUS.ok && STATUS.test === ZC_VERSION && STATUS.stable !== ZC_VERSION;
+  tb.hidden = !isTest || statusInRun(); if (isTest) tb.textContent = 'Test build ' + ZC_VERSION;
+  $('maintAdmin').hidden = !(STATUS.ok && STATUS.maint && meAdmin());
+  const out = statusOutdated();
+  if (!statusBlocked()) { ov.hidden = true; $('maintSoon').hidden = true; return; }
+  if (statusInRun()) { const s = $('maintSoon'); s.hidden = false; s.textContent = out ? 'A required update is out. Finish this run, then update.' : 'Maintenance is starting. Finish this run; new runs open again soon.'; ov.hidden = true; return; }
+  $('maintSoon').hidden = true;
+  if (G.mode === 'intro') return;
+  $('maintTitle').textContent = out ? 'Update needed' : 'Down for maintenance';
+  $('maintMsg').textContent = out ? 'You have version ' + ZC_VERSION + '. Version ' + STATUS.minVer + ' or newer is needed to play.' : (STATUS.msg || 'Zombie City is getting an update. It will be back shortly.');
+  const left = STATUS.until - Date.now();
+  $('maintWhen').textContent = !out && left > 0 ? 'Back in about ' + (left > 3600000 ? Math.round(left / 3600000) + ' hours' : Math.max(1, Math.round(left / 60000)) + ' minutes') : '';
+  const up = $('maintUpdate'); up.hidden = !out;
+  up.textContent = window.ZCDesktop && window.ZCDesktop.launcher ? 'Open the launcher' : IS_APP ? 'Download the update' : 'Reload';
+  if (ov.hidden) { ov.hidden = false; SFX.click(); }
+}
+$('maintRetry').addEventListener('click', () => { $('maintRetry').textContent = 'Checking'; statusCheck().finally(() => { $('maintRetry').textContent = 'Check again'; }); });
+$('maintSite').addEventListener('click', () => openWeb('https://declairestudios.wordpress.com'));
+$('maintUpdate').addEventListener('click', () => {
+  if (window.ZCDesktop && window.ZCDesktop.launcher) window.ZCDesktop.launcher();
+  else if (IS_APP) openWeb('https://github.com/gabrielamidon8-sys/DeclAIre-ZombieCity/releases/latest/download/ZombieCity-Android.apk');
+  else location.reload();
+});
+// first check soon after starting, then every few minutes (every minute while the game is shut)
+setTimeout(statusCheck, 2500);
+setInterval(() => { if (Date.now() - STATUS.t > (statusBlocked() ? 60000 : 180000)) statusCheck(); else if (STATUS.ok) statusApply(); }, 5000);

@@ -685,10 +685,18 @@ function introFinish(natural) {
   if (!INTRO.on) return;
   INTRO.on = false;
   if (!natural) SFX.introCut();                 // a natural finish lets the music's tail ring into the title screen
-  G.mode = 'title'; initAttract(); showOv('title'); refreshTitle();
-  const ti = $('title'); ti.classList.remove('reveal'); void ti.offsetWidth; ti.classList.add('reveal');
-  INTRO.fading = natural ? 1.2 : 0;
+  // after the intro (watched or skipped): the loading screen while the title screen's city and menus get ready
+  G.mode = 'title';
+  INTRO.fading = 0;
   INTRO_EL.classList.add('out');
+  loadRun('Into the city', [
+    ['Waking the city', () => { if (!G.attractReady) initAttract(); G.attractReady = false; return chunkJobs(cam.x, cam.y); }],
+    ['Waking the dead', () => G.zs.filter(z => !z.dead).map(z => () => getSprite(z.m, z.r))],
+    ['Opening the bunker', () => { refreshTitle(); }]
+  ], { now: true }).then(() => {
+    showOv('title');
+    const ti = $('title'); ti.classList.remove('reveal'); void ti.offsetWidth; ti.classList.add('reveal');
+  });
   setTimeout(() => { INTRO.fading = 0; INTRO_EL.hidden = true; INTRO_EL.className = ''; IV.width = IV.height = 1; INTRO.blocks = []; INTRO.runners = []; INTRO.sk = null; INTRO.rays = null; INTRO.word = null; }, 1250);
 }
 // keeps the card moving under the crossfade into the title screen

@@ -13,6 +13,8 @@ const ACCT_CFG = {
   site: 'https://headless-iilujwebfcb-gabrielamidon8-140e.wix-site-host.com',
   saves: 'PlayerSaves',
   scores: 'Scores',
+  proofs: 'Proofs',
+  status: 'GameStatus',
   kdfIter: 600000
 };
 const AcctCore = (function () {
@@ -243,7 +245,23 @@ const AcctCore = (function () {
     for (const it of (d && d.dataItems) || []) if (it.data.tag !== tag) await wix('/wix-data/v2/items/' + encodeURIComponent(it.id), { method: 'PUT', body: { dataCollectionId: C.scores, dataItem: { id: it.id, data: Object.assign({}, it.data, { tag: tag }) } } });
   }
 
+  /* ---------- proving who you are (the admin name in co-op) ---------- */
+  // A one-time note that only this account could have written: Wix stamps who wrote it and nobody can fake that stamp,
+  // so a co-op host (or a teammate checking the host) can be sure the admin name really belongs to the admin account.
+  async function prove(nonce) {
+    const d = await wix('/wix-data/v2/items', { body: { dataCollectionId: C.proofs, dataItem: { data: { nonce: String(nonce), at: Date.now() } } } });
+    const id = d && d.dataItem && (d.dataItem.id || (d.dataItem.data && d.dataItem.data._id));
+    if (id) setTimeout(() => { wix('/wix-data/v2/items/' + encodeURIComponent(id) + '?dataCollectionId=' + C.proofs, { method: 'DELETE' }).catch(() => { }); }, 60000);
+    return !!id;
+  }
+  async function proofOwner(nonce) {
+    const d = await wix('/wix-data/v2/items/query', { body: { dataCollectionId: C.proofs, query: { filter: { nonce: { $eq: String(nonce) } }, paging: { limit: 2 } } } });
+    const it = d && d.dataItems && d.dataItems[0];
+    return it && it.data ? it.data._owner || null : null;
+  }
+
   return {
+    prove: prove, proofOwner: proofOwner,
     CFG: C, ls: ls, AcctError: AcctError, setHttp: setHttp, wix: wix, accessToken: accessToken,
     login: login, register: register, verifyEmail: verifyEmail, signOut: signOut, isMember: isMember, sendReset: sendReset,
     changePassword: changePassword, deleteMe: deleteMe, set onSignedOut(fn) { onSignedOut = fn; },

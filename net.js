@@ -8,9 +8,15 @@ const NET = {
   peers: new Map(), others: new Map(), zmap: new Map(), lobby: [],
   started: false, zid: 0, spawning: false, cosmetic: false, lastHitBy: 1, finishing: false, local: null,
   sendT: 0, snapT: 0, hudT: 0, scanT: 0, hold: 0, md: 0,
-  hits: [], zfx: [], shots: [], kills: [], evs: [], blastsDone: new Set(), cardsAt: 0, picked: new Set(), found: [], shotSfx: new Map()
+  hits: [], zfx: [], shots: [], kills: [], evs: [], blastsDone: new Set(), cardsAt: 0, picked: new Set(), found: [], shotSfx: new Map(),
+  // 1.9.90: card rounds, ping, reconnects
+  round: 0, roundDl: 0, acked: new Set(), cardsT: 0, myRound: 0, myPicked: 0, roundPicked: [],
+  marks: [], markAt: 0, rtt: 0, pings: new Map(), piT: 0, pgT: 0, lastRx: 0, key: '', target: null, recon: 0, reconT: 0, hostVer: ''
 };
 const NET_PORT = 47777, NET_MAX = 4;
+const NET_PICK_SECS = 30, NET_AWAY_SECS = 30, NET_RECON_SECS = 25;
+// players on different versions would see different zombies, weapons and cards, so the host only lets in its own version
+const netVerOk = v => String(v || '') === ZC_VERSION;
 const NET_COLS = ['#f2cc3a', '#29e6ff', '#ff3df2', '#7dff4a'];
 const NET_SK = ['acid', 'wisp', 'shard', 'spike', 'fire', 'ice', 'void', 'shock', 'spirit', 'web', 'bolt'];
 const NET_HK = ['acid', 'fire', 'sludge', 'ice', 'spore', 'vortex'];
@@ -51,9 +57,10 @@ const netCan = {
 };
 function netReset() {
   if (NET.ws) { try { NET.ws.onclose = null; NET.ws.close(); } catch (e) { } }
-  Object.assign(NET, { role: null, ws: null, me: 1, status: 'off', started: false, hold: 0, md: 0, local: null, finishing: false, hits: [], zfx: [], shots: [], kills: [], evs: [] });
-  NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.picked.clear(); NET.blastsDone.clear(); NET.lobby = [];
-  $('app').classList.remove('coop');
+  Object.assign(NET, { role: null, ws: null, me: 1, status: 'off', started: false, hold: 0, md: 0, local: null, finishing: false, hits: [], zfx: [], shots: [], kills: [], evs: [],
+    round: 0, roundDl: 0, myRound: 0, myPicked: 0, roundPicked: [], rtt: 0, recon: 0, reconT: 0, target: null, hostVer: '', hostOk: false, hostNonce: '', lobbyRaw: [] });
+  NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.picked.clear(); NET.acked.clear(); NET.blastsDone.clear(); NET.pings.clear(); NET.marks = []; NET.lobby = [];
+  $('app').classList.remove('coop'); netReconBanner(false);
 }
 
 /* ---------- connecting ---------- */
@@ -77,19 +84,52 @@ function netJoin(ip, port) {
   const host = m[1], prt = +(port || m[2] || NET_PORT);
   store.set('zc_lastip', ip);
   NET.err = ''; NET.status = 'connecting'; renderCoop();
+  // a fresh key for this game: if the Wi-Fi drops, the same key gets this player their slot back
+  NET.key = Array.from(crypto.getRandomValues(new Uint8Array(9)), b => b.toString(16).padStart(2, '0')).join('');
+  NET.target = { host: host, port: prt };
+  netConnect(false);
+}
+// opens the connection to the host; again=true when the Wi-Fi dropped mid-game and this player is coming back
+function netConnect(again) {
+  const T = NET.target; if (!T) return;
   let ws;
-  const url = 'ws://' + host + ':' + prt + '/?name=' + encodeURIComponent(getTag()) + '&dev=' + DEV.kind + '&ver=' + encodeURIComponent(ZC_VERSION);
+  const url = 'ws://' + T.host + ':' + T.port + '/?name=' + encodeURIComponent(getTag()) + '&dev=' + DEV.kind + '&ver=' + encodeURIComponent(ZC_VERSION) + '&key=' + NET.key + (myAcct() ? '&acct=' + myAcct() : '');
   try { ws = netNativeWs() ? new NativeWS(url) : new WebSocket(url); }
-  catch (e) { NET.status = 'off'; NET.err = 'Could not connect to ' + host + '.'; renderCoop(); return; }
+  catch (e) { if (again) return; NET.status = 'off'; NET.err = 'Could not connect to ' + T.host + '.'; renderCoop(); return; }
   NET.ws = ws; let opened = false;
-  const giveUp = setTimeout(() => { if (!opened) { try { ws.close(); } catch (e) { } } }, 6000);
-  ws.onopen = () => { opened = true; clearTimeout(giveUp); NET.role = 'client'; NET.status = 'joining'; renderCoop(); };
-  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } try { netClientRecv(m); } catch (err) { perfError(err); } };
-  ws.onclose = () => {
-    clearTimeout(giveUp);
-    if (!opened) { NET.ws = null; NET.status = 'off'; NET.err = 'Could not reach a game at ' + host + '. Check that the host is hosting, you are on the same Wi-Fi, and Windows allowed Zombie City through its firewall.'; renderCoop(); return; }
+  const giveUp = setTimeout(() => { if (!opened) { try { ws.close(); } catch (e) { } } }, 5000);
+  ws.onopen = () => { opened = true; clearTimeout(giveUp); NET.role = 'client'; NET.lastRx = performance.now(); if (!again) NET.status = 'joining'; renderCoop(); };
+  ws.onmessage = e => { NET.lastRx = performance.now(); let m; try { m = JSON.parse(e.data); } catch (err) { return; } try { netClientRecv(m); } catch (err) { perfError(err); } };
+  ws.onclose = () => { clearTimeout(giveUp); netDropped(ws, opened, again); };
+}
+// the connection closed (or got stuck and was dropped)
+function netDropped(ws, opened, again) {
+  {
+    const T = NET.target || {};
+    if (NET.ws !== ws) return;
+    NET.ws = null; ws.onclose = ws.onmessage = null;
+    if (!opened && !again && !NET.started) { NET.status = 'off'; NET.err = 'Could not reach a game at ' + T.host + '. Check that the host is hosting, you are on the same Wi-Fi, and Windows allowed Zombie City through its firewall.'; renderCoop(); return; }
+    // mid-game: keep trying for a while before giving up (phones drop off the Wi-Fi for a moment, or go to sleep)
+    if (NET.role === 'client' && NET.started) { if (!NET.recon) { NET.recon = performance.now(); netReconBanner(true); } NET.reconT = 1.2; return; }
     if (NET.role === 'client') netEnd('Lost the connection to the host.');
-  };
+  }
+}
+function netReconBanner(on) {
+  const b = $('netRecon'); if (!b) return;
+  b.hidden = !on;
+  if (on) b.textContent = 'Connection lost. Reconnecting to ' + (NET.hostName || 'the host') + '…';
+}
+// mid-game reconnecting, run each frame on a teammate's game
+function netReconTick(rdt) {
+  if (NET.role !== 'client') return;
+  const now = performance.now();
+  // nothing from the host for a while: the connection is stuck, so drop it and connect again
+  if (NET.started && NET.ws && NET.ws.readyState === 1 && now - NET.lastRx > 5000) { const w = NET.ws; NET.lastRx = now; try { w.close(); } catch (e) { } netDropped(w, true, true); }
+  if (!NET.recon) return;
+  if (now - NET.recon > NET_RECON_SECS * 1000) { NET.recon = 0; netEnd('Lost the connection to ' + (NET.hostName || 'the host') + '.'); return; }
+  if (NET.ws) return;
+  NET.reconT -= rdt; if (NET.reconT > 0) return;
+  NET.reconT = 2; netConnect(true);
 }
 function netLeave() {
   const wasHost = NET.role === 'host';
@@ -112,7 +152,7 @@ function netSend(obj) { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.
 // every player the host knows about: its own (local) player and a stand-in (proxy) for each teammate
 function netPlayers() {
   const out = []; const L = NET.local || G.p; if (L) out.push(L);
-  for (const pr of NET.peers.values()) if (pr.p) out.push(pr.p);
+  for (const pr of NET.peers.values()) if (pr.p && !pr.away) out.push(pr.p);
   return out;
 }
 function netAlive() { return netPlayers().filter(p => !p.down); }
@@ -133,7 +173,7 @@ function netEach(fn) {
 function netProxy(peer) {
   if (peer.p) return peer.p;
   const p = newPlayer(); p.remote = true; p.nid = peer.id; p.tx = p.x = (NET.local || G.p || WORLD.start).x; p.ty = p.y = (NET.local || G.p || WORLD.start).y;
-  p.out = { h: [], dot: 0, heal: 0, fx: null, kv: [0, 0], rev: 0, heavy: 0 }; p.rv = 0; p.name = peer.name; p.col = peer.col;
+  p.out = { h: [], dot: 0, heal: 0, fx: null, kv: [0, 0], rev: 0, heavy: 0 }; p.rv = 0; p.name = peer.name; p.acct = peer.acct; p.col = peer.col;
   peer.p = p; return p;
 }
 // zombies hit a teammate's stand-in: the hit is sent to that player's game, which applies it (dodges, armor, dashes)
@@ -154,17 +194,33 @@ function netHostRecv(str) {
   const from = +str.slice(0, i); let m; try { m = JSON.parse(str.slice(i + 1)); } catch (e) { return; }
   if (from === 0) {
     if (m.t === 'join') {
+      if (!netVerOk(m.ver)) { hostSend(m.id, { t: 'kick', why: 'Version mismatch: ' + getTag() + ' has Zombie City ' + ZC_VERSION + (m.ver ? ' and you have ' + String(m.ver).slice(0, 12) : '') + '. Update so you both have the same version, then join again.' }); return; }
+      // the same player coming back after their Wi-Fi dropped: they get their slot (and their spot in the run) back
+      const back = m.key ? Array.from(NET.peers.values()).find(p => p.key && p.key === m.key) : null;
+      if (back) {
+        NET.peers.delete(back.id); back.id = m.id; back.away = 0; if (back.p) { back.p.nid = m.id; back.p.away = false; }
+        NET.peers.set(m.id, back);
+        hostSend(m.id, { t: 'hello', id: m.id, slot: back.slot, host: getTag(), ver: ZC_VERSION, started: NET.started, back: 1 });
+        netLobby(); toast('Co-op', back.name + ' is back', back.col);
+        if (NET.started) { netSendStart(m.id); if (G.mode === 'upgrade' && NET.round) netSendCards(m.id); }
+        return;
+      }
       if (NET.peers.size >= NET_MAX - 1) { hostSend(m.id, { t: 'kick', why: 'The game is full.' }); return; }
       const used = new Set([1, ...Array.from(NET.peers.values()).map(p => p.slot)]); let slot = 2; while (used.has(slot)) slot++;
-      const peer = { id: m.id, slot: slot, name: cleanTag(m.name), dev: m.dev || 'kbm', col: NET_COLS[slot - 1], p: null };
+      const peer = { id: m.id, slot: slot, name: cleanTag(m.name), dev: m.dev || 'kbm', col: NET_COLS[slot - 1], p: null, key: String(m.key || '').slice(0, 24), away: 0, rtt: 0, claim: String(m.acct || ''), acct: null };
       NET.peers.set(m.id, peer);
-      hostSend(m.id, { t: 'hello', id: m.id, slot: slot, host: getTag(), started: NET.started });
+      if (String(m.name || '').toUpperCase() === ADMIN_TAG && isAdmin(peer.claim)) netAskProof(peer);
+      hostSend(m.id, { t: 'hello', id: m.id, slot: slot, host: getTag(), ver: ZC_VERSION, started: NET.started });
       netLobby(); toast('Co-op', peer.name + ' joined', peer.col); SFX.click();
-      if (NET.started) netSendStart(m.id);
+      if (NET.started) { netSendStart(m.id); if (G.mode === 'upgrade' && NET.round) netSendCards(m.id); }
     } else if (m.t === 'leave') {
       const peer = NET.peers.get(m.id); if (!peer) return;
-      NET.peers.delete(m.id); NET.picked.delete(m.id); netLobby();
-      toast('Co-op', peer.name + ' left', '#8f959e');
+      // mid-run, a dropped player keeps their slot for a while in case they come back
+      if (NET.started && !peer.bye) {
+        peer.away = performance.now(); if (peer.p) peer.p.away = true;
+        toast('Co-op', peer.name + ' lost connection. Waiting for them to come back', '#8f959e');
+      } else { NET.peers.delete(m.id); toast('Co-op', peer.name + ' left', '#8f959e'); }
+      NET.picked.delete(m.id); NET.pings.delete(m.id); netLobby();
       if (G.mode === 'upgrade') netCheckPicks();
     }
     return;
@@ -200,14 +256,39 @@ function netHostRecv(str) {
     // a joiner calls the team's A-10: the host flies it from where they stand, and everyone (the caller too) sees it
     case 'air': if (peer.p && G.air > 0 && G.mode === 'play') { const keep = G.p; G.p = peer.p; callAirstrike(); G.p = keep; } break;
     case 'airv': launchStrafe(+m.cx, +m.cy, +m.a, { mini: true, cos: true }); NET.evs.push(['air', +m.cx, +m.cy, +m.a, 1, from]); break;
-    case 'pick': NET.picked.add(from); netCheckPicks(); break;
-    case 'bye': break;
+    case 'pick': if (!m.r || m.r === NET.round) { NET.picked.add(from); NET.acked.add(from); netCardStatus(); netCheckPicks(); } break;
+    case 'ack': if (m.r === NET.round) { NET.acked.add(from); if (m.p) NET.picked.add(from); netCardStatus(); netCheckPicks(); } break;
+    case 'pi': hostSend(from, { t: 'po', c: m.c }); if (NUM(m.r)) { peer.rtt = clamp(Math.round(m.r), 0, 9999); NET.pings.set(from, peer.rtt); } break;
+    case 'mk': if (NUM(m.x) && NUM(m.y)) { netAddMark(from, m.x, m.y); hostSend('*', { t: 'mk', id: from, x: Math.round(m.x), y: Math.round(m.y) }); } break;
+    case 'bye': peer.bye = true; break;
+    // a teammate checking that the host's admin name is real: the host's account writes the note they asked for
+    case 'prove': if (meAdmin() && typeof m.n === 'string' && m.n.length <= 40) AcctCore.prove(m.n).then(ok => { if (ok) hostSend(from, { t: 'proved', n: m.n }); }).catch(() => { }); break;
+    case 'proved': if (peer.nonce && m.n === peer.nonce) netCheckProof(peer); break;
   }
 }
 function netLobby() {
-  NET.lobby = [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0] }].concat(Array.from(NET.peers.values()).map(p => ({ id: p.id, name: p.name, dev: p.dev, col: p.col })));
+  NET.lobby = [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0], ping: 0, acct: meAdmin() ? ADMIN_ID : undefined }].concat(Array.from(NET.peers.values()).map(p => ({ id: p.id, name: p.name, dev: p.dev, col: p.col, ping: p.rtt || 0, away: p.away ? 1 : 0, acct: p.acct || undefined })));
   hostSend('*', { t: 'lobby', pl: NET.lobby, started: NET.started });
   renderCoop();
+}
+// the admin name in co-op is only shown once Wix confirms the player is really logged in to the admin account
+function netNonce() { return Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join(''); }
+function netAskProof(peer) { peer.nonce = netNonce(); hostSend(peer.id, { t: 'prove', n: peer.nonce }); }
+async function netCheckProof(peer) {
+  try {
+    const owner = await AcctCore.proofOwner(peer.nonce);
+    if (!isAdmin(owner) || owner !== peer.claim || !NET.peers.has(peer.id)) return;
+    peer.acct = owner; peer.name = ADMIN_TAG; if (peer.p) { peer.p.name = ADMIN_TAG; peer.p.acct = owner; }
+    netLobby();
+  } catch (e) { /* no connection to Wix: the name stays plain */ }
+}
+// a teammate's view of the lobby: names as they may be shown (the host's admin name only once checked)
+function netLobbyView(pl) {
+  NET.lobbyRaw = pl || NET.lobbyRaw || [];
+  NET.lobby = NET.lobbyRaw.map(p => { const acct = p.id === 1 ? (NET.hostOk ? p.acct : null) : p.acct; return Object.assign({}, p, { acct: acct || undefined, name: cleanTag(p.name, acct) }); });
+  const h = NET.lobbyRaw.find(p => p.id === 1);
+  if (h && isAdmin(h.acct) && String(h.name).toUpperCase() === ADMIN_TAG && !NET.hostOk && !NET.hostNonce) { NET.hostNonce = netNonce(); netSend({ t: 'prove', n: NET.hostNonce }); }
+  if (NET.hostOk && h) NET.hostName = ADMIN_TAG;
 }
 function netSendStart(to) {
   hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, wave: G.wave, wx: WX.kind, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
@@ -290,32 +371,95 @@ function netGameOver() {
   const msg = { t: 'over', sc: G.score, w: G.wave, k: G.kills, bc: G.bestChain, n: 1 + NET.peers.size };
   hostSend('*', msg); netFinish(msg);
 }
-// wave cleared: everyone picks a card, and the next wave starts once all have
+// wave cleared: everyone picks a card, and the next wave starts once all have. Each round has a number and a deadline:
+// the cards are sent again until every player has them (someone in the pause menu still gets them), anyone who has not
+// picked when time runs out gets a card picked for them, so one player can never hold up the team.
 function netCardsOpen() {
-  NET.picked.clear(); NET.cardsAt = performance.now();
+  NET.picked.clear(); NET.acked.clear(); NET.cardsAt = performance.now();
+  NET.round = (NET.round || 0) + 1; NET.roundDl = performance.now() + NET_PICK_SECS * 1000; NET.cardsT = 1.5;
+  NET.myRound = NET.round; NET.myPicked = 0;
   for (const peer of NET.peers.values()) if (peer.p && peer.p.down) netRevive(peer.p, 0.5);
   if (G.p.down) netRevive(G.p, 0.5);
-  hostSend('*', { t: 'cards', w: G.wave });
+  netSendCards('*');
+}
+function netSendCards(to) { hostSend(to, { t: 'cards', w: G.wave, r: NET.round, dl: Math.max(1, Math.round((NET.roundDl - performance.now()) / 1000)) }); }
+// who has picked, for everyone's waiting screen
+function netCardStatus() {
+  if (NET.role !== 'host' || G.mode !== 'upgrade') return;
+  hostSend('*', { t: 'cs', r: NET.round, pk: Array.from(NET.picked), dl: Math.max(0, Math.round((NET.roundDl - performance.now()) / 1000)) });
+  NET.roundPicked = Array.from(NET.picked); netUpWait();
 }
 function netPicked() {
-  if (NET.role === 'host') { NET.picked.add(1); netCheckPicks(); }
-  else netSend({ t: 'pick' });
-  $('upSub').textContent = 'Waiting for your team to pick';
-  $('upGrid').classList.add('waiting');
+  NET.myPicked = NET.myRound;
+  if (NET.role === 'host') { NET.picked.add(1); netCardStatus(); netCheckPicks(); }
+  else netSend({ t: 'pick', r: NET.myRound });
+  $('upGrid').classList.add('waiting'); netUpWait();
 }
+// the players a round waits for: everyone connected and in the run
+function netNeed() { return [1].concat(Array.from(NET.peers.values()).filter(p => p.p && !p.away).map(p => p.id)); }
 function netCheckPicks() {
-  if (NET.role !== 'host' || G.mode !== 'upgrade') return;
-  const need = [1].concat(Array.from(NET.peers.values()).filter(p => p.p).map(p => p.id));
-  const late = performance.now() - NET.cardsAt > 45000;
-  if (!(need.every(id => NET.picked.has(id)) || (late && NET.picked.has(1)))) return;
-  NET.picked.clear(); $('upGrid').classList.remove('waiting');
+  if (NET.role !== 'host' || G.mode !== 'upgrade' || !NET.round) return;
+  const need = netNeed(), late = performance.now() > NET.roundDl;
+  if (!need.every(id => NET.picked.has(id)) && !late) return;
+  // time is up: the host's own card is picked for it if needed; the others pick theirs when 'go' arrives
+  if (!NET.picked.has(1) || NET.myPicked !== NET.myRound) netAutoPick();
+  NET.picked.clear(); NET.acked.clear(); NET.round && (NET.lastRound = NET.round); NET.roundDl = 0;
+  $('upGrid').classList.remove('waiting');
   showOv(null); startWave(G.wave + 1);
-  hostSend('*', { t: 'go', w: G.wave });
+  hostSend('*', { t: 'go', w: G.wave, r: NET.lastRound });
+  NET.round = 0;
+}
+// a card picked for a player who ran out of time (or never saw the cards)
+function netAutoPick() {
+  if (NET.myPicked === NET.myRound) return;
+  NET.myPicked = NET.myRound;
+  const ch = (G.upChoices && G.upChoices.length) ? G.upChoices[(Math.random() * G.upChoices.length) | 0] : (rollCards() || [])[0];
+  if (ch) { try { applyChoice(ch); } catch (e) { perfError(e); } toast('Co-op', 'Time ran out: picked ' + (ch.card ? ch.card.name : ch.w ? ch.w.name : ch.d ? ch.d.name : 'a card') + ' for you', '#f2cc3a'); }
+  G.upChoices = null; G.picking = false;
+}
+// the line under the cards while the team picks: who is still choosing, and the time left
+function netUpWait() {
+  const box = $('upTeam'); if (!box) return;
+  if (!NET.started || G.mode !== 'upgrade') { box.hidden = true; return; }
+  const picked = new Set(NET.role === 'host' ? Array.from(NET.picked) : NET.roundPicked);
+  if (NET.myPicked === NET.myRound) picked.add(NET.role === 'host' ? 1 : NET.me);
+  const list = NET.lobby.length ? NET.lobby.filter(l => !l.away) : [{ id: 1, name: getTag(), col: NET_COLS[0] }];
+  const left = Math.max(0, Math.ceil((NET.roundDl - performance.now()) / 1000));
+  const key = list.map(l => l.id + (picked.has(l.id) ? 'y' : 'n')).join() + '|' + left;
+  if (box.dataset.k === key) return; box.dataset.k = key;
+  box.textContent = '';
+  for (const l of list) { const c = el('span', 'up-tm' + (picked.has(l.id) ? ' done' : '')); c.style.setProperty('--tc', l.col || netCol(l.id)); c.append(nameEl(l.name, l.acct), el('i', null, picked.has(l.id) ? 'Picked' : 'Choosing')); box.append(c); }
+  box.append(el('em', 'up-left', left + 's'));
+  box.hidden = false;
 }
 function netTickHost(rdt) {
+  const now = performance.now();
+  // everyone's ping, once a second (in the lobby too)
+  NET.pgT -= rdt;
+  if (NET.pgT <= 0 && NET.peers.size) {
+    NET.pgT = 1;
+    hostSend('*', { t: 'pg', p: Array.from(NET.peers.values()).filter(p => !p.away).map(p => [p.id, p.rtt || 0]) });
+    if (!$('coop').hidden) renderCoop();
+  }
+  // players who dropped and did not come back in time give up their slot
+  for (const peer of Array.from(NET.peers.values())) if (peer.away && now - peer.away > NET_AWAY_SECS * 1000) {
+    NET.peers.delete(peer.id); toast('Co-op', peer.name + ' left', '#8f959e'); netLobby(); if (G.mode === 'upgrade') netCheckPicks();
+  }
   if (!NET.started) return;
+  // a card round: send the cards again to anyone who has not answered, and end the round when time is up
+  if (G.mode === 'upgrade' && NET.round) {
+    NET.cardsT -= rdt;
+    if (NET.cardsT <= 0) {
+      NET.cardsT = 1.5;
+      const miss = netNeed().filter(id => id !== 1 && !NET.acked.has(id));
+      if (miss.length) netSendCards(miss.join(','));
+      netCardStatus();
+    }
+    netCheckPicks(); netUpWait();
+  }
   NET.snapT -= rdt;
-  if (NET.snapT <= 0) { NET.snapT = 1 / 15; netSnapshot(); }
+  // a slow connection gets fewer snapshots instead of a growing queue (each one replaces the last anyway)
+  if (NET.snapT <= 0) { NET.snapT = 1 / 15; if (!NET.ws || NET.ws.bufferedAmount < 512 * 1024) netSnapshot(); }
   // each teammate's own hits, hurts and pickups
   for (const peer of NET.peers.values()) {
     const p = peer.p; if (!p) continue; const o = p.out;
@@ -362,21 +506,55 @@ function netSnapshot() {
 /* ---------- a teammate's game (client) ---------- */
 function netClientRecv(m) {
   switch (m.t) {
-    case 'hello': NET.me = m.id; NET.slot = m.slot; NET.hostName = cleanTag(m.host); NET.status = 'lobby'; $('app').classList.add('coop'); renderCoop(); break;
-    case 'lobby': NET.lobby = (m.pl || []).map(p => Object.assign({}, p, { name: cleanTag(p.name) })); renderCoop(); break;
-    case 'kick': NET.err = m.why || 'The host closed the door.'; netLeave(); break;
+    case 'hello':
+      if (m.ver && !netVerOk(m.ver)) { const why = 'Version mismatch: the host has Zombie City ' + String(m.ver).slice(0, 12) + ' and you have ' + ZC_VERSION + '. Update so you both have the same version.'; if (G.mode !== 'title' && G.p) netEnd(why); else { netLeave(); NET.err = why; renderCoop(); } return; }
+      NET.me = m.id; NET.slot = m.slot; NET.hostName = cleanTag(m.host); NET.hostVer = m.ver || ''; NET.status = 'lobby'; $('app').classList.add('coop');
+      if (NET.recon) { NET.recon = 0; netReconBanner(false); toast('Co-op', 'Back in ' + NET.hostName + '’s game', '#7bd88a'); }
+      NET.piT = 0; renderCoop(); break;
+    case 'lobby': netLobbyView(m.pl || []); for (const l of NET.lobby) if (l.id !== NET.me) NET.pings.set(l.id, l.ping || 0); renderCoop(); netUpWait(); break;
+    // the host asks us to prove our admin name, or answers our check of theirs
+    case 'prove': if (meAdmin() && typeof m.n === 'string' && m.n.length <= 40) AcctCore.prove(m.n).then(ok => { if (ok) netSend({ t: 'proved', n: m.n }); }).catch(() => { }); break;
+    case 'proved':
+      if (NET.hostNonce && m.n === NET.hostNonce) AcctCore.proofOwner(m.n).then(o => { if (isAdmin(o)) { NET.hostOk = true; netLobbyView(); renderCoop(); } }).catch(() => { });
+      break;
+    case 'kick': { const why = m.why || 'The host closed the door.'; if (G.mode !== 'title' && G.p) netEnd(why); else { netLeave(); NET.err = why; renderCoop(); } break; }
     case 'end': netEnd('The host ended the game.'); break;
     case 'start': netClientStart(m); break;
     case 's': if (NET.started) netApply(m); break;
     case 'u': if (NET.started) netYou(m); break;
-    case 'cards': if (NET.started && G.mode === 'play' && G.p) { G.eshots = []; if (G.p.down) netYouRevive(Math.round(G.p.maxHp * 0.5)); SFX.waveClear(); openCards(); } break;
-    case 'go': if (NET.started) { $('upGrid').classList.remove('waiting'); if (G.mode === 'upgrade') showOv(null); G.wave = m.w; G.mode = 'play'; SFX.waveStart(m.w % 5 === 0); banner('Wave ' + m.w, m.w % 5 === 0 ? 'A boss is coming' : 'Hold the line'); } break;
+    case 'po': if (NUM(m.c)) { const r = performance.now() - m.c; NET.rtt = NET.rtt ? NET.rtt * 0.7 + r * 0.3 : r; } break;
+    case 'pg': for (const q of m.p || []) if (q[0] !== NET.me) NET.pings.set(q[0], q[1] | 0); if (!$('coop').hidden) renderCoop(); break;
+    case 'cards': netClientCards(m); break;
+    case 'mk': if (m.id !== NET.me && NUM(m.x) && NUM(m.y)) netAddMark(m.id, m.x, m.y); break;
+    case 'cs': if (m.r === NET.myRound) { NET.roundPicked = m.pk || []; NET.roundDl = performance.now() + (m.dl | 0) * 1000; netUpWait(); } break;
+    case 'go':
+      if (!NET.started) break;
+      // the round ended: a card is picked for this player if they had not picked one
+      if (G.mode === 'upgrade' && NET.myPicked !== NET.myRound) netAutoPick();
+      $('upGrid').classList.remove('waiting'); if (G.mode === 'upgrade') showOv(null);
+      G.wave = m.w; G.mode = 'play'; NET.myRound = 0; netUpWait();
+      SFX.waveStart(m.w % 5 === 0); banner('Wave ' + m.w, m.w % 5 === 0 ? 'A boss is coming' : 'Hold the line');
+      break;
     case 'over': if (NET.started) netFinish(m); break;
   }
 }
+// the host says the wave is cleared: show this round's cards (closing the pause menu if it is open), and say we have them
+function netClientCards(m) {
+  if (!NET.started || !G.p || G.mode === 'over' || G.mode === 'title') return;
+  if (m.r && m.r === NET.myRound) { netSend({ t: 'ack', r: m.r, p: NET.myPicked === m.r ? 1 : 0 }); return; }   // already showing them
+  if (G.mode === 'pause' || G.mode === 'skull' || G.mode === 'cine') { G.mode = 'play'; showOv(null); }
+  NET.myRound = m.r || 0; NET.myPicked = 0; NET.roundPicked = []; NET.roundDl = performance.now() + (m.dl || NET_PICK_SECS) * 1000;
+  G.eshots = []; if (G.p.down) netYouRevive(Math.round(G.p.maxHp * 0.5));
+  SFX.waveClear(); openCards(); netUpWait();
+  netSend({ t: 'ack', r: m.r });
+}
 function netClientStart(m) {
-  NET.started = true; NET.hostName = m.host ? cleanTag(m.host) : NET.hostName; NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
+  // back after a dropped connection, in the same run: carry on where we were
+  const resume = NET.started && G.p && G.mode !== 'title' && G.mode !== 'over' && WORLD.lastSeed === m.seed;
+  NET.started = true; NET.hostName = m.host ? cleanTag(m.host) : NET.hostName;
   $('coop').hidden = true;
+  if (resume) { banner('Co-op', 'Back in ' + NET.hostName + "'s game"); return; }
+  NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
   newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season }, wave: m.wave, at: { x: m.x, y: m.y } });
   WX.kind = m.wx || WX.kind; WX.t = 999;
   banner('Co-op', 'In ' + NET.hostName + "'s game · wave " + m.wave);
@@ -445,7 +623,7 @@ function netApply(s) {
     live.add(id);
     let o = NET.others.get(id);
     if (!o) { o = { id: id, x: q[1], y: q[2], r: 12, aim: 0, walk: 0, iframe: 0, dashT: 0, dashK: 'sprint', db: { stealthT: 0 }, flashT: 0, frozenT: 0, rootT: 0, jamT: 0, weapon: WEAPONS[0], col: netCol(id) }; NET.others.set(id, o); }
-    const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.col = info && info.col ? info.col : netCol(id);
+    const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.acct = info ? info.acct : undefined; o.col = info && info.col ? info.col : netCol(id);
     o.tx = q[1]; o.ty = q[2]; o.aim = q[3] / 100; o.hp = q[4]; o.maxHp = q[5]; o.down = !!q[6]; o.dashT = q[7] ? 0.1 : 0; o.weapon = WEAPONS[q[8]] || o.weapon; o.rv = q[9] / 100 * 2.4; o.dashK = q[10] || 'sprint'; o.walk = q[11] / 10;
     if (Math.hypot(o.tx - o.x, o.ty - o.y) > 260) { o.x = o.tx; o.y = o.ty; }
   }
@@ -544,7 +722,12 @@ function netHit(z, dmg, o) {
   return true;
 }
 function netTickClient(rdt) {
-  if (!NET.started || !G.p || NET.ws.readyState !== 1) return;
+  netReconTick(rdt);
+  if (!NET.ws || NET.ws.readyState !== 1) return;
+  // ping: the host answers at once, and we tell it what we measured so everyone sees everyone's ping
+  NET.piT -= rdt;
+  if (NET.piT <= 0) { NET.piT = 1; netSend({ t: 'pi', c: Math.round(performance.now() * 10) / 10, r: Math.round(NET.rtt) }); }
+  if (!NET.started || !G.p) return;
   NET.sendT -= rdt;
   if (NET.hits.length) { netSend({ t: 'h', h: NET.hits }); NET.hits = []; }
   if (NET.zfx.length) { netSend({ t: 'zf', f: NET.zfx }); NET.zfx = []; }
@@ -598,35 +781,119 @@ function netDrawOne(o, isMe) {
     if (!isMe) { ctx.fillStyle = '#ff6a6a'; ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DOWN · STAND HERE', o.x, o.y + 46); }
   } else if (!isMe) drawPlayer(o);
   if (isMe) return;
-  ctx.font = "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const name = o.name || 'SURVIVOR', w = ctx.measureText(name).width + 12;
+  const name = o.name || 'SURVIVOR', adm = name === ADMIN_TAG && isAdmin(o.acct);
+  ctx.font = (adm ? 'bold ' : '') + "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const w = ctx.measureText(name).width + (adm ? 18 : 12);
   ctx.fillStyle = 'rgba(8,10,13,0.72)'; ctx.fillRect(o.x - w / 2, o.y - 40, w, 16);
-  ctx.fillStyle = col; ctx.fillRect(o.x - w / 2, o.y - 40, 2, 16); ctx.fillText(name, o.x + 1, o.y - 31.5);
+  ctx.fillStyle = col; ctx.fillRect(o.x - w / 2, o.y - 40, 2, 16); drawName(name, o.acct, o.x + 1, o.y - 31.5, 12);
   if (o.maxHp && !o.down) { const f = clamp(o.hp / o.maxHp, 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(o.x - 16, o.y - 22, 32, 3); ctx.fillStyle = f > 0.35 ? '#7bd88a' : '#e5484d'; ctx.fillRect(o.x - 16, o.y - 22, 32 * f, 3); }
 }
 function netDrawPlayers() {
   if (!NET.started) return;
+  netDrawMarks(Math.min(0.05, (performance.now() - (netDrawPlayers.t || performance.now())) / 1000)); netDrawPlayers.t = performance.now();
   if (NET.role === 'host') { for (const peer of NET.peers.values()) if (peer.p) netDrawOne(peer.p, false); }
   else for (const o of NET.others.values()) netDrawOne(o, false);
   if (G.p) { const me = G.p; me.col = netCol(NET.role === 'host' ? 1 : (NET.slot || NET.me)); if (me.down) netDrawOne(me, true); else { ctx.strokeStyle = hexA(me.col, 0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(me.x, me.y + 4, 17, 13, 0, 0, TAU); ctx.stroke(); } }
 }
-// the team on the HUD, under your name
+// the team on the HUD, under your name (with each one's ping when "Show ping" is on)
 function netHud() {
   const box = $('hudTeam'); if (!box) return;
-  const rows = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p).map(p => ({ name: p.name, col: p.col, hp: p.p.hp, mh: p.p.maxHp, down: p.p.down }))
-    : Array.from(NET.others.values()).map(o => ({ name: o.name, col: o.col, hp: o.hp, mh: o.maxHp, down: o.down }));
-  const key = rows.map(r => r.name + (r.down ? 'D' : Math.round(clamp(r.hp / (r.mh || 1), 0, 1) * 20))).join('|') + NET.hold;
+  const showPing = SET.netPing !== false;
+  const rows = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p && !p.away).map(p => ({ id: p.id, name: p.name, col: p.col, hp: p.p.hp, mh: p.p.maxHp, down: p.p.down, acct: p.acct }))
+    : Array.from(NET.others.values()).map(o => ({ id: o.id, name: o.name, col: o.col, hp: o.hp, mh: o.maxHp, down: o.down, acct: o.acct }));
+  const pingOf = id => id === 1 && NET.role === 'client' ? Math.round(NET.rtt) : NET.pings.get(id) || 0;
+  const key = rows.map(r => r.name + (r.down ? 'D' : Math.round(clamp(r.hp / (r.mh || 1), 0, 1) * 20)) + (showPing ? '~' + Math.round(pingOf(r.id) / 10) : '')).join('|') + NET.hold + (showPing && NET.role === 'client' ? Math.round(NET.rtt / 10) : '');
   if (box.dataset.k === key) return; box.dataset.k = key;
   box.textContent = '';
+  if (showPing && NET.role === 'client') { const me = el('div', 'tm-me'); me.append(el('span', null, 'Your ping'), pingEl(NET.rtt)); box.append(me); }
   for (const r of rows) {
     const d = el('div', 'tm' + (r.down ? ' down' : '')); d.style.setProperty('--tc', r.col);
     const bar = el('i'); const fill = el('s'); fill.style.width = (r.down ? 0 : clamp(r.hp / (r.mh || 1), 0, 1) * 100) + '%'; bar.append(fill);
-    d.append(el('b', null, r.name), bar, el('em', null, r.down ? 'DOWN' : Math.max(0, Math.round(r.hp)) + ''));
+    d.append(nameEl(r.name, r.acct, 'b'), bar, el('em', null, r.down ? 'DOWN' : Math.max(0, Math.round(r.hp)) + ''));
+    if (showPing) d.append(pingEl(pingOf(r.id)));
     box.append(d);
   }
   if (NET.hold) box.append(el('div', 'tm-hold', NET.hold === 2 ? 'The skull is with ' + NET.hostName : NET.hold === 3 ? NET.hostName + ' paused the game' : 'Boss incoming'));
   box.hidden = !rows.length && !NET.hold;
 }
+// a ping reading: green under 60 ms, yellow under 150, red above
+function pingEl(ms) {
+  ms = Math.round(ms || 0);
+  const e = el('span', 'ping ' + (ms < 60 ? 'good' : ms < 150 ? 'ok' : 'bad'));
+  const bars = el('span', 'pb'); for (let i = 0; i < 3; i++) bars.append(el('b')); e.append(bars, document.createTextNode(ms ? ms + ' ms' : '— ms'));
+  return e;
+}
+/* ---------- marking a spot for the team ---------- */
+// G on the keyboard, LB on a controller, the pin button on a phone: a marker the whole team sees for a few seconds
+function netMark() {
+  if (!NET.started || !G.p || G.mode !== 'play') return;
+  const now = performance.now(); if (now - NET.markAt < 1000) return; NET.markAt = now;
+  let x = G.p.x, y = G.p.y;
+  if (DEV.kind !== 'touch' && aimMode() !== 'auto' && DEV.mIn) { x = cam.x + (DEV.mx - W / 2) / ZOOM; y = cam.y + (DEV.my - H / 2) / ZOOM; }
+  x = Math.round(x); y = Math.round(y);
+  if (NET.role === 'host') { netAddMark(1, x, y); hostSend('*', { t: 'mk', id: 1, x: x, y: y }); }
+  else { netAddMark(NET.me, x, y); netSend({ t: 'mk', x: x, y: y }); }
+}
+function netWho(id) {
+  if (NET.role === 'host') { if (id === 1) return { name: getTag(), col: NET_COLS[0], acct: myAcct() }; const p = NET.peers.get(id); return p ? { name: p.name, col: p.col, acct: p.acct } : { name: 'SURVIVOR', col: netCol(id) }; }
+  const l = NET.lobby.find(q => q.id === id); return l ? { name: l.name, col: l.col || netCol(id), acct: l.acct } : { name: id === NET.me ? getTag() : 'SURVIVOR', col: netCol(id) };
+}
+function netAddMark(id, x, y) {
+  const w = netWho(id);
+  NET.marks = NET.marks.filter(k => k.id !== id);
+  NET.marks.push({ id: id, x: x, y: y, t: 0, life: 8, name: w.name, col: w.col });
+  const mine = NET.role === 'host' ? id === 1 : id === NET.me;
+  if (!mine) { toast('Co-op', w.name + ' marked a spot', w.col); SFX.click(); }
+}
+function netDrawMarks(dt) {
+  for (const k of NET.marks) k.t += dt;
+  NET.marks = NET.marks.filter(k => k.t < k.life);
+  for (const k of NET.marks) {
+    const f = k.t / k.life, a = f > 0.8 ? (1 - f) / 0.2 : 1, pr = (k.t * 1.4) % 1;
+    ctx.globalAlpha = a * (1 - pr); ctx.strokeStyle = k.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(k.x, k.y, 10 + pr * 46, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = a; ctx.fillStyle = k.col;
+    ctx.beginPath(); ctx.moveTo(k.x, k.y); ctx.lineTo(k.x - 9, k.y - 18); ctx.arc(k.x, k.y - 22, 10, Math.PI * 0.8, Math.PI * 2.2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(8,10,13,0.85)'; ctx.beginPath(); ctx.arc(k.x, k.y - 22, 4, 0, TAU); ctx.fill();
+    ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lb = k.name + ': over here', tw = ctx.measureText(lb).width + 10;
+    ctx.fillStyle = 'rgba(8,10,13,0.72)'; ctx.fillRect(k.x - tw / 2, k.y - 50, tw, 15); ctx.fillStyle = k.col; ctx.fillText(lb, k.x, k.y - 42);
+    ctx.globalAlpha = 1;
+  }
+}
+// arrows on the edge of the screen pointing at teammates who are off screen, with their name and how far away they are
+function netDrawPointers() {
+  if (!NET.started || !G.p || SET.netArrows === false) return;
+  const list = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p && !p.away).map(p => ({ x: p.p.x, y: p.p.y, name: p.name, col: p.col, down: p.p.down }))
+    : Array.from(NET.others.values()).map(o => ({ x: o.x, y: o.y, name: o.name, col: o.col, down: o.down }));
+  for (const k of NET.marks) list.push({ x: k.x, y: k.y, name: k.name + '’s mark', col: k.col, mark: true });
+  const cx = W / 2, cy = H / 2, pad = 34, me = G.p;
+  ctx.save(); ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textBaseline = 'middle';
+  for (const o of list) {
+    const sx = (o.x - cam.x) * ZOOM + cx, sy = (o.y - cam.y) * ZOOM + cy;
+    if (sx > 8 && sx < W - 8 && sy > 8 && sy < H - 8) continue;   // on screen: the name tag shows where they are
+    const dx = sx - cx, dy = sy - cy, k = Math.min((cx - pad) / Math.abs(dx || 1e-6), (cy - pad) / Math.abs(dy || 1e-6));
+    const px = cx + dx * k, py = cy + dy * k, a = Math.atan2(dy, dx);
+    const col = o.down ? '#ff4a4a' : o.col, pulse = o.down ? 0.6 + 0.4 * Math.sin(G.time * 8) : o.mark ? 0.55 + 0.35 * Math.sin(G.time * 6) : 1;
+    ctx.globalAlpha = pulse;
+    ctx.translate(px, py); ctx.rotate(a); ctx.scale(1.4, 1.4);
+    ctx.fillStyle = 'rgba(8,10,13,0.75)'; ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-9, -11); ctx.lineTo(-4, 0); ctx.lineTo(-9, 11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-6, -8); ctx.lineTo(-2, 0); ctx.lineTo(-6, 8); ctx.closePath(); ctx.fill();
+    ctx.scale(1 / 1.4, 1 / 1.4); ctx.rotate(-a); ctx.translate(-px, -py);
+    // the label sits on the inside of the arrow
+    const m = Math.round(Math.hypot(o.x - me.x, o.y - me.y) / 40), label = (o.down ? 'DOWN · ' : '') + o.name + ' · ' + m + 'm';
+    const lx = clamp(px - Math.cos(a) * 34, 50, W - 50), ly = clamp(py - Math.sin(a) * 28, 14, H - 14), tw = ctx.measureText(label).width + 10;
+    ctx.fillStyle = 'rgba(8,10,13,0.7)'; ctx.fillRect(clamp(lx - tw / 2, 4, W - tw - 4), ly - 8, tw, 16);
+    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.fillText(label, clamp(lx, tw / 2 + 4, W - tw / 2 - 4), ly + 0.5);
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+// when the host's window is minimized the browser stops drawing frames; the run (and everyone's connection) keeps going
+const netBg = { t: 0 };
+setInterval(() => {
+  if (!document.hidden || !NET.role) { netBg.t = 0; return; }
+  const now = performance.now(), rdt = netBg.t ? Math.min(0.1, (now - netBg.t) / 1000) : 0.05; netBg.t = now;
+  try { netTick(rdt); if (NET.role === 'host' && NET.started && G.mode === 'play') update(Math.min(0.05, rdt)); } catch (e) { perfError(e); }
+}, 50);
 
 /* ---------- down, not out ---------- */
 function netDown() {
@@ -711,8 +978,9 @@ function renderCoopLobby(box) {
   box.textContent = '';
   const list = NET.lobby.length ? NET.lobby : [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0] }];
   for (const p of list) {
-    const r = el('div', 'coop-pl'); r.style.setProperty('--tc', p.col || netCol(p.id));
-    r.append(devIcon(p.dev || 'kbm'), el('b', null, p.name), el('em', null, p.id === 1 ? 'Host' : p.id === NET.me && NET.role === 'client' ? 'You' : ''));
+    const r = el('div', 'coop-pl' + (p.away ? ' away' : '')); r.style.setProperty('--tc', p.col || netCol(p.id));
+    const you = p.id === NET.me && NET.role === 'client', ms = p.id === 1 ? (NET.role === 'client' ? NET.rtt : 0) : you ? NET.rtt : NET.pings.get(p.id) || p.ping || 0;
+    r.append(devIcon(p.dev || 'kbm'), nameEl(p.name, p.acct, 'b'), el('em', null, p.away ? 'Reconnecting' : p.id === 1 ? 'Host' : you ? 'You' : ''), p.id === 1 && NET.role === 'host' ? el('span', 'ping host') : pingEl(ms));
     box.append(r);
   }
   for (let i = list.length; i < NET_MAX; i++) { const r = el('div', 'coop-pl empty'); r.append(el('b', null, 'Open slot')); box.append(r); }
@@ -731,6 +999,10 @@ function renderCoopFound() {
     box.append(b);
   }
 }
+// the pause menu's quick switch for the ping readout (the same as Settings > Gameplay > Show ping)
+function netPingBtn() { const b = $('pausePing'); if (!b) return; b.hidden = !NET.started; b.textContent = 'Show ping: ' + (SET.netPing !== false ? 'on' : 'off'); }
+$('pausePing').addEventListener('click', () => { setSetting('netPing', SET.netPing === false); netPingBtn(); $('hudTeam').dataset.k = ''; netHud(); SFX.click(); });
+$('markBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); netMark(); });
 $('coopBtn').addEventListener('click', openCoop);
 $('coopClose').addEventListener('click', closeCoop);
 $('coopHostBtn').addEventListener('click', netHost);

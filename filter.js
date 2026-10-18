@@ -50,11 +50,17 @@ const ZCF = (function () {
     if ((s.match(/\d/g) || []).length >= 7) return true;
     return /(gmail|yahoo|hotmail|outlook|icloud|protonmail|discordgg|snapchat|instagram|tiktok|whatsapp|telegram|onlyfans)/.test(sq);
   }
-  // names that pretend to speak for the studio
+  // names that pretend to speak for the studio. "admin" and "declaire" are caught in any spelling: look-alike numbers
+  // and symbols (4DM1N, D3CL4!RE), stretched or doubled letters (AADMIIN), gaps and dots (A.D.M.I.N), a dropped vowel
+  // (ADMN, DECLAR) and both readings of 1, | and ! (i or l). Only the admin's own account gets past this (see cleanTag).
+  const STUDIO = /(adm[i]?n|admln|moderator|d[e]?cl[a]?[i]?r|anthropic|official|gamemaster|customersupport|supportteam|devteam|staffmember)/;
   function reserved(raw) {
-    const s = letters(raw, LEET_A), sq = squash(s).replace(/badminton/g, '');
-    if (/(admin|moderator|declaire|declairestudio|anthropic|official|gamemaster|customersupport|supportteam|devteam|staffmember)/.test(sq)) return true;
-    return tokens(s).some(t => t === 'mod' || t === 'mods' || t === 'staff' || t === 'support');
+    for (const map of [LEET_A, LEET_B]) {
+      const s = letters(raw, map), sq = squash(s).replace(/badminton/g, '');
+      for (const v of [sq, sq.replace(/([a-z])\1+/g, '$1')]) if (STUDIO.test(v)) return true;
+      if (tokens(s).some(t => t === 'mod' || t === 'mods' || t === 'staff' || t === 'support')) return true;
+    }
+    return false;
   }
 
   const REMARKS = [
@@ -121,6 +127,7 @@ const ZCF = (function () {
   return {
     REMARKS: REMARKS,
     setWords: setWords,
+    unpack: unpack,
     get ready() { return SUB.length > 0 || WORD.size > 0; },
     isRude: isRude,
     personal: personal,

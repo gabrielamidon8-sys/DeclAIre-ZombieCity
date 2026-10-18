@@ -18,13 +18,15 @@ function frame(str, op) {
 class Peer {
   constructor(sock, id, role, info, onText, onClose) {
     this.sock = sock; this.id = id; this.role = role; this.info = info; this.buf = Buffer.alloc(0); this.parts = []; this.dead = false;
-    this.onText = onText; this.onClose = onClose;
+    this.onText = onText; this.onClose = onClose; this.lastRx = Date.now(); this.dropped = 0;
     sock.setNoDelay(true);
+    try { sock.setKeepAlive(true, 5000); } catch (e) { }
     sock.on('data', d => this.data(d));
     sock.on('close', () => this.close());
     sock.on('error', () => this.close());
   }
   data(d) {
+    this.lastRx = Date.now();
     this.buf = this.buf.length ? Buffer.concat([this.buf, d]) : d;
     for (;;) {
       const b = this.buf; if (b.length < 2) return;
@@ -47,6 +49,13 @@ class Peer {
   }
   write(buf) { if (!this.dead) try { this.sock.write(buf); } catch (e) { this.close(); } }
   send(str) { this.write(frame(str)); }
+  // a snapshot of the street replaces the one before it, so a device that can't keep up skips some instead of falling
+  // further and further behind (everything else, like hits and cards, always goes through)
+  sendSnap(str) {
+    if (this.dead) return;
+    if (this.sock.writableLength > 256 * 1024) { this.dropped++; return; }
+    this.write(frame(str));
+  }
   kill() { if (this.dead) return; try { this.sock.end(); this.sock.destroy(); } catch (e) { } this.close(); }
   close() { if (this.dead) return; this.dead = true; this.onClose(this); }
 }
@@ -67,14 +76,15 @@ function lanAddresses() {
 function createServer(opts) {
   opts = opts || {};
   const S = { port: 0, token: crypto.randomBytes(12).toString('hex'), host: null, clients: new Map(), nextId: 2, name: String(opts.name || 'Zombie City').slice(0, 20), players: 1, run: false, beacon: null, http: null };
-  const clean = s => String(s || '').replace(/[^A-Za-z0-9 _.\-]/g, '').slice(0, 14);
+  const clean = s => String(s || '').replace(/[^A-Za-z0-9 _.|\-]/g, '').slice(0, 16);
   function toHost(str) { if (S.host) S.host.send(str); }
   function onText(peer, s) {
     if (peer.role === 'host') {
       const i = s.indexOf('|'); if (i < 0) return;
       const to = s.slice(0, i), msg = s.slice(i + 1);
-      if (to === '*') { for (const c of S.clients.values()) c.send(msg); }
-      else for (const id of to.split(',')) { const c = S.clients.get(+id); if (c) c.send(msg); }
+      const snap = msg.startsWith('{"t":"s"');
+      if (to === '*') { for (const c of S.clients.values()) snap ? c.sendSnap(msg) : c.send(msg); }
+      else for (const id of to.split(',')) { const c = S.clients.get(+id); if (c) snap ? c.sendSnap(msg) : c.send(msg); }
       if (msg.startsWith('{"t":"kick"')) { const id = +to; const c = S.clients.get(id); if (c) setTimeout(() => c.kill(), 50); }
     } else toHost(peer.id + '|' + s);
   }
@@ -91,11 +101,16 @@ function createServer(opts) {
     if (isHost && S.host) { sock.end('HTTP/1.1 409 Conflict\r\n\r\n'); return; }
     sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + crypto.createHash('sha1').update(key + GUID).digest('base64') + '\r\n\r\n');
     if (isHost) { S.host = new Peer(sock, 1, 'host', {}, onText, onClose); return; }
-    const id = S.nextId++, info = { name: clean(u.searchParams.get('name')) || 'SURVIVOR', dev: clean(u.searchParams.get('dev')) || 'kbm', ver: clean(u.searchParams.get('ver')) };
+    const id = S.nextId++, info = { name: clean(u.searchParams.get('name')) || 'SURVIVOR', dev: clean(u.searchParams.get('dev')) || 'kbm', ver: clean(u.searchParams.get('ver')), key: String(u.searchParams.get('key') || '').replace(/[^a-f0-9]/g, '').slice(0, 24), acct: String(u.searchParams.get('acct') || '').replace(/[^a-f0-9-]/g, '').slice(0, 36) };
     const p = new Peer(sock, id, 'client', info, onText, onClose);
     S.clients.set(id, p);
-    toHost('0|' + JSON.stringify({ t: 'join', id: id, name: info.name, dev: info.dev, ver: info.ver, ip: remote.replace('::ffff:', '') }));
+    toHost('0|' + JSON.stringify({ t: 'join', id: id, name: info.name, dev: info.dev, ver: info.ver, key: info.key, acct: info.acct, ip: remote.replace('::ffff:', '') }));
   });
+  // a phone that walked out of Wi-Fi range doesn't always close its connection: ping everyone, and drop anyone silent
+  S.alive = setInterval(() => {
+    const now = Date.now();
+    for (const c of S.clients.values()) { if (now - c.lastRx > 15000) c.kill(); else c.write(Buffer.from([0x89, 0])); }
+  }, 4000);
   S.start = () => new Promise((resolve, reject) => {
     S.http.once('error', reject);
     S.http.listen(opts.port || 0, '0.0.0.0', () => {
@@ -115,7 +130,7 @@ function createServer(opts) {
     });
   });
   S.stop = () => {
-    clearInterval(S.beacon); S.beacon = null;
+    clearInterval(S.beacon); S.beacon = null; clearInterval(S.alive);
     try { S.beaconSock && S.beaconSock.close(); } catch (e) { }
     for (const c of S.clients.values()) c.kill(); S.clients.clear();
     if (S.host) S.host.kill();

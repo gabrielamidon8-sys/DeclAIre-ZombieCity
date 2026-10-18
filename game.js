@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.82';
+const ZC_VERSION = '1.9.90';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -1032,7 +1032,9 @@ function banner(a, b) {
 const OVS = ['title', 'upgrade', 'pause', 'over'];
 function showOv(id) { OVS.forEach(o => { $(o).hidden = o !== id; }); $('hud').hidden = !(G.mode === 'play' || G.mode === 'upgrade' || G.mode === 'pause' || G.mode === 'skull' || G.mode === 'cine'); }
 function newRun(o) {
-  o = o || {};
+  o = o && !(o instanceof Event) ? o : {};
+  // shut for maintenance (or this version is too old): the maintenance screen instead of a run
+  if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
   $('skull').hidden = true;
   Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
@@ -1046,9 +1048,21 @@ function newRun(o) {
     // co-op: a teammate's game joins the host's run (same city, same wave), next to the host
     const a = (NET.slot || NET.me || 2) * 1.7, at = o.at || WORLD.start;
     for (let r = 46; r < 200; r += 30) { const x = at.x + Math.cos(a) * r, y = at.y + Math.sin(a) * r; if (!blocked(x, y, 14)) { G.p.x = x; G.p.y = y; break; } }
-    cam.x = G.p.x; cam.y = G.p.y; G.wave = o.wave || 1; G.mode = 'play'; showOv(null);
-  } else { G.mode = 'play'; showOv(null); startWave(1); }
-  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* not allowed */ }
+    cam.x = G.p.x; cam.y = G.p.y; G.wave = o.wave || 1;
+  }
+  // the loading screen: the streets around you are drawn before the run starts, so the first seconds never stutter;
+  // a teammate also waits (briefly) for the host's first look at the street
+  G.mode = 'loading'; showOv(null);
+  const sx = G.p.x, sy = G.p.y, host = NET.role === 'host' && NET.started;
+  const steps = [['Building the streets', () => chunkJobs(sx, sy)]];
+  if (o.client) steps.push(['Syncing with ' + (NET.hostName || 'the host'), () => loadUntil(() => NET.zmap.size > 0 || !NET.started || G.mode !== 'loading', 2500)]);
+  else steps.push([host ? 'Sending the city to your team' : 'Rounding up the horde', () => { buildField(); }]);
+  loadRun(o.client ? 'Joining ' + (NET.hostName || 'the game') : host ? 'Starting the co-op run' : 'Into the city', steps, { now: true, done: 'Go' }).then(() => {
+    if (G.mode !== 'loading') return;   // co-op: the cards (or the end of the game) got here first
+    G.mode = 'play'; showOv(null);
+    if (!o.client) startWave(1);
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* not allowed */ }
+  });
 }
 function pauseGame() {
   if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · ' + (NET.role === 'client' ? 'co-op: the game keeps going while you are here' : NET.role === 'host' ? 'co-op: paused for everyone' : 'run in progress');
@@ -1057,10 +1071,16 @@ function pauseGame() {
   [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', Math.floor(tm / 60) + ':' + String(tm % 60).padStart(2, '0')]].forEach(([k, v]) => {
     const d = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; d.append(dt, dd); st.append(d);
   });
-  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio();
+  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio(); netPingBtn();
 }
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
-function toTitle() { if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); if (NET.role) netLeave(); G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
+function toTitle() {
+  if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); if (NET.role) netLeave();
+  G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed');
+  showOv(null);
+  // back to the main menu: a new city for the title screen, drawn behind the loading screen (only shown if it takes a moment)
+  loadRun('Back to the bunker', [['Waking the city', () => { initAttract(); return chunkJobs(cam.x, cam.y); }]]).then(() => { if (G.mode === 'title') { showOv('title'); refreshTitle(); } });
+}
 function die() {
   if (G.mode !== 'play') return;
   const p = G.p;
@@ -1084,11 +1104,20 @@ function die() {
   $('postStatus').textContent = LB.src === 'wix' ? (ACCT.status === 'in' ? 'Saved on this device and to your account. Post it to the global board.' : 'Saved on this device. Log in to your free DeclAIre account (main menu) to post it to the global board.') : LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
   setTimeout(() => { if (G.mode === 'over') showOv('over'); }, 700);
 }
-function getTag() { const t = store.get('zc_tag', ''); return t || 'SURVIVOR'; }
-// a callsign as the game shows it: capitals, digits and a few marks, 14 at most, and never anything the name filter catches
+// the DeclAIre admin: only this account can carry the admin name, and it is drawn in its own style everywhere. Anyone
+// else who types it (or any spelling of "admin" or "declaire") gets turned down by the name filter.
+const ADMIN_ID = '8624cdfc-c3a3-46ea-bda7-552be319ee08', ADMIN_TAG = 'ADMIN|DECLAIRE';
+const isAdmin = acct => !!acct && acct === ADMIN_ID;
+const myAcct = () => (typeof ACCT !== 'undefined' && ACCT.member && (ACCT.status === 'in' || ACCT.status === 'locked')) ? ACCT.member.id : null;
+const meAdmin = () => isAdmin(myAcct());
+function getTag() { const t = store.get('zc_tag', ''); return t === ADMIN_TAG && !meAdmin() ? 'SURVIVOR' : t || 'SURVIVOR'; }
+// a callsign as the game shows it: capitals, digits and a few marks, 14 at most, and never anything the name filter catches.
+// acct is the account the name belongs to, when it is known for sure (the admin name only shows for the admin's account)
 const TAG_OK = new Map();
-function cleanTag(s) {
-  s = String(s || '').toUpperCase().replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14);
+function cleanTag(s, acct) {
+  s = String(s || '').toUpperCase();
+  if (s === ADMIN_TAG) return isAdmin(acct) ? s : 'SURVIVOR';
+  s = s.replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14);
   if (!s) return 'SURVIVOR';
   let ok = TAG_OK.get(s); if (ok === undefined) { ok = ZCF.safe(s) === s; if (TAG_OK.size > 500) TAG_OK.clear(); TAG_OK.set(s, ok); }
   return ok ? s : 'SURVIVOR';
@@ -1145,7 +1174,7 @@ async function lbRefresh(force) {
 async function postGlobal(entry) {
   if (LB.src === 'wix') {
     if (ACCT.status !== 'in') return 'needacct';
-    try { const r = await AcctCore.postScore(SEASON, ACCT.member.id, Object.assign({}, entry, { tag: cleanTag(ACCT.member.username) })); lbRefresh(true); return r; }
+    try { const r = await AcctCore.postScore(SEASON, ACCT.member.id, Object.assign({}, entry, { tag: cleanTag(ACCT.member.username, ACCT.member.id) })); lbRefresh(true); return r; }
     catch (e) { return 'failed'; }
   }
   if (!LB.db || !LB.uid) return 'local';
@@ -1206,7 +1235,7 @@ function renderLB() {
   rows.slice(0, 50).forEach((r, i) => {
     const li = document.createElement('li'); li.className = 'lb-row' + (i < 3 ? ' top' : '') + (LB.tab === 'global' && r.id === LB.uid ? ' me' : '');
     const c1 = document.createElement('span'); c1.className = 'rk'; c1.textContent = '#' + (i + 1);
-    const c2 = document.createElement('span'); c2.className = 'tg'; c2.textContent = cleanTag(r.tag) + (LB.tab === 'global' && r.id === LB.uid ? ' (you)' : '');
+    const c2 = document.createElement('span'); c2.className = 'tg'; c2.append(nameEl(cleanTag(r.tag, r.id), r.id)); if (LB.tab === 'global' && r.id === LB.uid) c2.append(document.createTextNode(' (you)'));
     const c3 = document.createElement('span'); c3.className = 'sc'; c3.textContent = Number(r.score || 0).toLocaleString();
     const c4 = document.createElement('span'); c4.className = 'wv'; c4.textContent = 'W' + (r.wave || 0);
     const c5 = document.createElement('span'); c5.className = 'dv'; if (r.dev) { c5.append(devIcon(r.dev)); c5.title = DEV_SHORT[r.dev] || ''; }
@@ -1447,7 +1476,7 @@ function render() {
   if (vz) drawVizScreen(vz);
   tw = performance.now(); drawWeatherScreen(Math.min(0.05, (performance.now() - (render.lt || performance.now())) / 1000)); render.lt = performance.now(); PERF.sec.wx += performance.now() - tw;
   if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') {
-    drawScreenFx(); drawDashScreen(); drawAim();
+    drawScreenFx(); drawDashScreen(); drawAim(); if (NET.started) netDrawPointers();
     if (G.flashA > 0) { ctx.globalAlpha = Math.min(0.5, G.flashA); ctx.drawImage(screenGrad('a10', 0.1, 0.8, '255,214,150', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
   }
 }
@@ -1931,11 +1960,17 @@ function frame(now) {
 
 /*__ARSENAL__*/
 resize();
-initAttract();
 applyDev();
-refreshTitle();
-// every launch opens with the studio intro (tests and ?nointro links go straight to the title)
-if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) { $('intro').hidden = true; showOv('title'); } else startIntro();
+// starting up, behind the loading screen that has been showing since the page opened: fonts, the city for the title
+// screen, the menus. Then the studio intro (tests and ?nointro links go straight to the title).
+G.attractReady = false;
+loadRun('Starting Zombie City', [
+  ['Loading the fonts', () => Promise.race([document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve(), loadWait(1500)])],
+  ['Waking the city', () => { initAttract(); G.attractReady = true; return chunkJobs(cam.x, cam.y); }],
+  ['Opening the bunker', () => { refreshTitle(); }]
+], { now: true }).then(() => {
+  if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) { $('intro').hidden = true; showOv('title'); } else startIntro();
+});
 requestAnimationFrame(frame);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { sprites.clear(); });
 /*__TESTHOOK__*/

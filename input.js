@@ -12,6 +12,7 @@ const ACTIONS = [
   { id: 'dash', label: 'Dash', kb: ['Space', 'ShiftLeft'], pad: ['b0', 'b6'] },
   { id: 'air', label: 'A-10 airstrike', kb: ['KeyQ', 'KeyF'], pad: ['b3', 'b5'] },
   { id: 'free', label: 'Break free when grabbed', kb: ['KeyE', 'Enter'], pad: ['b2', ''] },
+  { id: 'mark', label: 'Mark a spot for your team (co-op)', kb: ['KeyG', ''], pad: ['b4', ''] },
   { id: 'aim', label: 'Auto-aim on or off', kb: ['KeyV', ''], pad: ['b11', ''] },
   { id: 'pause', label: 'Pause', kb: ['KeyP', ''], pad: ['b9', 'b8'] },
   { id: 'mute', label: 'Mute the radio', kb: ['KeyM', ''], pad: ['b13', ''] },
@@ -120,6 +121,7 @@ function doActions(A, repeat) {
   if (repeat) return used;
   if (has('air') && play) { callAirstrike(); used = true; }
   if (has('aim') && play) { toggleAutoAim(); used = true; }
+  if (has('mark') && play && NET.started) { netMark(); used = true; }
   if (has('fire') && play && DEV.kind === 'kbm' && SET.fireKbm === 'toggle') { DEV.fireOn = !DEV.fireOn; used = true; }
   if (has('mute')) { SFX.fm.mute(); used = true; } if (has('next')) { SFX.fm.skip(); used = true; }
   if (has('chDown')) { SFX.fm.step(-1); used = true; } if (has('chUp')) { SFX.fm.step(1); used = true; }

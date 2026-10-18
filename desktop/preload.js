@@ -20,9 +20,12 @@ contextBridge.exposeInMainWorld('ZCDesktop', {
 });
 contextBridge.exposeInMainWorld('ZCLauncher', {
   info: () => ipcRenderer.invoke('zl-info'),
-  check: () => ipcRenderer.invoke('zl-check'),
+  check: test => ipcRenderer.invoke('zl-check', !!test),
   update: latest => ipcRenderer.invoke('zl-update', latest),
   play: () => ipcRenderer.invoke('zl-play'),
+  minimize: () => ipcRenderer.send('zl-min'),
+  close: () => ipcRenderer.send('zl-close'),
+  fullscreenPref: on => ipcRenderer.invoke('zl-fspref', on == null ? null : !!on),
   open: url => ipcRenderer.invoke('zl-open', String(url || '')),
   onProgress: fn => { ipcRenderer.removeAllListeners('zl-progress'); ipcRenderer.on('zl-progress', (e, f) => fn(f)); }
 });

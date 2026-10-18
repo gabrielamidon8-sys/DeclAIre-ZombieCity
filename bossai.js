@@ -355,7 +355,9 @@ function startOverlord() {
   SFX.setBoss({ song: 'overlord', phase: 1 }); G.bossMusKey = 'O1';
 }
 function updCine(dt) {
-  const C = G.cine, p = G.p; C.t += dt; G.time += dt;
+  const C = G.cine, p = G.p;
+  if (!C || !p) { G.mode = 'play'; G.cine = null; return; }   // nothing to show (a co-op game closed it): carry on
+  C.t += dt; G.time += dt;
   const k = Math.min(1, dt * 3.2);
   if (C.t < 3.9) { cam.x += (C.x - cam.x) * k; cam.y += (C.y - cam.y) * k; }
   else { cam.x += (p.x - cam.x) * k; cam.y += (p.y - cam.y) * k; }
