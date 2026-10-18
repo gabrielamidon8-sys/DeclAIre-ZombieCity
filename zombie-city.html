@@ -1335,9 +1335,81 @@ button.lcd{cursor:pointer}
 
 .coop #toasts{top:172px}
 .coop.has-boss #toasts,.coop .has-boss #toasts{top:206px}
+
+/* ---------- 1.9.90: co-op ping, card rounds, reconnecting, the admin name ---------- */
+.ping{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-num);font-size:11px;letter-spacing:.06em;white-space:nowrap;color:var(--pc,#7bd88a);font-style:normal}
+.ping .pb{display:inline-flex;align-items:flex-end;gap:1px;height:10px}
+.ping .pb b{display:block;width:3px;background:var(--pc);opacity:.3;border:0;padding:0}
+.ping .pb b:nth-child(1){height:4px}.ping .pb b:nth-child(2){height:7px}.ping .pb b:nth-child(3){height:10px}
+.ping.good{--pc:#7bd88a}.ping.good .pb b{opacity:1}
+.ping.ok{--pc:#f2cc3a}.ping.ok .pb b:nth-child(-n+2){opacity:1}
+.ping.bad{--pc:#ff5a5a}.ping.bad .pb b:nth-child(1){opacity:1}
+.ping.host{color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.14em}
+.coop-pl{grid-template-columns:22px minmax(0, 1fr) auto auto}
+.coop-pl.empty{grid-template-columns:1fr}
+.coop-pl.away{opacity:.6}
+.hud-team .tm{grid-template-columns:minmax(0, 72px) 70px auto auto}
+.hud-team .tm-me{display:flex;gap:6px;align-items:center;font-family:var(--f-num);font-size:11px;letter-spacing:.06em;color:#bdb7a8;text-shadow:0 1px 2px #000}
+.up-team{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:6px 0 2px}
+.up-tm{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-left:3px solid var(--tc);background:rgba(11,13,16,.82);font-family:var(--f-num);font-size:12px;letter-spacing:.08em;color:var(--bone)}
+.up-tm i{font-style:normal;color:var(--muted);font-size:11px}
+.up-tm.done i{color:#7bd88a}
+.up-left{font-style:normal;font-family:var(--f-num);font-size:13px;color:var(--tape);letter-spacing:.08em}
+.net-recon{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:60;padding:8px 14px;background:rgba(200,50,56,.94);color:#fff;font-family:var(--f-num);font-size:13px;letter-spacing:.06em;border-radius:3px;box-shadow:0 4px 18px rgba(0,0,0,.45);max-width:calc(100vw - 32px);text-align:center}
+.nm-admin{display:inline-flex;align-items:baseline;gap:.12em;white-space:nowrap;font-weight:700}
+.nm-a{color:transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'%3E%3Cpath d='M14 0 L17 6 L13 11 L16 20 M50 2 L53 8 L59 10 L57 20 M88 0 L85 7 L90 12 L88 20' fill='none' stroke='%23400000' stroke-width='1.6'/%3E%3C/svg%3E"),linear-gradient(180deg,#ff7a6a,#e01414);background-size:auto 100%,100% 100%;background-repeat:repeat-x,no-repeat;-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 1.5px rgba(255,40,40,.9)) drop-shadow(0 0 6px rgba(255,0,0,.35));animation:nmFlick 3.4s infinite}
+.nm-bar{color:#8f959e;font-weight:400}
+.nm-d{color:#f1ead8;text-decoration:underline;text-decoration-color:#ff8a1a;text-decoration-thickness:.14em;text-underline-offset:.22em;text-shadow:0 0 6px rgba(255,138,26,.55)}
+@keyframes nmFlick{0%,91%,100%{opacity:1}92%{opacity:.7}94%{opacity:1}96%{opacity:.82}97%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.nm-a{animation:none}}
+.acct-admin{font-size:13px;color:#ffb38a!important}
+#markBtn{display:none;position:absolute;bottom:190px;right:max(36px, calc(env(safe-area-inset-right, 0px) + 28px));width:46px;height:46px;border-radius:50%;border:2px solid rgba(242,204,58,.4);background:rgba(14,17,21,.72);color:rgba(242,204,58,.85);align-items:center;justify-content:center;touch-action:none;padding:0}
+#markBtn svg{width:22px;height:22px;fill:currentColor}
+.coop.dev-touch #markBtn{display:flex}
+.lefty #markBtn{right:auto;left:max(36px, calc(env(safe-area-inset-left, 0px) + 28px))}
+
+/* ---------- 1.9.90: loading screens ---------- */
+.boot{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% 118%, rgba(255,80,40,.2), transparent 60%),radial-gradient(ellipse 60% 40% at 50% -10%, rgba(41,230,255,.06), transparent 60%),#0b0d10;opacity:1;transition:opacity .25s ease}
+.boot.out{opacity:0;pointer-events:none}
+.boot-in{width:min(460px, 100%);display:flex;flex-direction:column;gap:10px}
+.boot-studio{margin:0;font-family:var(--f-num);font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+.boot-logo{margin:0;font-family:var(--f-display);font-size:clamp(44px, 9vw, 72px);line-height:.9;color:var(--bone);text-transform:uppercase}
+.boot-logo span{color:var(--tape)}
+.boot-title{margin:8px 0 0;font-size:15px;color:#cfc9bb}
+.boot-bar{position:relative;height:6px;background:rgba(235,229,214,.1);border-radius:3px;overflow:hidden}
+.boot-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#d9434b,var(--tape));transition:width .18s ease}
+.boot-bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);transform:translateX(-100%);animation:bootSweep 1.3s linear infinite}
+@keyframes bootSweep{to{transform:translateX(100%)}}
+.boot-row{display:flex;justify-content:space-between;gap:12px;font-family:var(--f-num);font-size:12px;letter-spacing:.08em;color:var(--muted)}
+.boot-row b{font-weight:400;color:var(--tape)}
+.boot-tip{margin:14px 0 0;font-size:13px;line-height:1.45;color:#a7a196;min-height:2.9em}
+@media (prefers-reduced-motion:reduce){.boot-bar::after{animation:none}.boot{transition:none}}
+
+/* ---------- 1.9.90: maintenance and test builds ---------- */
+.maint{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% 118%, rgba(255,80,40,.18), transparent 60%),rgba(8,10,13,.97)}
+.maint-in{width:min(520px, 100%);display:flex;flex-direction:column;gap:12px;padding:24px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--tape);border-radius:3px}
+.maint-in h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(30px, 6vw, 42px);line-height:1}
+.maint-in p{margin:0;font-size:15px;color:#cfc9bb}
+.maint-when{font-family:var(--f-num);color:var(--tape)!important;font-size:14px!important}
+.maint-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.maint-note{font-size:13px!important;color:var(--muted)!important}
+.maint-soon,.maint-admin{position:fixed;left:50%;transform:translateX(-50%);z-index:59;padding:7px 14px;border-radius:3px;font-family:var(--f-num);font-size:12px;letter-spacing:.06em;max-width:calc(100vw - 32px);text-align:center}
+.maint-soon{bottom:16px;background:rgba(242,204,58,.94);color:#17140b}
+.maint-admin{top:12px;background:rgba(20,24,30,.92);color:#ffb38a;border:1px solid rgba(255,138,26,.5)}
+.test-badge{position:fixed;right:14px;bottom:12px;z-index:58;padding:5px 10px;border:1px dashed rgba(41,230,255,.6);border-radius:2px;background:rgba(8,10,13,.8);color:#29e6ff;font-family:var(--f-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 </style>
 
 <div id="app">
+  <div id="boot" class="boot" role="status" aria-live="polite">
+    <div class="boot-in">
+      <p class="boot-studio">DeclAIre Studios</p>
+      <p class="boot-logo">Zombie <span>City</span></p>
+      <p class="boot-title" id="bootTitle">Starting Zombie City</p>
+      <div class="boot-bar"><i id="bootFill"></i></div>
+      <div class="boot-row"><span id="bootStep">Reading the game</span><b id="bootPct"></b></div>
+      <p class="boot-tip" id="bootTip"></p>
+    </div>
+  </div>
   <canvas id="cv" aria-label="Zombie City game view"></canvas>
 
   <div id="hud" hidden>
@@ -1361,6 +1433,7 @@ button.lcd{cursor:pointer}
     <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
     <div id="chainPop" hidden></div>
     <button id="dashBtn" aria-label="Dash"><b>Dash</b><span class="dname">Sprint</span><i class="glyph" id="dashKey" aria-hidden="true"></i></button>
+      <button id="markBtn" class="mark-btn" type="button" aria-label="Mark a spot for your team"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
     <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em><i class="glyph" id="airKey" aria-hidden="true"></i></button>
     <div class="wchip" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><span id="wName">Standard Pistol</span></div>
     <div id="qte" hidden>
@@ -1407,6 +1480,7 @@ button.lcd{cursor:pointer}
         <p class="eyebrow" id="upEyebrow">Wave cleared</p>
         <h2 class="cards-title">Choose your card</h2>
         <p class="cards-sub" id="upSub">Shoot the card you want.</p>
+        <div class="up-team" id="upTeam" hidden></div>
       </div>
       <div class="card-row" id="upGrid"></div>
     </div>
@@ -1476,6 +1550,20 @@ button.lcd{cursor:pointer}
     <svg class="cracks" viewBox="0 0 400 800" preserveAspectRatio="none"><g fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2.4" stroke-linecap="round"><path d="M200 400 L150 330 L160 250 L110 170 L120 60"/><path d="M200 400 L260 340 L250 260 L310 190 L300 80"/><path d="M200 400 L120 420 L60 380 L10 410"/><path d="M200 400 L290 430 L350 400 L400 440"/><path d="M200 400 L170 490 L190 580 L140 680 L160 800"/><path d="M200 400 L240 500 L220 600 L280 700 L270 800"/><path d="M150 330 L100 320"/><path d="M250 260 L290 250"/><path d="M190 580 L240 600"/></g></svg>
   </div>
 
+  <div class="net-recon" id="netRecon" role="status" hidden></div>
+  <section id="maint" class="maint" hidden role="alertdialog" aria-labelledby="maintTitle">
+    <div class="maint-in">
+      <p class="eyebrow">Zombie City</p>
+      <h2 id="maintTitle">Down for maintenance</h2>
+      <p id="maintMsg"></p>
+      <p class="maint-when" id="maintWhen"></p>
+      <div class="maint-row"><button class="btn primary" id="maintRetry" type="button">Check again</button><button class="btn" id="maintUpdate" type="button" hidden>Update</button><button class="btn ghost" id="maintSite" type="button">Website</button></div>
+      <p class="maint-note">Your progress is safe on this device and in your account. The game checks again by itself every minute.</p>
+    </div>
+  </section>
+  <div class="maint-soon" id="maintSoon" role="status" hidden></div>
+  <div class="maint-admin" id="maintAdmin" hidden>Maintenance is on · you can play as admin</div>
+  <div class="test-badge" id="testBadge" hidden></div>
   <section id="pause" class="ov ov-pause" hidden aria-label="Paused">
     <div class="pause-card">
       <div class="pause-tape" aria-hidden="true"><span>Paused &#183; Hold position &#183; Paused &#183; Hold position &#183; Paused &#183; Hold position &#183; Paused &#183; Hold position &#183; Paused &#183; Hold position &#183; Paused &#183; Hold position &#183;</span></div>
@@ -1488,6 +1576,7 @@ button.lcd{cursor:pointer}
             <button class="btn" id="pauseCodexBtn">Specimen log</button>
             <button class="btn" id="pauseRadioBtn">Radio &amp; sound</button>
             <button type="button" class="btn ghost" id="pausePerf">Settings</button>
+            <button type="button" class="btn ghost" id="pausePing" hidden>Show ping: on</button>
             <button class="btn ghost pause-quit" id="quitBtn">Quit to menu</button>
           </div>
           <div class="pause-radio" id="pauseAudio"></div>
@@ -5266,11 +5355,17 @@ const ZCF = (function () {
     if ((s.match(/\d/g) || []).length >= 7) return true;
     return /(gmail|yahoo|hotmail|outlook|icloud|protonmail|discordgg|snapchat|instagram|tiktok|whatsapp|telegram|onlyfans)/.test(sq);
   }
-  // names that pretend to speak for the studio
+  // names that pretend to speak for the studio. "admin" and "declaire" are caught in any spelling: look-alike numbers
+  // and symbols (4DM1N, D3CL4!RE), stretched or doubled letters (AADMIIN), gaps and dots (A.D.M.I.N), a dropped vowel
+  // (ADMN, DECLAR) and both readings of 1, | and ! (i or l). Only the admin's own account gets past this (see cleanTag).
+  const STUDIO = /(adm[i]?n|admln|moderator|d[e]?cl[a]?[i]?r|anthropic|official|gamemaster|customersupport|supportteam|devteam|staffmember)/;
   function reserved(raw) {
-    const s = letters(raw, LEET_A), sq = squash(s).replace(/badminton/g, '');
-    if (/(admin|moderator|declaire|declairestudio|anthropic|official|gamemaster|customersupport|supportteam|devteam|staffmember)/.test(sq)) return true;
-    return tokens(s).some(t => t === 'mod' || t === 'mods' || t === 'staff' || t === 'support');
+    for (const map of [LEET_A, LEET_B]) {
+      const s = letters(raw, map), sq = squash(s).replace(/badminton/g, '');
+      for (const v of [sq, sq.replace(/([a-z])\1+/g, '$1')]) if (STUDIO.test(v)) return true;
+      if (tokens(s).some(t => t === 'mod' || t === 'mods' || t === 'staff' || t === 'support')) return true;
+    }
+    return false;
   }
 
   const REMARKS = [
@@ -5337,6 +5432,7 @@ const ZCF = (function () {
   return {
     REMARKS: REMARKS,
     setWords: setWords,
+    unpack: unpack,
     get ready() { return SUB.length > 0 || WORD.size > 0; },
     isRude: isRude,
     personal: personal,
@@ -5370,6 +5466,8 @@ const ACCT_CFG = {
   site: 'https://headless-iilujwebfcb-gabrielamidon8-140e.wix-site-host.com',
   saves: 'PlayerSaves',
   scores: 'Scores',
+  proofs: 'Proofs',
+  status: 'GameStatus',
   kdfIter: 600000
 };
 const AcctCore = (function () {
@@ -5600,7 +5698,23 @@ const AcctCore = (function () {
     for (const it of (d && d.dataItems) || []) if (it.data.tag !== tag) await wix('/wix-data/v2/items/' + encodeURIComponent(it.id), { method: 'PUT', body: { dataCollectionId: C.scores, dataItem: { id: it.id, data: Object.assign({}, it.data, { tag: tag }) } } });
   }
 
+  /* ---------- proving who you are (the admin name in co-op) ---------- */
+  // A one-time note that only this account could have written: Wix stamps who wrote it and nobody can fake that stamp,
+  // so a co-op host (or a teammate checking the host) can be sure the admin name really belongs to the admin account.
+  async function prove(nonce) {
+    const d = await wix('/wix-data/v2/items', { body: { dataCollectionId: C.proofs, dataItem: { data: { nonce: String(nonce), at: Date.now() } } } });
+    const id = d && d.dataItem && (d.dataItem.id || (d.dataItem.data && d.dataItem.data._id));
+    if (id) setTimeout(() => { wix('/wix-data/v2/items/' + encodeURIComponent(id) + '?dataCollectionId=' + C.proofs, { method: 'DELETE' }).catch(() => { }); }, 60000);
+    return !!id;
+  }
+  async function proofOwner(nonce) {
+    const d = await wix('/wix-data/v2/items/query', { body: { dataCollectionId: C.proofs, query: { filter: { nonce: { $eq: String(nonce) } }, paging: { limit: 2 } } } });
+    const it = d && d.dataItems && d.dataItems[0];
+    return it && it.data ? it.data._owner || null : null;
+  }
+
   return {
+    prove: prove, proofOwner: proofOwner,
     CFG: C, ls: ls, AcctError: AcctError, setHttp: setHttp, wix: wix, accessToken: accessToken,
     login: login, register: register, verifyEmail: verifyEmail, signOut: signOut, isMember: isMember, sendReset: sendReset,
     changePassword: changePassword, deleteMe: deleteMe, set onSignedOut(fn) { onSignedOut = fn; },
@@ -5625,7 +5739,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.82';
+const ZC_VERSION = '1.9.90';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -6644,7 +6758,9 @@ function banner(a, b) {
 const OVS = ['title', 'upgrade', 'pause', 'over'];
 function showOv(id) { OVS.forEach(o => { $(o).hidden = o !== id; }); $('hud').hidden = !(G.mode === 'play' || G.mode === 'upgrade' || G.mode === 'pause' || G.mode === 'skull' || G.mode === 'cine'); }
 function newRun(o) {
-  o = o || {};
+  o = o && !(o instanceof Event) ? o : {};
+  // shut for maintenance (or this version is too old): the maintenance screen instead of a run
+  if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
   $('skull').hidden = true;
   Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
@@ -6658,9 +6774,21 @@ function newRun(o) {
     // co-op: a teammate's game joins the host's run (same city, same wave), next to the host
     const a = (NET.slot || NET.me || 2) * 1.7, at = o.at || WORLD.start;
     for (let r = 46; r < 200; r += 30) { const x = at.x + Math.cos(a) * r, y = at.y + Math.sin(a) * r; if (!blocked(x, y, 14)) { G.p.x = x; G.p.y = y; break; } }
-    cam.x = G.p.x; cam.y = G.p.y; G.wave = o.wave || 1; G.mode = 'play'; showOv(null);
-  } else { G.mode = 'play'; showOv(null); startWave(1); }
-  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* not allowed */ }
+    cam.x = G.p.x; cam.y = G.p.y; G.wave = o.wave || 1;
+  }
+  // the loading screen: the streets around you are drawn before the run starts, so the first seconds never stutter;
+  // a teammate also waits (briefly) for the host's first look at the street
+  G.mode = 'loading'; showOv(null);
+  const sx = G.p.x, sy = G.p.y, host = NET.role === 'host' && NET.started;
+  const steps = [['Building the streets', () => chunkJobs(sx, sy)]];
+  if (o.client) steps.push(['Syncing with ' + (NET.hostName || 'the host'), () => loadUntil(() => NET.zmap.size > 0 || !NET.started || G.mode !== 'loading', 2500)]);
+  else steps.push([host ? 'Sending the city to your team' : 'Rounding up the horde', () => { buildField(); }]);
+  loadRun(o.client ? 'Joining ' + (NET.hostName || 'the game') : host ? 'Starting the co-op run' : 'Into the city', steps, { now: true, done: 'Go' }).then(() => {
+    if (G.mode !== 'loading') return;   // co-op: the cards (or the end of the game) got here first
+    G.mode = 'play'; showOv(null);
+    if (!o.client) startWave(1);
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* not allowed */ }
+  });
 }
 function pauseGame() {
   if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · ' + (NET.role === 'client' ? 'co-op: the game keeps going while you are here' : NET.role === 'host' ? 'co-op: paused for everyone' : 'run in progress');
@@ -6669,10 +6797,16 @@ function pauseGame() {
   [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', Math.floor(tm / 60) + ':' + String(tm % 60).padStart(2, '0')]].forEach(([k, v]) => {
     const d = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; d.append(dt, dd); st.append(d);
   });
-  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio();
+  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio(); netPingBtn();
 }
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
-function toTitle() { if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); if (NET.role) netLeave(); G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed'); initAttract(); showOv('title'); refreshTitle(); }
+function toTitle() {
+  if (G.p && G.mode === 'pause' && G.time > 5) recordRun(); if (NET.role) netLeave();
+  G.mode = 'title'; G.p = null; G.grab = null; $('qte').hidden = true; $('hud').classList.remove('grabbed');
+  showOv(null);
+  // back to the main menu: a new city for the title screen, drawn behind the loading screen (only shown if it takes a moment)
+  loadRun('Back to the bunker', [['Waking the city', () => { initAttract(); return chunkJobs(cam.x, cam.y); }]]).then(() => { if (G.mode === 'title') { showOv('title'); refreshTitle(); } });
+}
 function die() {
   if (G.mode !== 'play') return;
   const p = G.p;
@@ -6696,11 +6830,20 @@ function die() {
   $('postStatus').textContent = LB.src === 'wix' ? (ACCT.status === 'in' ? 'Saved on this device and to your account. Post it to the global board.' : 'Saved on this device. Log in to your free DeclAIre account (main menu) to post it to the global board.') : LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
   setTimeout(() => { if (G.mode === 'over') showOv('over'); }, 700);
 }
-function getTag() { const t = store.get('zc_tag', ''); return t || 'SURVIVOR'; }
-// a callsign as the game shows it: capitals, digits and a few marks, 14 at most, and never anything the name filter catches
+// the DeclAIre admin: only this account can carry the admin name, and it is drawn in its own style everywhere. Anyone
+// else who types it (or any spelling of "admin" or "declaire") gets turned down by the name filter.
+const ADMIN_ID = '8624cdfc-c3a3-46ea-bda7-552be319ee08', ADMIN_TAG = 'ADMIN|DECLAIRE';
+const isAdmin = acct => !!acct && acct === ADMIN_ID;
+const myAcct = () => (typeof ACCT !== 'undefined' && ACCT.member && (ACCT.status === 'in' || ACCT.status === 'locked')) ? ACCT.member.id : null;
+const meAdmin = () => isAdmin(myAcct());
+function getTag() { const t = store.get('zc_tag', ''); return t === ADMIN_TAG && !meAdmin() ? 'SURVIVOR' : t || 'SURVIVOR'; }
+// a callsign as the game shows it: capitals, digits and a few marks, 14 at most, and never anything the name filter catches.
+// acct is the account the name belongs to, when it is known for sure (the admin name only shows for the admin's account)
 const TAG_OK = new Map();
-function cleanTag(s) {
-  s = String(s || '').toUpperCase().replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14);
+function cleanTag(s, acct) {
+  s = String(s || '').toUpperCase();
+  if (s === ADMIN_TAG) return isAdmin(acct) ? s : 'SURVIVOR';
+  s = s.replace(/[^A-Z0-9 _.\-]/g, '').trim().slice(0, 14);
   if (!s) return 'SURVIVOR';
   let ok = TAG_OK.get(s); if (ok === undefined) { ok = ZCF.safe(s) === s; if (TAG_OK.size > 500) TAG_OK.clear(); TAG_OK.set(s, ok); }
   return ok ? s : 'SURVIVOR';
@@ -6757,7 +6900,7 @@ async function lbRefresh(force) {
 async function postGlobal(entry) {
   if (LB.src === 'wix') {
     if (ACCT.status !== 'in') return 'needacct';
-    try { const r = await AcctCore.postScore(SEASON, ACCT.member.id, Object.assign({}, entry, { tag: cleanTag(ACCT.member.username) })); lbRefresh(true); return r; }
+    try { const r = await AcctCore.postScore(SEASON, ACCT.member.id, Object.assign({}, entry, { tag: cleanTag(ACCT.member.username, ACCT.member.id) })); lbRefresh(true); return r; }
     catch (e) { return 'failed'; }
   }
   if (!LB.db || !LB.uid) return 'local';
@@ -6818,7 +6961,7 @@ function renderLB() {
   rows.slice(0, 50).forEach((r, i) => {
     const li = document.createElement('li'); li.className = 'lb-row' + (i < 3 ? ' top' : '') + (LB.tab === 'global' && r.id === LB.uid ? ' me' : '');
     const c1 = document.createElement('span'); c1.className = 'rk'; c1.textContent = '#' + (i + 1);
-    const c2 = document.createElement('span'); c2.className = 'tg'; c2.textContent = cleanTag(r.tag) + (LB.tab === 'global' && r.id === LB.uid ? ' (you)' : '');
+    const c2 = document.createElement('span'); c2.className = 'tg'; c2.append(nameEl(cleanTag(r.tag, r.id), r.id)); if (LB.tab === 'global' && r.id === LB.uid) c2.append(document.createTextNode(' (you)'));
     const c3 = document.createElement('span'); c3.className = 'sc'; c3.textContent = Number(r.score || 0).toLocaleString();
     const c4 = document.createElement('span'); c4.className = 'wv'; c4.textContent = 'W' + (r.wave || 0);
     const c5 = document.createElement('span'); c5.className = 'dv'; if (r.dev) { c5.append(devIcon(r.dev)); c5.title = DEV_SHORT[r.dev] || ''; }
@@ -7059,7 +7202,7 @@ function render() {
   if (vz) drawVizScreen(vz);
   tw = performance.now(); drawWeatherScreen(Math.min(0.05, (performance.now() - (render.lt || performance.now())) / 1000)); render.lt = performance.now(); PERF.sec.wx += performance.now() - tw;
   if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') {
-    drawScreenFx(); drawDashScreen(); drawAim();
+    drawScreenFx(); drawDashScreen(); drawAim(); if (NET.started) netDrawPointers();
     if (G.flashA > 0) { ctx.globalAlpha = Math.min(0.5, G.flashA); ctx.drawImage(screenGrad('a10', 0.1, 0.8, '255,214,150', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
   }
 }
@@ -11169,7 +11312,9 @@ function startOverlord() {
   SFX.setBoss({ song: 'overlord', phase: 1 }); G.bossMusKey = 'O1';
 }
 function updCine(dt) {
-  const C = G.cine, p = G.p; C.t += dt; G.time += dt;
+  const C = G.cine, p = G.p;
+  if (!C || !p) { G.mode = 'play'; G.cine = null; return; }   // nothing to show (a co-op game closed it): carry on
+  C.t += dt; G.time += dt;
   const k = Math.min(1, dt * 3.2);
   if (C.t < 3.9) { cam.x += (C.x - cam.x) * k; cam.y += (C.y - cam.y) * k; }
   else { cam.x += (p.x - cam.x) * k; cam.y += (p.y - cam.y) * k; }
@@ -11724,7 +11869,7 @@ const SET_DEF = {
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
   aimKbm: 'manual', fireKbm: 'hold', aimPad: 'assist', firePad: 'stick', padDead: 18, padSwap: false, padRumble: true, xhair: 'cross', xhairSize: 100, xhairColor: 'yellow',
   motion: 'auto', flash: false, hudScale: 100, contrast: false,
-  saver: 'auto'
+  saver: 'auto', netPing: true, netArrows: true
 };
 const SYS_RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const SET = Object.assign({}, SET_DEF, { flash: SYS_RM }, (function () {
@@ -11845,6 +11990,9 @@ const SET_ROWS = [
   { id: 'districts', tab: 'gameplay', type: 'seg', label: 'District names', desc: 'A note when you walk into a new part of the city.', opts: ON_OFF },
   { id: 'hints', tab: 'gameplay', type: 'seg', label: 'Hints', desc: 'Tips on the title screen and the movement guide.', opts: ON_OFF },
   { id: 'vibrate', tab: 'gameplay', type: 'seg', label: 'Vibration', desc: 'A buzz on big hits, explosions and lightning.', opts: ON_OFF, touch: true },
+  { tab: 'gameplay', group: 'Wi-Fi co-op' },
+  { id: 'netPing', tab: 'gameplay', type: 'seg', label: 'Show ping', desc: 'Each player’s connection speed next to their name during a co-op run. The lobby always shows it.', opts: ON_OFF },
+  { id: 'netArrows', tab: 'gameplay', type: 'seg', label: 'Teammate arrows', desc: 'Arrows on the edge of the screen point to teammates who are off screen, with how far away they are.', opts: ON_OFF },
   // controls: each device has its own section, shown once the game has seen that device (the one in use comes first)
   { tab: 'controls', info: 'devnow' },
   { tab: 'controls', group: 'Keyboard and mouse', dev: 'kbm' },
@@ -12039,6 +12187,98 @@ function updFpsBox(now) {
 applyAll();
 renderPerfBtn();
 
+/* ================= loading screens =================
+   One screen for every wait: starting the game, after the intro (watched or skipped), going into a run, and joining a
+   co-op game. It shows what is really being prepared, with a bar for how far along it is, and it only stays up for as
+   long as the work takes: nothing here waits on purpose. The first one is already on the page before any code runs
+   (it is plain HTML and CSS), so even the moment the browser spends reading the game has something to look at. */
+const LOADING = { on: false, shown: false, timer: 0, frac: 0, title: '' };
+const LOAD_TIPS = [
+  'Dash through a crowd to break their line. Some dashes leave fire, ice or poison behind.',
+  'Chain 75 kills without a break and the A-10 is yours to call in.',
+  'At a x100 chain the skull offers a forbidden card. Insane power, brutal curse.',
+  'Water carries lightning. Stay off the river in a thunderstorm.',
+  'Red barrels explode, and they set off the barrels next to them.',
+  'Shoot a parked car and its alarm pulls the horde toward it.',
+  'Bosses mutate into new forms halfway through the fight. Keep moving.',
+  'In co-op, stand next to a downed teammate to bring them back.',
+  'In co-op, press G (LB on a controller, the pin on a phone) to mark a spot for your team.',
+  'Every weapon you find stays unlocked. Pick your starting gun in the armory.',
+  'Fog and sandstorms cut how far you can see. Listen for the horde.',
+  'A free DeclAIre account saves your progress and follows you to every device.',
+  'The radio has seven channels. M mutes it, N skips the song.',
+  'Snow and ash keep your footprints. So do the zombies.',
+  'Frozen rivers are slippery for everyone, zombies included.'
+];
+const loadWait = ms => new Promise(r => setTimeout(r, ms));
+// the next painted frame (or a short timeout when the window is hidden and frames are paused)
+const loadPaint = () => new Promise(res => { let done = false; const f = () => { if (!done) { done = true; res(); } }; requestAnimationFrame(f); setTimeout(f, 60); });
+function loadEls() { return { box: $('boot'), fill: $('bootFill'), step: $('bootStep'), title: $('bootTitle'), tip: $('bootTip'), pct: $('bootPct') }; }
+function loadShow(title) {
+  const e = loadEls(); if (!e.box) return;
+  LOADING.shown = true;
+  if (title) e.title.textContent = title;
+  if (e.box.hidden || e.box.classList.contains('out')) {
+    e.box.hidden = false; e.box.classList.remove('out', 'gone');
+    e.tip.textContent = LOAD_TIPS[(Math.random() * LOAD_TIPS.length) | 0];
+  }
+}
+function loadStep(label, frac) {
+  const e = loadEls(); if (!e.box) return;
+  LOADING.frac = Math.max(LOADING.frac, clamp(frac, 0, 1));
+  if (label) e.step.textContent = label;
+  e.fill.style.width = (LOADING.frac * 100).toFixed(1) + '%';
+  e.pct.textContent = Math.round(LOADING.frac * 100) + '%';
+}
+function loadHide() {
+  const e = loadEls(); if (!e.box || e.box.hidden) return;
+  e.box.classList.add('out');
+  setTimeout(() => { if (!LOADING.on) { e.box.hidden = true; e.box.classList.remove('out'); } }, 260);
+}
+// Runs the steps in order with the loading screen up: each step is [label, job]. A job can do its work at once, return
+// a promise, or return a list of small jobs that are spread over frames so the bar keeps moving. With now = true the
+// screen shows straight away; otherwise only if the work takes long enough to notice.
+async function loadRun(title, steps, o) {
+  o = o || {};
+  LOADING.on = true; LOADING.frac = 0; LOADING.title = title;
+  const e = loadEls();
+  clearTimeout(LOADING.timer);
+  if (o.now || (e.box && !e.box.hidden && !e.box.classList.contains('out'))) loadShow(title);
+  else LOADING.timer = setTimeout(() => { if (LOADING.on) loadShow(title); }, 140);
+  loadStep(steps.length ? steps[0][0] : '', 0);
+  for (let i = 0; i < steps.length; i++) {
+    loadStep(steps[i][0], i / steps.length);
+    await loadPaint();
+    let r;
+    try { r = steps[i][1](); if (r && typeof r.then === 'function') r = await r; } catch (err) { perfError(err); r = null; }
+    if (Array.isArray(r)) {
+      let lastY = performance.now();
+      for (let j = 0; j < r.length; j++) {
+        try { r[j](); } catch (err) { perfError(err); }
+        if (performance.now() - lastY > 14) { loadStep(steps[i][0], (i + (j + 1) / r.length) / steps.length); await loadPaint(); lastY = performance.now(); }
+      }
+    }
+  }
+  loadStep(o.done || 'Ready', 1);
+  clearTimeout(LOADING.timer);
+  if (LOADING.shown) await loadPaint();
+  LOADING.on = false; LOADING.shown = false;
+  loadHide();
+}
+// a job list that draws every block of the city that will be on screen around (x, y), plus a margin, so the first
+// seconds of a run (or the title screen) never stutter on drawing streets
+function chunkJobs(x, y) {
+  const hw = W / 2 / ZOOM + 260, hh = H / 2 / ZOOM + 260, jobs = [];
+  const cx0 = Math.floor((x - hw) / CH), cx1 = Math.floor((x + hw) / CH), cy0 = Math.floor((y - hh) / CH), cy1 = Math.floor((y + hh) / CH);
+  const list = [];
+  for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) list.push([cx, cy, Math.hypot((cx + 0.5) * CH - x, (cy + 0.5) * CH - y)]);
+  list.sort((a, b) => a[2] - b[2]);   // the blocks you will see first are drawn first
+  for (const [cx, cy] of list) jobs.push(() => { const c = getChunk(cx, cy); if (!c.can) { renderChunk(c); c.seen = frameNo; } });
+  return jobs;
+}
+// waits until test() is true (or the time runs out), checking every frame
+async function loadUntil(test, ms) { const end = performance.now() + ms; while (performance.now() < end) { if (test()) return true; await loadPaint(); } return false; }
+
 /* ================= input: touch, keyboard and mouse, controller =================
    The game works out what you are playing with from the last thing you used and switches on the spot:
    a finger on the screen means touch (joystick, the gun aims itself), a key or the mouse means keyboard and mouse
@@ -12053,6 +12293,7 @@ const ACTIONS = [
   { id: 'dash', label: 'Dash', kb: ['Space', 'ShiftLeft'], pad: ['b0', 'b6'] },
   { id: 'air', label: 'A-10 airstrike', kb: ['KeyQ', 'KeyF'], pad: ['b3', 'b5'] },
   { id: 'free', label: 'Break free when grabbed', kb: ['KeyE', 'Enter'], pad: ['b2', ''] },
+  { id: 'mark', label: 'Mark a spot for your team (co-op)', kb: ['KeyG', ''], pad: ['b4', ''] },
   { id: 'aim', label: 'Auto-aim on or off', kb: ['KeyV', ''], pad: ['b11', ''] },
   { id: 'pause', label: 'Pause', kb: ['KeyP', ''], pad: ['b9', 'b8'] },
   { id: 'mute', label: 'Mute the radio', kb: ['KeyM', ''], pad: ['b13', ''] },
@@ -12161,6 +12402,7 @@ function doActions(A, repeat) {
   if (repeat) return used;
   if (has('air') && play) { callAirstrike(); used = true; }
   if (has('aim') && play) { toggleAutoAim(); used = true; }
+  if (has('mark') && play && NET.started) { netMark(); used = true; }
   if (has('fire') && play && DEV.kind === 'kbm' && SET.fireKbm === 'toggle') { DEV.fireOn = !DEV.fireOn; used = true; }
   if (has('mute')) { SFX.fm.mute(); used = true; } if (has('next')) { SFX.fm.skip(); used = true; }
   if (has('chDown')) { SFX.fm.step(-1); used = true; } if (has('chUp')) { SFX.fm.step(1); used = true; }
@@ -12591,12 +12833,46 @@ function updDevUi() {
    leaderboard with your scores, together with what you played on (phone, PC or controller). The global board on
    the web page is one board for every device. */
 function hasName() { return !!store.get('zc_tag', ''); }
+// a player's name as an element. The admin's name (on the admin's account only) gets its own look: ADMIN in cracked,
+// glowing red and DECLAIRE underlined in orange.
+function nameEl(name, acct, tag, cls) {
+  const e = el(tag || 'span', cls || null);
+  if (name === ADMIN_TAG && isAdmin(acct)) {
+    e.classList.add('nm-admin'); e.setAttribute('aria-label', 'ADMIN DECLAIRE');
+    e.append(el('span', 'nm-a', 'ADMIN'), el('span', 'nm-bar', '|'), el('span', 'nm-d', 'DECLAIRE'));
+    return e;
+  }
+  e.textContent = name; return e;
+}
+// the same on the canvas (name tags over teammates in co-op), centred on x, y
+const CRACKS = [[0.16, 0.05, 0.22, 0.5, 0.15, 0.95], [0.62, 0.1, 0.68, 0.45, 0.78, 0.55, 0.74, 0.95]];
+function drawName(name, acct, x, y, px) {
+  if (!(name === ADMIN_TAG && isAdmin(acct))) { ctx.fillText(name, x, y); return; }
+  const fA = "bold " + px + "px 'Share Tech Mono', monospace";
+  ctx.font = fA; const wa = ctx.measureText('ADMIN').width, wb = ctx.measureText('|').width, wd = ctx.measureText('DECLAIRE').width, gap = px * 0.15;
+  let sx = x - (wa + wb + wd + gap * 2) / 2;
+  const al = ctx.textAlign; ctx.textAlign = 'left';
+  // ADMIN: red, glowing, cracked
+  ctx.save(); ctx.shadowColor = 'rgba(255,30,30,0.9)'; ctx.shadowBlur = px * 0.8; ctx.fillStyle = '#ff2a2a'; ctx.fillText('ADMIN', sx, y); ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(sx, y - px * 0.55, wa, px * 1.1); ctx.clip(); ctx.strokeStyle = 'rgba(40,0,0,0.85)'; ctx.lineWidth = Math.max(1, px * 0.08);
+  for (const c of CRACKS) { ctx.beginPath(); for (let i = 0; i < c.length; i += 2) { const cx = sx + c[i] * wa, cy = y - px * 0.5 + c[i + 1] * px; i ? ctx.lineTo(cx, cy) : ctx.moveTo(cx, cy); } ctx.stroke(); }
+  ctx.restore();
+  sx += wa + gap; ctx.fillStyle = '#8f959e'; ctx.fillText('|', sx, y); sx += wb + gap;
+  // DECLAIRE: underlined in orange
+  ctx.save(); ctx.shadowColor = 'rgba(255,138,26,0.7)'; ctx.shadowBlur = px * 0.5; ctx.fillStyle = '#f1ead8'; ctx.fillText('DECLAIRE', sx, y);
+  ctx.fillStyle = '#ff8a1a'; ctx.fillRect(sx, y + px * 0.48, wd, Math.max(1.5, px * 0.13)); ctx.restore();
+  ctx.textAlign = al;
+}
 // returns the saved name, or null when the name filter turned it down (the reason shows under the name box)
 function setName(v) {
-  const chk = ZCF.check(v);
+  // the admin's own name is the one exception to the name filter, and only on the admin's account
+  const adminName = String(v || '').trim().toUpperCase() === ADMIN_TAG && meAdmin();
+  const chk = adminName ? { ok: true } : ZCF.check(v);
   if (!chk.ok) { nameErr(chk.msg); return null; }
-  nameErr('');
-  const t = cleanTag(v); store.set('zc_tag', t);
+  const t0 = adminName ? ADMIN_TAG : cleanTag(v); if (t0 !== store.get('zc_tag', '')) nameErr('');
+  const t = adminName ? ADMIN_TAG : cleanTag(v);
+  if (t === store.get('zc_tag', '') && hasName()) return t;   // unchanged (and a message just shown stays up)
+  store.set('zc_tag', t);
   updNameUi(); syncNameOnline(t); acctRename(t);
   return t;
 }
@@ -12623,7 +12899,7 @@ function updNameUi() {
   const named = hasName(), tag = getTag();
   const inp = $('nameInput'); if (inp && document.activeElement !== inp) inp.value = named ? tag : '';
   $('nameForm').classList.toggle('unnamed', !named);
-  $('hudName').hidden = !named; $('hudNameTxt').textContent = named ? tag : '';
+  $('hudName').hidden = !named; const hn = $('hudNameTxt'); hn.textContent = ''; if (named) hn.append(nameEl(tag, myAcct()));
   if (G.mode === 'title') renderTitlePanel();
 }
 $('nameForm').addEventListener('submit', e => {
@@ -12636,11 +12912,11 @@ $('nameForm').addEventListener('submit', e => {
   const b = $('nameSave'); b.textContent = 'Saved'; b.classList.add('ok'); SFX.click();
   setTimeout(() => { b.textContent = 'Save'; b.classList.remove('ok'); }, 1400);
 });
-$('nameInput').addEventListener('input', e => { const v = e.target.value.toUpperCase().replace(/[^A-Z0-9 _.\-]/g, ''); if (v !== e.target.value) e.target.value = v; });
+$('nameInput').addEventListener('input', e => { const v = e.target.value.toUpperCase().replace(/[^A-Z0-9 _.|\-]/g, ''); if (v !== e.target.value) e.target.value = v; });
 $('nameInput').addEventListener('blur', () => {
   const v = $('nameInput').value.trim();
   if (v && v === nameRejected) return;
-  if (v && cleanTag(v) !== getTag()) { if (!setName(v)) { nameRejected = v; $('nameInput').value = hasName() ? getTag() : ''; } }
+  if (v && (v.toUpperCase() === ADMIN_TAG ? ADMIN_TAG : cleanTag(v)) !== getTag()) { if (!setName(v)) { nameRejected = v; $('nameInput').value = hasName() ? getTag() : ''; } }
   else if (!v) updNameUi();
 });
 
@@ -12709,7 +12985,7 @@ function renderTitlePanel() {
   const bd = card('tp-board', live ? 'Top of the board' : 'Your best runs', SEASON_NAME);
   const ol = el('ol', 'tp-rows');
   if (!rows.length) ol.append(el('li', 'tp-empty', 'No scores yet this season. Be the first.'));
-  rows.forEach((r, i) => { const li = el('li', live && r.id === LB.uid ? 'me' : ''); li.append(el('span', 'rk', '#' + (i + 1)), el('span', 'tg', cleanTag(r.tag)), el('span', 'sc', Number(r.score || 0).toLocaleString())); if (r.dev) li.append(devIcon(r.dev)); ol.append(li); });
+  rows.forEach((r, i) => { const li = el('li', live && r.id === LB.uid ? 'me' : ''); li.append(el('span', 'rk', '#' + (i + 1)), nameEl(cleanTag(r.tag, r.id), r.id, 'span', 'tg'), el('span', 'sc', Number(r.score || 0).toLocaleString())); if (r.dev) li.append(devIcon(r.dev)); ol.append(li); });
   bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : LB.status === 'loading' ? 'Connecting to the global board.' : LB.src === 'wix' ? 'No connection to the global board right now.' : 'The global board is not available on this page.'));
   // what's new
   const n = card('tp-new', 'New in 1.9.82');
@@ -12786,8 +13062,35 @@ function acctMerge(cloud, local) {
     overlord: Math.max(cloud.overlord | 0, local.overlord | 0), keeper: Math.max(cloud.keeper | 0, local.keeper | 0),
     loadout: local.loadout != null ? local.loadout : cloud.loadout, dash: local.dash || cloud.dash,
     best: { wave: Math.max(cb.wave | 0, lbst.wave | 0), chain: Math.max(cb.chain | 0, lbst.chain | 0), score: Math.max(cb.score | 0, lbst.score | 0) },
-    devices: Object.assign({}, cloud.devices || {}, local.devices || {}), lb: lbOut
+    devices: acctDevices(cloud.devices, local.devices), lb: lbOut
   };
+}
+// each device's totals: the larger of what the cloud and the device have
+function acctDevices(a, b) {
+  const out = Object.assign({}, a || {});
+  for (const [id, d] of Object.entries(b || {})) {
+    const c = out[id];
+    out[id] = !c ? d : { runs: Math.max(c.runs | 0, d.runs | 0), kills: Math.max(c.kills | 0, d.kills | 0), time: Math.max(c.time | 0, d.time | 0), plat: d.plat || c.plat, at: Math.max(c.at || 0, d.at || 0) };
+  }
+  return out;
+}
+// whose progress is on this device: the account that last saved it ('' while it is a guest's)
+const acctOwner = () => store.get('zc_owner', '');
+// A different account logging in on this device starts from its own cloud save. The progress the last player left here
+// is already in their own account; a copy is also kept on the device in case it hadn't finished saving, and goes back
+// into their account the next time they log in here. Nothing of theirs ends up in someone else's account.
+function acctPutAway(owner) {
+  try { store.set('zc_away_' + owner, acctSnapshot()); } catch (e) { /* storage full: the cloud copy still has it */ }
+  found.clear(); saveFound(); guns.clear(); guns.add(0); saveGuns(); dashes.clear(); dashes.add('sprint'); saveDashes();
+  bossSeen.clear(); bossKilled.clear(); saveBosses();
+  store.set('zc_overlord', 0); store.set('zc_keeper', 0); store.set('zc_loadout', 0); store.set('zc_dash', 'sprint');
+  Object.assign(STATS, { runs: 0, kills: 0, time: 0, bestWave: 0, bestChain: 0, bestScore: 0 }); store.set('zc_stats', STATS);
+  store.set('zc_lb_' + SEASON, []);
+}
+// this account's progress that was put away on this device earlier (when someone else logged in here)
+function acctTakeBack(id) {
+  const k = 'zc_away_' + id, s = store.get(k, null); if (!s) return false;
+  acctApply(acctMerge(s, acctSnapshot())); return true;
 }
 // put a merged save into the game (only ever adds)
 function acctApply(s) {
@@ -12805,6 +13108,12 @@ function acctApply(s) {
   const cur = (s.lb || {})[SEASON];
   if (cur && cur.length) { const k = 'zc_lb_' + SEASON, had = store.get(k, []); if (cur.length !== had.length || (cur[0] && had[0] && cur[0].score !== had[0].score) || (cur[0] && !had[0])) { store.set(k, cur); changed = true; } }
   ACCT.others = Object.entries(s.devices || {}).filter(([id]) => id !== DEVID).map(([, d]) => d);
+  // this device's own totals for this account (after switching accounts here, they come back from the cloud)
+  const mine = (s.devices || {})[DEVID];
+  if (mine && ((mine.runs | 0) > STATS.runs || (mine.kills | 0) > STATS.kills || (mine.time | 0) > STATS.time)) {
+    STATS.runs = Math.max(STATS.runs, mine.runs | 0); STATS.kills = Math.max(STATS.kills, mine.kills | 0); STATS.time = Math.max(STATS.time, mine.time | 0);
+    store.set('zc_stats', STATS); changed = true;
+  }
   return changed;
 }
 // runs, kills and time played across every device on the account (this device counted live)
@@ -12833,8 +13142,16 @@ async function acctSync(why) {
       const merged = acctMerge(cloud, acctSnapshot());
       const changed = acctApply(merged);
       const blob = await AcctCore.encryptSave(ACCT.dk, merged, ACCT.member.id);
-      ACCT.rec = await AcctCore.writeRecord(rec, { save: blob, saveVer: ((rec && rec.data.saveVer) | 0) + 1, summary: JSON.stringify(acctSummary(merged)), updatedAt: Date.now() });
+      const upd = { save: blob, saveVer: ((rec && rec.data.saveVer) | 0) + 1, summary: JSON.stringify(acctSummary(merged)), updatedAt: Date.now() };
+      // the account name: a rename made here while offline goes up; otherwise a rename made elsewhere comes down
+      const pend = ACCT.member.pendingName;
+      if (pend) upd.username = pend;
+      else if (rec && rec.data.username && rec.data.username !== ACCT.member.username) { ACCT.member.username = rec.data.username; AcctCore.ls.set('member', ACCT.member); store.set('zc_tag', cleanTag(ACCT.member.username, ACCT.member.id)); updNameUi(); }
+      ACCT.rec = await AcctCore.writeRecord(rec, upd);
+      if (pend) { delete ACCT.member.pendingName; AcctCore.ls.set('member', ACCT.member); AcctCore.renameScores(ACCT.member.id, pend).catch(() => { }); }
       ACCT.lastSync = Date.now(); AcctCore.ls.set('synced', ACCT.lastSync);
+      // the progress on this device now belongs to this account (a copy put away for it earlier is no longer needed)
+      store.set('zc_owner', ACCT.member.id); store.set('zc_away_' + ACCT.member.id, null);
       if (ACCT.msg && ACCT.msg.sync) ACCT.msg = null;
       if (changed && G.mode === 'title') refreshTitle();
       return true;
@@ -12868,10 +13185,14 @@ async function acctAfterAuth(email, password, wantName) {
   ACCT.member = { id: rec.data._owner, email: email, username: rec.data.username || 'SURVIVOR', tag: rec.data.tag || '' };
   AcctCore.ls.set('member', ACCT.member);
   ACCT.rec = rec;
+  // someone else's progress is on this device: put it away before anything is saved to this account
+  const owner = acctOwner(); ACCT.switched = false;
+  if (owner && owner !== ACCT.member.id) { acctPutAway(owner); ACCT.switched = true; }
+  acctTakeBack(ACCT.member.id);
   if (!dk) { ACCT.status = 'locked'; ACCT.dk = null; ACCT.pwNow = password; renderAcct(); updAcctUi(); return; }
   ACCT.dk = dk; AcctCore.ls.set('dk', dk); ACCT.status = 'in';
-  store.set('zc_tag', cleanTag(ACCT.member.username)); nameErr(''); updNameUi();
-  ACCT.msg = { t: 'Welcome, ' + ACCT.member.username + '. Your progress is saving to the cloud.' };
+  store.set('zc_tag', cleanTag(ACCT.member.username, ACCT.member.id)); nameErr(''); updNameUi();
+  ACCT.msg = { t: ACCT.switched ? 'Welcome, ' + ACCT.member.username + '. This device now has your progress; the last player’s progress stays in their own account.' : 'Welcome, ' + ACCT.member.username + '. Your progress is saving to the cloud.' };
   await acctSync('login');
   lbRefresh(true);
 }
@@ -12908,7 +13229,7 @@ async function acctUnlock(password) {
   if (ACCT.pwNow && ACCT.pwNow !== password) ACCT.rec = await AcctCore.writeRecord(rec, Object.assign(await AcctCore.relock(ACCT.pwNow, dk), { updatedAt: Date.now() }));
   ACCT.pwNow = null;
   ACCT.dk = dk; AcctCore.ls.set('dk', dk); ACCT.status = 'in'; ACCT.msg = { t: 'Save unlocked.' };
-  store.set('zc_tag', cleanTag(ACCT.member.username)); updNameUi();
+  store.set('zc_tag', cleanTag(ACCT.member.username, ACCT.member.id)); updNameUi();
   await acctSync('unlock');
 }
 // the old password is gone: start a new key, and the cloud save is rebuilt from this device's progress
@@ -12929,9 +13250,9 @@ async function acctLogout() {
 // a new name while logged in renames the account and its board entries too
 async function acctRename(tag) {
   if (ACCT.status !== 'in' || !ACCT.member || ACCT.member.username === tag) return;
-  ACCT.member.username = tag; AcctCore.ls.set('member', ACCT.member);
+  ACCT.member.username = tag; delete ACCT.member.pendingName; AcctCore.ls.set('member', ACCT.member);
   try { ACCT.rec = await AcctCore.writeRecord(ACCT.rec || await AcctCore.myRecord(), { username: tag, updatedAt: Date.now() }); await AcctCore.renameScores(ACCT.member.id, tag); lbRefresh(true); }
-  catch (e) { /* renamed here; the cloud catches up on the next save */ }
+  catch (e) { ACCT.member.pendingName = tag; AcctCore.ls.set('member', ACCT.member); /* renamed here; the cloud catches up on the next save */ }
 }
 
 /* ---------- the account sheet ---------- */
@@ -12962,7 +13283,8 @@ function renderAcct() {
   const card = (title, cls) => { const c = el('section', 'coop-card acct-card' + (cls ? ' ' + cls : '')); c.append(el('h3', null, title)); body.append(c); return c; };
   if (ACCT.status === 'in') {
     const c = card(ACCT.member.username);
-    const id = el('p', 'acct-id'); id.append(el('b', null, ACCT.member.username), el('span', null, ACCT.member.tag ? ' #' + ACCT.member.tag : '')); c.firstChild.replaceWith(id);
+    const id = el('p', 'acct-id'); id.append(nameEl(cleanTag(ACCT.member.username, ACCT.member.id), ACCT.member.id, 'b'), el('span', null, ACCT.member.tag ? ' #' + ACCT.member.tag : '')); c.firstChild.replaceWith(id);
+    if (meAdmin()) c.append(el('p', 'acct-admin', 'Admin account: your name shows in admin colors, and you can play during maintenance and get test builds.'));
     c.append(el('p', null, ACCT.member.email));
     const t = acctTotals();
     const dl = el('dl', 'acct-stats');
@@ -13053,7 +13375,7 @@ function renderAcct() {
   }));
 }
 function updAcctUi() {
-  const em = $('acctBtnEm'); if (em) em.textContent = ACCT.status === 'in' ? ACCT.member.username : ACCT.status === 'locked' ? 'Locked' : 'Log in';
+  const em = $('acctBtnEm'); if (em) { em.textContent = ''; if (ACCT.status === 'in') em.append(nameEl(cleanTag(ACCT.member.username, ACCT.member.id), ACCT.member.id)); else em.textContent = ACCT.status === 'locked' ? 'Locked' : 'Log in'; }
   const b = $('acctBtn'); if (b) b.classList.toggle('acct-on', ACCT.status === 'in');
   if (G.mode === 'title') renderTitlePanel();
 }
@@ -13062,6 +13384,57 @@ $('acctClose').addEventListener('click', closeAcct);
 updAcctUi();
 // signed in from before: check in with the cloud shortly after the game starts
 if (ACCT.status === 'in') setTimeout(() => acctSync('start'), 6000);
+
+/* ---------- maintenance and update phases ----------
+   One switch on the DeclAIre server (the GameStatus collection on Wix) runs every update:
+   - maintenance on: the game shows "Down for maintenance" (with a message and when it's back) instead of starting runs.
+     A run already going gets to finish first. The admin account can still play, to test the new version.
+   - minVer: anyone on an older version is asked to update before playing.
+   - stable / test: which version is published, and which one is being tested (the launcher's test channel and the
+     test copy of the web version get it first). The game shows a "Test build" tag when it is the test version.
+   Offline, none of this applies: the game plays as normal. */
+const STATUS = { maint: false, msg: '', until: 0, stable: '', test: '', minVer: '', ok: false, t: 0 };
+const vcmpG = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; };
+async function statusCheck() {
+  try {
+    const d = await AcctCore.wix('/wix-data/v2/items/query', { body: { dataCollectionId: ACCT_CFG.status, query: { filter: { key: { $eq: 'live' } }, paging: { limit: 1 } } } });
+    const it = d && d.dataItems && d.dataItems[0]; if (!it || !it.data) return;
+    const s = it.data;
+    Object.assign(STATUS, { maint: !!s.maintenance, msg: String(s.message || '').slice(0, 300), until: +s.until || 0, stable: String(s.stable || ''), test: String(s.test || ''), minVer: String(s.minVer || ''), ok: true, t: Date.now() });
+  } catch (e) { /* no connection: play on */ }
+  statusApply();
+}
+const statusOutdated = () => !!(STATUS.ok && STATUS.minVer && vcmpG(ZC_VERSION, STATUS.minVer) < 0);
+function statusBlocked() { return STATUS.ok && !meAdmin() && (STATUS.maint || statusOutdated()); }
+const statusInRun = () => ['play', 'pause', 'upgrade', 'skull', 'cine', 'loading'].indexOf(G.mode) >= 0;
+function statusApply() {
+  const ov = $('maint'); if (!ov) return;
+  const tb = $('testBadge'), isTest = STATUS.ok && STATUS.test === ZC_VERSION && STATUS.stable !== ZC_VERSION;
+  tb.hidden = !isTest || statusInRun(); if (isTest) tb.textContent = 'Test build ' + ZC_VERSION;
+  $('maintAdmin').hidden = !(STATUS.ok && STATUS.maint && meAdmin());
+  const out = statusOutdated();
+  if (!statusBlocked()) { ov.hidden = true; $('maintSoon').hidden = true; return; }
+  if (statusInRun()) { const s = $('maintSoon'); s.hidden = false; s.textContent = out ? 'A required update is out. Finish this run, then update.' : 'Maintenance is starting. Finish this run; new runs open again soon.'; ov.hidden = true; return; }
+  $('maintSoon').hidden = true;
+  if (G.mode === 'intro') return;
+  $('maintTitle').textContent = out ? 'Update needed' : 'Down for maintenance';
+  $('maintMsg').textContent = out ? 'You have version ' + ZC_VERSION + '. Version ' + STATUS.minVer + ' or newer is needed to play.' : (STATUS.msg || 'Zombie City is getting an update. It will be back shortly.');
+  const left = STATUS.until - Date.now();
+  $('maintWhen').textContent = !out && left > 0 ? 'Back in about ' + (left > 3600000 ? Math.round(left / 3600000) + ' hours' : Math.max(1, Math.round(left / 60000)) + ' minutes') : '';
+  const up = $('maintUpdate'); up.hidden = !out;
+  up.textContent = window.ZCDesktop && window.ZCDesktop.launcher ? 'Open the launcher' : IS_APP ? 'Download the update' : 'Reload';
+  if (ov.hidden) { ov.hidden = false; SFX.click(); }
+}
+$('maintRetry').addEventListener('click', () => { $('maintRetry').textContent = 'Checking'; statusCheck().finally(() => { $('maintRetry').textContent = 'Check again'; }); });
+$('maintSite').addEventListener('click', () => openWeb('https://declairestudios.wordpress.com'));
+$('maintUpdate').addEventListener('click', () => {
+  if (window.ZCDesktop && window.ZCDesktop.launcher) window.ZCDesktop.launcher();
+  else if (IS_APP) openWeb('https://github.com/gabrielamidon8-sys/DeclAIre-ZombieCity/releases/latest/download/ZombieCity-Android.apk');
+  else location.reload();
+});
+// first check soon after starting, then every few minutes (every minute while the game is shut)
+setTimeout(statusCheck, 2500);
+setInterval(() => { if (Date.now() - STATUS.t > (statusBlocked() ? 60000 : 180000)) statusCheck(); else if (STATUS.ok) statusApply(); }, 5000);
 
 /* ================= Wi-Fi co-op: up to 4 players on the same network =================
    One PC hosts (the Windows app runs a small relay server, desktop/lan.js). The host's game runs the zombies, waves,
@@ -13073,9 +13446,15 @@ const NET = {
   peers: new Map(), others: new Map(), zmap: new Map(), lobby: [],
   started: false, zid: 0, spawning: false, cosmetic: false, lastHitBy: 1, finishing: false, local: null,
   sendT: 0, snapT: 0, hudT: 0, scanT: 0, hold: 0, md: 0,
-  hits: [], zfx: [], shots: [], kills: [], evs: [], blastsDone: new Set(), cardsAt: 0, picked: new Set(), found: [], shotSfx: new Map()
+  hits: [], zfx: [], shots: [], kills: [], evs: [], blastsDone: new Set(), cardsAt: 0, picked: new Set(), found: [], shotSfx: new Map(),
+  // 1.9.90: card rounds, ping, reconnects
+  round: 0, roundDl: 0, acked: new Set(), cardsT: 0, myRound: 0, myPicked: 0, roundPicked: [],
+  marks: [], markAt: 0, rtt: 0, pings: new Map(), piT: 0, pgT: 0, lastRx: 0, key: '', target: null, recon: 0, reconT: 0, hostVer: ''
 };
 const NET_PORT = 47777, NET_MAX = 4;
+const NET_PICK_SECS = 30, NET_AWAY_SECS = 30, NET_RECON_SECS = 25;
+// players on different versions would see different zombies, weapons and cards, so the host only lets in its own version
+const netVerOk = v => String(v || '') === ZC_VERSION;
 const NET_COLS = ['#f2cc3a', '#29e6ff', '#ff3df2', '#7dff4a'];
 const NET_SK = ['acid', 'wisp', 'shard', 'spike', 'fire', 'ice', 'void', 'shock', 'spirit', 'web', 'bolt'];
 const NET_HK = ['acid', 'fire', 'sludge', 'ice', 'spore', 'vortex'];
@@ -13116,9 +13495,10 @@ const netCan = {
 };
 function netReset() {
   if (NET.ws) { try { NET.ws.onclose = null; NET.ws.close(); } catch (e) { } }
-  Object.assign(NET, { role: null, ws: null, me: 1, status: 'off', started: false, hold: 0, md: 0, local: null, finishing: false, hits: [], zfx: [], shots: [], kills: [], evs: [] });
-  NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.picked.clear(); NET.blastsDone.clear(); NET.lobby = [];
-  $('app').classList.remove('coop');
+  Object.assign(NET, { role: null, ws: null, me: 1, status: 'off', started: false, hold: 0, md: 0, local: null, finishing: false, hits: [], zfx: [], shots: [], kills: [], evs: [],
+    round: 0, roundDl: 0, myRound: 0, myPicked: 0, roundPicked: [], rtt: 0, recon: 0, reconT: 0, target: null, hostVer: '', hostOk: false, hostNonce: '', lobbyRaw: [] });
+  NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.picked.clear(); NET.acked.clear(); NET.blastsDone.clear(); NET.pings.clear(); NET.marks = []; NET.lobby = [];
+  $('app').classList.remove('coop'); netReconBanner(false);
 }
 
 /* ---------- connecting ---------- */
@@ -13142,19 +13522,52 @@ function netJoin(ip, port) {
   const host = m[1], prt = +(port || m[2] || NET_PORT);
   store.set('zc_lastip', ip);
   NET.err = ''; NET.status = 'connecting'; renderCoop();
+  // a fresh key for this game: if the Wi-Fi drops, the same key gets this player their slot back
+  NET.key = Array.from(crypto.getRandomValues(new Uint8Array(9)), b => b.toString(16).padStart(2, '0')).join('');
+  NET.target = { host: host, port: prt };
+  netConnect(false);
+}
+// opens the connection to the host; again=true when the Wi-Fi dropped mid-game and this player is coming back
+function netConnect(again) {
+  const T = NET.target; if (!T) return;
   let ws;
-  const url = 'ws://' + host + ':' + prt + '/?name=' + encodeURIComponent(getTag()) + '&dev=' + DEV.kind + '&ver=' + encodeURIComponent(ZC_VERSION);
+  const url = 'ws://' + T.host + ':' + T.port + '/?name=' + encodeURIComponent(getTag()) + '&dev=' + DEV.kind + '&ver=' + encodeURIComponent(ZC_VERSION) + '&key=' + NET.key + (myAcct() ? '&acct=' + myAcct() : '');
   try { ws = netNativeWs() ? new NativeWS(url) : new WebSocket(url); }
-  catch (e) { NET.status = 'off'; NET.err = 'Could not connect to ' + host + '.'; renderCoop(); return; }
+  catch (e) { if (again) return; NET.status = 'off'; NET.err = 'Could not connect to ' + T.host + '.'; renderCoop(); return; }
   NET.ws = ws; let opened = false;
-  const giveUp = setTimeout(() => { if (!opened) { try { ws.close(); } catch (e) { } } }, 6000);
-  ws.onopen = () => { opened = true; clearTimeout(giveUp); NET.role = 'client'; NET.status = 'joining'; renderCoop(); };
-  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } try { netClientRecv(m); } catch (err) { perfError(err); } };
-  ws.onclose = () => {
-    clearTimeout(giveUp);
-    if (!opened) { NET.ws = null; NET.status = 'off'; NET.err = 'Could not reach a game at ' + host + '. Check that the host is hosting, you are on the same Wi-Fi, and Windows allowed Zombie City through its firewall.'; renderCoop(); return; }
+  const giveUp = setTimeout(() => { if (!opened) { try { ws.close(); } catch (e) { } } }, 5000);
+  ws.onopen = () => { opened = true; clearTimeout(giveUp); NET.role = 'client'; NET.lastRx = performance.now(); if (!again) NET.status = 'joining'; renderCoop(); };
+  ws.onmessage = e => { NET.lastRx = performance.now(); let m; try { m = JSON.parse(e.data); } catch (err) { return; } try { netClientRecv(m); } catch (err) { perfError(err); } };
+  ws.onclose = () => { clearTimeout(giveUp); netDropped(ws, opened, again); };
+}
+// the connection closed (or got stuck and was dropped)
+function netDropped(ws, opened, again) {
+  {
+    const T = NET.target || {};
+    if (NET.ws !== ws) return;
+    NET.ws = null; ws.onclose = ws.onmessage = null;
+    if (!opened && !again && !NET.started) { NET.status = 'off'; NET.err = 'Could not reach a game at ' + T.host + '. Check that the host is hosting, you are on the same Wi-Fi, and Windows allowed Zombie City through its firewall.'; renderCoop(); return; }
+    // mid-game: keep trying for a while before giving up (phones drop off the Wi-Fi for a moment, or go to sleep)
+    if (NET.role === 'client' && NET.started) { if (!NET.recon) { NET.recon = performance.now(); netReconBanner(true); } NET.reconT = 1.2; return; }
     if (NET.role === 'client') netEnd('Lost the connection to the host.');
-  };
+  }
+}
+function netReconBanner(on) {
+  const b = $('netRecon'); if (!b) return;
+  b.hidden = !on;
+  if (on) b.textContent = 'Connection lost. Reconnecting to ' + (NET.hostName || 'the host') + '…';
+}
+// mid-game reconnecting, run each frame on a teammate's game
+function netReconTick(rdt) {
+  if (NET.role !== 'client') return;
+  const now = performance.now();
+  // nothing from the host for a while: the connection is stuck, so drop it and connect again
+  if (NET.started && NET.ws && NET.ws.readyState === 1 && now - NET.lastRx > 5000) { const w = NET.ws; NET.lastRx = now; try { w.close(); } catch (e) { } netDropped(w, true, true); }
+  if (!NET.recon) return;
+  if (now - NET.recon > NET_RECON_SECS * 1000) { NET.recon = 0; netEnd('Lost the connection to ' + (NET.hostName || 'the host') + '.'); return; }
+  if (NET.ws) return;
+  NET.reconT -= rdt; if (NET.reconT > 0) return;
+  NET.reconT = 2; netConnect(true);
 }
 function netLeave() {
   const wasHost = NET.role === 'host';
@@ -13177,7 +13590,7 @@ function netSend(obj) { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.
 // every player the host knows about: its own (local) player and a stand-in (proxy) for each teammate
 function netPlayers() {
   const out = []; const L = NET.local || G.p; if (L) out.push(L);
-  for (const pr of NET.peers.values()) if (pr.p) out.push(pr.p);
+  for (const pr of NET.peers.values()) if (pr.p && !pr.away) out.push(pr.p);
   return out;
 }
 function netAlive() { return netPlayers().filter(p => !p.down); }
@@ -13198,7 +13611,7 @@ function netEach(fn) {
 function netProxy(peer) {
   if (peer.p) return peer.p;
   const p = newPlayer(); p.remote = true; p.nid = peer.id; p.tx = p.x = (NET.local || G.p || WORLD.start).x; p.ty = p.y = (NET.local || G.p || WORLD.start).y;
-  p.out = { h: [], dot: 0, heal: 0, fx: null, kv: [0, 0], rev: 0, heavy: 0 }; p.rv = 0; p.name = peer.name; p.col = peer.col;
+  p.out = { h: [], dot: 0, heal: 0, fx: null, kv: [0, 0], rev: 0, heavy: 0 }; p.rv = 0; p.name = peer.name; p.acct = peer.acct; p.col = peer.col;
   peer.p = p; return p;
 }
 // zombies hit a teammate's stand-in: the hit is sent to that player's game, which applies it (dodges, armor, dashes)
@@ -13219,17 +13632,33 @@ function netHostRecv(str) {
   const from = +str.slice(0, i); let m; try { m = JSON.parse(str.slice(i + 1)); } catch (e) { return; }
   if (from === 0) {
     if (m.t === 'join') {
+      if (!netVerOk(m.ver)) { hostSend(m.id, { t: 'kick', why: 'Version mismatch: ' + getTag() + ' has Zombie City ' + ZC_VERSION + (m.ver ? ' and you have ' + String(m.ver).slice(0, 12) : '') + '. Update so you both have the same version, then join again.' }); return; }
+      // the same player coming back after their Wi-Fi dropped: they get their slot (and their spot in the run) back
+      const back = m.key ? Array.from(NET.peers.values()).find(p => p.key && p.key === m.key) : null;
+      if (back) {
+        NET.peers.delete(back.id); back.id = m.id; back.away = 0; if (back.p) { back.p.nid = m.id; back.p.away = false; }
+        NET.peers.set(m.id, back);
+        hostSend(m.id, { t: 'hello', id: m.id, slot: back.slot, host: getTag(), ver: ZC_VERSION, started: NET.started, back: 1 });
+        netLobby(); toast('Co-op', back.name + ' is back', back.col);
+        if (NET.started) { netSendStart(m.id); if (G.mode === 'upgrade' && NET.round) netSendCards(m.id); }
+        return;
+      }
       if (NET.peers.size >= NET_MAX - 1) { hostSend(m.id, { t: 'kick', why: 'The game is full.' }); return; }
       const used = new Set([1, ...Array.from(NET.peers.values()).map(p => p.slot)]); let slot = 2; while (used.has(slot)) slot++;
-      const peer = { id: m.id, slot: slot, name: cleanTag(m.name), dev: m.dev || 'kbm', col: NET_COLS[slot - 1], p: null };
+      const peer = { id: m.id, slot: slot, name: cleanTag(m.name), dev: m.dev || 'kbm', col: NET_COLS[slot - 1], p: null, key: String(m.key || '').slice(0, 24), away: 0, rtt: 0, claim: String(m.acct || ''), acct: null };
       NET.peers.set(m.id, peer);
-      hostSend(m.id, { t: 'hello', id: m.id, slot: slot, host: getTag(), started: NET.started });
+      if (String(m.name || '').toUpperCase() === ADMIN_TAG && isAdmin(peer.claim)) netAskProof(peer);
+      hostSend(m.id, { t: 'hello', id: m.id, slot: slot, host: getTag(), ver: ZC_VERSION, started: NET.started });
       netLobby(); toast('Co-op', peer.name + ' joined', peer.col); SFX.click();
-      if (NET.started) netSendStart(m.id);
+      if (NET.started) { netSendStart(m.id); if (G.mode === 'upgrade' && NET.round) netSendCards(m.id); }
     } else if (m.t === 'leave') {
       const peer = NET.peers.get(m.id); if (!peer) return;
-      NET.peers.delete(m.id); NET.picked.delete(m.id); netLobby();
-      toast('Co-op', peer.name + ' left', '#8f959e');
+      // mid-run, a dropped player keeps their slot for a while in case they come back
+      if (NET.started && !peer.bye) {
+        peer.away = performance.now(); if (peer.p) peer.p.away = true;
+        toast('Co-op', peer.name + ' lost connection. Waiting for them to come back', '#8f959e');
+      } else { NET.peers.delete(m.id); toast('Co-op', peer.name + ' left', '#8f959e'); }
+      NET.picked.delete(m.id); NET.pings.delete(m.id); netLobby();
       if (G.mode === 'upgrade') netCheckPicks();
     }
     return;
@@ -13265,14 +13694,39 @@ function netHostRecv(str) {
     // a joiner calls the team's A-10: the host flies it from where they stand, and everyone (the caller too) sees it
     case 'air': if (peer.p && G.air > 0 && G.mode === 'play') { const keep = G.p; G.p = peer.p; callAirstrike(); G.p = keep; } break;
     case 'airv': launchStrafe(+m.cx, +m.cy, +m.a, { mini: true, cos: true }); NET.evs.push(['air', +m.cx, +m.cy, +m.a, 1, from]); break;
-    case 'pick': NET.picked.add(from); netCheckPicks(); break;
-    case 'bye': break;
+    case 'pick': if (!m.r || m.r === NET.round) { NET.picked.add(from); NET.acked.add(from); netCardStatus(); netCheckPicks(); } break;
+    case 'ack': if (m.r === NET.round) { NET.acked.add(from); if (m.p) NET.picked.add(from); netCardStatus(); netCheckPicks(); } break;
+    case 'pi': hostSend(from, { t: 'po', c: m.c }); if (NUM(m.r)) { peer.rtt = clamp(Math.round(m.r), 0, 9999); NET.pings.set(from, peer.rtt); } break;
+    case 'mk': if (NUM(m.x) && NUM(m.y)) { netAddMark(from, m.x, m.y); hostSend('*', { t: 'mk', id: from, x: Math.round(m.x), y: Math.round(m.y) }); } break;
+    case 'bye': peer.bye = true; break;
+    // a teammate checking that the host's admin name is real: the host's account writes the note they asked for
+    case 'prove': if (meAdmin() && typeof m.n === 'string' && m.n.length <= 40) AcctCore.prove(m.n).then(ok => { if (ok) hostSend(from, { t: 'proved', n: m.n }); }).catch(() => { }); break;
+    case 'proved': if (peer.nonce && m.n === peer.nonce) netCheckProof(peer); break;
   }
 }
 function netLobby() {
-  NET.lobby = [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0] }].concat(Array.from(NET.peers.values()).map(p => ({ id: p.id, name: p.name, dev: p.dev, col: p.col })));
+  NET.lobby = [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0], ping: 0, acct: meAdmin() ? ADMIN_ID : undefined }].concat(Array.from(NET.peers.values()).map(p => ({ id: p.id, name: p.name, dev: p.dev, col: p.col, ping: p.rtt || 0, away: p.away ? 1 : 0, acct: p.acct || undefined })));
   hostSend('*', { t: 'lobby', pl: NET.lobby, started: NET.started });
   renderCoop();
+}
+// the admin name in co-op is only shown once Wix confirms the player is really logged in to the admin account
+function netNonce() { return Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join(''); }
+function netAskProof(peer) { peer.nonce = netNonce(); hostSend(peer.id, { t: 'prove', n: peer.nonce }); }
+async function netCheckProof(peer) {
+  try {
+    const owner = await AcctCore.proofOwner(peer.nonce);
+    if (!isAdmin(owner) || owner !== peer.claim || !NET.peers.has(peer.id)) return;
+    peer.acct = owner; peer.name = ADMIN_TAG; if (peer.p) { peer.p.name = ADMIN_TAG; peer.p.acct = owner; }
+    netLobby();
+  } catch (e) { /* no connection to Wix: the name stays plain */ }
+}
+// a teammate's view of the lobby: names as they may be shown (the host's admin name only once checked)
+function netLobbyView(pl) {
+  NET.lobbyRaw = pl || NET.lobbyRaw || [];
+  NET.lobby = NET.lobbyRaw.map(p => { const acct = p.id === 1 ? (NET.hostOk ? p.acct : null) : p.acct; return Object.assign({}, p, { acct: acct || undefined, name: cleanTag(p.name, acct) }); });
+  const h = NET.lobbyRaw.find(p => p.id === 1);
+  if (h && isAdmin(h.acct) && String(h.name).toUpperCase() === ADMIN_TAG && !NET.hostOk && !NET.hostNonce) { NET.hostNonce = netNonce(); netSend({ t: 'prove', n: NET.hostNonce }); }
+  if (NET.hostOk && h) NET.hostName = ADMIN_TAG;
 }
 function netSendStart(to) {
   hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, wave: G.wave, wx: WX.kind, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
@@ -13355,32 +13809,95 @@ function netGameOver() {
   const msg = { t: 'over', sc: G.score, w: G.wave, k: G.kills, bc: G.bestChain, n: 1 + NET.peers.size };
   hostSend('*', msg); netFinish(msg);
 }
-// wave cleared: everyone picks a card, and the next wave starts once all have
+// wave cleared: everyone picks a card, and the next wave starts once all have. Each round has a number and a deadline:
+// the cards are sent again until every player has them (someone in the pause menu still gets them), anyone who has not
+// picked when time runs out gets a card picked for them, so one player can never hold up the team.
 function netCardsOpen() {
-  NET.picked.clear(); NET.cardsAt = performance.now();
+  NET.picked.clear(); NET.acked.clear(); NET.cardsAt = performance.now();
+  NET.round = (NET.round || 0) + 1; NET.roundDl = performance.now() + NET_PICK_SECS * 1000; NET.cardsT = 1.5;
+  NET.myRound = NET.round; NET.myPicked = 0;
   for (const peer of NET.peers.values()) if (peer.p && peer.p.down) netRevive(peer.p, 0.5);
   if (G.p.down) netRevive(G.p, 0.5);
-  hostSend('*', { t: 'cards', w: G.wave });
+  netSendCards('*');
+}
+function netSendCards(to) { hostSend(to, { t: 'cards', w: G.wave, r: NET.round, dl: Math.max(1, Math.round((NET.roundDl - performance.now()) / 1000)) }); }
+// who has picked, for everyone's waiting screen
+function netCardStatus() {
+  if (NET.role !== 'host' || G.mode !== 'upgrade') return;
+  hostSend('*', { t: 'cs', r: NET.round, pk: Array.from(NET.picked), dl: Math.max(0, Math.round((NET.roundDl - performance.now()) / 1000)) });
+  NET.roundPicked = Array.from(NET.picked); netUpWait();
 }
 function netPicked() {
-  if (NET.role === 'host') { NET.picked.add(1); netCheckPicks(); }
-  else netSend({ t: 'pick' });
-  $('upSub').textContent = 'Waiting for your team to pick';
-  $('upGrid').classList.add('waiting');
+  NET.myPicked = NET.myRound;
+  if (NET.role === 'host') { NET.picked.add(1); netCardStatus(); netCheckPicks(); }
+  else netSend({ t: 'pick', r: NET.myRound });
+  $('upGrid').classList.add('waiting'); netUpWait();
 }
+// the players a round waits for: everyone connected and in the run
+function netNeed() { return [1].concat(Array.from(NET.peers.values()).filter(p => p.p && !p.away).map(p => p.id)); }
 function netCheckPicks() {
-  if (NET.role !== 'host' || G.mode !== 'upgrade') return;
-  const need = [1].concat(Array.from(NET.peers.values()).filter(p => p.p).map(p => p.id));
-  const late = performance.now() - NET.cardsAt > 45000;
-  if (!(need.every(id => NET.picked.has(id)) || (late && NET.picked.has(1)))) return;
-  NET.picked.clear(); $('upGrid').classList.remove('waiting');
+  if (NET.role !== 'host' || G.mode !== 'upgrade' || !NET.round) return;
+  const need = netNeed(), late = performance.now() > NET.roundDl;
+  if (!need.every(id => NET.picked.has(id)) && !late) return;
+  // time is up: the host's own card is picked for it if needed; the others pick theirs when 'go' arrives
+  if (!NET.picked.has(1) || NET.myPicked !== NET.myRound) netAutoPick();
+  NET.picked.clear(); NET.acked.clear(); NET.round && (NET.lastRound = NET.round); NET.roundDl = 0;
+  $('upGrid').classList.remove('waiting');
   showOv(null); startWave(G.wave + 1);
-  hostSend('*', { t: 'go', w: G.wave });
+  hostSend('*', { t: 'go', w: G.wave, r: NET.lastRound });
+  NET.round = 0;
+}
+// a card picked for a player who ran out of time (or never saw the cards)
+function netAutoPick() {
+  if (NET.myPicked === NET.myRound) return;
+  NET.myPicked = NET.myRound;
+  const ch = (G.upChoices && G.upChoices.length) ? G.upChoices[(Math.random() * G.upChoices.length) | 0] : (rollCards() || [])[0];
+  if (ch) { try { applyChoice(ch); } catch (e) { perfError(e); } toast('Co-op', 'Time ran out: picked ' + (ch.card ? ch.card.name : ch.w ? ch.w.name : ch.d ? ch.d.name : 'a card') + ' for you', '#f2cc3a'); }
+  G.upChoices = null; G.picking = false;
+}
+// the line under the cards while the team picks: who is still choosing, and the time left
+function netUpWait() {
+  const box = $('upTeam'); if (!box) return;
+  if (!NET.started || G.mode !== 'upgrade') { box.hidden = true; return; }
+  const picked = new Set(NET.role === 'host' ? Array.from(NET.picked) : NET.roundPicked);
+  if (NET.myPicked === NET.myRound) picked.add(NET.role === 'host' ? 1 : NET.me);
+  const list = NET.lobby.length ? NET.lobby.filter(l => !l.away) : [{ id: 1, name: getTag(), col: NET_COLS[0] }];
+  const left = Math.max(0, Math.ceil((NET.roundDl - performance.now()) / 1000));
+  const key = list.map(l => l.id + (picked.has(l.id) ? 'y' : 'n')).join() + '|' + left;
+  if (box.dataset.k === key) return; box.dataset.k = key;
+  box.textContent = '';
+  for (const l of list) { const c = el('span', 'up-tm' + (picked.has(l.id) ? ' done' : '')); c.style.setProperty('--tc', l.col || netCol(l.id)); c.append(nameEl(l.name, l.acct), el('i', null, picked.has(l.id) ? 'Picked' : 'Choosing')); box.append(c); }
+  box.append(el('em', 'up-left', left + 's'));
+  box.hidden = false;
 }
 function netTickHost(rdt) {
+  const now = performance.now();
+  // everyone's ping, once a second (in the lobby too)
+  NET.pgT -= rdt;
+  if (NET.pgT <= 0 && NET.peers.size) {
+    NET.pgT = 1;
+    hostSend('*', { t: 'pg', p: Array.from(NET.peers.values()).filter(p => !p.away).map(p => [p.id, p.rtt || 0]) });
+    if (!$('coop').hidden) renderCoop();
+  }
+  // players who dropped and did not come back in time give up their slot
+  for (const peer of Array.from(NET.peers.values())) if (peer.away && now - peer.away > NET_AWAY_SECS * 1000) {
+    NET.peers.delete(peer.id); toast('Co-op', peer.name + ' left', '#8f959e'); netLobby(); if (G.mode === 'upgrade') netCheckPicks();
+  }
   if (!NET.started) return;
+  // a card round: send the cards again to anyone who has not answered, and end the round when time is up
+  if (G.mode === 'upgrade' && NET.round) {
+    NET.cardsT -= rdt;
+    if (NET.cardsT <= 0) {
+      NET.cardsT = 1.5;
+      const miss = netNeed().filter(id => id !== 1 && !NET.acked.has(id));
+      if (miss.length) netSendCards(miss.join(','));
+      netCardStatus();
+    }
+    netCheckPicks(); netUpWait();
+  }
   NET.snapT -= rdt;
-  if (NET.snapT <= 0) { NET.snapT = 1 / 15; netSnapshot(); }
+  // a slow connection gets fewer snapshots instead of a growing queue (each one replaces the last anyway)
+  if (NET.snapT <= 0) { NET.snapT = 1 / 15; if (!NET.ws || NET.ws.bufferedAmount < 512 * 1024) netSnapshot(); }
   // each teammate's own hits, hurts and pickups
   for (const peer of NET.peers.values()) {
     const p = peer.p; if (!p) continue; const o = p.out;
@@ -13427,21 +13944,55 @@ function netSnapshot() {
 /* ---------- a teammate's game (client) ---------- */
 function netClientRecv(m) {
   switch (m.t) {
-    case 'hello': NET.me = m.id; NET.slot = m.slot; NET.hostName = cleanTag(m.host); NET.status = 'lobby'; $('app').classList.add('coop'); renderCoop(); break;
-    case 'lobby': NET.lobby = (m.pl || []).map(p => Object.assign({}, p, { name: cleanTag(p.name) })); renderCoop(); break;
-    case 'kick': NET.err = m.why || 'The host closed the door.'; netLeave(); break;
+    case 'hello':
+      if (m.ver && !netVerOk(m.ver)) { const why = 'Version mismatch: the host has Zombie City ' + String(m.ver).slice(0, 12) + ' and you have ' + ZC_VERSION + '. Update so you both have the same version.'; if (G.mode !== 'title' && G.p) netEnd(why); else { netLeave(); NET.err = why; renderCoop(); } return; }
+      NET.me = m.id; NET.slot = m.slot; NET.hostName = cleanTag(m.host); NET.hostVer = m.ver || ''; NET.status = 'lobby'; $('app').classList.add('coop');
+      if (NET.recon) { NET.recon = 0; netReconBanner(false); toast('Co-op', 'Back in ' + NET.hostName + '’s game', '#7bd88a'); }
+      NET.piT = 0; renderCoop(); break;
+    case 'lobby': netLobbyView(m.pl || []); for (const l of NET.lobby) if (l.id !== NET.me) NET.pings.set(l.id, l.ping || 0); renderCoop(); netUpWait(); break;
+    // the host asks us to prove our admin name, or answers our check of theirs
+    case 'prove': if (meAdmin() && typeof m.n === 'string' && m.n.length <= 40) AcctCore.prove(m.n).then(ok => { if (ok) netSend({ t: 'proved', n: m.n }); }).catch(() => { }); break;
+    case 'proved':
+      if (NET.hostNonce && m.n === NET.hostNonce) AcctCore.proofOwner(m.n).then(o => { if (isAdmin(o)) { NET.hostOk = true; netLobbyView(); renderCoop(); } }).catch(() => { });
+      break;
+    case 'kick': { const why = m.why || 'The host closed the door.'; if (G.mode !== 'title' && G.p) netEnd(why); else { netLeave(); NET.err = why; renderCoop(); } break; }
     case 'end': netEnd('The host ended the game.'); break;
     case 'start': netClientStart(m); break;
     case 's': if (NET.started) netApply(m); break;
     case 'u': if (NET.started) netYou(m); break;
-    case 'cards': if (NET.started && G.mode === 'play' && G.p) { G.eshots = []; if (G.p.down) netYouRevive(Math.round(G.p.maxHp * 0.5)); SFX.waveClear(); openCards(); } break;
-    case 'go': if (NET.started) { $('upGrid').classList.remove('waiting'); if (G.mode === 'upgrade') showOv(null); G.wave = m.w; G.mode = 'play'; SFX.waveStart(m.w % 5 === 0); banner('Wave ' + m.w, m.w % 5 === 0 ? 'A boss is coming' : 'Hold the line'); } break;
+    case 'po': if (NUM(m.c)) { const r = performance.now() - m.c; NET.rtt = NET.rtt ? NET.rtt * 0.7 + r * 0.3 : r; } break;
+    case 'pg': for (const q of m.p || []) if (q[0] !== NET.me) NET.pings.set(q[0], q[1] | 0); if (!$('coop').hidden) renderCoop(); break;
+    case 'cards': netClientCards(m); break;
+    case 'mk': if (m.id !== NET.me && NUM(m.x) && NUM(m.y)) netAddMark(m.id, m.x, m.y); break;
+    case 'cs': if (m.r === NET.myRound) { NET.roundPicked = m.pk || []; NET.roundDl = performance.now() + (m.dl | 0) * 1000; netUpWait(); } break;
+    case 'go':
+      if (!NET.started) break;
+      // the round ended: a card is picked for this player if they had not picked one
+      if (G.mode === 'upgrade' && NET.myPicked !== NET.myRound) netAutoPick();
+      $('upGrid').classList.remove('waiting'); if (G.mode === 'upgrade') showOv(null);
+      G.wave = m.w; G.mode = 'play'; NET.myRound = 0; netUpWait();
+      SFX.waveStart(m.w % 5 === 0); banner('Wave ' + m.w, m.w % 5 === 0 ? 'A boss is coming' : 'Hold the line');
+      break;
     case 'over': if (NET.started) netFinish(m); break;
   }
 }
+// the host says the wave is cleared: show this round's cards (closing the pause menu if it is open), and say we have them
+function netClientCards(m) {
+  if (!NET.started || !G.p || G.mode === 'over' || G.mode === 'title') return;
+  if (m.r && m.r === NET.myRound) { netSend({ t: 'ack', r: m.r, p: NET.myPicked === m.r ? 1 : 0 }); return; }   // already showing them
+  if (G.mode === 'pause' || G.mode === 'skull' || G.mode === 'cine') { G.mode = 'play'; showOv(null); }
+  NET.myRound = m.r || 0; NET.myPicked = 0; NET.roundPicked = []; NET.roundDl = performance.now() + (m.dl || NET_PICK_SECS) * 1000;
+  G.eshots = []; if (G.p.down) netYouRevive(Math.round(G.p.maxHp * 0.5));
+  SFX.waveClear(); openCards(); netUpWait();
+  netSend({ t: 'ack', r: m.r });
+}
 function netClientStart(m) {
-  NET.started = true; NET.hostName = m.host ? cleanTag(m.host) : NET.hostName; NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
+  // back after a dropped connection, in the same run: carry on where we were
+  const resume = NET.started && G.p && G.mode !== 'title' && G.mode !== 'over' && WORLD.lastSeed === m.seed;
+  NET.started = true; NET.hostName = m.host ? cleanTag(m.host) : NET.hostName;
   $('coop').hidden = true;
+  if (resume) { banner('Co-op', 'Back in ' + NET.hostName + "'s game"); return; }
+  NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
   newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season }, wave: m.wave, at: { x: m.x, y: m.y } });
   WX.kind = m.wx || WX.kind; WX.t = 999;
   banner('Co-op', 'In ' + NET.hostName + "'s game · wave " + m.wave);
@@ -13510,7 +14061,7 @@ function netApply(s) {
     live.add(id);
     let o = NET.others.get(id);
     if (!o) { o = { id: id, x: q[1], y: q[2], r: 12, aim: 0, walk: 0, iframe: 0, dashT: 0, dashK: 'sprint', db: { stealthT: 0 }, flashT: 0, frozenT: 0, rootT: 0, jamT: 0, weapon: WEAPONS[0], col: netCol(id) }; NET.others.set(id, o); }
-    const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.col = info && info.col ? info.col : netCol(id);
+    const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.acct = info ? info.acct : undefined; o.col = info && info.col ? info.col : netCol(id);
     o.tx = q[1]; o.ty = q[2]; o.aim = q[3] / 100; o.hp = q[4]; o.maxHp = q[5]; o.down = !!q[6]; o.dashT = q[7] ? 0.1 : 0; o.weapon = WEAPONS[q[8]] || o.weapon; o.rv = q[9] / 100 * 2.4; o.dashK = q[10] || 'sprint'; o.walk = q[11] / 10;
     if (Math.hypot(o.tx - o.x, o.ty - o.y) > 260) { o.x = o.tx; o.y = o.ty; }
   }
@@ -13609,7 +14160,12 @@ function netHit(z, dmg, o) {
   return true;
 }
 function netTickClient(rdt) {
-  if (!NET.started || !G.p || NET.ws.readyState !== 1) return;
+  netReconTick(rdt);
+  if (!NET.ws || NET.ws.readyState !== 1) return;
+  // ping: the host answers at once, and we tell it what we measured so everyone sees everyone's ping
+  NET.piT -= rdt;
+  if (NET.piT <= 0) { NET.piT = 1; netSend({ t: 'pi', c: Math.round(performance.now() * 10) / 10, r: Math.round(NET.rtt) }); }
+  if (!NET.started || !G.p) return;
   NET.sendT -= rdt;
   if (NET.hits.length) { netSend({ t: 'h', h: NET.hits }); NET.hits = []; }
   if (NET.zfx.length) { netSend({ t: 'zf', f: NET.zfx }); NET.zfx = []; }
@@ -13663,35 +14219,119 @@ function netDrawOne(o, isMe) {
     if (!isMe) { ctx.fillStyle = '#ff6a6a'; ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DOWN · STAND HERE', o.x, o.y + 46); }
   } else if (!isMe) drawPlayer(o);
   if (isMe) return;
-  ctx.font = "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const name = o.name || 'SURVIVOR', w = ctx.measureText(name).width + 12;
+  const name = o.name || 'SURVIVOR', adm = name === ADMIN_TAG && isAdmin(o.acct);
+  ctx.font = (adm ? 'bold ' : '') + "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const w = ctx.measureText(name).width + (adm ? 18 : 12);
   ctx.fillStyle = 'rgba(8,10,13,0.72)'; ctx.fillRect(o.x - w / 2, o.y - 40, w, 16);
-  ctx.fillStyle = col; ctx.fillRect(o.x - w / 2, o.y - 40, 2, 16); ctx.fillText(name, o.x + 1, o.y - 31.5);
+  ctx.fillStyle = col; ctx.fillRect(o.x - w / 2, o.y - 40, 2, 16); drawName(name, o.acct, o.x + 1, o.y - 31.5, 12);
   if (o.maxHp && !o.down) { const f = clamp(o.hp / o.maxHp, 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(o.x - 16, o.y - 22, 32, 3); ctx.fillStyle = f > 0.35 ? '#7bd88a' : '#e5484d'; ctx.fillRect(o.x - 16, o.y - 22, 32 * f, 3); }
 }
 function netDrawPlayers() {
   if (!NET.started) return;
+  netDrawMarks(Math.min(0.05, (performance.now() - (netDrawPlayers.t || performance.now())) / 1000)); netDrawPlayers.t = performance.now();
   if (NET.role === 'host') { for (const peer of NET.peers.values()) if (peer.p) netDrawOne(peer.p, false); }
   else for (const o of NET.others.values()) netDrawOne(o, false);
   if (G.p) { const me = G.p; me.col = netCol(NET.role === 'host' ? 1 : (NET.slot || NET.me)); if (me.down) netDrawOne(me, true); else { ctx.strokeStyle = hexA(me.col, 0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(me.x, me.y + 4, 17, 13, 0, 0, TAU); ctx.stroke(); } }
 }
-// the team on the HUD, under your name
+// the team on the HUD, under your name (with each one's ping when "Show ping" is on)
 function netHud() {
   const box = $('hudTeam'); if (!box) return;
-  const rows = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p).map(p => ({ name: p.name, col: p.col, hp: p.p.hp, mh: p.p.maxHp, down: p.p.down }))
-    : Array.from(NET.others.values()).map(o => ({ name: o.name, col: o.col, hp: o.hp, mh: o.maxHp, down: o.down }));
-  const key = rows.map(r => r.name + (r.down ? 'D' : Math.round(clamp(r.hp / (r.mh || 1), 0, 1) * 20))).join('|') + NET.hold;
+  const showPing = SET.netPing !== false;
+  const rows = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p && !p.away).map(p => ({ id: p.id, name: p.name, col: p.col, hp: p.p.hp, mh: p.p.maxHp, down: p.p.down, acct: p.acct }))
+    : Array.from(NET.others.values()).map(o => ({ id: o.id, name: o.name, col: o.col, hp: o.hp, mh: o.maxHp, down: o.down, acct: o.acct }));
+  const pingOf = id => id === 1 && NET.role === 'client' ? Math.round(NET.rtt) : NET.pings.get(id) || 0;
+  const key = rows.map(r => r.name + (r.down ? 'D' : Math.round(clamp(r.hp / (r.mh || 1), 0, 1) * 20)) + (showPing ? '~' + Math.round(pingOf(r.id) / 10) : '')).join('|') + NET.hold + (showPing && NET.role === 'client' ? Math.round(NET.rtt / 10) : '');
   if (box.dataset.k === key) return; box.dataset.k = key;
   box.textContent = '';
+  if (showPing && NET.role === 'client') { const me = el('div', 'tm-me'); me.append(el('span', null, 'Your ping'), pingEl(NET.rtt)); box.append(me); }
   for (const r of rows) {
     const d = el('div', 'tm' + (r.down ? ' down' : '')); d.style.setProperty('--tc', r.col);
     const bar = el('i'); const fill = el('s'); fill.style.width = (r.down ? 0 : clamp(r.hp / (r.mh || 1), 0, 1) * 100) + '%'; bar.append(fill);
-    d.append(el('b', null, r.name), bar, el('em', null, r.down ? 'DOWN' : Math.max(0, Math.round(r.hp)) + ''));
+    d.append(nameEl(r.name, r.acct, 'b'), bar, el('em', null, r.down ? 'DOWN' : Math.max(0, Math.round(r.hp)) + ''));
+    if (showPing) d.append(pingEl(pingOf(r.id)));
     box.append(d);
   }
   if (NET.hold) box.append(el('div', 'tm-hold', NET.hold === 2 ? 'The skull is with ' + NET.hostName : NET.hold === 3 ? NET.hostName + ' paused the game' : 'Boss incoming'));
   box.hidden = !rows.length && !NET.hold;
 }
+// a ping reading: green under 60 ms, yellow under 150, red above
+function pingEl(ms) {
+  ms = Math.round(ms || 0);
+  const e = el('span', 'ping ' + (ms < 60 ? 'good' : ms < 150 ? 'ok' : 'bad'));
+  const bars = el('span', 'pb'); for (let i = 0; i < 3; i++) bars.append(el('b')); e.append(bars, document.createTextNode(ms ? ms + ' ms' : '— ms'));
+  return e;
+}
+/* ---------- marking a spot for the team ---------- */
+// G on the keyboard, LB on a controller, the pin button on a phone: a marker the whole team sees for a few seconds
+function netMark() {
+  if (!NET.started || !G.p || G.mode !== 'play') return;
+  const now = performance.now(); if (now - NET.markAt < 1000) return; NET.markAt = now;
+  let x = G.p.x, y = G.p.y;
+  if (DEV.kind !== 'touch' && aimMode() !== 'auto' && DEV.mIn) { x = cam.x + (DEV.mx - W / 2) / ZOOM; y = cam.y + (DEV.my - H / 2) / ZOOM; }
+  x = Math.round(x); y = Math.round(y);
+  if (NET.role === 'host') { netAddMark(1, x, y); hostSend('*', { t: 'mk', id: 1, x: x, y: y }); }
+  else { netAddMark(NET.me, x, y); netSend({ t: 'mk', x: x, y: y }); }
+}
+function netWho(id) {
+  if (NET.role === 'host') { if (id === 1) return { name: getTag(), col: NET_COLS[0], acct: myAcct() }; const p = NET.peers.get(id); return p ? { name: p.name, col: p.col, acct: p.acct } : { name: 'SURVIVOR', col: netCol(id) }; }
+  const l = NET.lobby.find(q => q.id === id); return l ? { name: l.name, col: l.col || netCol(id), acct: l.acct } : { name: id === NET.me ? getTag() : 'SURVIVOR', col: netCol(id) };
+}
+function netAddMark(id, x, y) {
+  const w = netWho(id);
+  NET.marks = NET.marks.filter(k => k.id !== id);
+  NET.marks.push({ id: id, x: x, y: y, t: 0, life: 8, name: w.name, col: w.col });
+  const mine = NET.role === 'host' ? id === 1 : id === NET.me;
+  if (!mine) { toast('Co-op', w.name + ' marked a spot', w.col); SFX.click(); }
+}
+function netDrawMarks(dt) {
+  for (const k of NET.marks) k.t += dt;
+  NET.marks = NET.marks.filter(k => k.t < k.life);
+  for (const k of NET.marks) {
+    const f = k.t / k.life, a = f > 0.8 ? (1 - f) / 0.2 : 1, pr = (k.t * 1.4) % 1;
+    ctx.globalAlpha = a * (1 - pr); ctx.strokeStyle = k.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(k.x, k.y, 10 + pr * 46, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = a; ctx.fillStyle = k.col;
+    ctx.beginPath(); ctx.moveTo(k.x, k.y); ctx.lineTo(k.x - 9, k.y - 18); ctx.arc(k.x, k.y - 22, 10, Math.PI * 0.8, Math.PI * 2.2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(8,10,13,0.85)'; ctx.beginPath(); ctx.arc(k.x, k.y - 22, 4, 0, TAU); ctx.fill();
+    ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lb = k.name + ': over here', tw = ctx.measureText(lb).width + 10;
+    ctx.fillStyle = 'rgba(8,10,13,0.72)'; ctx.fillRect(k.x - tw / 2, k.y - 50, tw, 15); ctx.fillStyle = k.col; ctx.fillText(lb, k.x, k.y - 42);
+    ctx.globalAlpha = 1;
+  }
+}
+// arrows on the edge of the screen pointing at teammates who are off screen, with their name and how far away they are
+function netDrawPointers() {
+  if (!NET.started || !G.p || SET.netArrows === false) return;
+  const list = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p && !p.away).map(p => ({ x: p.p.x, y: p.p.y, name: p.name, col: p.col, down: p.p.down }))
+    : Array.from(NET.others.values()).map(o => ({ x: o.x, y: o.y, name: o.name, col: o.col, down: o.down }));
+  for (const k of NET.marks) list.push({ x: k.x, y: k.y, name: k.name + '’s mark', col: k.col, mark: true });
+  const cx = W / 2, cy = H / 2, pad = 34, me = G.p;
+  ctx.save(); ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textBaseline = 'middle';
+  for (const o of list) {
+    const sx = (o.x - cam.x) * ZOOM + cx, sy = (o.y - cam.y) * ZOOM + cy;
+    if (sx > 8 && sx < W - 8 && sy > 8 && sy < H - 8) continue;   // on screen: the name tag shows where they are
+    const dx = sx - cx, dy = sy - cy, k = Math.min((cx - pad) / Math.abs(dx || 1e-6), (cy - pad) / Math.abs(dy || 1e-6));
+    const px = cx + dx * k, py = cy + dy * k, a = Math.atan2(dy, dx);
+    const col = o.down ? '#ff4a4a' : o.col, pulse = o.down ? 0.6 + 0.4 * Math.sin(G.time * 8) : o.mark ? 0.55 + 0.35 * Math.sin(G.time * 6) : 1;
+    ctx.globalAlpha = pulse;
+    ctx.translate(px, py); ctx.rotate(a); ctx.scale(1.4, 1.4);
+    ctx.fillStyle = 'rgba(8,10,13,0.75)'; ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-9, -11); ctx.lineTo(-4, 0); ctx.lineTo(-9, 11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-6, -8); ctx.lineTo(-2, 0); ctx.lineTo(-6, 8); ctx.closePath(); ctx.fill();
+    ctx.scale(1 / 1.4, 1 / 1.4); ctx.rotate(-a); ctx.translate(-px, -py);
+    // the label sits on the inside of the arrow
+    const m = Math.round(Math.hypot(o.x - me.x, o.y - me.y) / 40), label = (o.down ? 'DOWN · ' : '') + o.name + ' · ' + m + 'm';
+    const lx = clamp(px - Math.cos(a) * 34, 50, W - 50), ly = clamp(py - Math.sin(a) * 28, 14, H - 14), tw = ctx.measureText(label).width + 10;
+    ctx.fillStyle = 'rgba(8,10,13,0.7)'; ctx.fillRect(clamp(lx - tw / 2, 4, W - tw - 4), ly - 8, tw, 16);
+    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.fillText(label, clamp(lx, tw / 2 + 4, W - tw / 2 - 4), ly + 0.5);
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+// when the host's window is minimized the browser stops drawing frames; the run (and everyone's connection) keeps going
+const netBg = { t: 0 };
+setInterval(() => {
+  if (!document.hidden || !NET.role) { netBg.t = 0; return; }
+  const now = performance.now(), rdt = netBg.t ? Math.min(0.1, (now - netBg.t) / 1000) : 0.05; netBg.t = now;
+  try { netTick(rdt); if (NET.role === 'host' && NET.started && G.mode === 'play') update(Math.min(0.05, rdt)); } catch (e) { perfError(e); }
+}, 50);
 
 /* ---------- down, not out ---------- */
 function netDown() {
@@ -13776,8 +14416,9 @@ function renderCoopLobby(box) {
   box.textContent = '';
   const list = NET.lobby.length ? NET.lobby : [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0] }];
   for (const p of list) {
-    const r = el('div', 'coop-pl'); r.style.setProperty('--tc', p.col || netCol(p.id));
-    r.append(devIcon(p.dev || 'kbm'), el('b', null, p.name), el('em', null, p.id === 1 ? 'Host' : p.id === NET.me && NET.role === 'client' ? 'You' : ''));
+    const r = el('div', 'coop-pl' + (p.away ? ' away' : '')); r.style.setProperty('--tc', p.col || netCol(p.id));
+    const you = p.id === NET.me && NET.role === 'client', ms = p.id === 1 ? (NET.role === 'client' ? NET.rtt : 0) : you ? NET.rtt : NET.pings.get(p.id) || p.ping || 0;
+    r.append(devIcon(p.dev || 'kbm'), nameEl(p.name, p.acct, 'b'), el('em', null, p.away ? 'Reconnecting' : p.id === 1 ? 'Host' : you ? 'You' : ''), p.id === 1 && NET.role === 'host' ? el('span', 'ping host') : pingEl(ms));
     box.append(r);
   }
   for (let i = list.length; i < NET_MAX; i++) { const r = el('div', 'coop-pl empty'); r.append(el('b', null, 'Open slot')); box.append(r); }
@@ -13796,6 +14437,10 @@ function renderCoopFound() {
     box.append(b);
   }
 }
+// the pause menu's quick switch for the ping readout (the same as Settings > Gameplay > Show ping)
+function netPingBtn() { const b = $('pausePing'); if (!b) return; b.hidden = !NET.started; b.textContent = 'Show ping: ' + (SET.netPing !== false ? 'on' : 'off'); }
+$('pausePing').addEventListener('click', () => { setSetting('netPing', SET.netPing === false); netPingBtn(); $('hudTeam').dataset.k = ''; netHud(); SFX.click(); });
+$('markBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); netMark(); });
 $('coopBtn').addEventListener('click', openCoop);
 $('coopClose').addEventListener('click', closeCoop);
 $('coopHostBtn').addEventListener('click', netHost);
@@ -14490,10 +15135,18 @@ function introFinish(natural) {
   if (!INTRO.on) return;
   INTRO.on = false;
   if (!natural) SFX.introCut();                 // a natural finish lets the music's tail ring into the title screen
-  G.mode = 'title'; initAttract(); showOv('title'); refreshTitle();
-  const ti = $('title'); ti.classList.remove('reveal'); void ti.offsetWidth; ti.classList.add('reveal');
-  INTRO.fading = natural ? 1.2 : 0;
+  // after the intro (watched or skipped): the loading screen while the title screen's city and menus get ready
+  G.mode = 'title';
+  INTRO.fading = 0;
   INTRO_EL.classList.add('out');
+  loadRun('Into the city', [
+    ['Waking the city', () => { if (!G.attractReady) initAttract(); G.attractReady = false; return chunkJobs(cam.x, cam.y); }],
+    ['Waking the dead', () => G.zs.filter(z => !z.dead).map(z => () => getSprite(z.m, z.r))],
+    ['Opening the bunker', () => { refreshTitle(); }]
+  ], { now: true }).then(() => {
+    showOv('title');
+    const ti = $('title'); ti.classList.remove('reveal'); void ti.offsetWidth; ti.classList.add('reveal');
+  });
   setTimeout(() => { INTRO.fading = 0; INTRO_EL.hidden = true; INTRO_EL.className = ''; IV.width = IV.height = 1; INTRO.blocks = []; INTRO.runners = []; INTRO.sk = null; INTRO.rays = null; INTRO.word = null; }, 1250);
 }
 // keeps the card moving under the crossfade into the title screen
@@ -14521,11 +15174,17 @@ window.addEventListener('keydown', e => { if (INTRO.on && (e.key === ' ' || e.ke
 window.addEventListener('resize', () => { if (INTRO.on && !(INTRO.card === 1 && INTRO.frozen)) introLayout(); });
 
 resize();
-initAttract();
 applyDev();
-refreshTitle();
-// every launch opens with the studio intro (tests and ?nointro links go straight to the title)
-if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) { $('intro').hidden = true; showOv('title'); } else startIntro();
+// starting up, behind the loading screen that has been showing since the page opened: fonts, the city for the title
+// screen, the menus. Then the studio intro (tests and ?nointro links go straight to the title).
+G.attractReady = false;
+loadRun('Starting Zombie City', [
+  ['Loading the fonts', () => Promise.race([document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve(), loadWait(1500)])],
+  ['Waking the city', () => { initAttract(); G.attractReady = true; return chunkJobs(cam.x, cam.y); }],
+  ['Opening the bunker', () => { refreshTitle(); }]
+], { now: true }).then(() => {
+  if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) { $('intro').hidden = true; showOv('title'); } else startIntro();
+});
 requestAnimationFrame(frame);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { sprites.clear(); });
 
