@@ -232,7 +232,15 @@ function freeAt(c, x, y, w, h, pad) {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const v = c.wm[j * WM + i]; if (v && v !== 6 && v !== 5) return false; }
   }
   for (const r of c.rects) if (x - pad < r.x + r.w && x + w + pad > r.x && y - pad < r.y + r.h && y + h + pad > r.y) return false;
+  if (c.nb) for (const r of c.nb) if (x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y) return false;
   return true;
+}
+// a driveway, a plowed lane or a market aisle: nothing solid is put on it afterwards
+function keepClear(c, x, y, w, h) { (c.nb || (c.nb = [])).push({ x: x, y: y, w: w, h: h }); }
+// a solid thing that is not a building (benches, stalls, dumpsters, wood piles...)
+function addThing(c, k, x, y, w, h, o, pad) {
+  if (!freeAt(c, x, y, w, h, pad == null ? 2 : pad)) return null;
+  const r = Object.assign({ x: x, y: y, w: w, h: h, k: k }, o || {}); c.rects.push(r); return r;
 }
 function addB(c, R, B, x, y, w, h, st) {
   if (!freeAt(c, x, y, w, h, 2)) {
@@ -272,20 +280,60 @@ function urbanBlock(c, R, B, opts) {
   if (type === 'big') addB(c, R, B, bx + M, by + M, IN, IN);
   else if (type === 'two') {
     const al = 64 + R() * 30, f = 0.35 + R() * 0.3;
-    if (R() < 0.5) { const w1 = (IN - al) * f; addB(c, R, B, bx + M, by + M, w1, IN); addB(c, R, B, bx + M + w1 + al, by + M, IN - w1 - al, IN); }
-    else { const h1 = (IN - al) * f; addB(c, R, B, bx + M, by + M, IN, h1); addB(c, R, B, bx + M, by + M + h1 + al, IN, IN - h1 - al); }
+    if (R() < 0.5) { const w1 = (IN - al) * f; addB(c, R, B, bx + M, by + M, w1, IN); addB(c, R, B, bx + M + w1 + al, by + M, IN - w1 - al, IN); alleyProps(c, R, bx + M + w1, by + M, al, IN, true, opts); }
+    else { const h1 = (IN - al) * f; addB(c, R, B, bx + M, by + M, IN, h1); addB(c, R, B, bx + M, by + M + h1 + al, IN, IN - h1 - al); alleyProps(c, R, bx + M, by + M + h1, IN, al, false, opts); }
   } else if (type === 'four') {
     const al = 60 + R() * 20, s1 = (IN - al) * (0.4 + R() * 0.2), s2 = (IN - al) * (0.4 + R() * 0.2);
     const xs = [bx + M, bx + M + s1 + al], ws = [s1, IN - s1 - al], ys = [by + M, by + M + s2 + al], hs = [s2, IN - s2 - al];
     for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) if (R() < 0.88) addB(c, R, B, xs[i], ys[j], ws[i], hs[j]);
+    if (R() < 0.7) alleyProps(c, R, bx + M + s1, by + M, al, IN, true, opts); else alleyProps(c, R, bx + M, by + M + s2, IN, al, false, opts);
   } else if (type === 'lot') {
     for (let row = 0; row < 3; row++) for (let i = 0; i < 7; i++) if (R() < 0.5) addCar(c, R, bx + 44 + i * 64, by + 60 + row * 150, 30, 52, opts.burnt ? { burnt: R() < opts.burnt } : null);
     addB(c, R, B, bx + BS - 96, by + BS - 92, 54, 50);
   } else if (type === 'plaza') {
-    const q = [[0.22, 0.22], [0.78, 0.22], [0.22, 0.78], [0.78, 0.78]];
-    for (const p of q) if (freeAt(c, bx + BS * p[0] - 22, by + BS * p[1] - 22, 44, 44, 2)) c.rects.push({ x: bx + BS * p[0] - 22, y: by + BS * p[1] - 22, w: 44, h: 44, k: 'planter' });
-    if (c.lm) { const m = opts.landmark || 'fountain', cxp = bx + BS / 2, cyp = by + BS / 2; if (freeAt(c, cxp - 34, cyp - 34, 68, 68, 2)) c.rects.push({ x: cxp - 30, y: cyp - 30, w: 60, h: 60, k: 'lm', lm: m }); }
+    const q = [[0.22, 0.22], [0.78, 0.22], [0.22, 0.78], [0.78, 0.78]], cxp = bx + BS / 2, cyp = by + BS / 2;
+    // the landmark square keeps its fountain (or tanker, checkpoint...); the others are one of four kinds of square
+    const pv = c.lm ? 'landmark' : ['garden', 'square', 'market', 'court'][Math.floor(R() * 4)];
+    c.pv = pv;
+    if (pv === 'landmark' || pv === 'square') for (const p of q) addThing(c, 'planter', bx + BS * p[0] - 22, by + BS * p[1] - 22, 44, 44);
+    if (pv === 'landmark') { const m = opts.landmark || 'fountain'; if (freeAt(c, cxp - 34, cyp - 34, 68, 68, 2)) c.rects.push({ x: cxp - 30, y: cyp - 30, w: 60, h: 60, k: 'lm', lm: m }); }
+    else if (pv === 'garden') {
+      // a small park: rows of trees in planters, benches along the paths, flower beds
+      for (const fx of [0.18, 0.5, 0.82]) for (const fy of [0.2, 0.8]) addThing(c, 'planter', bx + BS * fx - 22, by + BS * fy - 22, 44, 44);
+      for (const [x, y, w, h] of [[cxp - 80, cyp - 34, 34, 12], [cxp + 46, cyp - 34, 34, 12], [cxp - 80, cyp + 22, 34, 12], [cxp + 46, cyp + 22, 34, 12]]) addThing(c, 'bench', x, y, w, h, { low: true });
+      c.decals.push({ k: 'beds', x: bx + 16, y: by + 16, w: BS - 32, h: BS - 32, s: (R() * 1e9) | 0 });
+    } else if (pv === 'square') {
+      // a paved square: a statue in the middle, benches facing it, a news kiosk
+      addThing(c, 'statue', cxp - 18, cyp - 18, 36, 36, { s: (R() * 1e9) | 0 });
+      for (const [x, y, w, h] of [[cxp - 17, cyp - 70, 34, 12], [cxp - 17, cyp + 58, 34, 12], [cxp - 70, cyp - 17, 12, 34], [cxp + 58, cyp - 17, 12, 34]]) addThing(c, 'bench', x, y, w, h, { low: true });
+      const kx = R() < 0.5 ? bx + 70 : bx + BS - 104, ky = R() < 0.5 ? by + BS / 2 - 90 : by + BS / 2 + 60;
+      addThing(c, 'kiosk', kx, ky, 34, 26, { s: (R() * 1e9) | 0 });
+    } else if (pv === 'market') {
+      // market stalls in two rows with an aisle between them
+      keepClear(c, bx + 24, cyp - 26, BS - 48, 52);
+      for (const row of [-1, 1]) for (let i = 0; i < 4; i++) if (R() < 0.85) addThing(c, 'stall', bx + 46 + i * ((BS - 92 - 54) / 3), cyp + (row < 0 ? -96 : 44), 54, 52, { s: (R() * 1e9) | 0, burnt: !!opts.burnt && R() < opts.burnt });
+      for (let i = 0; i < 3; i++) addProp(c, 'crate', bx + 50 + R() * (BS - 100), cyp + (R() < 0.5 ? -130 : 112), R);
+    } else {
+      // a basketball court, fenced in, with a hoop at each end
+      const cw = 300, chh = 170, x0 = cxp - cw / 2, y0 = cyp - chh / 2;
+      c.court = { x: x0, y: y0, w: cw, h: chh };
+      addThing(c, 'hoop', x0 + 6, cyp - 6, 12, 12, null, 0); addThing(c, 'hoop', x0 + cw - 18, cyp - 6, 12, 12, null, 0);
+      const fz = 18;
+      for (const side of [-1, 1]) { const y = side < 0 ? y0 - fz : y0 + chh + fz - 4, gap = cxp - 30 + (R() - 0.5) * 100; addThing(c, 'fence', x0 - fz, y, gap - (x0 - fz), 4, { low: true, wire: true }, 0); addThing(c, 'fence', gap + 60, y, x0 + cw + fz - gap - 60, 4, { low: true, wire: true }, 0); }
+      for (const side of [-1, 1]) { const x = side < 0 ? x0 - fz : x0 + cw + fz - 4; addThing(c, 'fence', x, y0 - fz + 4, 4, chh + fz * 2 - 8, { low: true, wire: true }, 0); }
+    }
   }
+}
+// what fills an alley between two buildings: a dumpster or two against the wall, bags of trash, the odd crate
+function alleyProps(c, R, x, y, w, h, vert, opts) {
+  const n = R() < 0.75 ? 1 + (R() < 0.35 ? 1 : 0) : 0;
+  for (let i = 0; i < n; i++) {
+    const wall = R() < 0.5, burnt = !!opts.burnt && R() < opts.burnt;
+    if (vert) addThing(c, 'dumpster', wall ? x + 3 : x + w - 23, y + 40 + R() * (h - 110), 20, 34, { col: R(), burnt: burnt });
+    else addThing(c, 'dumpster', x + 40 + R() * (w - 110), wall ? y + 3 : y + h - 23, 34, 20, { col: R(), burnt: burnt });
+  }
+  c.decals.push({ k: 'alley', x: x, y: y, w: w, h: h, v: vert, s: (R() * 1e9) | 0 });
+  if (R() < 0.4) addProp(c, R() < 0.5 ? 'can' : 'crate', vert ? x + w / 2 : x + 40 + R() * (w - 80), vert ? y + 40 + R() * (h - 80) : y + h / 2, R);
 }
 const BIOGEN = {
   city(c, R, B) {
@@ -371,17 +419,29 @@ const BIOGEN = {
       if (freeAt(c, bx + BS / 2 - 40, by + BS / 2 - 30, 80, 60, 4)) c.rects.push({ x: bx + BS / 2 - 36, y: by + BS / 2 - 26, w: 72, h: 52, k: 'lm', lm: 'playground' });
       return;
     }
-    // four houses with yards, fences between some of them
+    // four houses with yards: a driveway out to the street (often with the car on it), sometimes a pool or a shed
+    // out back, trees, and fences between some of the yards
     const half = BS / 2;
     for (let qx = 0; qx < 2; qx++) for (let qy = 0; qy < 2; qy++) {
       const lx = bx + qx * half, ly = by + qy * half;
       if (R() < 0.12) continue;
       const w = 96 + R() * 46, h = 84 + R() * 40, x = lx + 30 + R() * (half - w - 60), y = ly + 30 + R() * (half - h - 60);
       const hs = addB(c, R, B, x, y, w, h, 'house');
-      if (hs && R() < 0.4) addCar(c, R, qx ? x - 40 : x + w + 10, y + h - 54, 28, 52);
-      // trees and fences
+      if (!hs) continue;
+      // the driveway runs beside the house to the nearer street (the top one for the top yards, the bottom one for the others)
+      const dx = qx ? hs.x - 44 : hs.x + hs.w + 8, d0 = qy ? hs.y + 8 : by + 2, d1 = qy ? by + BS - 2 : hs.y + hs.h - 8;
+      if (dx > lx + 4 && dx + 36 < lx + half - 4 && freeAt(c, dx, d0, 36, d1 - d0, 0)) {
+        c.decals.push({ k: 'drive', x: dx, y: d0, w: 36, h: d1 - d0, top: !qy, s: (R() * 1e9) | 0 });
+        keepClear(c, dx, d0, 36, d1 - d0);
+        if (R() < 0.55) { c.nb.pop(); addCar(c, R, dx + 4, qy ? by + BS - 70 : by + 16, 28, 52); keepClear(c, dx, d0, 36, d1 - d0); }
+      }
+      const back = qy ? -1 : 1;   // the side of the house away from the street
+      if (R() < 0.24) { const pw = 58 + R() * 20, ph = 34 + R() * 10, px = hs.x + (hs.w - pw) * R(), py = back > 0 ? hs.y + hs.h + 18 : hs.y - ph - 18; addThing(c, 'pool', px, py, pw, ph, { low: true, s: (R() * 1e9) | 0 }, 6); }
+      else if (R() < 0.3) { const sx = qx ? lx + half - 60 : lx + 26, sy = back > 0 ? ly + half - 56 : ly + 26; addB(c, R, B, sx, sy, 30 + R() * 8, 26 + R() * 6, 'shed'); }
+      // trees
       const nt = 1 + Math.floor(R() * 2);
       for (let i = 0; i < nt; i++) addTrunk(c, R, lx + 26 + R() * (half - 52), ly + 26 + R() * (half - 52), R() < 0.15 ? 'blossom' : R() < 0.25 ? 'pine' : 'oak');
+      c.decals.push({ k: 'flowers', x: hs.x, y: qy ? hs.y + hs.h + 2 : hs.y - 10, w: hs.w, h: 8, s: (R() * 1e9) | 0 });
     }
     if (R() < 0.7) { const y = by + half - 2, g0 = R() * (BS - 80); if (freeAt(c, bx + 16, y, g0, 4, 0)) c.rects.push({ x: bx + 16, y: y, w: Math.max(0, g0 - 16), h: 4, k: 'fence', low: true }); const x1 = bx + g0 + 60; if (freeAt(c, x1, y, bx + BS - 16 - x1, 4, 0)) c.rects.push({ x: x1, y: y, w: Math.max(0, bx + BS - 16 - x1), h: 4, k: 'fence', low: true }); }
     if (R() < 0.7) { const x = bx + half - 2, g0 = R() * (BS - 80); if (freeAt(c, x, by + 16, 4, g0, 0)) c.rects.push({ x: x, y: by + 16, w: 4, h: Math.max(0, g0 - 16), k: 'fence', low: true }); const y1 = by + g0 + 60; if (freeAt(c, x, y1, 4, by + BS - 16 - y1, 0)) c.rects.push({ x: x, y: y1, w: 4, h: Math.max(0, by + BS - 16 - y1), k: 'fence', low: true }); }
@@ -391,10 +451,35 @@ const BIOGEN = {
     const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD;
     c.type = 'open';
     if (c.lm) { if (freeAt(c, bx + BS / 2 - 40, by + BS / 2 - 40, 80, 80, 4)) c.rects.push({ x: bx + BS / 2 - 36, y: by + BS / 2 - 36, w: 72, h: 72, k: 'lm', lm: 'tower' }); }
-    else if (R() < 0.35) {
-      // a little adobe town or a gas station on the highway
-      if (R() < 0.5) { const w = 70 + R() * 50, h = 60 + R() * 40; addB(c, R, B, bx + 40 + R() * (BS - w - 80), by + 40 + R() * (BS - h - 80), w, h, 'adobe'); if (R() < 0.6) { const w2 = 50 + R() * 30; addB(c, R, B, bx + 50 + R() * (BS - w2 - 100), by + 50 + R() * (BS - w2 - 100), w2, w2 * 0.9, 'adobe'); } }
-      else { addB(c, R, B, bx + 30, by + 40, 110, 70, 'adobe'); c.rects.push({ x: bx + 190, y: by + 60, w: 18, h: 18, k: 'pump' }); c.rects.push({ x: bx + 250, y: by + 60, w: 18, h: 18, k: 'pump' }); c.decals.push({ k: 'canopy', x: bx + 160, y: by + 30, w: 140, h: 80 }); addProp(c, 'barrel', bx + 160 + R() * 120, by + 130 + R() * 30, R); }
+    else {
+      const t = R();
+      // a little adobe town, a gas station on the highway, a ranch, a few tin shacks, a trailer, or a wind pump
+      if (t < 0.17) { const w = 70 + R() * 50, h = 60 + R() * 40; addB(c, R, B, bx + 40 + R() * (BS - w - 80), by + 40 + R() * (BS - h - 80), w, h, 'adobe'); if (R() < 0.6) { const w2 = 50 + R() * 30; addB(c, R, B, bx + 50 + R() * (BS - w2 - 100), by + 50 + R() * (BS - w2 - 100), w2, w2 * 0.9, 'adobe'); } }
+      else if (t < 0.29) { addB(c, R, B, bx + 30, by + 40, 110, 70, 'adobe'); addThing(c, 'pump', bx + 190, by + 60, 18, 18); addThing(c, 'pump', bx + 250, by + 60, 18, 18); c.decals.push({ k: 'canopy', x: bx + 160, y: by + 30, w: 140, h: 80 }); addProp(c, 'barrel', bx + 160 + R() * 120, by + 130 + R() * 30, R); }
+      else if (t < 0.41) {
+        // a ranch: a barn and a corral fence with a gate, a water trough
+        const rx = bx + 50 + R() * 60, ry = by + 50 + R() * 60, rw = 230 + R() * 60, rh = 170 + R() * 50, gate = R();
+        addB(c, R, B, rx + rw + 26 > bx + BS - 40 ? rx : rx + rw + 26, rx + rw + 26 > bx + BS - 40 ? ry + rh + 26 : ry, 96, 70, 'barn');
+        const fx = (x, y, w, h) => addThing(c, 'fence', x, y, w, h, { low: true, ranch: true }, 0);
+        fx(rx, ry, rw, 4); fx(rx, ry, 4, rh); fx(rx + rw - 4, ry, 4, rh);
+        const gx = rx + rw * (0.2 + gate * 0.5); fx(rx, ry + rh - 4, gx - rx, 4); fx(gx + 56, ry + rh - 4, rx + rw - gx - 56, 4);
+        addThing(c, 'trough', rx + 30 + R() * (rw - 100), ry + 30 + R() * (rh - 80), 40, 14);
+      } else if (t < 0.51) {
+        // tin shacks, a junked car and some barrels
+        const n = 1 + (R() < 0.6 ? 1 : 0);
+        for (let i = 0; i < n; i++) { const w = 54 + R() * 30, h = 44 + R() * 20; addB(c, R, B, bx + 40 + R() * (BS - w - 80), by + 40 + R() * (BS - h - 80), w, h, 'shack'); }
+        addCar(c, R, bx + 60 + R() * (BS - 180), by + 60 + R() * (BS - 140), 58, 28, { burnt: true, rust: true });
+        for (let i = 0; i < 3; i++) addProp(c, 'barrel', bx + 40 + R() * (BS - 80), by + 40 + R() * (BS - 80), R);
+      } else if (t < 0.59) {
+        // a trailer home with an awning and a couple of chairs out front
+        const tx = bx + 60 + R() * (BS - 220), ty = by + 70 + R() * (BS - 180), tr = addB(c, R, B, tx, ty, 108, 38, 'trailer');
+        if (tr) c.decals.push({ k: 'awning', x: tr.x + 14, y: tr.y + tr.h, w: 64, h: 34, s: (R() * 1e9) | 0 });
+        addProp(c, 'barrel', tx + 120, ty + 10, R);
+      } else if (t < 0.66) {
+        // a wind pump over a well, and the water tank it fills
+        const wx = bx + 100 + R() * (BS - 240), wy = by + 100 + R() * (BS - 240);
+        addThing(c, 'windmill', wx, wy, 24, 24, { s: (R() * 1e9) | 0 }); addThing(c, 'tank', wx + 50, wy - 6, 36, 36);
+      }
     }
     // a mesa: a cluster of big rocks
     if (R() < 0.18) { const mx = bx + 120 + R() * (BS - 240), my = by + 120 + R() * (BS - 240); for (let i = 0; i < 5; i++) addRock(c, R, mx + (R() - 0.5) * 140, my + (R() - 0.5) * 140, 40 + R() * 50, 36 + R() * 44, 'mesa'); }
@@ -407,10 +492,46 @@ const BIOGEN = {
     const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD;
     c.type = 'woods';
     if (c.lm) { if (freeAt(c, bx + BS / 2 - 30, by + BS / 2 - 30, 60, 60, 4)) c.rects.push({ x: bx + BS / 2 - 26, y: by + BS / 2 - 26, w: 52, h: 52, k: 'lm', lm: 'mast' }); }
-    const nb = R() < 0.55 ? 1 + Math.floor(R() * 2) : 0;
-    for (let i = 0; i < nb; i++) { const w = 70 + R() * 50, h = 60 + R() * 40; addB(c, R, B, bx + 30 + R() * (BS - w - 60), by + 30 + R() * (BS - h - 60), w, h, 'cabin'); }
-    const np = 5 + Math.floor(R() * 7);
-    for (let i = 0; i < np; i++) addTrunk(c, R, bx + 24 + R() * (BS - 48), by + 24 + R() * (BS - 48), 'pine', 26 + R() * 14);
+    const t = c.lm ? 1 : R();
+    let np;
+    if (t < 0.4) {
+      // a hamlet: a plowed lane in from the road with cabins along it, each with its wood pile, the odd shed and fence
+      c.type = 'hamlet';
+      const vert = R() < 0.5, at = (vert ? bx : by) + 130 + R() * (BS - 260), len = BS * (0.55 + R() * 0.35);
+      const lane = vert ? { x: at - 18, y: by, w: 36, h: len } : { x: bx, y: at - 18, w: len, h: 36 };
+      c.decals.push(Object.assign({ k: 'plow', v: vert, s: (R() * 1e9) | 0 }, lane)); keepClear(c, lane.x, lane.y, lane.w, lane.h);
+      const n = 2 + Math.floor(R() * 3);
+      for (let i = 0; i < n; i++) {
+        const side = i % 2 ? 1 : -1, along = 40 + (i / n) * (len - 120) + R() * 30, w = 62 + R() * 30, h = 52 + R() * 24;
+        const x = vert ? (side < 0 ? at - 30 - w : at + 30) : bx + along, y = vert ? by + along : (side < 0 ? at - 30 - h : at + 30);
+        const cb = addB(c, R, B, x, y, w, h, 'cabin');
+        if (!cb) continue;
+        // the wood pile against the wall, and a path to the door
+        if (vert) addThing(c, 'wood', side < 0 ? cb.x + cb.w * 0.2 : cb.x + cb.w * 0.4, cb.y + cb.h + 6, 30, 12, { low: true });
+        else addThing(c, 'wood', cb.x + cb.w + 6, cb.y + cb.h * 0.3, 12, 30, { low: true });
+        if (R() < 0.3) addB(c, R, B, vert ? (side < 0 ? cb.x - 40 : cb.x + cb.w + 14) : cb.x + 10, vert ? cb.y + 10 : (side < 0 ? cb.y - 40 : cb.y + cb.h + 14), 28, 24, 'shed');
+        if (R() < 0.35) { const fy = vert ? cb.y - 14 : (side < 0 ? cb.y - 16 : cb.y + cb.h + 12); addThing(c, 'fence', cb.x - 6, fy, cb.w + 12, 4, { low: true }, 0); }
+      }
+      np = 3 + Math.floor(R() * 4);
+    } else if (t < 0.52) {
+      // a ski lodge: one big timber building, cars out front under the snow
+      c.type = 'lodge';
+      const lx = bx + 60 + R() * (BS - 300), ly = by + 70 + R() * (BS - 280), lg = addB(c, R, B, lx, ly, 170 + R() * 40, 104 + R() * 20, 'lodge');
+      if (lg) { for (let i = 0; i < 3; i++) if (R() < 0.7) addCar(c, R, lg.x + 10 + i * 46, lg.y + lg.h + 26, 28, 52, { burnt: false }); addThing(c, 'wood', lg.x + lg.w + 10, lg.y + 20, 14, 40, { low: true }); }
+      np = 4 + Math.floor(R() * 4);
+    } else {
+      // the woods: pines, a cabin or two, fallen logs
+      const nb = R() < 0.55 ? 1 + Math.floor(R() * 2) : 0;
+      for (let i = 0; i < nb; i++) { const w = 70 + R() * 50, h = 60 + R() * 40; const cb = addB(c, R, B, bx + 30 + R() * (BS - w - 60), by + 30 + R() * (BS - h - 60), w, h, 'cabin'); if (cb && R() < 0.7) addThing(c, 'wood', cb.x + cb.w + 6, cb.y + 8, 12, 28, { low: true }); }
+      for (let i = 0; i < 2; i++) if (R() < 0.5) { const v = R() < 0.5; addThing(c, 'log', bx + 30 + R() * (BS - 100), by + 30 + R() * (BS - 100), v ? 11 : 52, v ? 52 : 11, { low: true }); }
+      np = 6 + Math.floor(R() * 8);
+    }
+    // pines, often in little stands of three or four
+    for (let i = 0; i < np; i++) {
+      const x = bx + 24 + R() * (BS - 48), y = by + 24 + R() * (BS - 48);
+      addTrunk(c, R, x, y, 'pine', 26 + R() * 14);
+      if (R() < 0.35) for (let k = 0; k < 2; k++) addTrunk(c, R, x + (R() - 0.5) * 90, y + (R() - 0.5) * 90, 'pine', 20 + R() * 12);
+    }
     const nr = Math.floor(R() * 3);
     for (let i = 0; i < nr; i++) { const s = 18 + R() * 24; addRock(c, R, bx + 20 + R() * (BS - 40 - s), by + 20 + R() * (BS - 40 - s), s, s * 0.8); }
     if (R() < 0.4) addProp(c, R() < 0.5 ? 'crate' : 'barrel', bx + 20 + R() * (BS - 40), by + 20 + R() * (BS - 40), R);
@@ -577,16 +698,18 @@ function renderChunk(c) {
   g.fillStyle = B.road; g.fillRect(ox, oy, CH, CH);
   speckle(g, R, ox, oy, CH, CH, Math.floor(260 * dm), 'rgba(255,255,255,0.03)', 'rgba(0,0,0,0.16)');
   drawRoadMarks(g, c, B, R);
+  blendSeams(g, c, B, R);
   t1 = performance.now(); RT.road += t1 - t0; t0 = t1;
   // the block
   drawBlock(g, c, B, R, win, sea);
+  drawStreetFurniture(g, c, B, Z.mulberry32(Z.hash32(c.cx * 7919 + c.cy * 104729 + 0x5f)), win);
   t1 = performance.now(); RT.block += t1 - t0; t0 = t1;
   // rivers, ponds and bridges
   if (c.fv) drawWaterArt(g, c, B);
   t1 = performance.now(); RT.water += t1 - t0; t0 = t1;
   drawDecals(g, c, B, R, win, sea);
-  // the city's bloodstains
-  for (let i = 0; i < 3; i++) { g.fillStyle = c.bio === 'snow' ? 'rgba(90,10,10,0.35)' : 'rgba(40,10,10,0.35)'; g.beginPath(); g.ellipse(ox + R() * CH, oy + R() * CH, 10 + R() * 20, 6 + R() * 12, R() * 3, 0, TAU); g.fill(); }
+  // the city's bloodstains: a splash with droplets thrown off one side
+  for (let i = 0; i < 3; i++) bloodSplat(g, ox + R() * CH, oy + R() * CH, 6 + R() * 10, R, c.bio === 'snow' || win ? 'rgba(120,14,14,0.42)' : 'rgba(46,10,10,0.42)');
   t1 = performance.now(); RT.decal += t1 - t0; t0 = t1;
   for (const r of c.rects) drawRectArt(g, r, c, B, win);
   if (win || c.bio === 'snow') snowCaps(g, c);
@@ -617,6 +740,102 @@ function streamChunks(x0, y0, x1, y1) {
     if (!c.can) { renderChunk(c); c.seen = frameNo; return; }
   }
 }
+// a soft-edged oval of colour (snow and sand drifts, shading): a radial gradient squeezed into shape
+function softBlob(g, x, y, rx, ry, rot, rgb, a) {
+  const r = Math.max(rx, ry); if (r < 1) return;
+  g.save(); g.translate(x, y); if (rot) g.rotate(rot); g.scale(rx / r, ry / r);
+  const gr = g.createRadialGradient(0, 0, 0, 0, 0, r); gr.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); gr.addColorStop(0.55, 'rgba(' + rgb + ',' + a * 0.55 + ')'); gr.addColorStop(1, 'rgba(' + rgb + ',0)');
+  g.fillStyle = gr; g.fillRect(-r, -r, r * 2, r * 2); g.restore();
+}
+// the direction the wind usually blows in a district: snow drifts and sand ripples in the art all lie along it
+function windAngle(c) { return ((WORLD.seed >>> 3) % 628) / 100 + (c.D.warm - 0.5) * 0.8; }
+function bloodSplat(g, x, y, r, R, col) {
+  g.fillStyle = col; g.beginPath(); g.ellipse(x, y, r, r * (0.6 + R() * 0.3), R() * 3, 0, TAU); g.fill();
+  const a = R() * TAU; for (let i = 0; i < 6; i++) { const d = r * (1 + R() * 1.6), s = r * (0.12 + R() * 0.22), aa = a + (R() - 0.5) * 1.2; g.beginPath(); g.arc(x + Math.cos(aa) * d, y + Math.sin(aa) * d, s, 0, TAU); g.fill(); }
+}
+// where two districts meet on a road, the asphalt shades from one into the other instead of changing at a line,
+// and snow or sand from a frozen or desert district next door blows a little way over the border
+function blendSeams(g, c, B, R) {
+  const ox = c.ox, oy = c.oy, me = c.bio;
+  const sides = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  for (const [dx, dy] of sides) {
+    const nb = distAt(c.cx + dx, c.cy + dy).bio; if (nb === me) continue;
+    const NB = BIO[nb], L = 90;
+    // the stretch of road that touches the neighbour: our top road for left/right, our left road for up/down
+    let x0, y0, w, h, gx0, gy0, gx1, gy1;
+    if (dx) { y0 = oy; h = ROAD; if (dx < 0) { x0 = ox; w = L; gx0 = ox; gx1 = ox + L; } else { x0 = ox + CH - L; w = L; gx0 = ox + CH; gx1 = ox + CH - L; } gy0 = gy1 = oy; }
+    else { x0 = ox; w = ROAD; if (dy < 0) { y0 = oy; h = L; gy0 = oy; gy1 = oy + L; } else { y0 = oy + CH - L; h = L; gy0 = oy + CH; gy1 = oy + CH - L; } gx0 = gx1 = ox; }
+    const gr = g.createLinearGradient(gx0, gy0, gx1, gy1), col = NB.road;
+    const rgb = parseInt(col.slice(1), 16), cc = (rgb >> 16) + ',' + ((rgb >> 8) & 255) + ',' + (rgb & 255);
+    gr.addColorStop(0, 'rgba(' + cc + ',0.5)'); gr.addColorStop(1, 'rgba(' + cc + ',0)');
+    g.fillStyle = gr; g.fillRect(x0, y0, w, h);
+    if ((nb === 'snow' || nb === 'desert') && me !== nb) {
+      const rgb2 = nb === 'snow' ? '226,232,238' : '160,128,86';
+      // drifts along the curbs of the shared road, thinning out with distance from the border
+      for (let i = 0; i < 7; i++) {
+        const k = R() * R(), edge = R() < 0.5, d = 6 + R() * 8;
+        const x = dx ? (dx < 0 ? ox + k * 160 : ox + CH - k * 160) : ox + (edge ? d * 0.4 : ROAD - d * 0.4), y = dx ? oy + (edge ? d * 0.4 : ROAD - d * 0.4) : (dy < 0 ? oy + k * 160 : oy + CH - k * 160);
+        softBlob(g, x, y, dx ? 24 + R() * 30 : d, dx ? d : 24 + R() * 30, 0, rgb2, (nb === 'snow' ? 0.5 : 0.4) * (1 - k * 0.8));
+      }
+    }
+  }
+}
+// on the sidewalks: fire hydrants, traffic signals at the corner, a bus stop, newspaper boxes; and on the road:
+// stop lines, manholes, storm drains, skid marks and oil stains. All of it is paint on the ground, nothing to bump into.
+function drawStreetFurniture(g, c, B, R, win) {
+  const bio = c.bio, ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, urban = bio === 'city' || bio === 'chaos' || bio === 'burning' || bio === 'ruins' || bio === 'ash';
+  if (bio === 'desert' || bio === 'snow') return;
+  const dm = Q.deco || 1;
+  // road: stop lines on the lanes coming into the crossing (traffic keeps right)
+  if (bio !== 'ruins') {
+    g.fillStyle = bio === 'ash' ? 'rgba(220,220,214,0.12)' : 'rgba(230,226,214,0.2)';
+    g.fillRect(bx + 26, oy + 8, 4, ROAD / 2 - 12); g.fillRect(ox + CH - 30, oy + ROAD / 2 + 4, 4, ROAD / 2 - 12);
+    g.fillRect(ox + ROAD / 2 + 4, by + 26, ROAD / 2 - 12, 4); g.fillRect(ox + 8, oy + CH - 30, ROAD / 2 - 12, 4);
+  }
+  // a manhole or two, and storm drains at the curb
+  const nm = 1 + (R() < 0.5 ? 1 : 0);
+  for (let i = 0; i < nm; i++) {
+    const onH = R() < 0.5, x = onH ? bx + 60 + R() * (BS - 120) : ox + 30 + R() * (ROAD - 60), y = onH ? oy + 30 + R() * (ROAD - 60) : by + 60 + R() * (BS - 120);
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x + 1, y + 1.5, 9, 0, TAU); g.fill();
+    g.fillStyle = '#2c2d30'; g.beginPath(); g.arc(x, y, 9, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 1; g.beginPath(); g.arc(x, y, 7, 0, TAU); g.stroke();
+    g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 6, y); g.moveTo(x, y - 6); g.lineTo(x, y + 6); g.stroke();
+  }
+  for (const [x, y, w, h] of [[bx + 40 + R() * (BS - 100), by - 7, 18, 6], [bx - 7, by + 40 + R() * (BS - 100), 6, 18]]) { g.fillStyle = '#121315'; g.fillRect(x, y, w, h); g.fillStyle = '#3a3c40'; if (w > h) for (let k = 2; k < w; k += 4) g.fillRect(x + k, y + 1, 1.5, h - 2); else for (let k = 2; k < h; k += 4) g.fillRect(x + 1, y + k, w - 2, 1.5); }
+  // skid marks and oil stains, more of them where the city went wrong
+  const ns = bio === 'chaos' || bio === 'ruins' ? 2 : R() < 0.4 ? 1 : 0;
+  for (let i = 0; i < ns; i++) {
+    const onH = R() < 0.5, x = onH ? bx + R() * (BS - 140) : ox + 24 + R() * (ROAD - 60), y = onH ? oy + 24 + R() * (ROAD - 60) : by + R() * (BS - 140), l = 60 + R() * 80, bend = (R() - 0.5) * 40;
+    g.strokeStyle = 'rgba(8,8,8,0.35)'; g.lineWidth = 3;
+    for (const off of [0, 9]) { g.beginPath(); if (onH) { g.moveTo(x, y + off); g.quadraticCurveTo(x + l / 2, y + off + bend, x + l, y + off + bend * 1.4); } else { g.moveTo(x + off, y); g.quadraticCurveTo(x + off + bend, y + l / 2, x + off + bend * 1.4, y + l); } g.stroke(); }
+  }
+  for (let i = 0; i < Math.floor(2 * dm + R()); i++) softBlob(g, ox + 20 + R() * (CH - 40), oy + 20 + R() * (ROAD - 40), 10 + R() * 12, 6 + R() * 8, R() * 3, '6,6,8', 0.45);
+  if (!urban && bio !== 'suburb') return;
+  // sidewalk: a fire hydrant near the corner
+  if (R() < 0.8) { const onTop = R() < 0.5, x = onTop ? bx + 30 + R() * 40 : bx + 8, y = onTop ? by + 8 : by + 30 + R() * 40; g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(x + 1.5, y + 2, 4.5, 0, TAU); g.fill(); g.fillStyle = bio === 'ash' ? '#6a6a6c' : '#c03a2e'; g.beginPath(); g.arc(x, y, 4.5, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x - 1, y - 1, 2, 2); }
+  if (bio === 'suburb') {
+    // mailboxes at the end of each driveway
+    for (const d of c.decals) if (d.k === 'drive') { const mx = d.x + d.w + 4, my = d.top ? d.y + 4 : d.y + d.h - 10; g.fillStyle = '#3a2a1e'; g.fillRect(mx + 2, my + 2, 3, 3); g.fillStyle = win ? '#c9d3da' : ['#2f4f6b', '#7b2f2b', '#22262b'][d.s % 3]; g.fillRect(mx - 2, my - 3, 9, 6); g.fillStyle = '#c9402e'; g.fillRect(mx + 6, my - 5, 1.5, 4); }
+    return;
+  }
+  // a traffic signal at the corner, its arm reaching out over the crossing
+  if (bio !== 'ruins' || R() < 0.4) {
+    const px = bx + 7, py = by + 7, broken = bio === 'ruins' || (bio === 'chaos' && R() < 0.3);
+    g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 3; g.beginPath(); g.moveTo(px + 3, py + 4); g.lineTo(px - 34 + 3, py - 30 + 4); g.stroke();
+    g.strokeStyle = '#3a3d42'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(px, py); g.lineTo(px - 34, py - 30); g.stroke();
+    g.fillStyle = '#26282c'; g.beginPath(); g.arc(px, py, 3.5, 0, TAU); g.fill();
+    g.fillStyle = '#1a1b1e'; g.fillRect(px - 42, py - 38, 12, 6);
+    if (!broken) { const lit = ['#ff3b30', '#ffcc00', '#34c759'][Math.floor(R() * 3)]; g.fillStyle = lit; g.beginPath(); g.arc(px - 36, py - 35, 2, 0, TAU); g.fill(); }
+  }
+  // a bus stop on the top sidewalk now and then, with its shelter and sign
+  if (bio === 'city' && R() < 0.3) {
+    const x = bx + 110 + R() * (BS - 260), y = by + 2;
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 3, y + 3, 52, 11); g.fillStyle = 'rgba(150,200,230,0.28)'; g.fillRect(x, y, 52, 11);
+    g.strokeStyle = '#4a4d52'; g.lineWidth = 1.5; g.strokeRect(x, y, 52, 11); g.fillStyle = '#4a4d52'; g.fillRect(x + 4, y + 6, 44, 3);
+    g.fillStyle = '#2f6fb0'; g.fillRect(x + 60, y + 2, 7, 7); g.fillStyle = '#e8e2d4'; g.fillRect(x + 62, y + 4, 3, 3);
+  }
+  // newspaper boxes in a row by the corner
+  if ((bio === 'city' || bio === 'chaos') && R() < 0.5) { const x = bx + 2, y = by + BS - 60 - R() * 120; for (let i = 0; i < 3; i++) { g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 2, y + i * 10 + 2, 9, 8); g.fillStyle = ['#2f6fb0', '#c9402e', '#f2cc3a', '#3d8a4a'][Math.floor(R() * 4)]; g.fillRect(x, y + i * 10, 9, 8); } }
+}
 function drawRoadMarks(g, c, B, R) {
   const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, bio = c.bio;
   const lane = bio === 'desert' ? 'rgba(220,190,120,0.28)' : bio === 'snow' ? 'rgba(214,180,80,0.18)' : bio === 'ash' ? 'rgba(200,200,190,0.18)' : 'rgba(214,180,80,0.34)';
@@ -637,8 +856,20 @@ function drawRoadMarks(g, c, B, R) {
   }
   // sand or snow drifting in from the sides of the road
   if (bio === 'desert' || bio === 'snow') {
-    g.fillStyle = bio === 'desert' ? 'rgba(120,96,62,0.55)' : 'rgba(190,200,210,0.5)';
-    for (let i = 0; i < 14; i++) { const t = R(), horiz = R() < 0.5, edge = R() < 0.5; const x = horiz ? ox + t * CH : ox + (edge ? 2 : ROAD - 2), y = horiz ? oy + (edge ? 2 : ROAD - 2) : oy + t * CH; g.beginPath(); g.ellipse(x, y, horiz ? 30 + R() * 30 : 8 + R() * 10, horiz ? 8 + R() * 10 : 30 + R() * 30, 0, 0, TAU); g.fill(); }
+    // drifts that the wind has piled against the curbs: long, soft-edged, thicker in places
+    const rgb = bio === 'desert' ? '150,120,80' : '214,222,230';
+    for (let i = 0; i < 16; i++) {
+      const t = R(), horiz = R() < 0.5, edge = R() < 0.5, l = 40 + R() * 70, d = 10 + R() * 12;
+      const x = horiz ? ox + t * CH : ox + (edge ? d * 0.35 : ROAD - d * 0.35), y = horiz ? oy + (edge ? d * 0.35 : ROAD - d * 0.35) : oy + t * CH;
+      softBlob(g, x, y, horiz ? l : d, horiz ? d : l, 0, rgb, bio === 'desert' ? 0.45 : 0.6);
+    }
+    // power lines along the highway: poles on the shoulder and the wires sagging between them
+    for (const horiz of [true, false]) {
+      const fixed = horiz ? oy + 7 : ox + 7;
+      g.strokeStyle = 'rgba(15,14,12,0.55)'; g.lineWidth = 1;
+      for (const off of [-3, 3]) { g.beginPath(); for (let k = 0; k <= 4; k++) { const a = k * 160, px = horiz ? ox + a : fixed + off, py = horiz ? fixed + off : oy + a; if (!k) g.moveTo(px, py); else g.quadraticCurveTo(horiz ? px - 80 : px + 5, horiz ? py + 5 : py - 80, px, py); } g.stroke(); }
+      for (let k = 0; k < 4; k++) { const a = k * 160 + (k ? 0 : 0), px = horiz ? ox + a : fixed, py = horiz ? fixed : oy + a; if (k === 0) continue; g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(px + 2, py + 3, 5, 5); g.fillStyle = '#4a3d30'; g.fillRect(px - 2.5, py - 2.5, 5, 5); g.fillStyle = '#2a241e'; if (horiz) g.fillRect(px - 1, py - 6, 2, 12); else g.fillRect(px - 6, py - 1, 12, 2); }
+    }
     if (bio === 'snow') { g.strokeStyle = 'rgba(20,24,30,0.35)'; g.lineWidth = 5; g.beginPath(); g.moveTo(bx, oy + ROAD / 2 - 18); g.lineTo(ox + CH, oy + ROAD / 2 - 18); g.moveTo(bx, oy + ROAD / 2 + 18); g.lineTo(ox + CH, oy + ROAD / 2 + 18); g.moveTo(ox + ROAD / 2 - 18, by); g.lineTo(ox + ROAD / 2 - 18, oy + CH); g.moveTo(ox + ROAD / 2 + 18, by); g.lineTo(ox + ROAD / 2 + 18, oy + CH); g.stroke(); }
   }
 }
@@ -654,7 +885,16 @@ function drawBlock(g, c, B, R, win, sea) {
   if (bio === 'snow') {
     g.fillStyle = B.lot; g.fillRect(bx, by, BS, BS);
     speckle(g, R, bx, by, BS, BS, Math.floor(300 * dm), 'rgba(255,255,255,0.12)', 'rgba(60,80,100,0.08)');
-    g.fillStyle = 'rgba(70,90,110,0.18)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(bx + R() * BS, by + R() * BS, 30 + R() * 50, 12 + R() * 20, R() * 3, 0, TAU); g.fill(); }
+    // drifts, shaded blue on the lee side, all lying along the prevailing wind; and fine ripples the wind carved
+    const wa = windAngle(c);
+    for (let i = 0; i < 7; i++) { const x = bx + R() * BS, y = by + R() * BS, l = 40 + R() * 60; softBlob(g, x + Math.cos(wa + 1.57) * 6, y + Math.sin(wa + 1.57) * 6, l, 10 + R() * 8, wa, '110,135,165', 0.16); softBlob(g, x, y, l, 9 + R() * 7, wa, '250,252,255', 0.5); }
+    g.lineWidth = 1.2; g.lineCap = 'round';
+    for (let i = 0; i < Math.floor(16 * dm); i++) {
+      const x = bx + 10 + R() * (BS - 20), y = by + 10 + R() * (BS - 20), l = 10 + R() * 22, ca = Math.cos(wa), sa = Math.sin(wa);
+      g.strokeStyle = i % 2 ? 'rgba(255,255,255,0.28)' : 'rgba(110,135,160,0.12)';
+      g.beginPath(); g.moveTo(x - ca * l, y - sa * l); g.quadraticCurveTo(x - sa * 3, y + ca * 3, x + ca * l, y + sa * l); g.stroke();
+    }
+    g.lineCap = 'butt';
     return;
   }
   // sidewalk around the block
@@ -670,10 +910,31 @@ function drawBlock(g, c, B, R, win, sea) {
     return;
   }
   if (c.type === 'plaza') {
-    inner(win ? '#8a959e' : bio === 'ash' ? '#3d3e40' : '#1c2520');
-    g.fillStyle = win ? '#9aa5ad' : bio === 'ash' ? '#47474a' : '#2a2e2b'; g.fillRect(bx + 16, by + BS / 2 - 22, BS - 32, 44); g.fillRect(bx + BS / 2 - 22, by + 16, 44, BS - 32);
-    g.fillStyle = win ? '#8d99a3' : '#20292a'; g.beginPath(); g.arc(bx + BS / 2, by + BS / 2, 46, 0, TAU); g.fill();
-    g.strokeStyle = '#3c4a4c'; g.lineWidth = 4; g.stroke();
+    const pv = c.pv || 'landmark', burnt = bio === 'burning', cxp = bx + BS / 2, cyp = by + BS / 2;
+    if (pv === 'landmark' || pv === 'garden') {
+      inner(win ? '#8a959e' : bio === 'ash' ? '#3d3e40' : burnt ? '#26211c' : '#1c2520');
+      if (!win && !burnt && bio !== 'ash') speckle(g, R, bx + 16, by + 16, BS - 32, BS - 32, Math.floor(260 * dm), 'rgba(120,170,90,0.08)', 'rgba(0,0,0,0.14)');
+      g.fillStyle = win ? '#9aa5ad' : bio === 'ash' ? '#47474a' : '#2a2e2b'; g.fillRect(bx + 16, cyp - 22, BS - 32, 44); g.fillRect(cxp - 22, by + 16, 44, BS - 32);
+      if (pv === 'landmark') { g.fillStyle = win ? '#8d99a3' : '#20292a'; g.beginPath(); g.arc(cxp, cyp, 46, 0, TAU); g.fill(); g.strokeStyle = '#3c4a4c'; g.lineWidth = 4; g.stroke(); }
+    } else {
+      // paving stones
+      inner(win ? '#8a959e' : bio === 'ash' ? '#3f4043' : pv === 'court' ? '#25272b' : '#34363a');
+      g.strokeStyle = win ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.22)'; g.lineWidth = 1; g.beginPath();
+      for (let x = bx + 16; x < bx + BS - 16; x += 24) { g.moveTo(x, by + 16); g.lineTo(x, by + BS - 16); }
+      for (let y = by + 16; y < by + BS - 16; y += 24) { g.moveTo(bx + 16, y); g.lineTo(bx + BS - 16, y); }
+      g.stroke();
+      if (pv === 'square') { g.strokeStyle = win ? 'rgba(255,255,255,0.18)' : 'rgba(200,190,170,0.16)'; g.lineWidth = 6; for (const rr of [62, 104]) { g.beginPath(); g.arc(cxp, cyp, rr, 0, TAU); g.stroke(); } }
+      if (pv === 'market') { g.fillStyle = 'rgba(242,204,58,0.16)'; g.fillRect(bx + 24, cyp - 2, BS - 48, 4); }
+      if (pv === 'court' && c.court) {
+        const K = c.court; g.fillStyle = win ? '#9aa8b4' : burnt ? '#2e2a26' : '#2c4a5e'; g.fillRect(K.x, K.y, K.w, K.h);
+        g.strokeStyle = win ? 'rgba(255,255,255,0.4)' : 'rgba(235,235,225,0.7)'; g.lineWidth = 2;
+        g.strokeRect(K.x + 4, K.y + 4, K.w - 8, K.h - 8); g.beginPath(); g.moveTo(K.x + K.w / 2, K.y + 4); g.lineTo(K.x + K.w / 2, K.y + K.h - 4); g.stroke();
+        g.beginPath(); g.arc(K.x + K.w / 2, K.y + K.h / 2, 22, 0, TAU); g.stroke();
+        for (const e of [0, 1]) { const x = e ? K.x + K.w - 4 : K.x + 4, a0 = e ? Math.PI - 1.15 : -1.15; g.strokeRect(e ? x - 58 : x, K.y + K.h / 2 - 22, 58, 44); g.beginPath(); g.arc(x, K.y + K.h / 2, 72, a0, a0 + 2.3); g.stroke(); }
+        g.fillStyle = 'rgba(224,96,46,0.35)'; for (const e of [0, 1]) g.fillRect(e ? K.x + K.w - 62 : K.x + 4, K.y + K.h / 2 - 22, 58, 44);
+      }
+    }
+    if (burnt) { for (let i = 0; i < 5; i++) soot(g, bx + 30 + R() * (BS - 60), by + 30 + R() * (BS - 60), 40 + R() * 50, 0.42); g.fillStyle = 'rgba(160,150,140,0.06)'; g.fillRect(bx + 16, by + 16, BS - 32, BS - 32); }
   } else if (c.type === 'lot') {
     inner(win ? '#838e96' : bio === 'ash' ? '#2f2f31' : '#1b1d21');
     g.strokeStyle = 'rgba(230,226,214,0.22)'; g.lineWidth = 2;
@@ -682,7 +943,7 @@ function drawBlock(g, c, B, R, win, sea) {
     inner(win ? '#7f8a92' : '#24221f');
     speckle(g, R, bx + 16, by + 16, BS - 32, BS - 32, Math.floor(500 * dm), 'rgba(200,190,170,0.06)', 'rgba(0,0,0,0.2)');
   } else inner(win ? '#7d8890' : B.lot);
-  if (bio === 'burning') { g.fillStyle = 'rgba(0,0,0,0.3)'; for (let i = 0; i < 5; i++) { g.beginPath(); g.ellipse(bx + R() * BS, by + R() * BS, 20 + R() * 40, 14 + R() * 24, R() * 3, 0, TAU); g.fill(); } }
+  if (bio === 'burning' && c.type !== 'plaza') for (let i = 0; i < 5; i++) soot(g, bx + R() * BS, by + R() * BS, 24 + R() * 40, 0.32);
   if (sea === 2 && !win && (bio === 'city' || bio === 'chaos')) speckle(g, R, bx, by, BS, BS, Math.floor(60 * dm), 'rgba(200,110,40,0.35)', 'rgba(160,70,30,0.3)');
 }
 function drawWaterArt(g, c, B) {
@@ -761,6 +1022,54 @@ function drawDecals(g, c, B, R, win, sea) {
         g.save(); g.translate(d.x, d.y); g.rotate(d.a); g.fillStyle = 'rgba(225,215,190,0.7)'; g.beginPath(); g.ellipse(0, 0, 9, 7, 0, 0, TAU); g.fill();
         g.fillRect(8, -1.5, 26, 3); for (let i = 0; i < 4; i++) { g.fillRect(12 + i * 5, -8, 2, 16); } g.fillStyle = 'rgba(30,20,10,0.7)'; g.fillRect(-4, -3, 3, 3); g.fillRect(1, -3, 3, 3); g.restore();
         break;
+      case 'drive': {
+        // a concrete driveway with expansion joints and an oil stain where the car usually stands
+        g.fillStyle = win ? '#aab4bc' : '#55585b'; g.fillRect(d.x, d.y, d.w, d.h);
+        g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(d.x + 2, d.y, 3, d.h); g.fillRect(d.x + d.w - 5, d.y, 3, d.h);
+        g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1; g.beginPath(); for (let y = d.y + 30; y < d.y + d.h; y += 30) { g.moveTo(d.x, y); g.lineTo(d.x + d.w, y); } g.stroke();
+        if (!win) softBlob(g, d.x + d.w / 2, d.top ? d.y + 40 : d.y + d.h - 40, 8, 12, 0, '10,10,12', 0.35);
+        break;
+      }
+      case 'flowers': {
+        if (win || c.bio !== 'suburb') break;
+        const cols = sea === 0 ? ['#ff9fc4', '#fff0a8', '#c8a8ff', '#ff7a7a'] : sea === 1 ? ['#ff5a5a', '#ffd23a', '#ffffff', '#ff8ad8'] : sea === 2 ? ['#d8782a', '#a8442a', '#e0a83a'] : ['#6a5a4a'];
+        g.fillStyle = '#3b2a1c'; g.fillRect(d.x + 4, d.y + 1, d.w - 8, d.h - 2);
+        for (let i = 0; i < Math.floor(d.w / 5); i++) { g.fillStyle = cols[Math.floor(Rd() * cols.length)]; g.beginPath(); g.arc(d.x + 6 + Rd() * (d.w - 12), d.y + 2 + Rd() * (d.h - 4), 1.6, 0, TAU); g.fill(); }
+        break;
+      }
+      case 'beds': {
+        // flower beds in the corners of a garden square (none left in the burned and ash districts)
+        if (win || c.bio === 'burning' || c.bio === 'ash') break;
+        const cols = sea === 2 ? ['#d8782a', '#a8442a', '#e0a83a'] : ['#ff5a8a', '#ffd23a', '#ffffff', '#c8a8ff'];
+        for (const [fx, fy] of [[0.08, 0.38], [0.92, 0.38], [0.08, 0.62], [0.92, 0.62]]) {
+          const x = d.x + d.w * fx, y = d.y + d.h * fy; g.fillStyle = '#3b2a1c'; g.beginPath(); g.ellipse(x, y, 16, 26, 0, 0, TAU); g.fill();
+          for (let i = 0; i < 22; i++) { g.fillStyle = cols[Math.floor(Rd() * cols.length)]; const a = Rd() * TAU, rr = Rd(); g.beginPath(); g.arc(x + Math.cos(a) * 13 * rr, y + Math.sin(a) * 22 * rr, 1.8, 0, TAU); g.fill(); }
+        }
+        break;
+      }
+      case 'alley': {
+        // a darker strip of old asphalt, stains, and bags of trash piled against the walls
+        g.fillStyle = 'rgba(0,0,0,0.16)'; g.fillRect(d.x, d.y, d.w, d.h);
+        for (let i = 0; i < 3; i++) softBlob(g, d.x + Rd() * d.w, d.y + Rd() * d.h, 10 + Rd() * 14, 6 + Rd() * 8, Rd() * 3, '8,8,10', 0.4);
+        const nb = 2 + Math.floor(Rd() * 4);
+        for (let i = 0; i < nb; i++) { const x = d.v ? (Rd() < 0.5 ? d.x + 8 : d.x + d.w - 8) : d.x + 20 + Rd() * (d.w - 40), y = d.v ? d.y + 20 + Rd() * (d.h - 40) : (Rd() < 0.5 ? d.y + 8 : d.y + d.h - 8); g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(x + 1.5, y + 2, 6, 0, TAU); g.fill(); g.fillStyle = win ? '#c9d3da' : ['#1c1d20', '#2a2c30', '#3a3a2a'][Math.floor(Rd() * 3)]; g.beginPath(); g.arc(x, y, 6, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.arc(x - 2, y - 2, 2, 0, TAU); g.fill(); }
+        break;
+      }
+      case 'plow': {
+        // a lane the plough cleared: packed grey snow, tyre ruts, and the banks thrown up along both sides
+        g.fillStyle = '#8f9aa4'; g.fillRect(d.x, d.y, d.w, d.h);
+        g.strokeStyle = 'rgba(40,50,60,0.3)'; g.lineWidth = 4; g.beginPath();
+        if (d.v) { g.moveTo(d.x + 10, d.y); g.lineTo(d.x + 10, d.y + d.h); g.moveTo(d.x + d.w - 10, d.y); g.lineTo(d.x + d.w - 10, d.y + d.h); } else { g.moveTo(d.x, d.y + 10); g.lineTo(d.x + d.w, d.y + 10); g.moveTo(d.x, d.y + d.h - 10); g.lineTo(d.x + d.w, d.y + d.h - 10); }
+        g.stroke();
+        for (let i = 0; i < 10; i++) { const t = Rd(); for (const side of [0, 1]) { const x = d.v ? (side ? d.x + d.w + 4 : d.x - 4) : d.x + t * d.w, y = d.v ? d.y + t * d.h : (side ? d.y + d.h + 4 : d.y - 4); softBlob(g, x, y, d.v ? 9 : 26, d.v ? 26 : 9, 0, '250,252,255', 0.8); } }
+        break;
+      }
+      case 'awning': {
+        g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(d.x + 4, d.y + 4, d.w, d.h);
+        for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#e8e2d4' : '#2f6f8a'; g.fillRect(d.x + i * d.w / 8, d.y, d.w / 8 + 0.5, d.h); }
+        g.fillStyle = '#8a5a2a'; g.fillRect(d.x + d.w + 8, d.y + 8, 8, 8); g.fillRect(d.x + d.w + 20, d.y + 14, 8, 8);
+        break;
+      }
       case 'canopy':
         g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(d.x + 8, d.y + 10, d.w, d.h);
         g.fillStyle = '#7a3a2e'; g.fillRect(d.x, d.y, d.w, d.h); g.fillStyle = '#e8e2d4'; g.fillRect(d.x, d.y + d.h / 2 - 4, d.w, 8);
@@ -781,10 +1090,27 @@ function drawRectArt(g, r, c, B, win) {
   const Rb = Z.mulberry32(r.s || 1);
   switch (r.k) {
     case 'b': drawBuilding(g, r, c, B, win, Rb); break;
-    case 'car': if (r.flip) drawFlipped(g, r); else drawCar(g, r); if (win || c.bio === 'snow') { g.fillStyle = 'rgba(230,236,242,0.75)'; rrect(g, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 5); g.fill(); } else if (c.bio === 'desert' || c.bio === 'ash') { g.fillStyle = c.bio === 'ash' ? 'rgba(150,150,154,0.35)' : 'rgba(140,110,70,0.3)'; rrect(g, r.x + 2, r.y + 2, r.w - 4, r.h - 4, 5); g.fill(); } break;
+    case 'car': {
+      if (r.flip) drawFlipped(g, r); else drawCar(g, r);
+      // snow piled on the roof and bonnet (the paint still shows round the edges), or a film of dust or ash
+      const horiz = r.w > r.h, L = Math.max(r.w, r.h);
+      if (win || c.bio === 'snow') {
+        g.fillStyle = 'rgba(238,242,246,0.92)';
+        const roof = (a, b) => { if (horiz) { rrect(g, r.x + r.w * a, r.y + 4, r.w * (b - a), r.h - 8, 4); } else { rrect(g, r.x + 4, r.y + r.h * a, r.w - 8, r.h * (b - a), 4); } g.fill(); };
+        roof(0.3, 0.57); roof(0.79, 0.96); void L;
+      } else if (c.bio === 'desert' || c.bio === 'ash') { g.fillStyle = c.bio === 'ash' ? 'rgba(150,150,154,0.3)' : 'rgba(140,110,70,0.26)'; rrect(g, r.x + 2, r.y + 2, r.w - 4, r.h - 4, 5); g.fill(); }
+      break;
+    }
     case 'planter':
       g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(r.x + 5, r.y + 7, r.w, r.h);
       g.fillStyle = '#4a4741'; g.fillRect(r.x, r.y, r.w, r.h);
+      if (c.bio === 'burning') {
+        // the tree burned down to a black trunk with a few bare limbs
+        g.fillStyle = '#2a2520'; g.fillRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8); soot(g, r.x + r.w / 2, r.y + r.h / 2, 30, 0.5);
+        g.strokeStyle = '#141110'; g.lineCap = 'round'; for (let i = 0; i < 5; i++) { const a = i / 5 * TAU + 0.4; g.lineWidth = 3 - i * 0.3; g.beginPath(); g.moveTo(r.x + r.w / 2, r.y + r.h / 2); g.lineTo(r.x + r.w / 2 + Math.cos(a) * 20, r.y + r.h / 2 + Math.sin(a) * 20); g.stroke(); } g.lineCap = 'butt';
+        g.fillStyle = '#1a1714'; g.beginPath(); g.arc(r.x + r.w / 2, r.y + r.h / 2, 5, 0, TAU); g.fill();
+        break;
+      }
       g.fillStyle = c.bio === 'ash' ? '#2b2b2b' : win ? '#c9d3da' : '#1f3524'; g.beginPath(); g.arc(r.x + r.w / 2, r.y + r.h / 2, 26, 0, TAU); g.fill();
       g.fillStyle = c.bio === 'ash' ? '#3a3a3a' : win ? '#e6ecf0' : '#28452f'; g.beginPath(); g.arc(r.x + r.w / 2 - 6, r.y + r.h / 2 - 6, 15, 0, TAU); g.fill();
       break;
@@ -800,6 +1126,8 @@ function drawRectArt(g, r, c, B, win) {
       g.fillStyle = '#2a2d31'; if (r.w > r.h) for (let x = r.x; x < r.x + r.w; x += 16) g.fillRect(x, r.y - 1, 3, r.h + 2); else for (let y = r.y; y < r.y + r.h; y += 16) g.fillRect(r.x - 1, y, r.w + 2, 3);
       break;
     case 'fence':
+      if (r.wire) { g.strokeStyle = 'rgba(160,166,172,0.75)'; g.lineWidth = 1; g.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); g.fillStyle = '#5a5e64'; if (r.w > r.h) for (let x = r.x; x < r.x + r.w; x += 24) g.fillRect(x, r.y - 1, 3, r.h + 2); else for (let y = r.y; y < r.y + r.h; y += 24) g.fillRect(r.x - 1, y, r.w + 2, 3); break; }
+      if (r.ranch) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(r.x + 2, r.y + 3, r.w, r.h); g.fillStyle = '#7a5a3a'; if (r.w > r.h) { g.fillRect(r.x, r.y, r.w, 1.6); g.fillRect(r.x, r.y + r.h - 1.6, r.w, 1.6); for (let x = r.x; x < r.x + r.w; x += 30) g.fillRect(x, r.y - 2, 4, r.h + 4); } else { g.fillRect(r.x, r.y, 1.6, r.h); g.fillRect(r.x + r.w - 1.6, r.y, 1.6, r.h); for (let y = r.y; y < r.y + r.h; y += 30) g.fillRect(r.x - 2, y, r.w + 4, 4); } break; }
       g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(r.x + 2, r.y + 3, r.w, r.h);
       g.fillStyle = win ? '#d9dfe3' : '#8a6a48'; g.fillRect(r.x, r.y, r.w, r.h);
       g.fillStyle = win ? '#aab3b9' : '#5e4630'; if (r.w > r.h) for (let x = r.x; x < r.x + r.w; x += 12) g.fillRect(x, r.y - 2, 3, r.h + 4); else for (let y = r.y; y < r.y + r.h; y += 12) g.fillRect(r.x - 2, y, r.w + 4, 3);
@@ -832,6 +1160,7 @@ function drawRectArt(g, r, c, B, win) {
       break;
     case 'trunk': break;   // trees are drawn live, on top
     case 'lm': drawLandmark(g, r, c, B, win, Rb); break;
+    default: drawThing(g, r, c, B, win, Rb);
   }
 }
 function drawBuilding(g, r, c, B, win, Rb) {
@@ -857,6 +1186,7 @@ function drawBuilding(g, r, c, B, win, Rb) {
     g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(r.x + r.w * 0.3, r.y + r.h * 0.3, r.w * 0.25, r.h * 0.25);
     return;
   }
+  if (st === 'lodge' || st === 'shed' || st === 'barn' || st === 'shack' || st === 'trailer') { drawSmallBuilding(g, r, c, B, win, Rb, st); return; }
   if (st === 'cabin') {
     const horiz = r.w >= r.h;
     g.fillStyle = '#4a3528'; g.fillRect(r.x, r.y, r.w, r.h);
@@ -875,6 +1205,7 @@ function drawBuilding(g, r, c, B, win, Rb) {
   }
   g.strokeStyle = 'rgba(255,255,255,0.09)'; g.lineWidth = 4; g.strokeRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
   g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 2; g.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+  if (st === 'block') roofDetail(g, r, c, Rb, win, burnt);
   const n = 1 + Math.floor(Rb() * Math.min(5, r.w * r.h / 9000));
   for (let i = 0; i < n; i++) {
     const w = 18 + Rb() * 26, h = 14 + Rb() * 20, x = r.x + 12 + Rb() * Math.max(1, r.w - w - 24), y = r.y + 12 + Rb() * Math.max(1, r.h - h - 24), t = Rb();
@@ -914,6 +1245,172 @@ function drawBuilding(g, r, c, B, win, Rb) {
     g.restore();
   }
 }
+// what is up on a big flat roof: gravel, a taller tower set back from the edge, the stair hatch, a water tower on
+// legs, rows of solar panels, a rooftop garden, ducts running between the units
+function roofDetail(g, r, c, Rb, win, burnt) {
+  const area = r.w * r.h, dm = Q.deco || 1;
+  speckle(g, Rb, r.x + 4, r.y + 4, r.w - 8, r.h - 8, Math.floor(Math.min(220, area / 400) * dm), 'rgba(255,255,255,0.035)', 'rgba(0,0,0,0.09)');
+  // a setback: the middle of a big building rises higher, so its own shadow falls on the lower roof
+  if (area > 90000 && Rb() < 0.6) {
+    const k = 0.5 + Rb() * 0.2, w = r.w * k, h = r.h * k, x = r.x + (r.w - w) * (0.3 + Rb() * 0.4), y = r.y + (r.h - h) * (0.3 + Rb() * 0.4);
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 12, y + 14, w, h);
+    g.fillStyle = r.roof; g.fillRect(x, y, w, h); g.fillStyle = win ? 'rgba(206,214,220,0.85)' : 'rgba(255,255,255,0.06)'; g.fillRect(x, y, w, h);
+    g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 3; g.strokeRect(x + 2, y + 2, w - 4, h - 4); g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, w - 2, h - 2);
+  }
+  if (area < 12000) return;
+  // the stair hatch: a little box with a door on one side
+  if (Rb() < 0.7) { const x = r.x + 16 + Rb() * (r.w - 60), y = r.y + 16 + Rb() * (r.h - 56); g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(x + 6, y + 7, 30, 26); g.fillStyle = '#4a4c50'; g.fillRect(x, y, 30, 26); g.fillStyle = '#5a5c61'; g.fillRect(x + 2, y + 2, 26, 10); g.fillStyle = '#2a2b2e'; g.fillRect(x + 9, y + 22, 12, 4); if (win) { g.fillStyle = 'rgba(236,241,245,0.8)'; g.fillRect(x, y, 30, 8); } }
+  // ducts: a run of pipe along the roof
+  if (Rb() < 0.5 && !burnt) { const y = r.y + 20 + Rb() * (r.h - 40), x0 = r.x + 20 + Rb() * r.w * 0.3, x1 = r.x + r.w - 20 - Rb() * r.w * 0.3; g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 6; g.beginPath(); g.moveTo(x0 + 2, y + 3); g.lineTo(x1 + 2, y + 3); g.stroke(); g.strokeStyle = '#6a6d72'; g.lineWidth = 5; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.strokeStyle = 'rgba(255,255,255,0.15)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y - 1.5); g.lineTo(x1, y - 1.5); g.stroke(); }
+  const t = Rb();
+  if (t < 0.22 && (c.bio === 'city' || c.bio === 'chaos' || c.bio === 'ruins')) {
+    // an old wooden water tower on four legs
+    const x = r.x + 30 + Rb() * (r.w - 60), y = r.y + 30 + Rb() * (r.h - 60), R0 = 17;
+    g.fillStyle = 'rgba(0,0,0,0.38)'; g.beginPath(); g.ellipse(x + 14, y + 16, R0 + 2, R0, 0, 0, TAU); g.fill();
+    g.strokeStyle = '#2a2622'; g.lineWidth = 2.5; for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { g.beginPath(); g.moveTo(x + dx * 13, y + dy * 13); g.lineTo(x + dx * 15 + 6, y + dy * 15 + 8); g.stroke(); }
+    g.fillStyle = '#6b4a2e'; g.beginPath(); g.arc(x, y, R0, 0, TAU); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * R0, y + Math.sin(a) * R0); g.stroke(); }
+    g.fillStyle = win ? '#dfe6eb' : '#4a4d52'; g.beginPath(); g.arc(x, y, 6, 0, TAU); g.fill();
+  } else if (t < 0.38 && !burnt) {
+    // rows of solar panels
+    const rows = 2 + Math.floor(Rb() * 3), pw = Math.min(140, r.w * 0.5), x = r.x + 20 + Rb() * (r.w - pw - 40), y = r.y + 20 + Rb() * Math.max(1, r.h - rows * 22 - 40);
+    for (let i = 0; i < rows; i++) { g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 3, y + i * 22 + 4, pw, 14); g.fillStyle = win ? '#c5d0d8' : '#1d2b45'; g.fillRect(x, y + i * 22, pw, 14); if (!win) { g.strokeStyle = 'rgba(120,160,220,0.35)'; g.lineWidth = 1; g.beginPath(); for (let k = 12; k < pw; k += 12) { g.moveTo(x + k, y + i * 22); g.lineTo(x + k, y + i * 22 + 14); } g.moveTo(x, y + i * 22 + 7); g.lineTo(x + pw, y + i * 22 + 7); g.stroke(); } }
+  } else if (t < 0.46 && !burnt && !win && c.bio === 'city') {
+    // a rooftop garden: planted beds and a deck
+    const w = Math.min(160, r.w * 0.5), h = Math.min(120, r.h * 0.45), x = r.x + 20 + Rb() * (r.w - w - 40), y = r.y + 20 + Rb() * (r.h - h - 40);
+    g.fillStyle = '#6b5440'; g.fillRect(x, y, w, h); g.strokeStyle = 'rgba(0,0,0,0.2)'; g.lineWidth = 1; g.beginPath(); for (let k = 6; k < w; k += 6) { g.moveTo(x + k, y); g.lineTo(x + k, y + h); } g.stroke();
+    for (let i = 0; i < 4; i++) { g.fillStyle = '#2f5a2a'; g.fillRect(x + 6 + (i % 2) * (w / 2), y + 6 + Math.floor(i / 2) * (h / 2), w / 2 - 12, h / 2 - 12); g.fillStyle = '#3d7a34'; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(x + 10 + (i % 2) * (w / 2) + Rb() * (w / 2 - 20), y + 10 + Math.floor(i / 2) * (h / 2) + Rb() * (h / 2 - 20), 4 + Rb() * 3, 0, TAU); g.fill(); } }
+  }
+}
+// lodges, sheds, barns, tin shacks and trailers
+function drawSmallBuilding(g, r, c, B, win, Rb, st) {
+  const horiz = r.w >= r.h, snowy = win || c.bio === 'snow';
+  const half = (col1, col2) => { g.fillStyle = col1; g.fillRect(r.x, r.y, r.w, r.h); g.fillStyle = col2; if (horiz) g.fillRect(r.x, r.y + r.h / 2, r.w, r.h / 2); else g.fillRect(r.x + r.w / 2, r.y, r.w / 2, r.h); };
+  const ridge = (col) => { g.strokeStyle = col; g.lineWidth = 3; g.beginPath(); if (horiz) { g.moveTo(r.x + 3, r.y + r.h / 2); g.lineTo(r.x + r.w - 3, r.y + r.h / 2); } else { g.moveTo(r.x + r.w / 2, r.y + 3); g.lineTo(r.x + r.w / 2, r.y + r.h - 3); } g.stroke(); };
+  const lines = (col, step) => { g.strokeStyle = col; g.lineWidth = 1; g.beginPath(); if (horiz) for (let x = r.x + step; x < r.x + r.w; x += step) { g.moveTo(x, r.y); g.lineTo(x, r.y + r.h); } else for (let y = r.y + step; y < r.y + r.h; y += step) { g.moveTo(r.x, y); g.lineTo(r.x + r.w, y); } g.stroke(); };
+  if (st === 'lodge') {
+    // a big timber lodge: a dark roof under heavy snow, a stone chimney at each end, a porch roof along the front
+    half(snowy ? '#e9eef2' : '#4a3a2e', snowy ? '#cfd8de' : '#3a2d23'); ridge(snowy ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.15)');
+    g.fillStyle = '#6f6a64'; g.fillRect(r.x + 10, r.y + r.h * 0.25, 14, 14); g.fillRect(r.x + r.w - 24, r.y + r.h * 0.25, 14, 14);
+    g.fillStyle = snowy ? '#bcc6cd' : '#2e241c'; g.fillRect(r.x + r.w * 0.25, r.y + r.h - 2, r.w * 0.5, 12);
+    g.fillStyle = 'rgba(255,214,140,0.5)'; for (let i = 0; i < 4; i++) g.fillRect(r.x + r.w * (0.28 + i * 0.13), r.y + r.h + 8, 8, 3);
+  } else if (st === 'shed') {
+    half(snowy ? '#e2e8ec' : '#6b5440', snowy ? '#c8d1d7' : '#584432'); lines('rgba(0,0,0,0.18)', 5);
+  } else if (st === 'barn') {
+    // a red barn with a grey roof, a hayloft door and hay spilling out front
+    half('#7a2e26', '#66261f'); ridge('rgba(255,255,255,0.18)'); lines('rgba(0,0,0,0.15)', 8);
+    g.fillStyle = '#c9b06a'; g.beginPath(); g.ellipse(r.x + r.w / 2, r.y + r.h + 8, 18, 6, 0, 0, TAU); g.fill();
+  } else if (st === 'shack') {
+    // corrugated tin, patched and rusting
+    g.fillStyle = '#7d7a72'; g.fillRect(r.x, r.y, r.w, r.h); lines('rgba(0,0,0,0.25)', 4);
+    g.fillStyle = 'rgba(140,72,34,0.55)'; for (let i = 0; i < 3; i++) g.fillRect(r.x + Rb() * (r.w - 18), r.y + Rb() * (r.h - 14), 12 + Rb() * 10, 8 + Rb() * 8);
+    g.fillStyle = '#5c5a54'; g.fillRect(r.x + r.w * 0.55, r.y + r.h * 0.2, r.w * 0.3, r.h * 0.35);
+  } else {
+    // a trailer home: a long white box with a stripe and a little roof vent
+    g.fillStyle = '#d9d5c9'; rrect(g, r.x, r.y, r.w, r.h, 6); g.fill();
+    g.fillStyle = '#5b7c8a'; g.fillRect(r.x + 4, r.y + r.h / 2 - 3, r.w - 8, 6);
+    g.fillStyle = '#9b978d'; g.fillRect(r.x + r.w * 0.3, r.y + 6, 12, 8); g.fillRect(r.x + r.w * 0.7, r.y + 6, 10, 8);
+    g.fillStyle = 'rgba(140,72,34,0.35)'; g.fillRect(r.x + 2, r.y + r.h - 6, r.w - 4, 4);
+  }
+  if (st === 'shed' || st === 'shack') { g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(r.x + r.w * 0.15, r.y + r.h - 3, r.w * 0.3, 3); }
+  g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 2; g.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+}
+// benches, statues, kiosks, market stalls, hoops, dumpsters, pools, wood piles, logs, wind pumps and tanks
+function drawThing(g, r, c, B, win, Rb) {
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2, snowy = win || c.bio === 'snow', ash = c.bio === 'ash';
+  const shadow = (dx, dy, a) => { g.fillStyle = 'rgba(0,0,0,' + (a || 0.4) + ')'; g.fillRect(r.x + (dx || 3), r.y + (dy || 4), r.w, r.h); };
+  switch (r.k) {
+    case 'bench': {
+      shadow(2, 3, 0.35); const horiz = r.w > r.h;
+      g.fillStyle = ash ? '#4a4a4c' : '#6b4a2e'; g.fillRect(r.x, r.y, r.w, r.h);
+      g.fillStyle = ash ? '#5a5a5d' : '#8a6440'; if (horiz) for (let i = 0; i < 3; i++) g.fillRect(r.x + 1, r.y + 1 + i * 4, r.w - 2, 2.4); else for (let i = 0; i < 3; i++) g.fillRect(r.x + 1 + i * 4, r.y + 1, 2.4, r.h - 2);
+      g.fillStyle = '#2a2a2c'; if (horiz) { g.fillRect(r.x + 3, r.y - 1, 3, r.h + 2); g.fillRect(r.x + r.w - 6, r.y - 1, 3, r.h + 2); } else { g.fillRect(r.x - 1, r.y + 3, r.w + 2, 3); g.fillRect(r.x - 1, r.y + r.h - 6, r.w + 2, 3); }
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.8)'; g.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); }
+      break;
+    }
+    case 'statue': {
+      g.fillStyle = 'rgba(0,0,0,0.42)'; g.beginPath(); g.ellipse(cx + 6, cy + 8, r.w * 0.62, r.h * 0.55, 0, 0, TAU); g.fill();
+      g.fillStyle = '#6e6a63'; g.fillRect(r.x, r.y, r.w, r.h); g.fillStyle = '#85807a'; g.fillRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8);
+      // a figure on a horse, seen from above, in old bronze
+      g.fillStyle = ash ? '#56585a' : '#3f5a4c'; g.beginPath(); g.ellipse(cx, cy + 2, 6, 12, Rb() - 0.5, 0, TAU); g.fill();
+      g.beginPath(); g.arc(cx, cy - 4, 4.5, 0, TAU); g.fill();
+      g.strokeStyle = ash ? '#56585a' : '#3f5a4c'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(cx, cy - 4); g.lineTo(cx + 9, cy - 11); g.stroke();
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.85)'; g.beginPath(); g.arc(cx, cy - 5, 3, 0, TAU); g.fill(); g.fillRect(r.x, r.y, r.w, 4); }
+      break;
+    }
+    case 'kiosk': {
+      shadow(5, 6); g.fillStyle = '#2f4f3a'; g.fillRect(r.x, r.y, r.w, r.h); g.fillStyle = '#3d6a4c'; g.fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
+      g.fillStyle = ['#d8452e', '#f2cc3a', '#3a7dd8'][Math.floor(Rb() * 3)]; for (let i = 0; i < 4; i++) g.fillRect(r.x + 4 + i * 7, r.y + r.h - 7, 5, 4);
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.8)'; g.fillRect(r.x + 2, r.y + 2, r.w - 4, r.h * 0.5); }
+      break;
+    }
+    case 'stall': {
+      shadow(5, 7, 0.38);
+      const cols = [['#c9402e', '#e8e2d4'], ['#2f6fb0', '#e8e2d4'], ['#3d8a4a', '#f2e6c4'], ['#d89a2e', '#5a3a1e']], cc = cols[Math.floor(Rb() * cols.length)];
+      if (r.burnt) { g.fillStyle = '#2a2420'; g.fillRect(r.x, r.y, r.w, r.h); g.strokeStyle = '#141110'; g.lineWidth = 2; for (let x = r.x + 6; x < r.x + r.w; x += 10) { g.beginPath(); g.moveTo(x, r.y); g.lineTo(x + (Rb() - 0.5) * 6, r.y + r.h); g.stroke(); } soot(g, cx, cy, r.w * 0.6, 0.5); break; }
+      // a striped canvas awning over the counter, and crates of goods along the front
+      for (let i = 0; i < 6; i++) { g.fillStyle = cc[i % 2]; g.fillRect(r.x + i * r.w / 6, r.y, r.w / 6 + 0.5, r.h * 0.72); }
+      g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(r.x, r.y + r.h * 0.36, r.w, r.h * 0.36);
+      g.fillStyle = '#6b4a2e'; g.fillRect(r.x, r.y + r.h * 0.72, r.w, r.h * 0.28);
+      for (let i = 0; i < 4; i++) { g.fillStyle = ['#c9402e', '#e0a83a', '#7db84a', '#e8e2d4'][Math.floor(Rb() * 4)]; g.fillRect(r.x + 4 + i * (r.w - 8) / 4, r.y + r.h * 0.76, (r.w - 8) / 4 - 3, r.h * 0.18); }
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.75)'; g.fillRect(r.x, r.y, r.w, r.h * 0.5); }
+      break;
+    }
+    case 'hoop':
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(r.x + 3, r.y + 4, r.w, r.h);
+      g.fillStyle = '#d9d5c9'; g.fillRect(r.x, r.y, r.w, r.h); g.strokeStyle = '#e0602e'; g.lineWidth = 2; g.beginPath(); g.arc(cx + (r.x < c.ox + CH / 2 ? 9 : -9), cy, 5, 0, TAU); g.stroke();
+      break;
+    case 'dumpster': {
+      shadow(4, 5, 0.45); const horiz = r.w > r.h;
+      g.fillStyle = r.burnt ? '#2a2724' : ['#2f5a3a', '#2f4a6a', '#5a4a2a'][Math.floor((r.col || 0) * 3)]; g.fillRect(r.x, r.y, r.w, r.h);
+      g.fillStyle = 'rgba(0,0,0,0.28)'; if (horiz) g.fillRect(r.x + r.w / 2 - 1, r.y, 2, r.h); else g.fillRect(r.x, r.y + r.h / 2 - 1, r.w, 2);
+      g.fillStyle = 'rgba(255,255,255,0.1)'; if (horiz) g.fillRect(r.x, r.y, r.w, 3); else g.fillRect(r.x, r.y, 3, r.h);
+      if (r.burnt) soot(g, cx, cy, Math.max(r.w, r.h) * 0.6, 0.45);
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.8)'; g.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); }
+      break;
+    }
+    case 'pool': {
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(r.x + 3, r.y + 4, r.w, r.h);
+      g.fillStyle = '#c9c3b5'; rrect(g, r.x - 4, r.y - 4, r.w + 8, r.h + 8, 5); g.fill();
+      if (win) { g.fillStyle = '#3d5a7a'; rrect(g, r.x, r.y, r.w, r.h, 4); g.fill(); g.fillStyle = 'rgba(236,241,245,0.8)'; rrect(g, r.x + 2, r.y + 2, r.w - 4, r.h - 4, 3); g.fill(); break; }
+      g.fillStyle = c.bio === 'suburb' ? '#2a8aa8' : '#2a6a78'; rrect(g, r.x, r.y, r.w, r.h, 4); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.18)'; rrect(g, r.x + 2, r.y + 2, r.w - 4, 6, 3); g.fill();
+      g.strokeStyle = 'rgba(200,245,255,0.35)'; g.lineWidth = 1.2; g.beginPath(); for (let i = 0; i < 5; i++) { const x = r.x + 6 + Rb() * (r.w - 18), y = r.y + 8 + Rb() * (r.h - 14); g.moveTo(x, y); g.quadraticCurveTo(x + 5, y - 3, x + 10, y); } g.stroke();
+      g.fillStyle = '#e8e2d4'; g.fillRect(r.x + r.w - 10, r.y - 6, 3, 10); g.fillRect(r.x + r.w - 5, r.y - 6, 3, 10);
+      break;
+    }
+    case 'wood': {
+      shadow(2, 3, 0.35); const horiz = r.w > r.h, n = Math.floor((horiz ? r.w : r.h) / 6);
+      g.fillStyle = '#5a3d26'; g.fillRect(r.x, r.y, r.w, r.h);
+      for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) { const x = horiz ? r.x + 3 + i * 6 : r.x + 3 + j * 6, y = horiz ? r.y + 3 + j * 6 : r.y + 3 + i * 6; g.fillStyle = '#8a6440'; g.beginPath(); g.arc(x, y, 2.6, 0, TAU); g.fill(); g.fillStyle = '#c49a68'; g.beginPath(); g.arc(x, y, 1.2, 0, TAU); g.fill(); }
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.85)'; if (horiz) g.fillRect(r.x, r.y, r.w, 3); else g.fillRect(r.x, r.y, 3, r.h); }
+      break;
+    }
+    case 'log': {
+      const horiz = r.w > r.h; g.fillStyle = 'rgba(0,0,0,0.3)'; rrect(g, r.x + 3, r.y + 4, r.w, r.h, 4); g.fill();
+      g.fillStyle = '#4a3424'; rrect(g, r.x, r.y, r.w, r.h, 4); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1; g.beginPath(); if (horiz) { g.moveTo(r.x + 4, cy - 1); g.lineTo(r.x + r.w - 4, cy - 1); } else { g.moveTo(cx - 1, r.y + 4); g.lineTo(cx - 1, r.y + r.h - 4); } g.stroke();
+      g.fillStyle = '#9a7650'; g.beginPath(); if (horiz) g.ellipse(r.x + r.w - 2, cy, 2.5, r.h / 2 - 1, 0, 0, TAU); else g.ellipse(cx, r.y + r.h - 2, r.w / 2 - 1, 2.5, 0, 0, TAU); g.fill();
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.85)'; if (horiz) g.fillRect(r.x + 3, r.y, r.w - 6, r.h * 0.45); else g.fillRect(r.x, r.y + 3, r.w * 0.45, r.h - 6); }
+      break;
+    }
+    case 'trough': shadow(2, 3, 0.35); g.fillStyle = '#6e6a63'; g.fillRect(r.x, r.y, r.w, r.h); g.fillStyle = c.D.warm > 0.5 ? '#3a6a6a' : '#5a4a36'; g.fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6); break;
+    case 'windmill': {
+      // the tower's legs, then the wheel of blades seen from above and the tail vane
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.ellipse(cx + 10, cy + 12, 22, 9, 0.5, 0, TAU); g.fill();
+      g.strokeStyle = '#4a4440'; g.lineWidth = 2; g.strokeRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4); g.beginPath(); g.moveTo(r.x + 2, r.y + 2); g.lineTo(r.x + r.w - 2, r.y + r.h - 2); g.moveTo(r.x + r.w - 2, r.y + 2); g.lineTo(r.x + 2, r.y + r.h - 2); g.stroke();
+      const a = Rb() * TAU; g.strokeStyle = '#8a8f96'; g.lineWidth = 1.6; g.beginPath();
+      for (let i = 0; i < 12; i++) { const b = a + i / 12 * TAU; g.moveTo(cx + Math.cos(b) * 4, cy + Math.sin(b) * 4); g.lineTo(cx + Math.cos(b) * 17, cy + Math.sin(b) * 17); } g.stroke();
+      g.fillStyle = '#b03a2e'; g.save(); g.translate(cx, cy); g.rotate(a); g.fillRect(4, -2, 22, 4); g.fillRect(22, -7, 6, 14); g.restore();
+      break;
+    }
+    case 'tank': {
+      g.fillStyle = 'rgba(0,0,0,0.38)'; g.beginPath(); g.ellipse(cx + 5, cy + 7, r.w / 2, r.h / 2, 0, 0, TAU); g.fill();
+      g.fillStyle = '#6e7276'; g.beginPath(); g.arc(cx, cy, r.w / 2, 0, TAU); g.fill(); g.fillStyle = '#7f8388'; g.beginPath(); g.arc(cx - 2, cy - 2, r.w / 2 - 5, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1; for (let i = 1; i < 3; i++) { g.beginPath(); g.arc(cx, cy, r.w / 2 - i * 5, 0, TAU); g.stroke(); }
+      break;
+    }
+  }
+}
 // a car on its roof: the underside, axles and wheels showing
 function drawFlipped(g, r) {
   const horiz = r.w > r.h, L = Math.max(r.w, r.h), Wd = Math.min(r.w, r.h);
@@ -933,7 +1430,7 @@ function soot(g, x, y, r, a) {
 }
 function drawRubble(g, r, Rb) {
   const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-  g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(cx + 6, cy + 8, r.w / 2, r.h / 2, 0, 0, TAU); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(cx + 4, cy + 5, r.w * 0.44, r.h * 0.42, 0, 0, TAU); g.fill();
   const n = 5 + Math.floor(r.w * r.h / 900);
   for (let i = 0; i < Math.min(n, 14); i++) {
     // each slab a tilted four-sided chunk; the ones nearer the middle sit higher (lighter)

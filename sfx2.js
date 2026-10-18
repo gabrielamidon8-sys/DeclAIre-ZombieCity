@@ -166,7 +166,25 @@
 
   // ---------- weather ambience ----------
   // a few long noise loops through filters: rain, wind, a river, a fire's roar. Their levels follow the weather.
-  var AMB = null, ambLv = { rain: 0, wind: 0, river: 0, fire: 0, ash: 0 }, ambIdle = 0, crackT = 0;
+  // 1.9.925: the wind is a soft breeze that swells with each gust and rises in pitch as it strengthens, it whistles
+  // between buildings when it picks up, and there are quiet beds under everything: the low drone of a dead city,
+  // and crickets or cicadas out in the suburbs and the desert.
+  var AMB = null, ambLv = { rain: 0, wind: 0, river: 0, fire: 0, ash: 0, whistle: 0, hum: 0, bugs: 0 }, ambIdle = 0, crackT = 0, AMBK = ['rain', 'wind', 'river', 'fire', 'ash', 'whistle', 'hum', 'bugs'];
+  // insects, written straight into a loop: a couple of crickets chirping at their own pace, or the buzz of cicadas
+  function bugBuf(sec) {
+    var sr = ac.sampleRate, n = Math.floor(sr * sec), b = ac.createBuffer(1, n, sr), d = b.getChannelData(0);
+    var cr = [[4300, 0.62, 0], [4750, 0.81, 0.27], [3900, 1.13, 0.5]];
+    cr.forEach(function (c) {
+      for (var t0 = c[2]; t0 < sec - 0.2; t0 += c[1] * (0.9 + Math.random() * 0.2)) for (var p = 0; p < 3; p++) {
+        var s0 = Math.floor((t0 + p * 0.034) * sr), len = Math.floor(0.022 * sr);
+        for (var i = 0; i < len && s0 + i < n; i++) d[s0 + i] += Math.sin(2 * Math.PI * c[0] * i / sr) * Math.sin(Math.PI * i / len) * 0.22;
+      }
+    });
+    // a faint cicada hiss underneath, pulsing
+    for (var j = 0; j < n; j++) d[j] += (Math.random() * 2 - 1) * 0.05 * (0.6 + 0.4 * Math.sin(2 * Math.PI * 38 * j / sr)) * (0.5 + 0.5 * Math.sin(2 * Math.PI * j / n * 2));
+    var f = Math.floor(sr * 0.05); for (var k = 0; k < f; k++) { var q = k / f; d[k] = d[k] * q + d[n - f + k] * (1 - q); }
+    return b;
+  }
   function ambNoise(sec, brown) {
     var n = Math.floor(ac.sampleRate * sec), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0), last = 0;
     for (var i = 0; i < n; i++) { var w = Math.random() * 2 - 1; if (brown) { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; } else d[i] = w; }
@@ -181,21 +199,28 @@
     var f = function (type, fr, q) { var b = ac.createBiquadFilter(); b.type = type; b.frequency.value = fr; if (q) b.Q.value = q; return b; };
     var windBp = f('bandpass', 500, 0.7), wl = ac.createOscillator(), wlg = ac.createGain(); wl.frequency.value = 0.13; wlg.gain.value = 260; wl.connect(wlg); wlg.connect(windBp.frequency); wl.start(t);
     var river = f('bandpass', 520, 0.9), rl = ac.createOscillator(), rlg = ac.createGain(); rl.type = 'triangle'; rl.frequency.value = 3.3; rlg.gain.value = 140; rl.connect(rlg); rlg.connect(river.frequency); rl.start(t);
+    // the whistle: a narrow band of noise that wavers in pitch
+    var wh = f('bandpass', 1100, 14), whl = ac.createOscillator(), whg = ac.createGain(); whl.frequency.value = 0.37; whg.gain.value = 180; whl.connect(whg); whg.connect(wh.frequency); whl.start(t);
+    var windLp = f('lowpass', 1400);
     AMB = {
       rain: mk(white, [f('highpass', 900), f('lowpass', 7500), f('peaking', 3200, 0.7)]),
-      wind: mk(brown, [windBp, f('lowpass', 1400)]),
+      wind: mk(brown, [windBp, windLp]),
       river: mk(brown, [river, f('lowpass', 1500)]),
       fire: mk(brown, [f('lowpass', 420)]),
       ash: mk(brown, [f('bandpass', 260, 0.6)]),
-      lfos: [wl, rl]
+      whistle: mk(white, [wh, f('peaking', 1800, 3)]),
+      hum: mk(brown, [f('lowpass', 140), f('peaking', 60, 4)]),
+      bugs: mk(bugBuf(5.3), [f('highpass', 2000)]),
+      windBp: windBp, windLp: windLp, wh: wh, pitch: -1,
+      lfos: [wl, rl, whl]
     };
   }
   function ambStop() {
     if (!AMB) return; var a = AMB; AMB = null;
-    ['rain', 'wind', 'river', 'fire', 'ash'].forEach(function (k) { try { a[k].s.stop(); a[k].g.disconnect(); } catch (e) { } });
+    AMBK.forEach(function (k) { try { a[k].s.stop(); a[k].g.disconnect(); } catch (e) { } });
     a.lfos.forEach(function (o) { try { o.stop(); } catch (e) { } });
   }
-  var AMAX = { rain: 0.34, wind: 0.42, river: 0.3, fire: 0.3, ash: 0.18 };
+  var AMAX = { rain: 0.34, wind: 0.42, river: 0.3, fire: 0.3, ash: 0.18, whistle: 0.07, hum: 0.16, bugs: 0.1 };
   function ambSet(lv) {
     if (!ac || ac.state !== 'running') return;
     var any = false;
@@ -203,7 +228,10 @@
     if (any) { ambIdle = 0; ambStart(); } else if (AMB && ++ambIdle > 600) { ambStop(); return; }
     if (!AMB) return;
     var t = ac.currentTime;
-    for (var k2 in ambLv) { var g = AMB[k2].g.gain, tgt = ambLv[k2] * AMAX[k2]; if (Math.abs(g.value - tgt) > 0.004) g.setTargetAtTime(tgt, t, 0.5); }
+    for (var k2 in ambLv) { var g = AMB[k2].g.gain, tgt = ambLv[k2] * AMAX[k2]; if (Math.abs(g.value - tgt) > 0.004) g.setTargetAtTime(tgt, t, k2 === 'wind' ? 0.35 : 0.5); }
+    // a stronger wind is a higher, brighter rush, and the whistle climbs with it
+    var wp = lv && lv.windPitch != null ? Math.max(0, Math.min(1.4, lv.windPitch)) : 0.3;
+    if (Math.abs(wp - AMB.pitch) > 0.02) { AMB.pitch = wp; AMB.windBp.frequency.setTargetAtTime(330 + wp * 520, t, 0.6); AMB.windLp.frequency.setTargetAtTime(900 + wp * 1500, t, 0.6); AMB.wh.frequency.setTargetAtTime(850 + wp * 650, t, 0.8); }
     // fire crackles: little pops scheduled while a fire is close
     if (ambLv.fire > 0.05 && t > crackT) { crackT = t + 0.05 + Math.random() * 0.25 / ambLv.fire; noise(t + 0.01, 0.006 + Math.random() * 0.012, 0.05 + Math.random() * 0.12 * ambLv.fire, 'bandpass', 1500 + Math.random() * 3000, 1.4, null, ambBus); }
   }
@@ -243,8 +271,151 @@
       case 'mud': noise(t, 0.12, 0.18 * v, 'lowpass', 700, 1.2, 300); osc('sine', 180, 90, t + 0.03, 0.08, 0.1 * v); break;
     }
   }
+  // ---------- the sounds of the world, far off ----------
+  // Each one is synthesised when it plays (so no two are quite alike) through its own pan and a lowpass that dulls
+  // it with distance, on the ambience volume. Weather.js decides what you hear and when, by district and weather.
+  function hold(type, f0, f1, t, dur, vol, bus, att, rel) {
+    var o = ac.createOscillator(), g = ac.createGain(); att = att || 0.02; rel = rel || 0.06;
+    o.type = type; o.frequency.setValueAtTime(f0, t); if (f1 && f1 !== f0) o.frequency.linearRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.setValueAtTime(vol, t + Math.max(att, dur - rel)); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05); return o;
+  }
+  function flt(type, f, q, dest) { var b = ac.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q || 1; b.connect(dest); return b; }
+  // noise that swells in and out (a gust through leaves, sand hissing past)
+  function swell(t, dur, vol, type, f, q, bus) {
+    var s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = noiseBuf; s.loop = true; fl.type = type; fl.frequency.value = f; fl.Q.value = q || 0.7;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + dur * 0.4); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    s.connect(fl); fl.connect(g); g.connect(bus); s.start(t, Math.random()); s.stop(t + dur + 0.05);
+  }
+  // a voice-like tone with vibrato (howls, sirens), following a list of [time, frequency] points
+  function glide(type, pts, t, vol, bus, vib, vibHz) {
+    var o = ac.createOscillator(), g = ac.createGain(), end = pts[pts.length - 1][0];
+    o.type = type; o.frequency.setValueAtTime(pts[0][1], t); for (var i = 1; i < pts.length; i++) o.frequency.linearRampToValueAtTime(pts[i][1], t + pts[i][0]);
+    if (vib) { var l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = vibHz || 5; lg.gain.value = vib; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + end + 0.1); }
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + Math.min(0.3, end * 0.2)); g.gain.setValueAtTime(vol, t + end * 0.7); g.gain.linearRampToValueAtTime(0.0001, t + end);
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + end + 0.05);
+  }
+  var AEV = {
+    // a siren somewhere across the city: a slow wail, or the fast yelp
+    siren: function (t, b, R) {
+      var lp = flt('lowpass', 1700, 0.7, b), pts = [[0, 640]];
+      if (R() < 0.6) { for (var i = 0; i < 2; i++) { pts.push([i * 2.8 + 1.3, 1180]); pts.push([i * 2.8 + 2.8, 640]); } }
+      else { for (var j = 0; j < 14; j++) pts.push([0.2 + j * 0.3, j % 2 ? 700 : 1350]); pts.push([4.6, 700]); }
+      glide('sawtooth', pts, t, 0.07, lp); glide('sine', pts, t, 0.08, b); return 6;
+    },
+    horn: function (t, b, R) {
+      var lp = flt('lowpass', 1800, 0.7, b), n = 1 + Math.floor(R() * 3), tt = t;
+      for (var i = 0; i < n; i++) { var d = i === n - 1 ? 0.5 + R() * 0.4 : 0.18 + R() * 0.1; hold('square', 392, 392, tt, d, 0.05, lp, 0.01, 0.03); hold('square', 494, 494, tt, d, 0.04, lp, 0.01, 0.03); tt += d + 0.12; }
+      return tt - t + 0.2;
+    },
+    // a helicopter passing over somewhere: the rotor's thump rises and falls away
+    heli: function (t, b, R) {
+      var dur = 8, n = Math.floor(dur * 11.5);
+      for (var i = 0; i < n; i++) { var a = Math.pow(Math.sin(Math.PI * i / n), 2); if (a < 0.03) continue; noise(t + i / 11.5, 0.07, 0.3 * a, 'lowpass', 300 + a * 200, 1, 110, b); }
+      swell(t, dur, 0.05, 'bandpass', 1400, 2, b); hold('sine', 1720, 1600, t + 1, dur - 2, 0.012, b, 2, 2); return dur + 0.3;
+    },
+    gunfar: function (t, b, R) {
+      var lp = flt('lowpass', 1100, 0.7, b), burst = R() < 0.45, n = burst ? 4 + Math.floor(R() * 6) : 2 + Math.floor(R() * 4), tt = t;
+      for (var i = 0; i < n; i++) { noise(tt, 0.05, 0.45, 'lowpass', 1000, 0.7, 300, lp); osc('sine', 110, 45, tt, 0.12, 0.35, lp); noise(tt + 0.22, 0.32, 0.12, 'lowpass', 520, 0.6, 200, lp); tt += burst ? 0.085 + R() * 0.02 : 0.35 + R() * 0.7; }
+      return tt - t + 0.8;
+    },
+    dog: function (t, b, R) {
+      var bp = flt('bandpass', 950, 1.6, b), n = 2 + Math.floor(R() * 4), tt = t, f = 0.85 + R() * 0.4;
+      for (var i = 0; i < n; i++) { hold('sawtooth', 560 * f, 330 * f, tt, 0.12, 0.2, bp, 0.008, 0.05); noise(tt, 0.09, 0.14, 'bandpass', 1300 * f, 1.5, 700, b); tt += 0.25 + R() * (i % 2 ? 0.5 : 0.15); }
+      return tt - t + 0.3;
+    },
+    // wind chimes on a porch
+    chime: function (t, b, R) {
+      var notes = [1047, 1175, 1319, 1568, 1760, 2093], n = 4 + Math.floor(R() * 5), tt = t;
+      for (var i = 0; i < n; i++) { bell(tt, notes[Math.floor(R() * notes.length)], 0.04 + R() * 0.03, 2.4, b); tt += 0.1 + R() * 0.45; }
+      return tt - t + 2.6;
+    },
+    bird: function (t, b, R) {
+      var tt = t, base = 2600 + R() * 1500;
+      if (R() < 0.5) { for (var i = 0; i < 3 + Math.floor(R() * 4); i++) { var f0 = base * (0.9 + R() * 0.25); osc('sine', f0, f0 * (R() < 0.5 ? 1.35 : 0.7), tt, 0.07 + R() * 0.06, 0.05, b, 0.006); tt += 0.12 + R() * 0.25; } }
+      else { for (var j = 0; j < 8; j++) { osc('sine', base * 1.1, base * 0.85, tt, 0.035, 0.04, b, 0.003); tt += 0.05; } tt += 0.2; osc('sine', base * 0.8, base * 1.3, tt, 0.18, 0.05, b, 0.01); tt += 0.2; }
+      return tt - t + 0.3;
+    },
+    crow: function (t, b, R) {
+      var bp = flt('bandpass', 1300, 2.5, b), n = 2 + Math.floor(R() * 3), tt = t;
+      for (var i = 0; i < n; i++) { hold('sawtooth', 660, 520, tt, 0.26, 0.14, bp, 0.02, 0.08); noise(tt, 0.26, 0.05, 'bandpass', 1900, 2, 1400, b); tt += 0.42 + R() * 0.2; }
+      return tt - t + 0.3;
+    },
+    // a building settling: a long wooden creak, or the groan of steel
+    creak: function (t, b, R) {
+      var bp = flt('bandpass', 650 + R() * 300, 5, b), d = 0.8 + R() * 0.9;
+      hold('sawtooth', 70 + R() * 30, 120 + R() * 40, t, d, 0.18, bp, 0.1, 0.2); return d + 0.3;
+    },
+    metal: function (t, b, R) {
+      var bp = flt('bandpass', 380 + R() * 200, 7, b), d = 1.4 + R() * 0.8;
+      hold('triangle', 160 + R() * 40, 230 + R() * 50, t, d, 0.22, bp, 0.3, 0.4); hold('sine', 330, 410, t + 0.2, d - 0.2, 0.03, b, 0.3, 0.4);
+      if (R() < 0.6) bell(t + d, 300 + R() * 200, 0.05, 1.3, b); return d + 1.4;
+    },
+    // somewhere a wall gives way
+    collapse: function (t, b, R) {
+      noise(t, 2.4, 0.32, 'lowpass', 320, 0.8, 70, b); osc('sine', 55, 28, t, 2, 0.4, b, 0.05);
+      for (var i = 0; i < 16; i++) { var tt = t + 0.15 + R() * 1.8; noise(tt, 0.02 + R() * 0.03, 0.12 * (1 - (tt - t) / 2.4), 'bandpass', 700 + R() * 2200, 2, null, b); }
+      if (R() < 0.5) bell(t + 0.5 + R(), 260 + R() * 200, 0.04, 1, b); return 3;
+    },
+    glass: function (t, b, R) {
+      noise(t, 0.05, 0.25, 'highpass', 3200, 0.7, null, b);
+      for (var i = 0; i < 12; i++) { var f = 3000 + R() * 4500; osc('sine', f, f, t + 0.03 + R() * 0.7, 0.05 + R() * 0.08, 0.025 + R() * 0.03, b, 0.001); }
+      return 1.2;
+    },
+    boomfar: function (t, b, R) {
+      noise(t, 1.6, 0.55, 'lowpass', 380, 0.8, 60, b); osc('sine', 62, 26, t, 1.3, 0.55, b, 0.01); noise(t + 0.4, 2, 0.16, 'lowpass', 240, 0.6, 60, b); return 2.8;
+    },
+    // a church bell somewhere in the ruins, still swinging
+    bellfar: function (t, b, R) { var n = 2 + Math.floor(R() * 3), f = 200 + R() * 60; for (var i = 0; i < n; i++) bell(t + i * 1.7, f, 0.09, 4, b); return n * 1.7 + 3.5; },
+    // the emergency broadcast tone from a radio left on in a car
+    eas: function (t, b, R) { var lp = flt('lowpass', 1500, 0.7, b), d = 1.2 + R() * 0.8; hold('sine', 853, 853, t, d, 0.05, lp, 0.02, 0.05); hold('sine', 960, 960, t, d, 0.05, lp, 0.02, 0.05); noise(t, d, 0.03, 'bandpass', 1800, 0.6, null, lp); return d + 0.3; },
+    // a long way off, a lot of them
+    moan: function (t, b, R) {
+      var bp = flt('bandpass', 480, 3, b), v = 1 + Math.floor(R() * 3);
+      for (var i = 0; i < v; i++) { var f = 100 + R() * 50, s = t + i * (0.3 + R() * 0.5), d = 1.4 + R() * 0.8; glide('sawtooth', [[0, f], [d * 0.4, f * 1.12], [d, f * 0.85]], s, 0.12, bp, 3, 4 + R() * 2); }
+      return 3.4;
+    },
+    coyote: function (t, b, R) {
+      var f = 0.9 + R() * 0.25; glide('sine', [[0, 520 * f], [0.5, 1150 * f], [1.2, 1000 * f], [1.8, 700 * f]], t, 0.07, b, 18, 6);
+      var tt = t + 2; for (var i = 0; i < 3 + Math.floor(R() * 3); i++) { osc('sine', 900 * f, 1300 * f, tt, 0.08, 0.05, b, 0.005); tt += 0.12 + R() * 0.1; }
+      return tt - t + 0.3;
+    },
+    hawk: function (t, b, R) {
+      var bp = flt('bandpass', 2600, 2, b); hold('sawtooth', 3200, 2100, t, 0.9, 0.06, bp, 0.04, 0.4); noise(t, 0.9, 0.04, 'bandpass', 3000, 3, 2000, b);
+      if (R() < 0.5) hold('sawtooth', 3000, 2200, t + 1.2, 0.6, 0.04, bp, 0.04, 0.3); return 2;
+    },
+    // a rattlesnake under a rock close by
+    rattle: function (t, b, R) { var n = 50 + Math.floor(R() * 30); for (var i = 0; i < n; i++) noise(t + i / 46, 0.012, 0.06 * Math.sin(Math.PI * i / n), 'highpass', 5200, 0.7, null, b); return n / 46 + 0.2; },
+    wolf: function (t, b, R) {
+      var f = 0.9 + R() * 0.2; glide('sine', [[0, 380 * f], [0.6, 720 * f], [2.2, 680 * f], [3, 500 * f]], t, 0.08, b, 9, 5);
+      if (R() < 0.6) glide('sine', [[0, 420 * f], [0.7, 820 * f], [2, 760 * f], [2.6, 560 * f]], t + 0.9, 0.05, b, 11, 5.5);
+      return 4;
+    },
+    // lake ice cracking with that ringing zing
+    ice: function (t, b, R) { noise(t, 0.015, 0.35, 'highpass', 2500, 0.7, null, b); osc('sine', 2400, 280, t + 0.01, 0.55, 0.06, b, 0.001); osc('sine', 1600, 200, t + 0.05, 0.65, 0.04, b, 0.001); osc('sine', 90, 40, t, 0.6, 0.15, b, 0.005); return 1; },
+    branch: function (t, b, R) { noise(t, 0.012, 0.5, 'bandpass', 2200, 1.2, null, b); for (var i = 0; i < 5; i++) noise(t + 0.02 + R() * 0.12, 0.008, 0.15, 'bandpass', 1500 + R() * 2000, 2, null, b); noise(t + 0.5 + R() * 0.3, 0.3, 0.12, 'lowpass', 500, 0.7, 200, b); return 1.2; },
+    frog: function (t, b, R) { var n = 3 + Math.floor(R() * 5), f = 160 + R() * 80; for (var i = 0; i < n; i++) { var tt = t + i * (0.35 + R() * 0.1); for (var k = 0; k < 4; k++) osc('square', f, f * 0.9, tt + k * 0.025, 0.02, 0.03, b, 0.002); } return n * 0.45 + 0.3; },
+    // gusts: leaves rushing in the trees, sand hissing past, a loose sign rattling
+    leaves: function (t, b, R) { var d = 1.4 + R(); swell(t, d, 0.12, 'bandpass', 3200, 0.5, b); swell(t + 0.2, d * 0.8, 0.07, 'highpass', 5000, 0.7, b); return d + 0.2; },
+    sandgust: function (t, b, R) { var d = 1.3 + R(); swell(t, d, 0.14, 'highpass', 3500, 0.7, b); return d + 0.2; },
+    snowgust: function (t, b, R) { var d = 1.5 + R(); swell(t, d, 0.1, 'bandpass', 1800, 0.6, b); return d + 0.2; },
+    clatter: function (t, b, R) { var n = 6 + Math.floor(R() * 8); for (var i = 0; i < n; i++) noise(t + i * 0.07 + R() * 0.03, 0.02, 0.08, 'bandpass', 900 + R() * 700, 4, null, b); if (R() < 0.5) bell(t + 0.1, 340 + R() * 80, 0.03, 0.6, b); return n * 0.09 + 0.6; }
+  };
+  var aevN = 0;
+  // pan: -1 left to 1 right; vol 0 to 1; far 0 (close) to 1 (very far, dull); sweep: the pan swings across while it plays
+  function ambEvent(kind, pan, vol, far, sweep) {
+    if (!ok() || !AEV[kind] || aevN > 6 || (AQ < 1 && kind === 'heli')) return;
+    var t = ac.currentTime + 0.02, g = ac.createGain(), lp = ac.createBiquadFilter(), out = g, pn = null;
+    g.gain.value = Math.max(0, Math.min(1, vol == null ? 0.6 : vol)); lp.type = 'lowpass'; lp.frequency.value = 9000 - Math.max(0, Math.min(1, far || 0)) * 7800; lp.Q.value = 0.5;
+    g.connect(lp);
+    if (ac.createStereoPanner) { pn = ac.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, pan || 0)); lp.connect(pn); pn.connect(ambBus); } else lp.connect(ambBus);
+    var dur = 3; try { dur = AEV[kind](t, out, Math.random) || 3; } catch (e) { }
+    if (pn && sweep) { pn.pan.setValueAtTime(pn.pan.value, t); pn.pan.linearRampToValueAtTime(Math.max(-1, Math.min(1, -(pan || 0))), t + dur); }
+    aevN++; setTimeout(function () { aevN--; try { g.disconnect(); lp.disconnect(); if (pn) pn.disconnect(); } catch (e) { } }, (dur + 0.5) * 1000);
+  }
   var api2 = {
     shot: gunShot,
+    ambEvent: ambEvent,
     setVolumes: function (v) { for (var k in v) VOL[k] = v[k]; applyVol(); radioApi.setVolume(VOL.music * VOL.master); },
     setMix: function (m) { for (var k in m) MIX[k] = m[k]; applyMix(); radioApi.setMono(MIX.mono); },
     // the gun echo follows the district you are standing in

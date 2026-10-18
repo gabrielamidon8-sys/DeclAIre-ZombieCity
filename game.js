@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.90';
+const ZC_VERSION = '1.9.925';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -80,15 +80,36 @@ function getChunk(cx, cy) {
 }
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function drawCar(g, r) {
-  const horiz = r.w > r.h, L = Math.max(r.w, r.h), Wd = Math.min(r.w, r.h);
+  const horiz = r.w > r.h, L = Math.max(r.w, r.h), Wd = Math.min(r.w, r.h), h2 = Wd / 2, l2 = L / 2;
   g.save(); g.translate(r.x + r.w / 2, r.y + r.h / 2); if (!horiz) g.rotate(Math.PI / 2);
-  g.fillStyle = 'rgba(0,0,0,0.45)'; rrect(g, -L / 2 + 4, -Wd / 2 + 5, L, Wd, 6); g.fill();
-  g.fillStyle = r.burnt ? '#1c1a19' : r.col; rrect(g, -L / 2, -Wd / 2, L, Wd, 6); g.fill();
-  g.fillStyle = r.burnt ? '#0d0c0c' : '#1d242c';
-  g.fillRect(L * 0.08, -Wd / 2 + 3, L * 0.18, Wd - 6); g.fillRect(-L * 0.36, -Wd / 2 + 3, L * 0.13, Wd - 6);
-  g.fillStyle = r.burnt ? '#2a2522' : 'rgba(255,255,255,0.12)'; g.fillRect(-L * 0.2, -Wd / 2 + 4, L * 0.27, Wd - 8);
-  if (r.burnt) { g.fillStyle = '#ff7a1a'; for (let i = 0; i < 4; i++) g.fillRect(-L / 2 + ((i * 37) % L), -Wd / 4 + (i % 2) * Wd / 3, 2, 2); }
-  else { g.fillStyle = '#f3e3a8'; g.fillRect(L / 2 - 3, -Wd / 2 + 3, 3, 4); g.fillRect(L / 2 - 3, Wd / 2 - 7, 3, 4); }
+  g.fillStyle = 'rgba(0,0,0,0.42)'; rrect(g, -l2 + 4, -h2 + 5, L, Wd, 6); g.fill();
+  // tyres peeking out under the body
+  g.fillStyle = '#0b0b0c'; for (const x of [-L * 0.3, L * 0.3]) { g.fillRect(x - 5, -h2 - 1.5, 10, 3); g.fillRect(x - 5, h2 - 1.5, 10, 3); }
+  if (r.burnt) {
+    // a burned-out shell: charred paint, rust blooming through, the glass gone, embers still glowing
+    g.fillStyle = r.rust ? '#5a3a26' : '#433b36'; rrect(g, -l2, -h2, L, Wd, 6); g.fill();
+    g.fillStyle = 'rgba(126,66,32,0.6)'; g.fillRect(-l2 + 4, -h2 + 2, L * 0.22, Wd * 0.3); g.fillRect(L * 0.15, h2 - Wd * 0.34, L * 0.25, Wd * 0.3);
+    const gr = g.createRadialGradient(0, 0, 2, 0, 0, l2); gr.addColorStop(0, 'rgba(6,5,4,0.75)'); gr.addColorStop(1, 'rgba(6,5,4,0.1)'); g.fillStyle = gr; rrect(g, -l2, -h2, L, Wd, 6); g.fill();
+    g.fillStyle = '#090807'; g.fillRect(L * 0.08, -h2 + 3, L * 0.18, Wd - 6); g.fillRect(-L * 0.36, -h2 + 3, L * 0.13, Wd - 6);
+    g.fillStyle = '#2c2522'; g.fillRect(-L * 0.2, -h2 + 4, L * 0.27, Wd - 8);
+    g.strokeStyle = 'rgba(170,160,150,0.4)'; g.lineWidth = 1; rrect(g, -l2 + 0.5, -h2 + 0.5, L - 1, Wd - 1, 6); g.stroke();
+    if (!r.rust) { g.fillStyle = '#ff7a1a'; for (let i = 0; i < 4; i++) g.fillRect(-l2 + ((i * 37) % L), -Wd / 4 + (i % 2) * Wd / 3, 2, 2); }
+  } else {
+    g.fillStyle = r.col; rrect(g, -l2, -h2, L, Wd, 6); g.fill();
+    // light from above: a brighter roof and bonnet, a darker band along the sides
+    g.fillStyle = 'rgba(255,255,255,0.1)'; rrect(g, -l2 + 3, -h2 + 3, L - 6, Wd - 6, 4); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(-l2 + 4, -h2, L - 8, 2.5); g.fillRect(-l2 + 4, h2 - 2.5, L - 8, 2.5);
+    // windscreen (front), rear window, and the roof between them
+    g.fillStyle = '#1b222a'; g.fillRect(L * 0.08, -h2 + 3, L * 0.18, Wd - 6); g.fillRect(-L * 0.36, -h2 + 3, L * 0.13, Wd - 6);
+    g.fillStyle = 'rgba(160,200,230,0.22)'; g.fillRect(L * 0.1, -h2 + 4, L * 0.05, Wd - 8);
+    g.fillStyle = 'rgba(255,255,255,0.09)'; g.fillRect(-L * 0.2, -h2 + 4, L * 0.27, Wd - 8);
+    g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1; g.beginPath(); g.moveTo(L * 0.3, -h2 + 4); g.lineTo(L * 0.3, h2 - 4); g.stroke();
+    // mirrors, headlights at the front, tail lights at the back
+    g.fillStyle = r.col; g.fillRect(L * 0.06, -h2 - 2.5, 4, 3); g.fillRect(L * 0.06, h2 - 0.5, 4, 3);
+    g.fillStyle = '#f3e3a8'; g.fillRect(l2 - 3, -h2 + 3, 3, 4); g.fillRect(l2 - 3, h2 - 7, 3, 4);
+    g.fillStyle = '#b8262a'; g.fillRect(-l2, -h2 + 3, 2.5, 4); g.fillRect(-l2, h2 - 7, 2.5, 4);
+    if (r.police) { g.fillStyle = '#e8e6e0'; g.fillRect(-L * 0.05, -h2, L * 0.12, Wd); g.fillStyle = '#ff2d2d'; g.fillRect(-L * 0.12, -h2 + 3, 5, h2 - 3); g.fillStyle = '#2d6bff'; g.fillRect(-L * 0.12, 0, 5, h2 - 3); }
+  }
   g.restore();
 }
 const tmpR = [];
@@ -1389,6 +1410,7 @@ function render() {
   ctx.globalAlpha = 1;
   drawHoles(vis);
   let tl = performance.now(); drawWorldUnder(vis); PERF.sec.life += performance.now() - tl;
+  drawWindDebris(vis);
   drawHazards(vis);
   drawDashZones(vis);
   drawBlasts();

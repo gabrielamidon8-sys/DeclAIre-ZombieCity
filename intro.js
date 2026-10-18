@@ -310,7 +310,7 @@ function introCity() {
   if (!lite) for (let i = 0; i < 7; i++) C.fog.push({ x: rand(-0.2, 1.1) * w, y: i % 2 ? rand(0, upEdge) : rand(dnEdge, h), r: rand(0.18, 0.34) * Math.max(w, h), v: rand(6, 16) });
   INTRO.city = C;
 }
-function drawCar(g, x, y, a, len, col, burnt) {
+function drawIntroCar(g, x, y, a, len, col, burnt) {
   g.save(); g.translate(x, y); g.rotate(a);
   const L = len, Wd = len * 0.46;
   g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(-L / 2 + 3, -Wd / 2 + 3, L, Wd);
@@ -400,7 +400,7 @@ function drawCity(g, t, dt) {
     const k = clamp((t - q.ta) / 0.3, 0, 1); if (k <= 0) continue;
     g.globalAlpha = k;
     if (q.k === 'bin') { g.save(); g.translate(q.x, q.y); g.rotate(q.a); g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(-B * 0.3 + 3, -B * 0.2 + 3, B * 0.6, B * 0.4); g.fillStyle = '#2f4a35'; g.fillRect(-B * 0.3, -B * 0.2, B * 0.6, B * 0.4); g.fillStyle = '#1e3022'; g.fillRect(-B * 0.3, -B * 0.2, B * 0.6, B * 0.1); g.restore(); }
-    else drawCar(g, q.x, q.y, q.a, B * 1.25, q.k === 'police' ? '#e8e6e0' : q.c, q.burnt);
+    else drawIntroCar(g, q.x, q.y, q.a, B * 1.25, q.k === 'police' ? '#e8e6e0' : q.c, q.burnt);
     if (q.k === 'police' && t > T1.rumble && !dark) { g.fillStyle = Math.sin(t * 18) > 0 ? '#ff3344' : '#3d6bff'; g.beginPath(); g.arc(q.x, q.y, B * 0.1, 0, TAU); g.fill(); }
   }
   g.globalAlpha = 1;

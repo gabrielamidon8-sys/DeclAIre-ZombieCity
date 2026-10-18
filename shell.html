@@ -694,6 +694,8 @@ button.lcd{cursor:pointer}
 .where{display:flex;flex-direction:column;gap:0;line-height:1.15;margin-top:1px;text-shadow:0 1px 3px #000;min-width:0}
 .where b{font-family:var(--f-num);font-weight:400;font-size:12px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .where span{font-size:11px;color:var(--muted);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.where span span{overflow:visible}
+.where .windArrow{display:inline-block;font-style:normal;font-size:9px;line-height:1;margin:0 4px 0 1px;transition:transform .8s linear;opacity:.85}
 #fpsBox{position:absolute;z-index:60;left:max(8px, env(safe-area-inset-left, 0px));bottom:max(6px, env(safe-area-inset-bottom, 0px));font-family:var(--f-num);font-size:11px;letter-spacing:.06em;color:#9fe8b0;background:rgba(0,0,0,.55);padding:2px 6px;pointer-events:none}
 .set-sheet{z-index:45}
 .set-head-r{display:flex;gap:10px;align-items:center}

@@ -255,8 +255,8 @@ function updWorld(dt) {
       if (d.k === 'tree') d.fa = (d.fa || 1) + ((dx * dx + dy * dy < (d.r + 14) * (d.r + 14) ? 0.32 : 1) - (d.fa || 1)) * Math.min(1, dt * 6);
     }
     if (d.k !== 'tree' && ((frameNo + d.s) & 3) === 0) near(d.x, d.y, d.r + 20, z => { if (!z.dead && !z.fly && !z.st.under && Math.hypot(z.x - d.x, z.y - d.y) < d.r + z.r * 0.6) { touch(d, z.x, z.y, 0.6, false); return false; } });
-    // a strong wind keeps everything moving
-    if (wind > 0.6 && d.k !== 'tree' && Math.random() < dt * wind * 0.4) d.sh = Math.max(d.sh, 0.25 * wind);
+    // a strong gust shakes the bushes as it goes through
+    if (wind > 0.5 && d.k !== 'tree' && Math.random() < dt * wind * 0.5) { const wk = windAt(d.x, d.y); if (wk > 0.7) d.sh = Math.max(d.sh, 0.2 * wk); }
   }
   updProps(dt); updBirds(dt); updFires(dt); updAlarms(dt);
   if (G.prints && G.prints.length) { for (const f of G.prints) f.t += dt; if (G.prints[0].t > G.prints[0].life) G.prints = G.prints.filter(f => f.t < f.life); }
@@ -360,7 +360,7 @@ function drawWorldUnder(vis) {
     for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
       const c = chunks.get(cx + ',' + cy); if (!c || !c.wet) continue;
       const L = waterLayer(c); if (!L) continue;
-      const k = Math.sin(t * 0.9 + cx) * 6, k2 = Math.cos(t * 0.7 + cy) * 5;
+      const k = Math.sin(t * (0.9 + WX.wind * 0.8) + cx) * 6 + WX.wx * 5, k2 = Math.cos(t * (0.7 + WX.wind * 0.6) + cy) * 5 + WX.wy * 5;
       ctx.globalAlpha = 0.35 + 0.2 * Math.sin(t * 1.7 + cx * 3); ctx.drawImage(L, c.ox + k, c.oy + k2, CH, CH);
       ctx.globalAlpha = 0.25 + 0.2 * Math.cos(t * 1.3 + cy * 2); ctx.drawImage(L, c.ox - k * 0.7 + 14, c.oy - k2 * 0.6 + 9, CH, CH);
     }
@@ -373,7 +373,7 @@ function drawWorldUnder(vis) {
     ctx.beginPath(); ctx.ellipse(f.x, f.y, 4.6, 2.6, f.a, 0, TAU); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  const veg = vegLevel(), wind = WX.wind || 0, wdir = WX.wdir || 0;
+  const veg = vegLevel(), wdir = WX.wdir || 0, wlv = wxLevel() > 0;
   // grass: blades that sway in the wind and flatten when something walks through
   if (veg) {
     const sea = WORLD.season, cols = {};
@@ -385,10 +385,10 @@ function drawWorldUnder(vis) {
     for (const col in cols) {
       ctx.strokeStyle = col; ctx.beginPath();
       for (const d of cols[col]) {
-        const R = Z.mulberry32(d.s), n = 7, sway = veg >= 2 ? Math.sin(t * 2.2 + d.ph) * (0.12 + wind * 0.3) : 0;
+        const R = Z.mulberry32(d.s), n = 7, wk = veg >= 2 && wlv ? windAt(d.x, d.y) : 0, sway = veg >= 2 ? Math.sin(t * 2.2 + d.ph) * 0.1 + wk * (0.42 + 0.14 * Math.sin(t * 3.4 + d.ph)) : 0;
         for (let i = 0; i < n; i++) {
           const a = (R() - 0.5) * 2.2 - Math.PI / 2, l = d.r * (0.6 + R() * 0.5), bx = d.x + (R() - 0.5) * d.r * 0.8, by = d.y + (R() - 0.5) * d.r * 0.5;
-          let ex = bx + Math.cos(a) * l * 0.5 + Math.cos(wdir) * sway * l, ey = by + Math.sin(a) * l * 0.5 + Math.sin(wdir) * sway * l * 0.4;
+          let ex = bx + Math.cos(a) * l * 0.5 + Math.cos(wdir) * sway * l, ey = by + Math.sin(a) * l * 0.5 + Math.sin(wdir) * sway * l * 0.6;
           if (d.bend > 0) { ex += Math.cos(d.ba) * d.bend * l * 0.7; ey += Math.sin(d.ba) * d.bend * l * 0.7; }
           ctx.moveTo(bx, by); ctx.quadraticCurveTo((bx + ex) / 2 + 1, (by + ey) / 2, ex, ey);
         }
@@ -465,7 +465,7 @@ function drawBird(b, fly) {
 }
 // over the zombies: bushes, tree canopies, birds in the air, flames and flickering lights
 function drawWorldOver(vis) {
-  const veg = vegLevel(), t = G.time, p = G.p && G.mode !== 'title' ? G.p : null;
+  const veg = vegLevel(), t = G.time, p = G.p && G.mode !== 'title' ? G.p : null, wlv = veg >= 2 && wxLevel() > 0, wca = Math.cos(WX.wdir || 0), wsa = Math.sin(WX.wdir || 0);
   if (veg) for (const d of WD.act) {
     if (d.k === 'grass') continue;
     if (!vis(d.x, d.y, d.r + 10)) continue;
@@ -474,11 +474,16 @@ function drawWorldOver(vis) {
     if (d.k === 'tree') a = 0.94 * (d.fa || 1);
     else if (p && Math.abs(p.x - d.x) < d.r + 8 && Math.abs(p.y - d.y) < d.r + 8) a = 0.55;
     ctx.globalAlpha = a;
+    // the canopy leans downwind and rocks back and forth; tall trees move slowly, bushes quicker
+    const tree = d.k === 'tree', wk = wlv ? windAt(d.x, d.y) : 0, rock = wk > 0.03 ? Math.sin(t * (tree ? 1.5 : 2.6) + d.ph) * wk : 0, lean = wk * (tree ? 3.4 : 2.2) + rock * (tree ? 1.8 : 1.2);
+    const lx = wca * lean, ly = wsa * lean;
     if (sh > 0.02) {
-      const w = Math.sin(t * (d.k === 'tree' ? 16 : 30) + d.ph) * sh;
-      ctx.save(); ctx.translate(d.x + Math.cos(d.sa) * sh * 3, d.y + Math.sin(d.sa) * sh * 3); ctx.rotate(w * (d.k === 'tree' ? 0.08 : 0.22)); ctx.scale(1 + sh * 0.06, 1 - sh * 0.05);
+      const w = Math.sin(t * (tree ? 16 : 30) + d.ph) * sh;
+      ctx.save(); ctx.translate(d.x + lx + Math.cos(d.sa || 0) * sh * 3, d.y + ly + Math.sin(d.sa || 0) * sh * 3); ctx.rotate(w * (tree ? 0.08 : 0.22) + rock * 0.03); ctx.scale(1 + sh * 0.06, 1 - sh * 0.05);
       ctx.drawImage(S.c, -S.half, -S.half, S.half * 2, S.half * 2); ctx.restore();
-    } else ctx.drawImage(S.c, d.x - S.half, d.y - S.half, S.half * 2, S.half * 2);
+    } else if (wk > 0.25) {
+      ctx.save(); ctx.translate(d.x + lx, d.y + ly); ctx.rotate(rock * (tree ? 0.025 : 0.05)); ctx.drawImage(S.c, -S.half, -S.half, S.half * 2, S.half * 2); ctx.restore();
+    } else ctx.drawImage(S.c, d.x + lx - S.half, d.y + ly - S.half, S.half * 2, S.half * 2);
   }
   ctx.globalAlpha = 1;
   if (SET.life) for (const b of WD.birds) if (b.st === 1 && vis(b.x, b.y, 30)) drawBird(b, 1);
@@ -521,13 +526,13 @@ function drawWorldOver(vis) {
 }
 function drawFlame(x, y, r, ph) {
   // three tongues of fire, outer red to inner yellow, licking upward
-  const cols = ['rgba(200,50,20,0.85)', 'rgba(255,130,40,0.9)', 'rgba(255,220,120,0.95)'];
+  const cols = ['rgba(200,50,20,0.85)', 'rgba(255,130,40,0.9)', 'rgba(255,220,120,0.95)'], wv = Math.min(1.2, WX.wind || 0), lx = Math.cos(WX.wdir || 0) * wv * 0.75, ly = Math.sin(WX.wdir || 0) * wv * 0.5;
   for (let k = 0; k < 3; k++) {
     const s = r * (1 - k * 0.3);
     ctx.fillStyle = cols[k]; ctx.beginPath();
     for (let i = 0; i < 3; i++) {
-      const ox = (i - 1) * s * 0.45, h = s * (1.3 + 0.35 * Math.sin(ph * (9 + i * 3) + i * 2 + k)), w = s * 0.45;
-      ctx.moveTo(x + ox - w, y); ctx.quadraticCurveTo(x + ox - w * 0.6, y - h * 0.55, x + ox + Math.sin(ph * 7 + i) * w * 0.4, y - h); ctx.quadraticCurveTo(x + ox + w * 0.6, y - h * 0.55, x + ox + w, y); ctx.closePath();
+      const ox = (i - 1) * s * 0.45, h = s * (1.3 + 0.35 * Math.sin(ph * (9 + i * 3) + i * 2 + k)), w = s * 0.45, bx = h * lx, by = h * ly;
+      ctx.moveTo(x + ox - w, y); ctx.quadraticCurveTo(x + ox - w * 0.6 + bx * 0.3, y - h * 0.55 + by * 0.3, x + ox + Math.sin(ph * 7 + i) * w * 0.4 + bx, y - h + by); ctx.quadraticCurveTo(x + ox + w * 0.6 + bx * 0.3, y - h * 0.55 + by * 0.3, x + ox + w, y); ctx.closePath();
     }
     ctx.fill();
   }

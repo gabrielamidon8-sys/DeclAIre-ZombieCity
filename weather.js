@@ -5,13 +5,16 @@
    districts and embers drift through the burning ones; leaves blow around in fall and petals in spring.
    Everything eases in and out, so walking from one district into the next blends the weather smoothly.
    With "weather affects gameplay" on, fog, sand and blizzards shorten how far you can see, blizzards slow everyone
-   down, wind pushes you, and lightning hits whatever is under it (water carries the shock). */
+   down, wind pushes you, and lightning hits whatever is under it (water carries the shock).
+   The wind is part of the weather: a breeze on a calm day, stronger in rain and overcast, a gale in storms, blizzards
+   and sandstorms. Its direction wanders, and gusts roll across the city as a wave you can watch moving through the
+   trees and the grass before it reaches you; litter, leaves, sand and snow skitter along the ground in front of it. */
 const WXK = {
   clear: 'Clear', overcast: 'Overcast', rain: 'Rain', storm: 'Thunderstorm', fog: 'Fog', snow: 'Snow', blizzard: 'Blizzard', sand: 'Sandstorm', haze: 'Dust haze', ash: 'Ashfall', embers: 'Embers'
 };
 const WX = {
   kind: 'clear', local: 'clear', t: 30, rain: 0, snow: 0, sand: 0, ash: 0, fog: 0, storm: 0, leaves: 0, embers: 0, petals: 0, dark: 0,
-  wind: 0.15, wdir: 0.35, wx: 0.15, wy: 0.05, wet: 0, cover: 0, flash: 0, vis: 1, slow: 1, next: 4, strikes: [], bolts: [], label: 'Clear',
+  wind: 0.15, wbase: 0.15, wdir: 0.35, wx: 0.15, wy: 0.05, gust: 0, gA: 0, gf: 0, gT: 4, wet: 0, cover: 0, flash: 0, vis: 1, slow: 1, next: 4, strikes: [], bolts: [], label: 'Clear',
   gr: [0, 0, 0, 0], grT: [0, 0, 0, 0], sampleT: 0, river: 0, fireLv: 0, lastCam: null, splash: []
 };
 const WX_SEASON = [
@@ -24,6 +27,7 @@ function wxLevel() { return SET.weather === 'off' ? 0 : SET.weather === 'low' ? 
 function wxReset() {
   WX.kind = 'clear'; WX.t = 25 + Math.random() * 20; WX.strikes = []; WX.bolts = []; WX.flash = 0; WX.next = 5; WX.cover = 0; WX.splash = [];
   WX.rain = WX.snow = WX.sand = WX.ash = WX.fog = WX.storm = WX.leaves = WX.embers = WX.petals = WX.dark = WX.wet = 0;
+  WX.gA = WX.gust = 0; WX.gT = 3; WXD.length = 0;
   if (SET.wxMode && SET.wxMode !== 'dynamic') WX.kind = SET.wxMode;
   else if (Math.random() < 0.35) WX.kind = 'overcast';
 }
@@ -51,7 +55,8 @@ function wxTargets(k, bio, sea) {
   switch (k) {
     case 'rain': T.rain = 0.75; T.wind = 0.35; T.dark = 0.22; T.fog = 0.08; break;
     case 'storm': T.rain = 1; T.storm = 1; T.wind = 0.8; T.dark = 0.42; break;
-    case 'fog': T.fog = 0.85; T.wind = 0.08; T.dark = 0.1; break;
+    case 'fog': T.fog = 0.85; T.wind = 0.06; T.dark = 0.1; break;
+    case 'clear': T.wind = bio === 'desert' ? 0.24 : bio === 'snow' ? 0.22 : bio === 'city' || bio === 'chaos' ? 0.19 : 0.16; break;   // never quite still: a breeze
     case 'snow': T.snow = 0.7; T.wind = 0.25; T.dark = 0.1; break;
     case 'blizzard': T.snow = 1; T.wind = 1; T.fog = 0.55; T.dark = 0.22; break;
     case 'sand': T.sand = 1; T.wind = 1; T.dark = 0.15; break;
@@ -75,18 +80,16 @@ function updWeather(dt, rdt) {
   const bio = bioAt(x, y), sea = WORLD.season, k = wxLocal(WX.kind, bio, sea);
   WX.local = k; WX.label = WX_LABEL(k, bio);
   const T = wxTargets(k, bio, sea), e = Math.min(1, rdt * 0.35);
-  for (const key of ['rain', 'snow', 'sand', 'ash', 'fog', 'storm', 'leaves', 'embers', 'petals', 'wind', 'dark']) WX[key] += (T[key] - WX[key]) * e;
-  // the wind turns slowly
-  WX.wdir += Math.sin(G.time * 0.05) * rdt * 0.05;
-  WX.wx = Math.cos(WX.wdir) * WX.wind; WX.wy = Math.sin(WX.wdir) * WX.wind;
+  for (const key of ['rain', 'snow', 'sand', 'ash', 'fog', 'storm', 'leaves', 'embers', 'petals', 'dark']) WX[key] += (T[key] - WX[key]) * e;
+  updWind(rdt, T.wind);
   WX.wet = clamp(WX.wet + (WX.rain > 0.3 ? rdt * 0.05 : -rdt * 0.02), 0, 1);
   const snowCity = WX.snow > 0.45 && bio !== 'snow' && !(sea === 3 && TEMPERATE[bio]);
   WX.cover = clamp(WX.cover + (snowCity ? rdt * 0.02 : -rdt * 0.03), 0, 0.8);
   // what the weather does to the game
   const gp = SET.wxPlay && lv > 0;
-  WX.vis = gp ? 1 - Math.min(0.55, WX.fog * 0.42 + WX.sand * 0.4 + (WX.snow > 0.8 ? (WX.snow - 0.8) * WX.wind * 1.5 : 0)) : 1;
-  WX.slow = gp && WX.snow > 0.75 && WX.wind > 0.7 ? 0.88 : 1;
-  if (gp && play && G.p && (WX.sand > 0.5 || (WX.snow > 0.7 && WX.wind > 0.7))) { G.p.extX += WX.wx * 30; G.p.extY += WX.wy * 30; }
+  WX.vis = gp ? 1 - Math.min(0.55, WX.fog * 0.42 + WX.sand * 0.4 + (WX.snow > 0.8 ? (WX.snow - 0.8) * WX.wbase * 1.5 : 0)) : 1;
+  WX.slow = gp && WX.snow > 0.75 && WX.wbase > 0.7 ? 0.88 : 1;
+  if (gp && play && G.p && (WX.sand > 0.5 || (WX.snow > 0.7 && WX.wbase > 0.7))) { G.p.extX += Math.cos(WX.wdir) * WX.wbase * 30; G.p.extY += Math.sin(WX.wdir) * WX.wbase * 30; }
   // lightning
   if (WX.flash > 0) WX.flash = Math.max(0, WX.flash - rdt * 3.2);
   if (WX.storm > 0.55 && lv > 0) { WX.next -= dt; if (WX.next <= 0) { WX.next = (3.5 + Math.random() * 6) / WX.storm; lightning(gp && play); } }
@@ -103,8 +106,185 @@ function updWeather(dt, rdt) {
     WX.fireLv = fd < 600 ? (1 - fd / 600) : 0;
     SFX.setEnv(bio);
   }
-  if (lv > 0) SFX.amb({ rain: WX.rain, wind: Math.max(WX.wind - 0.2, 0) * (0.4 + WX.sand + WX.snow * 0.6 + WX.storm * 0.4), river: WX.river, fire: WX.fireLv, ash: WX.ash * 0.4 });
-  else SFX.amb(null);
+  if (lv > 0) {
+    const bio2 = WORLD.cur ? WORLD.cur.bio : 'city', town = bio2 === 'city' || bio2 === 'chaos' || bio2 === 'burning' || bio2 === 'ruins' || bio2 === 'ash';
+    SFX.amb({
+      rain: WX.rain, river: WX.river, fire: WX.fireLv, ash: WX.ash * 0.4,
+      // a breeze is a soft hush; gusts swell it, storms and blizzards roar
+      wind: clamp(0.1 + WX.wbase * 0.45 + WX.gust * 0.75 + WX.sand * 0.3 + WX.snow * WX.wbase * 0.3 + WX.storm * 0.2, 0, 1),
+      windPitch: clamp(WX.wind, 0, 1.4),
+      // wind whistling between buildings once it picks up
+      whistle: town ? clamp((WX.wind - 0.45) * 1.4, 0, 1) : clamp((WX.wind - 0.7) * 0.8, 0, 0.5),
+      hum: town && bio2 !== 'ruins' ? (bio2 === 'city' ? 0.5 : 0.3) : 0,
+      bugs: (bio2 === 'suburb' || bio2 === 'desert') && WORLD.season !== 3 && WX.rain < 0.2 && WX.wind < 0.6 ? (bio2 === 'desert' ? 0.6 : 0.4) : 0
+    });
+  } else SFX.amb(null);
+  // the far-off sounds of the world play whatever the weather setting
+  ambienceTick(rdt, WORLD.cur ? WORLD.cur.bio : 'city');
+}
+/* ---------- ambience ---------- */
+// Every few seconds something happens somewhere out of sight: a siren across downtown, a dog in the suburbs, crows
+// over the ruins, a coyote in the desert, wolves and cracking ice up north. Each district has its own list, the
+// weather and season trim it (no birdsong in a storm, frogs only by a river in spring and summer), and each sound
+// comes from a random side at its own distance. Gusts bring their own: leaves rushing through nearby trees, a loose
+// sign rattling in town, sand or snow hissing past.
+const AMBI = { t: 3, gust: 0 };
+const AMB_LIST = {
+  city: [['siren', 3], ['horn', 2], ['heli', 1], ['gunfar', 2], ['eas', 1], ['glass', 2], ['dog', 1], ['moan', 2], ['bird', 1.5], ['creak', 1]],
+  chaos: [['siren', 4], ['gunfar', 4], ['heli', 2], ['boomfar', 2], ['horn', 2], ['glass', 2], ['eas', 1], ['moan', 2]],
+  burning: [['creak', 3], ['collapse', 2], ['glass', 2], ['boomfar', 2], ['siren', 1], ['moan', 1]],
+  ruins: [['crow', 3], ['metal', 3], ['bellfar', 1], ['collapse', 1], ['creak', 2], ['moan', 2], ['dog', 1]],
+  ash: [['crow', 2], ['metal', 2], ['creak', 1], ['moan', 1], ['bellfar', 1]],
+  suburb: [['dog', 4], ['bird', 4], ['chime', 2], ['crow', 1], ['branch', 1], ['siren', 1], ['moan', 1], ['frog', 2]],
+  desert: [['coyote', 3], ['hawk', 3], ['rattle', 1], ['gunfar', 1], ['dog', 0.5], ['metal', 1]],
+  snow: [['wolf', 3], ['ice', 2], ['branch', 3], ['crow', 2], ['creak', 1]]
+};
+function ambOk(k, bio) {
+  const sea = WORLD.season, wet = WX.rain > 0.3 || WX.storm > 0.3 || WX.snow > 0.6 || WX.sand > 0.4;
+  switch (k) {
+    case 'bird': return !wet && WX.wbase < 0.6 && sea !== 3;
+    case 'frog': return WX.river > 0.05 && (sea === 0 || sea === 1) && WX.snow < 0.2;
+    case 'chime': return WX.wind > 0.12;
+    case 'crow': return bio !== 'suburb' || sea >= 2;
+    case 'branch': return bio === 'snow' || sea === 3;
+    case 'rattle': return sea === 1 || sea === 0;
+    case 'metal': return bio !== 'desert' || WX.wind > 0.3;   // out in the desert it's the windmill turning
+    case 'coyote': case 'wolf': case 'hawk': return WX.storm < 0.5 && WX.sand < 0.6 && WX.snow < 0.85;
+  }
+  return true;
+}
+function ambienceTick(rdt, bio) {
+  if (!SFX.ambEvent || G.mode === 'intro') return;
+  // gusts: when one reaches you
+  const g = WX.gust, thr = 0.1 + WX.wbase * 0.3;
+  if (g > thr && AMBI.gust <= thr) {
+    const ca = Math.cos(WX.wdir), pan = clamp(-ca * 0.8, -0.9, 0.9);
+    if (bio === 'desert') SFX.ambEvent('sandgust', pan, 0.4 + g * 0.6, 0.2, true);
+    else if (bio === 'snow' || WX.snow > 0.3) SFX.ambEvent('snowgust', pan, 0.4 + g * 0.6, 0.2, true);
+    else {
+      let trees = 0; for (const d of WD.act) if ((d.k === 'tree' || d.k === 'bush') && Math.abs(d.x - cam.x) < 380 && Math.abs(d.y - cam.y) < 300) trees++;
+      if (trees > 2 && !(WORLD.season === 3 && TEMPERATE[bio])) SFX.ambEvent('leaves', pan, Math.min(0.8, 0.2 + trees * 0.03 + g * 0.5), 0.1, true);
+      else if (bio !== 'suburb' && Math.random() < 0.6) SFX.ambEvent('clatter', rand(-0.8, 0.8), 0.35 + g * 0.4, 0.3);
+      if (bio === 'suburb' && Math.random() < 0.3) setTimeout(() => SFX.ambEvent('chime', rand(-0.7, 0.7), 0.4 + g * 0.4, 0.15), 400);
+    }
+  }
+  AMBI.gust = g;
+  AMBI.t -= rdt; if (AMBI.t > 0) return;
+  // busier downtown and in the chaos, quieter out in the snow; a storm drowns most of it out
+  const busy = bio === 'chaos' ? 0.55 : bio === 'city' ? 0.75 : bio === 'snow' || bio === 'ash' ? 1.3 : 1;
+  AMBI.t = (4 + Math.random() * 7) * busy * (1 + WX.storm * 0.8 + WX.sand * 0.6);
+  const L = (AMB_LIST[bio] || AMB_LIST.city).filter(e => ambOk(e[0], bio)); if (!L.length) return;
+  let tot = 0; for (const e of L) tot += e[1];
+  let r = Math.random() * tot, k = L[0][0]; for (const e of L) { r -= e[1]; if (r <= 0) { k = e[0]; break; } }
+  const far = k === 'rattle' || k === 'branch' || k === 'chime' ? rand(0, 0.3) : rand(0.25, 0.85), vol = (1 - far * 0.55) * rand(0.5, 0.9);
+  SFX.ambEvent(k, rand(-0.85, 0.85), vol, far, k === 'heli');
+}
+/* ---------- wind ---------- */
+// WX.wbase is how hard the weather blows (eased in and out); WX.wind is that plus the gust passing over you right now.
+// A gust is a band of stronger wind that sweeps along the wind's direction at a few hundred pixels a second.
+function updWind(rdt, target) {
+  WX.wbase += (target - WX.wbase) * Math.min(1, rdt * 0.35);
+  const ca = Math.cos(WX.wdir), sa = Math.sin(WX.wdir), camS = cam.x * ca + cam.y * sa;
+  WX.gT -= rdt;
+  if (WX.gT <= 0) {
+    // the next gust: stronger and more often when it is already windy
+    WX.gA = (0.3 + Math.random() * 0.7) * (0.12 + WX.wbase * 0.75);
+    WX.gf = camS - 1300 - Math.random() * 500;
+    WX.gT = (4 + Math.random() * 10) / (0.6 + WX.wbase);
+  }
+  WX.gf += (300 + WX.wbase * 320) * rdt;
+  const dc = camS - WX.gf;
+  WX.gust = WX.gA * Math.exp(-dc * dc / (2 * 360 * 360));
+  if (-dc > 1800) WX.gA = 0;
+  // the wind itself breathes a little, and swings round slowly (a touch faster in a storm)
+  WX.wind = WX.wbase * (0.86 + 0.14 * Math.sin(G.time * 0.7) * Math.sin(G.time * 1.9 + 1)) + WX.gust * 0.9;
+  WX.wdir += (Math.sin(G.time * 0.031) * 0.012 + Math.sin(G.time * 0.17 + 2) * 0.006 * (1 + WX.storm * 2)) * rdt;
+  WX.wx = Math.cos(WX.wdir) * WX.wind; WX.wy = Math.sin(WX.wdir) * WX.wind;
+  updWindDebris(rdt);
+}
+// how strongly the wind moves something standing at (x, y) right now (0 calm, about 1 a strong wind, more in a gust):
+// the steady wind ripples through in waves, and a gust is a brighter band moving along with it
+function windAt(x, y) {
+  const s = x * Math.cos(WX.wdir) + y * Math.sin(WX.wdir), ripple = 0.5 + 0.5 * Math.sin(G.time * 1.8 - s * 0.0105);
+  let k = WX.wbase * (0.5 + 0.5 * ripple);
+  if (WX.gA > 0.01) { const d = s - WX.gf; if (d > -1100 && d < 1100) k += WX.gA * Math.exp(-d * d / (2 * 360 * 360)) * 1.3; }
+  return k;
+}
+function windWord(w) { return w < 0.1 ? 'Calm' : w < 0.32 ? 'Breeze' : w < 0.58 ? 'Windy' : w < 0.85 ? 'Strong wind' : 'Gale'; }
+// things the wind pushes along the ground near you: paper and plastic bags in town, leaves in the suburbs and in fall,
+// tumbleweeds and sand puffs in the desert, snow snakes up north, swirls of ash. Purely for looks, and local.
+const WXD = [];
+function updWindDebris(rdt) {
+  const lv = wxLevel(); if (!lv || G.mode === 'intro') { WXD.length = 0; return; }
+  const bio = WORLD.cur ? WORLD.cur.bio : 'city', sea = WORLD.season, max = Math.round((SET.life === false ? 0 : 26) * Math.min(1, lv + 0.2));
+  const ca = Math.cos(WX.wdir), sa = Math.sin(WX.wdir), hw = W / ZOOM / 2 + 80, hh = H / ZOOM / 2 + 80;
+  // new pieces come in from the upwind edge of the view, more of them the harder it blows
+  if (WXD.length < max && Math.random() < rdt * (0.4 + WX.wind * 6)) {
+    const kind = bio === 'desert' ? (Math.random() < 0.12 ? 'weed' : 'puff') : bio === 'snow' || (sea === 3 && TEMPERATE[bio]) ? 'snake' : bio === 'ash' ? 'ashw' : bio === 'suburb' || sea === 2 ? (Math.random() < 0.8 ? 'leaf' : 'paper') : bio === 'burning' ? (Math.random() < 0.5 ? 'ashw' : 'paper') : (Math.random() < 0.75 ? 'paper' : 'bag');
+    const side = (Math.random() - 0.5) * 2;
+    const x = cam.x - ca * hw * 1.05 - sa * side * hh, y = cam.y - sa * hh * 1.05 + ca * side * hw;
+    WXD.push({ k: kind, x: x, y: y, vx: 0, vy: 0, a: Math.random() * TAU, va: 0, t: 0, s: 0.7 + Math.random() * 0.6, ph: Math.random() * 10, c: Math.floor(Math.random() * 4) });
+  }
+  // on a calm hot day out in the desert, now and then a dust devil wanders across
+  if (bio === 'desert' && WX.sand < 0.4 && WX.rain < 0.1 && WX.wbase < 0.45 && Math.random() < rdt * 0.03 && !WXD.some(d => d.k === 'devil')) {
+    const a = Math.random() * TAU; WXD.push({ k: 'devil', x: cam.x + Math.cos(a) * hw * 0.7, y: cam.y + Math.sin(a) * hh * 0.7, vx: 0, vy: 0, a: 0, va: 0, t: 0, s: 0.8 + Math.random() * 0.5, ph: 0, c: 0, life: 9 + Math.random() * 6 });
+  }
+  for (let i = WXD.length - 1; i >= 0; i--) {
+    const d = WXD[i];
+    if (d.k === 'devil') { d.t += rdt; d.ph += rdt; d.x += (ca * 30 + Math.sin(d.t * 0.7) * 22) * rdt; d.y += (sa * 30 + Math.cos(d.t * 0.5) * 22) * rdt; if (d.t > d.life) WXD.splice(i, 1); continue; }
+    const w = windAt(d.x, d.y), sp = (d.k === 'weed' ? 150 : d.k === 'snake' || d.k === 'puff' ? 230 : 120) * w * d.s;
+    d.t += rdt; d.ph += rdt * (2 + w * 4);
+    // carried along in skips and tumbles, with a little wobble across the wind
+    const hop = d.k === 'paper' || d.k === 'leaf' || d.k === 'bag' ? 0.55 + 0.45 * Math.max(0, Math.sin(d.ph * 1.7)) : 1;
+    d.vx += (ca * sp * hop - d.vx) * Math.min(1, rdt * 3) + (-sa) * Math.sin(d.ph * 0.9) * 18 * rdt;
+    d.vy += (sa * sp * hop - d.vy) * Math.min(1, rdt * 3) + ca * Math.sin(d.ph * 0.9) * 18 * rdt;
+    d.x += d.vx * rdt; d.y += d.vy * rdt; d.a += (d.k === 'weed' ? sp / 14 : sp / 40 * Math.sin(d.ph)) * rdt;
+    if (blocked(d.x, d.y, 4)) { d.vx *= -0.3; d.vy *= -0.3; d.x += d.vx * rdt * 2; d.y += d.vy * rdt * 2; }
+    if (Math.abs(d.x - cam.x) > hw * 1.3 || Math.abs(d.y - cam.y) > hh * 1.3 || d.t > 30) WXD.splice(i, 1);
+  }
+}
+function drawWindDebris(vis) {
+  if (!WXD.length) return;
+  for (const d of WXD) {
+    if (!vis(d.x, d.y, 20)) continue;
+    const sh = SET.life === false ? 0 : 1; if (!sh) continue;
+    switch (d.k) {
+      case 'paper': ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.a); ctx.scale(1, 0.4 + 0.6 * Math.abs(Math.sin(d.ph))); ctx.fillStyle = ['#d9d4c6', '#e8e2d4', '#c9c0a8', '#b8c4cc'][d.c]; ctx.fillRect(-4, -3, 8, 6); ctx.restore(); break;
+      case 'bag': ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.a); ctx.globalAlpha = 0.8; ctx.fillStyle = ['#e8e8e8', '#d8d0c0', '#c03a2e', '#3a3a3a'][d.c]; ctx.beginPath(); ctx.ellipse(0, 0, 6, 4 + 2 * Math.sin(d.ph * 3), 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; ctx.restore(); break;
+      case 'leaf': ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.a); ctx.fillStyle = WORLD.season === 2 ? ['#c9762a', '#a8442a', '#e0a83a', '#8a5a2a'][d.c] : ['#4f7a34', '#6a8a3a', '#8a7a34', '#3a5a2a'][d.c]; ctx.beginPath(); ctx.ellipse(0, 0, 3.6, 1.2 + 1.6 * Math.abs(Math.sin(d.ph * 2)), 0, 0, TAU); ctx.fill(); ctx.restore(); break;
+      case 'weed': {
+        ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.a); ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 1.2; const r = 11 * d.s;
+        ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(4, 6, r, r * 0.6, 0, 0, TAU); ctx.fill();
+        ctx.beginPath(); for (let i = 0; i < 9; i++) { const a = i / 9 * TAU; ctx.moveTo(0, 0); ctx.quadraticCurveTo(Math.cos(a + 0.8) * r * 0.6, Math.sin(a + 0.8) * r * 0.6, Math.cos(a) * r, Math.sin(a) * r); } ctx.arc(0, 0, r * 0.85, 0, TAU); ctx.stroke(); ctx.restore(); break;
+      }
+      case 'puff': { const r = 14 + d.t * 10, a = Math.max(0, 0.22 - d.t * 0.07); if (a <= 0) break; ctx.globalAlpha = a; ctx.drawImage(glowSprite('#c79a5a'), d.x - r, d.y - r * 0.6, r * 2, r * 1.2); ctx.globalAlpha = 1; break; }
+      case 'snake': { const l = 26 * d.s, ca = Math.cos(WX.wdir), sa = Math.sin(WX.wdir), a = Math.min(1, d.t * 2) * 0.5; ctx.strokeStyle = 'rgba(245,250,255,' + a.toFixed(2) + ')'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(d.x - ca * l, d.y - sa * l); ctx.quadraticCurveTo(d.x - sa * 4 * Math.sin(d.ph * 3), d.y + ca * 4 * Math.sin(d.ph * 3), d.x, d.y); ctx.stroke(); ctx.lineCap = 'butt'; break; }
+      case 'devil': {
+        const f = Math.min(1, d.t / 2, (d.life - d.t) / 2); if (f <= 0) break;
+        ctx.fillStyle = 'rgba(0,0,0,' + (0.12 * f).toFixed(3) + ')'; ctx.beginPath(); ctx.ellipse(d.x + 6, d.y + 8, 22 * d.s, 10 * d.s, 0, 0, TAU); ctx.fill();
+        for (let k = 0; k < 16; k++) { const a = d.ph * (7 - k * 0.25) + k * 0.8, r = (3 + k * 1.7) * d.s, h = k * 2.6 * d.s, pr = (6 + k * 0.9) * d.s; ctx.globalAlpha = f * (0.38 - k * 0.016); ctx.drawImage(glowSprite('#efdcb4'), d.x + Math.cos(a) * r - pr, d.y + Math.sin(a) * r * 0.5 - h - pr * 0.7, pr * 2, pr * 1.4); }
+        // a thin spiral of grit so it reads as turning
+        ctx.globalAlpha = f * 0.45; ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let k = 0; k < 24; k++) { const a = d.ph * 6 + k * 0.55, r = (2 + k * 1.1) * d.s, px = d.x + Math.cos(a) * r, py = d.y + Math.sin(a) * r * 0.5 - k * 1.7 * d.s; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+        ctx.stroke(); ctx.globalAlpha = 1; break;
+      }
+      case 'ashw': { ctx.fillStyle = 'rgba(150,150,154,0.5)'; for (let k = 0; k < 4; k++) { const a = d.ph * 2 + k * 1.6, r = 4 + k * 2; ctx.fillRect(d.x + Math.cos(a) * r, d.y + Math.sin(a) * r * 0.6, 2, 2); } break; }
+    }
+  }
+}
+// fast faint streaks across the screen when the wind is strong
+function drawWindStreaks(rdt, mx, my) {
+  if (WX.wind < 0.45 || wxLevel() < 0.4) return;
+  const P = pool('streak', 18), k = Math.min(1, (WX.wind - 0.45) * 1.6), n = Math.floor(P.max * k), ca = Math.cos(WX.wdir), sa = Math.sin(WX.wdir), sc = Math.min(W, H) / 480, sp = (600 + WX.wind * 700) * sc;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    P.x[i] += ca * sp * P.z[i] * rdt - mx; P.y[i] += sa * sp * P.z[i] * rdt - my; P.r[i] += rdt;
+    if (P.x[i] < -200 || P.x[i] > W + 200 || P.y[i] < -200 || P.y[i] > H + 200 || P.r[i] > 2.2) { P.r[i] = 0; P.x[i] = ca > 0 ? -150 - Math.random() * 100 : W + 150 + Math.random() * 100; P.y[i] = Math.random() * H; if (Math.abs(sa) > 0.7) { P.x[i] = Math.random() * W; P.y[i] = sa > 0 ? -150 : H + 150; } }
+    const l = (36 + 60 * P.z[i]) * sc, a = 0.12 * k * Math.sin(Math.min(1, P.r[i] / 2.2) * Math.PI);
+    ctx.strokeStyle = 'rgba(230,236,242,' + a.toFixed(3) + ')'; ctx.lineWidth = 1 + P.z[i];
+    ctx.beginPath(); ctx.moveTo(P.x[i], P.y[i]); ctx.quadraticCurveTo(P.x[i] - ca * l * 0.5 - sa * 3, P.y[i] - sa * l * 0.5 + ca * 3, P.x[i] - ca * l, P.y[i] - sa * l); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
 }
 function lightning(canStrike) {
   const rf = SET.flash;   // reduce flashing
@@ -306,6 +486,7 @@ function drawWeatherScreen(rdt) {
         ctx.beginPath(); ctx.ellipse(P.x[i], P.y[i], s, s * Math.abs(Math.sin(P.r[i])) * 0.6 + 0.6, P.r[i], 0, TAU); ctx.fill();
       }
     }
+    drawWindStreaks(dt, mx, my);
     // fog: two layers of soft cloud drifting with the wind
     const fogOn = SET.fog === 'auto' ? Q.fog : SET.fog === 'on';
     if (WX.fog > 0.03 && fogOn) {
@@ -359,11 +540,17 @@ function fogTex() {
 const WXH = { key: '' };
 function updWhere() {
   const D = WORLD.cur; if (!D) return;
-  const key = D.name + '|' + WX.label + '|' + WORLD.season;
-  if (key === WXH.key) return; WXH.key = key;
-  const el = $('whereChip'); if (!el) return;
-  el.textContent = '';
-  const a = document.createElement('b'); a.textContent = D.name; a.style.color = BIO[D.bio].col;
-  const b = document.createElement('span'); b.textContent = WX.label + ' · ' + SEASONS[WORLD.season];
-  el.append(a, b);
+  const ww = windWord(WX.wbase), key = D.name + '|' + WX.label + '|' + WORLD.season + '|' + ww;
+  if (key !== WXH.key) {
+    WXH.key = key;
+    const el = $('whereChip'); if (!el) return;
+    el.textContent = '';
+    const a = document.createElement('b'); a.textContent = D.name; a.style.color = BIO[D.bio].col;
+    const b = document.createElement('span'); b.textContent = WX.label + ' · ';
+    const ar = document.createElement('i'); ar.className = 'windArrow'; ar.textContent = '\u27a4'; ar.setAttribute('aria-hidden', 'true');
+    const c = document.createElement('span'); c.textContent = ww + ' · ' + SEASONS[WORLD.season];
+    b.append(ar, c); el.append(a, b); WXH.ar = ar; WXH.ang = null;
+  }
+  // the arrow turns with the wind
+  if (WXH.ar && (WXH.ang == null || Math.abs(WX.wdir - WXH.ang) > 0.03)) { WXH.ang = WX.wdir; WXH.ar.style.transform = 'rotate(' + WX.wdir.toFixed(2) + 'rad)'; }
 }

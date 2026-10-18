@@ -471,7 +471,7 @@ function updJets(dt) {
 }
 // smoke, bullet holes and the impact flash keep going after the jets have gone
 function updAirFx(dt) {
-  if (G.smoke && G.smoke.length) { for (const s of G.smoke) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.97; s.vy *= 0.97; } G.smoke = G.smoke.filter(s => s.t < s.life); }
+  if (G.smoke && G.smoke.length) { const wx = (WX.wx || 0) * 34, wy = (WX.wy || 0) * 34; for (const s of G.smoke) { s.t += dt; s.x += (s.vx + wx * Math.min(1, s.t)) * dt; s.y += (s.vy + wy * Math.min(1, s.t)) * dt; s.vx *= 0.97; s.vy *= 0.97; } G.smoke = G.smoke.filter(s => s.t < s.life); }
   if (G.holes && G.holes.length) { for (const h of G.holes) { h.t += dt; if (h.hot > 0) h.hot -= dt * 0.6; } if (G.holes[0].t > 28) G.holes = G.holes.filter(h => h.t < 28); }
   if (G.flashA > 0) G.flashA -= dt * 1.4;
 }
