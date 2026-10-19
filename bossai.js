@@ -363,7 +363,7 @@ function updCine(dt) {
   else { cam.x += (p.x - cam.x) * k; cam.y += (p.y - cam.y) * k; }
   if (!C.z && C.t >= 0.9) {
     const z = spawnRoster(ZB.OVERLORD, false, { x: C.x, y: C.y });
-    const w = G.wave || 1; z.maxHp = z.hp = 30 * 7 * (1 + 0.15 * (w - 1)) * (9 + w * 0.7) * 1.2; z.r = z.baseR = 14 * 1.75 * 1.9; applyForm(z);
+    const w = G.wave || 1; z.maxHp = z.hp = 30 * 7 * (1 + 0.15 * (w - 1)) * (9 + w * 0.7) * 1.2; z.r = z.baseR = zombieR(1.75, BOSSK); applyForm(z);
     C.z = z; SFX.overlordRoar(); shakeIt(18); ring(C.x, C.y, 20, 320, 1, '255,45,74', 8); burst(C.x, C.y, 60, '#3a0d16', 340, 7, 1);
     banner('The Overlord', 'Death do us part');
   }

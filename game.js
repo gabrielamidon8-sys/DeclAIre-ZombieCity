@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.927';
+const ZC_VERSION = '1.9.930';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -68,6 +68,22 @@ function getSprite(m, r, plain) {
 
 /* ================= city ================= */
 const CH = 640, ROAD = 112, BS = CH - ROAD;
+/* ---------- real-world scale ----------
+   32 units are one metre. A block is still laid out in the CH-wide units above, but with the world scale on it is
+   played SCL times bigger: roads about 8 m, cars 4.5 m, a person 0.55 m across (PK), a normal zombie a little more
+   (ZK), a big mutant 1 to 2 m, a boss 2 to 4 m. 'Classic' (SCL 1) is the old, compact city with the old sizes. */
+const SCALE_REAL = 2.4;
+let SCL = 1, CHS = CH, ROADS = ROAD, PK = 1, ZK = 1, ZP = 1, BOSSK = 1.9;
+function setWorldScale(k) {
+  if (k === SCL && chunks.size) return;
+  const real = k > 1.2;
+  SCL = k; CHS = CH * k; ROADS = ROAD * k;
+  PK = real ? 0.75 : 1; ZK = real ? 0.72 : 1; ZP = real ? 1.9 : 1; BOSSK = real ? 4.6 : 1.9;
+  FF_CS = real ? 40 : 32; FF_N = real ? 112 : 84;
+  chunks.clear(); fieldsReset(); WLC = null;
+}
+// how big a zombie is, in units: a mutation's size grows faster than it did, so a colossal one towers
+const zombieR = (size, sc) => { const r = 14 * ZK * Math.pow(size, ZP) * sc; return ZP > 1 && sc >= BOSSK ? Math.min(r, 84) : r; };
 let citySeed = (Math.random() * 1e9) | 0;
 const chunks = new Map();
 const ROOFS = ['#353a42', '#3e3b36', '#363e3b', '#433d35', '#343846', '#404249', '#3a3530'];
@@ -116,11 +132,11 @@ const tmpR = [];
 // solid things near a point. Each chunk sorts its rectangles into 16 buckets, so a lookup only checks what is close by.
 function rectsNear(x, y, rad) {
   tmpR.length = 0; const q = ++RQ;
-  const x0 = Math.floor((x - rad) / CH), x1 = Math.floor((x + rad) / CH), y0 = Math.floor((y - rad) / CH), y1 = Math.floor((y + rad) / CH);
+  const x0 = Math.floor((x - rad) / CHS), x1 = Math.floor((x + rad) / CHS), y0 = Math.floor((y - rad) / CHS), y1 = Math.floor((y + rad) / CHS);
   for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) {
-    const c = getChunk(i, j), bk = c.bk;
-    const bx0 = clamp(Math.floor((x - rad - c.ox) / 160), 0, 3), bx1 = clamp(Math.floor((x + rad - c.ox) / 160), 0, 3);
-    const by0 = clamp(Math.floor((y - rad - c.oy) / 160), 0, 3), by1 = clamp(Math.floor((y + rad - c.oy) / 160), 0, 3);
+    const c = getChunk(i, j), bk = c.bk, bs = c.bs;
+    const bx0 = clamp(Math.floor((x - rad - c.sx) / bs), 0, 3), bx1 = clamp(Math.floor((x + rad - c.sx) / bs), 0, 3);
+    const by0 = clamp(Math.floor((y - rad - c.sy) / bs), 0, 3), by1 = clamp(Math.floor((y + rad - c.sy) / bs), 0, 3);
     for (let bi = bx0; bi <= bx1; bi++) for (let bj = by0; bj <= by1; bj++) {
       const rs = bk[bj * 4 + bi];
       for (let n = 0; n < rs.length; n++) { const r = rs[n]; if (r._q === q) continue; r._q = q; if (x + rad > r.x && x - rad < r.x + r.w && y + rad > r.y && y - rad < r.y + r.h) tmpR.push(r); }
@@ -128,10 +144,11 @@ function rectsNear(x, y, rad) {
   }
   return tmpR;
 }
-function collide(e, r) {
+function collide(e, r, big) {
   const rs = rectsNear(e.x, e.y, r); let hit = false;
   for (let i = 0; i < rs.length; i++) {
-    const b = rs[i], nx = clamp(e.x, b.x, b.x + b.w), ny = clamp(e.y, b.y, b.y + b.h);
+    const b = rs[i]; if (big && !SOLID[b.k]) continue;
+    const nx = clamp(e.x, b.x, b.x + b.w), ny = clamp(e.y, b.y, b.y + b.h);
     const dx = e.x - nx, dy = e.y - ny, d2 = dx * dx + dy * dy;
     if (d2 < r * r) {
       hit = true;
@@ -144,9 +161,9 @@ function collide(e, r) {
   }
   return hit;
 }
-function blocked(x, y, r) {
+function blocked(x, y, r, big) {
   const rs = rectsNear(x, y, r);
-  for (let i = 0; i < rs.length; i++) { const b = rs[i], nx = clamp(x, b.x, b.x + b.w), ny = clamp(y, b.y, b.y + b.h); if ((x - nx) * (x - nx) + (y - ny) * (y - ny) < r * r) return true; }
+  for (let i = 0; i < rs.length; i++) { const b = rs[i]; if (big && !SOLID[b.k]) continue; const nx = clamp(x, b.x, b.x + b.w), ny = clamp(y, b.y, b.y + b.h); if ((x - nx) * (x - nx) + (y - ny) * (y - ny) < r * r) return true; }
   return false;
 }
 
@@ -169,37 +186,50 @@ function near(x, y, rad, fn) {
 // Every 0.35s a Dijkstra pass fills an 84x84 grid of 32px cells around the player with walking distance.
 // Cells next to walls cost more, so zombies round corners instead of scraping along them.
 // Zombies with a clear line of sight run straight at you; the rest follow the field around buildings.
-const FF_CS = 32, FF_N = 84, FF_LEN = FF_N * FF_N;
-const FF = { ox: 0, oy: 0, pcx: 1e9, pcy: 1e9, t: -9, ready: false, dist: new Float32Array(FF_LEN), cost: new Float32Array(FF_LEN), open: new Uint8Array(FF_LEN) };
-const HI = new Int32Array(FF_LEN * 8), HK = new Float32Array(FF_LEN * 8), FD = [0, 0];
-const blockCache = new Map();
-function cellBlocked(cx, cy) {
-  const k = (cx + 60000) * 120000 + (cy + 60000);
-  let v = blockCache.get(k);
-  if (v === undefined) { v = blocked(cx * FF_CS + FF_CS / 2, cy * FF_CS + FF_CS / 2, 15) ? 1 : 0; if (blockCache.size > 150000) blockCache.clear(); blockCache.set(k, v); }
+// Three fields, one per size of walker: ordinary zombies (FF), big mutants that need wider gaps (FFB), and bosses,
+// which only go around buildings and walls and shove straight through cars, fences and benches (FFS). The big ones are
+// only built while something that big is chasing you. In the real-world city a cell is a metre and a quarter and the
+// field reaches about 70 m around you; in the classic city it is the old 32-unit grid.
+let FF_CS = 32, FF_N = 84;
+const FF_MAXN = 112, FF_MAXLEN = FF_MAXN * FF_MAXN;
+// what a boss cannot walk through: buildings, landmarks, rubble heaps, statues, tanks, big rocks
+const SOLID = { b: 1, lm: 1, rub: 1, statue: 1, tank: 1, windmill: 1, rock: 1, pool: 1 };
+function newField(rad, big, name) { return { name: name, rad: rad, big: big, ox: 0, oy: 0, pcx: 1e9, pcy: 1e9, t: -9, ready: false, cache: new Map(), dist: new Float32Array(FF_MAXLEN), cost: new Float32Array(FF_MAXLEN), open: new Uint8Array(FF_MAXLEN), n: FF_N, cs: FF_CS }; }
+const FF = newField(15, false, 'small'), FFB = newField(30, false, 'big'), FFS = newField(56, true, 'boss');
+const HI = new Int32Array(FF_MAXLEN * 8), HK = new Float32Array(FF_MAXLEN * 8), FD = [0, 0];
+const blockCache = FF.cache;
+function fieldsReset() { for (const F of [FF, FFB, FFS]) { F.ready = false; F.cache.clear(); } }
+function cellBlockedF(F, cx, cy) {
+  const k = (cx + 60000) * 120000 + (cy + 60000), C = F.cache;
+  let v = C.get(k);
+  if (v === undefined) { v = blocked(cx * FF_CS + FF_CS / 2, cy * FF_CS + FF_CS / 2, F.rad, F.big) ? 1 : 0; if (C.size > 150000) C.clear(); C.set(k, v); }
   return v;
 }
-function buildField() {
-  let p = G.p; const n = FF_N;
+function cellBlocked(cx, cy) { return cellBlockedF(FF, cx, cy); }
+function buildField(F) {
+  F = F || FF;
+  let p = G.p; const n = FF_N; F.n = n; F.cs = FF_CS;
   // co-op: the field is centred between the players and flows to whichever is nearest
   const srcs = NET.role === 'host' && NET.started ? netAlive() : null;
   if (srcs && srcs.length > 1) { let sx = 0, sy = 0; for (const q of srcs) { sx += q.x; sy += q.y; } p = { x: sx / srcs.length, y: sy / srcs.length }; }
   const pcx = Math.floor(p.x / FF_CS), pcy = Math.floor(p.y / FF_CS);
-  FF.ox = pcx - (n >> 1); FF.oy = pcy - (n >> 1); FF.pcx = pcx; FF.pcy = pcy; FF.t = G.time;
-  const dist = FF.dist, cost = FF.cost, open = FF.open;
-  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) open[j * n + i] = cellBlocked(FF.ox + i, FF.oy + j) ? 0 : 1;
+  F.ox = pcx - (n >> 1); F.oy = pcy - (n >> 1); F.pcx = pcx; F.pcy = pcy; F.t = G.time;
+  const dist = F.dist, cost = F.cost, open = F.open;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) open[j * n + i] = cellBlockedF(F, F.ox + i, F.oy + j) ? 0 : 1;
+  // where you stand is always open, so the field never comes out empty when you are pressed against a wall
+  open[(n >> 1) * n + (n >> 1)] = 1;
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const id = j * n + i; let c = 1;
     if (open[id]) for (let dj = -1; dj <= 1 && c === 1; dj++) for (let di = -1; di <= 1; di++) {
       const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < n && jj < n && !open[jj * n + ii]) { c = 2.2; break; }
     }
-    if (open[id]) { const w = waterAt((FF.ox + i) * FF_CS + FF_CS / 2, (FF.oy + j) * FF_CS + FF_CS / 2); if (w === 2) c *= 2.6; else if (w === 1) c *= 1.7; }
+    if (open[id] && !F.big) { const w = waterAt((F.ox + i) * FF_CS + FF_CS / 2, (F.oy + j) * FF_CS + FF_CS / 2); if (w === 2) c *= 2.6; else if (w === 1) c *= 1.7; }
     cost[id] = c; dist[id] = 1e9;
   }
   let hs = 0;
   const push = (id, k) => { let i = hs++; HI[i] = id; HK[i] = k; while (i > 0) { const pa = (i - 1) >> 1; if (HK[pa] <= HK[i]) break; const ti = HI[pa], tk = HK[pa]; HI[pa] = HI[i]; HK[pa] = HK[i]; HI[i] = ti; HK[i] = tk; i = pa; } };
   if (srcs && srcs.length > 1) {
-    for (const q of srcs) { const i = Math.floor(q.x / FF_CS) - FF.ox, j = Math.floor(q.y / FF_CS) - FF.oy; if (i >= 0 && j >= 0 && i < n && j < n) { const id = j * n + i; dist[id] = 0; push(id, 0); } }
+    for (const q of srcs) { const i = Math.floor(q.x / FF_CS) - F.ox, j = Math.floor(q.y / FF_CS) - F.oy; if (i >= 0 && j >= 0 && i < n && j < n) { const id = j * n + i; open[id] = 1; dist[id] = 0; push(id, 0); } }
   } else { const start = (n >> 1) * n + (n >> 1); dist[start] = 0; push(start, 0); }
   while (hs > 0) {
     const id = HI[0], k = HK[0];
@@ -215,32 +245,38 @@ function buildField() {
       if (nd < dist[nid] && hs < HI.length) { dist[nid] = nd; push(nid, nd); }
     }
   }
-  FF.ready = true;
+  F.ready = true;
 }
-function flowDir(x, y) {
-  if (!FF.ready) return null;
-  const n = FF_N, i = Math.floor(x / FF_CS) - FF.ox, j = Math.floor(y / FF_CS) - FF.oy;
+// which field a zombie follows: by how wide it is (and bosses in the real-world city shove through the small stuff)
+function zBig(z) { return z.boss && ZP > 1; }
+function fieldFor(z) { return zBig(z) ? FFS : z.r >= 16 ? FFB : FF; }
+function flowDir(x, y, F) {
+  F = F || FF;
+  if (!F.ready) { if (F !== FF) return flowDir(x, y, FF); return null; }
+  const n = F.n, cs = F.cs, i = Math.floor(x / cs) - F.ox, j = Math.floor(y / cs) - F.oy;
   if (i < 1 || j < 1 || i >= n - 1 || j >= n - 1) return null;
-  const id = j * n + i; let best = FF.open[id] ? FF.dist[id] : 1e10, bi = -1, bj = -1;
+  const id = j * n + i; let best = F.open[id] ? F.dist[id] : 1e10, bi = -1, bj = -1;
   for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
     if (!di && !dj) continue; const nid = (j + dj) * n + (i + di);
-    if (!FF.open[nid]) continue;
-    if (di && dj && (!FF.open[j * n + i + di] || !FF.open[(j + dj) * n + i])) continue;
-    if (FF.dist[nid] < best) { best = FF.dist[nid]; bi = i + di; bj = j + dj; }
+    if (!F.open[nid]) continue;
+    if (di && dj && (!F.open[j * n + i + di] || !F.open[(j + dj) * n + i])) continue;
+    if (F.dist[nid] < best) { best = F.dist[nid]; bi = i + di; bj = j + dj; }
   }
-  if (bi < 0 || best >= 1e9) return null;
-  const tx = (FF.ox + bi + 0.5) * FF_CS, ty = (FF.oy + bj + 0.5) * FF_CS, dx = tx - x, dy = ty - y, d = Math.hypot(dx, dy) || 1;
+  // a big zombie standing in a cell its own field calls closed (it squeezed in): fall back to the ordinary field
+  if (bi < 0 || best >= 1e9) return F !== FF ? flowDir(x, y, FF) : null;
+  const tx = (F.ox + bi + 0.5) * cs, ty = (F.oy + bj + 0.5) * cs, dx = tx - x, dy = ty - y, d = Math.hypot(dx, dy) || 1;
   FD[0] = dx / d; FD[1] = dy / d; return FD;
 }
 function reachable(x, y) {
   if (!FF.ready) return true;
-  const i = Math.floor(x / FF_CS) - FF.ox, j = Math.floor(y / FF_CS) - FF.oy;
-  if (i < 0 || j < 0 || i >= FF_N || j >= FF_N) return true;
-  return FF.dist[j * FF_N + i] < 1e9;
+  const n = FF.n, i = Math.floor(x / FF.cs) - FF.ox, j = Math.floor(y / FF.cs) - FF.oy;
+  if (i < 0 || j < 0 || i >= n || j >= n) return true;
+  return FF.dist[j * n + i] < 1e9;
 }
-function hasLOS(x0, y0, x1, y1) {
+function hasLOS(x0, y0, x1, y1, F) {
+  F = F || FF;
   const dx = x1 - x0, dy = y1 - y0, steps = Math.ceil(Math.hypot(dx, dy) / 20);
-  for (let s = 1; s < steps; s++) { const t = s / steps; if (cellBlocked(Math.floor((x0 + dx * t) / FF_CS), Math.floor((y0 + dy * t) / FF_CS))) return false; }
+  for (let s = 1; s < steps; s++) { const t = s / steps; if (cellBlockedF(F, Math.floor((x0 + dx * t) / FF_CS), Math.floor((y0 + dy * t) / FF_CS))) return false; }
   return true;
 }
 
@@ -258,7 +294,7 @@ let frameNo = 0;
 
 function newPlayer() {
   const p = {
-    x: 56, y: 56, r: 12, hp: 100, maxHp: 100, speed: 172, regen: 0, killHeal: 0, dashCd: 2.4, dashCdT: 0, dashT: 0,
+    x: 56 * SCL, y: 56 * SCL, r: 12 * PK, hp: 100, maxHp: 100, speed: 172, regen: 0, killHeal: 0, dashCd: 2.4, dashCdT: 0, dashT: 0,
     dashDx: 1, dashDy: 0, iframe: 0, fireCd: 0, aim: 0, flashT: 0, slowT: 0, slowMul: 1, poisonT: 0, burnT: 0,
     jamT: 0, weakT: 0, frozenT: 0, rootT: 0, blindT: 0, bleedT: 0, kvx: 0, kvy: 0, extX: 0, extY: 0, ix: 0, iy: 0, walk: 0,
     shots: 0, queue: [], cards: {}, cs: newCardStats(), weapon: WEAPONS[loadoutId()], taken: 1, healMul: 1, scoreMul: 1, luck: 0, vision: 0,
@@ -331,12 +367,21 @@ function tryDash() {
 }
 
 /* ================= fx helpers ================= */
+// a particle glows (stays bright at night) when its colour is a hot one: sparks, flames, muzzle flashes, energy
+const GLOWC = new Map();
+function glowCol(col) {
+  let v = GLOWC.get(col); if (v !== undefined) return v;
+  v = false;
+  if (typeof col === 'string' && col[0] === '#' && col.length >= 7) { const n = parseInt(col.slice(1, 7), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255; v = Math.max(r, gg, b) > 225 && (r + gg + b) > 420; }
+  if (GLOWC.size < 400) GLOWC.set(col, v); return v;
+}
 function burst(x, y, n, col, spd, size, life) {
   n *= Q.burst; n = Math.floor(n) + (Math.random() < n % 1 ? 1 : 0);
+  const gl = glowCol(col);
   for (let i = 0; i < n; i++) {
     if (G.parts.length >= Q.parts) G.parts.shift();
     const a = rand(TAU), s = rand(spd * 0.25, spd);
-    G.parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(life * 0.5, life), max: life, c: col, s: rand(size * 0.5, size) });
+    G.parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(life * 0.5, life), max: life, c: col, s: rand(size * 0.5, size), glow: gl });
   }
 }
 function ring(x, y, r0, r1, life, c, w) { G.rings.push({ x: x, y: y, r0: r0, r1: r1, t: 0, life: life, c: c, w: w || 2 }); }
@@ -351,13 +396,13 @@ function bolt(x1, y1, x2, y2, c) {
 /* ================= zombies ================= */
 function spawnZombie(m, x, y, o) {
   o = o || {}; const w = G.wave || 1;
-  const sc = o.boss ? 1.9 : o.child ? 0.66 : o.minion ? 0.58 : 1;
+  const sc = o.boss ? BOSSK : o.child ? 0.66 : o.minion ? 0.58 : 1;
   let hp = 30 * m.hp * (1 + 0.15 * (w - 1));
   if (o.boss) hp *= (9 + w * 0.7) * (1 + (G.bossHpMul || 0)); if (o.child) hp *= 0.4; if (o.minion) hp *= 0.3;
   if (G.mode === 'play') hp *= 1 + (G.zhpMul || 0);
   if (o.fly) hp = 4 + w * 0.4; if (o.illusion) hp = 1;
   const z = {
-    m: m, x: x, y: y, vx: 0, vy: 0, kvx: 0, kvy: 0, r: o.fly ? 4.5 : 14 * m.size * sc, hp: hp, maxHp: hp,
+    m: m, x: x, y: y, vx: 0, vy: 0, kvx: 0, kvy: 0, r: o.fly ? 4.5 : zombieR(m.size, sc), hp: hp, maxHp: hp,
     speed: (o.fly ? 150 : 68 * m.spd * (o.boss ? 0.85 : 1) * (o.minion ? 1.25 : 1)) * Math.min(1.3, 1 + 0.012 * (w - 1)),
     dmg: o.illusion ? 0 : (o.fly ? 3 : 9 * m.dmg * (o.boss ? 1.5 : 1) * (o.minion ? 0.6 : 1) * (o.child ? 0.7 : 1)) * (1 + 0.05 * (w - 1)),
     ang: G.p ? Math.atan2(G.p.y - y, G.p.x - x) : rand(TAU), hitCd: 0.6, abs: [], st: {}, flash: 0, bob: rand(TAU), warn: 0,
@@ -571,8 +616,12 @@ function updZ(z, dt) {
     if (lure) { const lx = lure[0] - z.x, ly = lure[1] - z.y, ll = Math.hypot(lx, ly) || 1; ux = lx / ll; uy = ly / ll; if (ll < 14) { ux *= 0.1; uy *= 0.1; } }
     else if (!z.fly && !z.st.under && G.mode === 'play') {
       z.losT = (z.losT || 0) - dt;
-      if (z.losT <= 0) { z.losT = 0.2 + Math.random() * 0.15; z.los = d < 700 && hasLOS(z.x, z.y, p.x, p.y); }
-      if (!z.los) { const f = flowDir(z.x, z.y); if (f) { ux = f[0]; uy = f[1]; } }
+      // a clear line to you means running straight at you; a big zombie checks that the line is wide enough for it,
+      // and one that keeps getting stuck stops trusting its eyes and follows the field for a while
+      const ZF = fieldFor(z);
+      if (z.losT <= 0) { z.losT = 0.2 + Math.random() * 0.15; z.los = d < 700 && !(z.noLosT > 0) && hasLOS(z.x, z.y, p.x, p.y, ZF); }
+      if (z.noLosT > 0) z.noLosT -= dt;
+      if (!z.los) { const f = flowDir(z.x, z.y, ZF); if (f) { ux = f[0]; uy = f[1]; } }
     }
     if (z.fly) { const a = Math.atan2(uy, ux) + Math.sin(G.time * 9 + z.bob) * 0.9; ux = Math.cos(a); uy = Math.sin(a); }
     if (z.detT > 0) { z.detT -= dt; const a = z.detSide * 1.25, co = Math.cos(a), si = Math.sin(a); const nx = ux * co - uy * si, ny = ux * si + uy * co; ux = nx; uy = ny; }
@@ -599,12 +648,13 @@ function updZ(z, dt) {
   }
   const dec = Math.exp(-9 * dt); z.kvx *= dec; z.kvy *= dec;
   if (!z.fly && !z.st.under) {
-    const hit = collide(z, z.r * 0.9);
+    const big = zBig(z), hit = collide(z, z.r * 0.9, big);
+    if (big) bossTrample(z, dt);
     if (hit && c.ov && z.st.charge > 0) { z.st.charge = 0; z.stun = 1.0; shakeIt(4); burst(z.x, z.y, 12, '#8c8270', 160, 5, 0.5); }
     if (!c.ov && c.move > 0) {
       const want = Math.hypot(tvx, tvy) * dt, got = Math.hypot(z.x - px, z.y - py);
       if (want > 0.4 && got < want * 0.35) z.stuckT += dt; else z.stuckT = Math.max(0, z.stuckT - dt * 0.5);
-      if (z.stuckT > 0.3 && z.detT <= 0) { z.detT = 1.1; z.detSide = Math.random() < 0.5 ? -1 : 1; z.stuckT = 0; }
+      if (z.stuckT > 0.3 && z.detT <= 0) { z.detT = 1.1; z.detSide = Math.random() < 0.5 ? -1 : 1; z.stuckT = 0; z.stuckN = (z.stuckN || 0) + 1; if (z.stuckN >= 2) { z.noLosT = 3; z.los = false; z.stuckN = 0; } }
     }
   }
   const ta = c.face != null ? c.face : Math.atan2(dy, dx);
@@ -616,6 +666,23 @@ function updZ(z, dt) {
       if (sp.lifesteal) heal(z, z.dmg * mul * 0.5);
       if (z.abs.indexOf('leech') >= 0) { heal(z, z.maxHp * 0.3); z.growth = Math.min(1.5, z.growth * 1.07); z.r = z.baseR * z.growth; ring(z.x, z.y, z.r, z.r * 1.8, 0.3, '200,30,50', 3); }
     }
+  }
+}
+// a boss in the real-world city walks through cars, fences and benches rather than around them: they crunch under it,
+// set off car alarms and slow it a little, but they never pin it in place
+function bossTrample(z, dt) {
+  z.trT = (z.trT || 0) - dt; if (z.trT > 0) return;
+  z.trT = 0.22;
+  const rr = z.r * 0.8, rs = rectsNear(z.x, z.y, rr);
+  for (let i = 0; i < rs.length; i++) {
+    const r = rs[i]; if (SOLID[r.k]) continue;
+    const nx = clamp(z.x, r.x, r.x + r.w), ny = clamp(z.y, r.y, r.y + r.h), dx = z.x - nx, dy = z.y - ny;
+    if (dx * dx + dy * dy > rr * rr) continue;
+    if (r.k === 'car') carHit(r);
+    burst(nx, ny, 6, r.k === 'car' ? '#9aa4ad' : r.k === 'fence' ? '#8a8f94' : '#6b5440', 150, 3, 0.45);
+    const p = G.p; if (p && Math.hypot(p.x - z.x, p.y - z.y) < 700) shakeIt(1.2);
+    z.vx *= 0.8; z.vy *= 0.8;
+    break;
   }
 }
 function onHitEffect(z) {
@@ -1054,6 +1121,7 @@ const OVS = ['title', 'upgrade', 'pause', 'over'];
 function showOv(id) { OVS.forEach(o => { $(o).hidden = o !== id; }); $('hud').hidden = !(G.mode === 'play' || G.mode === 'upgrade' || G.mode === 'pause' || G.mode === 'skull' || G.mode === 'cine'); }
 function newRun(o) {
   o = o && !(o instanceof Event) ? o : {};
+  if (typeof luxNewRun === 'function') luxNewRun();
   // shut for maintenance (or this version is too old): the maintenance screen instead of a run
   if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
@@ -1075,7 +1143,7 @@ function newRun(o) {
   // a teammate also waits (briefly) for the host's first look at the street
   G.mode = 'loading'; showOv(null);
   const sx = G.p.x, sy = G.p.y, host = NET.role === 'host' && NET.started;
-  const steps = [['Building the streets', () => chunkJobs(sx, sy)]];
+  const steps = [['Building the streets', () => chunkJobs(sx, sy)], ['Warming up the lights and sprites', () => warmJobs()]];
   if (o.client) steps.push(['Syncing with ' + (NET.hostName || 'the host'), () => loadUntil(() => NET.zmap.size > 0 || !NET.started || G.mode !== 'loading', 2500)]);
   else steps.push([host ? 'Sending the city to your team' : 'Rounding up the horde', () => { buildField(); }]);
   loadRun(o.client ? 'Joining ' + (NET.hostName || 'the game') : host ? 'Starting the co-op run' : 'Into the city', steps, { now: true, done: 'Go' }).then(() => {
@@ -1390,11 +1458,11 @@ function render() {
   const hw = W / 2 / ZOOM, hh = H / 2 / ZOOM, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake;
   // the city tiles cover every pixel, so the frame is never cleared first (one less full-screen fill per frame)
   let rebuild = 1; WORLD.rf = 0;
-  for (let cx = Math.floor((x0 - pad) / CH); cx <= Math.floor((x1 + pad) / CH); cx++) for (let cy = Math.floor((y0 - pad) / CH); cy <= Math.floor((y1 + pad) / CH); cy++) {
+  for (let cx = Math.floor((x0 - pad) / CHS); cx <= Math.floor((x1 + pad) / CHS); cx++) for (let cy = Math.floor((y0 - pad) / CHS); cy <= Math.floor((y1 + pad) / CHS); cy++) {
     const c = getChunk(cx, cy);
     if (!c.can || ((c.sc !== Q.chunkScale || c.stale) && rebuild-- > 0)) { renderChunk(c); c.stale = 0; }
     c.seen = frameNo;
-    ctx.drawImage(c.can, c.ox, c.oy, CH + 0.6, CH + 0.6);
+    ctx.drawImage(c.can, c.sx, c.sy, CHS + 0.6, CHS + 0.6);
   }
   if (!WORLD.rf) streamChunks(x0, y0, x1, y1);
   const vis = (x, y, r) => x > x0 - r && x < x1 + r && y > y0 - r && y < y1 + r;
@@ -1411,6 +1479,7 @@ function render() {
   drawHoles(vis);
   let tl = performance.now(); drawWorldUnder(vis); PERF.sec.life += performance.now() - tl;
   drawWindDebris(vis);
+  drawAtmosGround(vis);
   drawHazards(vis);
   drawDashZones(vis);
   drawBlasts();
@@ -1486,7 +1555,11 @@ function render() {
   tl = performance.now(); drawWorldOver(vis); PERF.sec.life += performance.now() - tl;
   drawSmoke(vis);
   drawJets();
+  drawCloudShadows(x0, y0, x1, y1);
+  luxRun(x0, y0, x1, y1, shx, shy, Math.min(0.05, G.rdt || 0.016));
+  drawEmissive(vis);
   drawWeatherWorld();
+  drawAtmosLit(vis);
   for (const b of G.bolts) { ctx.strokeStyle = b.c; ctx.globalAlpha = clamp(b.life / 0.18, 0, 1); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(b.pts[0], b.pts[1]); for (let i = 2; i < b.pts.length; i += 2) ctx.lineTo(b.pts[i], b.pts[i + 1]); ctx.stroke(); }
   ctx.globalAlpha = 1;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1501,6 +1574,28 @@ function render() {
     drawScreenFx(); drawDashScreen(); drawAim(); if (NET.started) netDrawPointers();
     if (G.flashA > 0) { ctx.globalAlpha = Math.min(0.5, G.flashA); ctx.drawImage(screenGrad('a10', 0.1, 0.8, '255,214,150', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
   }
+}
+// after the lighting has darkened the night: what makes its own light is drawn again on top, so tracers, flames,
+// sparks and glowing shots stay bright in the dark
+function drawEmissive(vis) {
+  if (!LUX.live) return;
+  const a = 1 - (LUX.amb[0] + LUX.amb[1] + LUX.amb[2]) / 3; if (a < 0.08) return;
+  ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  for (const b of G.bullets) {
+    if (!vis(b.x, b.y, 30)) continue;
+    if (b.kind === 'flame') { const f = clamp(1 - b.life / b.max, 0, 1); ctx.globalAlpha = 0.55 * (1 - f) * a; ctx.fillStyle = f < 0.3 ? '#ffe9a0' : f < 0.6 ? '#ff9a3a' : '#c2401a'; ctx.beginPath(); ctx.arc(b.x, b.y, 4 + f * 13, 0, TAU); ctx.fill(); continue; }
+    if (b.kind === 'grenade') { ctx.globalAlpha = a; ctx.fillStyle = Math.floor(G.time * 14) % 2 ? '#ff4a3a' : b.col; ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, TAU); ctx.fill(); continue; }
+    const tl = Math.min(b.heavy ? 0.034 : b.shard ? 0.012 : 0.022, b.age || 0);
+    ctx.globalAlpha = Math.min(1, a * 1.15); ctx.strokeStyle = b.crit ? '#ffffff' : b.col; ctx.lineWidth = b.heavy ? 3.4 : b.shard ? 1.6 : b.crit ? 3 : 2.4;
+    ctx.beginPath(); ctx.moveTo(b.x - b.vx * tl, b.y - b.vy * tl); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  for (const e of G.eshots) {
+    if (!vis(e.x, e.y, 30)) continue;
+    const col = e.k === 'acid' ? '#b8ec4a' : e.k === 'wisp' ? '#ffd38a' : SHOT_COL[e.k] && e.k !== 'bolt' ? SHOT_COL[e.k] : null; if (!col) continue;
+    ctx.globalAlpha = a * 0.8; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(e.x, e.y, (e.r || 5) * 1.2, 0, TAU); ctx.fill();
+  }
+  for (const q of G.parts) { if (!q.glow) continue; ctx.globalAlpha = clamp(q.life / q.max, 0, 1) * a; ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s); }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
 }
 function drawHazards(vis) {
   for (const h of G.haz) {
@@ -1641,10 +1736,11 @@ const GUN_W = { shotgun: 6, lmg: 7, launcher: 9, flamer: 6 };
 let flashGrad = null;   // the flashlight's gradient is built once and reused (it is drawn relative to the player)
 function drawPlayer(p) {
   ctx.save(); ctx.translate(p.x, p.y);
-  if (G.mode !== 'over') {
+  if (G.mode !== 'over' && !(LUX.live && LUX.day < 0.96)) {   // at night the lighting engine casts the real beam
     if (!flashGrad) { flashGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 300); flashGrad.addColorStop(0, 'rgba(255,236,180,0.17)'); flashGrad.addColorStop(1, 'rgba(255,236,180,0)'); }
     ctx.fillStyle = flashGrad; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 300, p.aim - 0.42, p.aim + 0.42); ctx.closePath(); ctx.fill();
   }
+  ctx.scale(PK, PK);   // a person is smaller next to the real-scale city
   if (p.iframe > 0 && p.dashT <= 0 && Math.floor(G.time * 30) % 2) ctx.globalAlpha = 0.5;
   if ((p.db && p.db.stealthT > 0) || (p.dashT > 0 && p.dashK === 'phantom')) ctx.globalAlpha = 0.38;
   if (p.dashT > 0 && p.dashK === 'meteor') { const h = Math.sin((1 - p.dashT / p.dashDur) * Math.PI); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 6, 13, 10, 0, 0, TAU); ctx.fill(); ctx.translate(0, -h * 34); ctx.scale(1 + h * 0.5, 1 + h * 0.5); }
@@ -1723,11 +1819,11 @@ function drawVizGround(v, x0, y0, x1, y1) {
     if (Q.viz >= 2) { ctx.globalAlpha = a * 0.3; if (horiz) ctx.fillRect(x - 15, y - 6, 30, 12); else ctx.fillRect(x - 6, y - 15, 12, 30); }
     ctx.globalAlpha = a; if (horiz) ctx.fillRect(x - 11, y - 1.5, 22, 3); else ctx.fillRect(x - 1.5, y - 11, 3, 22);
   };
-  const cx0 = Math.floor((x0 - 130) / CH), cx1 = Math.floor((x1 + 130) / CH), cy0 = Math.floor((y0 - 130) / CH), cy1 = Math.floor((y1 + 130) / CH);
+  const cx0 = Math.floor((x0 - 130) / CHS), cx1 = Math.floor((x1 + 130) / CHS), cy0 = Math.floor((y0 - 130) / CHS), cy1 = Math.floor((y1 + 130) / CHS);
   for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
     const ox = cx * CH, oy = cy * CH;
-    for (let x = ox + ROAD + 30; x < ox + CH - 30; x += 40) dash(x + 11, oy + ROAD / 2, true);
-    for (let y = oy + ROAD + 30; y < oy + CH - 30; y += 40) dash(ox + ROAD / 2, y + 11, false);
+    for (let x = ox + ROAD + 30; x < ox + CH - 30; x += 40) dash((x + 11) * SCL, (oy + ROAD / 2) * SCL, true);
+    for (let y = oy + ROAD + 30; y < oy + CH - 30; y += 40) dash((ox + ROAD / 2) * SCL, (y + 11) * SCL, false);
   }
   // rooftop neon trim rides the hi-hats and the high end
   const ra = I * (0.05 + v.hat * 0.32 + v.high * 0.6);
@@ -1901,8 +1997,12 @@ function update(dt) {
   if (host) netHostPre(dt);
   spawner(dt);
   buildGrid();
-  { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS);
-    if (!FF.ready || G.time - FF.t > 0.35 || Math.abs(pcx - FF.pcx) + Math.abs(pcy - FF.pcy) >= 2) buildField(); }
+  { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS), stale = F => !F.ready || F.n !== FF_N || Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2;
+    if (stale(FF) || G.time - FF.t > 0.35) buildField(FF);
+    // the wide fields only while something that big is chasing, and never both in the same frame
+    else if (G.needFS && (stale(FFS) || G.time - FFS.t > 0.6)) buildField(FFS);
+    else if (G.needFB && (stale(FFB) || G.time - FFB.t > 0.6)) buildField(FFB);
+    let nb = 0, ns = 0; for (const z of G.zs) { if (z.dead || z.fly) continue; if (zBig(z)) ns++; else if (z.r >= 16) nb++; } G.needFB = nb > 0; G.needFS = ns > 0; }
   if (G.cineT > 0) G.cineT -= dt;
   let nf = 0; for (const z of G.zs) if (z.fly && !z.dead) nf++; G.nFly = nf;
   const fr = Math.max(W, H) / ZOOM * 0.75 + 220, far2 = fr * fr, px = G.p.x, py = G.p.y, me = G.p;
@@ -1953,7 +2053,7 @@ function frame(now) {
   const cap = effCap();
   if (cap && cap < PERF.hz - 3 && now - PERF.lastDraw < 1000 / cap - 4) { requestAnimationFrame(frame); return; }
   const iv = PERF.lastDraw ? now - PERF.lastDraw : 16.7; PERF.lastDraw = now;
-  const rdt = Math.min(0.05, (now - last) / 1000); last = now; frameNo++;
+  const rdt = Math.min(0.05, (now - last) / 1000); last = now; frameNo++; G.rdt = rdt;
   let dt = rdt;
   if (G.slowT > 0) { G.slowT -= rdt; dt = rdt * 0.3; }
   if (G.tierFlash > 0) G.tierFlash = Math.max(0, G.tierFlash - rdt * 2.5);
@@ -1989,9 +2089,11 @@ G.attractReady = false;
 loadRun('Starting Zombie City', [
   ['Loading the fonts', () => Promise.race([document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve(), loadWait(1500)])],
   ['Waking the city', () => { initAttract(); G.attractReady = true; return chunkJobs(cam.x, cam.y); }],
+  ['Warming up the lights and sprites', () => warmJobs()],
   ['Opening the bunker', () => { refreshTitle(); }]
 ], { now: true }).then(() => {
-  if (window.ZC_NO_INTRO || /[?#&]nointro/.test(location.href)) { $('intro').hidden = true; showOv('title'); } else startIntro();
+  // the studio intro is retired while 2.0 is built: the game opens on the title screen (add ?intro to the address to see the old one)
+  if (/[?#&]intro\b/.test(location.href) && !window.ZC_NO_INTRO) startIntro(); else { $('intro').hidden = true; showOv('title'); }
 });
 requestAnimationFrame(frame);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { sprites.clear(); });

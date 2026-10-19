@@ -291,7 +291,7 @@ function netLobbyView(pl) {
   if (NET.hostOk && h) NET.hostName = ADMIN_TAG;
 }
 function netSendStart(to) {
-  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, wave: G.wave, wx: WX.kind, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
+  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, scale: SCL, wave: G.wave, wx: WX.kind, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
 }
 // the host presses Start: a normal run, and everyone else starts in the same city
 function netHostRun() {
@@ -555,7 +555,7 @@ function netClientStart(m) {
   $('coop').hidden = true;
   if (resume) { banner('Co-op', 'Back in ' + NET.hostName + "'s game"); return; }
   NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
-  newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season }, wave: m.wave, at: { x: m.x, y: m.y } });
+  newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season, scale: m.scale == null ? 1 : m.scale }, wave: m.wave, at: { x: m.x, y: m.y } });
   WX.kind = m.wx || WX.kind; WX.t = 999;
   banner('Co-op', 'In ' + NET.hostName + "'s game · wave " + m.wave);
 }

@@ -29,7 +29,7 @@ const PERF = {
   fps: 0, workMs: 0, changes: [], repairs: 0, log: [], errs: [], errT: [], storms: 0,
   lastFrame: 0, lastNow: -1, lastRaf: 0, lastDraw: 0, visibleAt: 0, freed: 0, lodN: [0, 0, 0, 0], frames: 0,
   // settings that scale the tier, and the parts the governor trims on its own before dropping a whole tier
-  partMul: 1, resLock: null, wxScale: 1, vegCut: false, sec: { wx: 0, life: 0 }, secWin: { wx: 0, life: 0 }, deco: 1
+  partMul: 1, resLock: null, wxScale: 1, vegCut: false, sec: { wx: 0, life: 0, lux: 0 }, secWin: { wx: 0, life: 0, lux: 0 }, deco: 1
 };
 
 /* ---------- device profile ---------- */
@@ -177,10 +177,10 @@ function perfFrame(now, rawIv, work) {
   if (G.mode !== PERF.lastMode) { PERF.lastMode = G.mode; PERF.holdT = Math.max(PERF.holdT, now + 1200); }
   if (!live || now < PERF.holdT) { w.n = w.sum = w.work = 0; w.iv.length = 0; return; }
   w.n++; w.sum += rawIv; w.work += work; w.iv.push(rawIv);
-  const sw = PERF.secWin; sw.wx += PERF.sec.wx; sw.life += PERF.sec.life; PERF.sec.wx = PERF.sec.life = 0;
+  const sw = PERF.secWin; sw.wx += PERF.sec.wx; sw.life += PERF.sec.life; sw.lux += PERF.sec.lux || 0; PERF.sec.wx = PERF.sec.life = PERF.sec.lux = 0;
   if (w.sum < 1000) return;
-  const wxShare = sw.wx / Math.max(1, w.work), lifeShare = sw.life / Math.max(1, w.work); sw.wx = sw.life = 0;
-  PERF.share = { wx: Math.round(wxShare * 100), life: Math.round(lifeShare * 100) };
+  const wxShare = sw.wx / Math.max(1, w.work), lifeShare = sw.life / Math.max(1, w.work), luxShare = sw.lux / Math.max(1, w.work); sw.wx = sw.life = sw.lux = 0;
+  PERF.share = { wx: Math.round(wxShare * 100), life: Math.round(lifeShare * 100), lux: Math.round(luxShare * 100) };
   const avg = w.sum / w.n, wk = w.work / w.n;
   w.iv.sort((a, b) => a - b); const p90 = w.iv[Math.floor(w.n * 0.9)];
   w.n = w.sum = w.work = 0; w.iv.length = 0;
@@ -197,6 +197,8 @@ function perfFrame(now, rawIv, work) {
     // blowing sand) fills the whole screen several times over, so it is trimmed before the resolution drops
     const fillBound = wk < T * 0.45, heavyWx = WX.fog + WX.dark + WX.sand + WX.rain * 0.5 + WX.snow * 0.5 > 0.55;
     if (PERF.bad >= 1 && (wxShare > 0.2 || (fillBound && heavyWx)) && PERF.wxScale > (fillBound && wxShare <= 0.2 ? 0.51 : 0.26) && SET.weather === 'auto') { PERF.wxScale = Math.max(0.25, PERF.wxScale - 0.25); PERF.bad = 0; PERF.holdT = now + 1200; logTrim('weather ' + Math.round(PERF.wxScale * 100) + '%'); return; }
+    // the lighting engine taking a big slice steps itself down a level before the whole picture loses resolution
+    if (PERF.bad >= 1 && luxShare > 0.22 && LUX.adapt > -3 && SET.lux !== 'off') { LUX.adapt--; LUX.bad = 0; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('lighting'); return; }
     if (PERF.bad >= 1 && lifeShare > 0.18 && !PERF.vegCut && SET.veg === 'auto') { PERF.vegCut = true; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('still trees'); return; }
     if (++PERF.bad >= 2 && PERF.rung < LADDER.length - 1) {
       const from = PERF.rung, step = avg > T * 2 ? 2 : 1;
@@ -246,9 +248,10 @@ function trimCaches(level) {
   const live = []; for (const c of chunks.values()) if (c.can) live.push(c);
   live.sort((a, b) => b.seen - a.seen);
   const keep = level >= 2 ? 0 : level >= 1 ? live.filter(c => frameNo - c.seen < 3).length : Q.chunkKeep;
-  for (let i = keep; i < live.length; i++) { freed += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); live[i].can = null; live[i].wcan = null; }
+  let kept = keep; if (level < 2) { const budget = [60, 100, 150, 210][PERF.tier] * 1048576; let b = 0; for (let i = 0; i < Math.min(kept, live.length); i++) { b += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); if (b > budget && i >= 6) { kept = i; break; } } }
+  for (let i = kept; i < live.length; i++) { freed += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); live[i].can = null; live[i].wcan = null; }
   if (level >= 1 && typeof WSPR !== 'undefined') { for (const v of WSPR.values()) freed += canvasBytes(v.c); WSPR.clear(); }
-  for (const [key, c] of chunks) if (Math.abs(c.ox + CH / 2 - cam.x) > CH * 5 || Math.abs(c.oy + CH / 2 - cam.y) > CH * 5) chunks.delete(key);
+  for (const [key, c] of chunks) if (Math.abs(c.sx + CHS / 2 - cam.x) > CHS * 5 || Math.abs(c.sy + CHS / 2 - cam.y) > CHS * 5) chunks.delete(key);
   if (level >= 1 || glowCache.size > 16) { for (const c of glowCache.values()) freed += canvasBytes(c); glowCache.clear(); ZB.clearCache(); EDGE.col = ''; VZ.specGr = null; SG.clear(); }
   for (const [id, sheet] of [['cxGrid', 'codex'], ['arGrid', 'armory'], ['blGrid', 'bosslog']]) {
     const g = $(id), sh = $(sheet);

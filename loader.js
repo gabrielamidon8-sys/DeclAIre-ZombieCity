@@ -80,12 +80,31 @@ async function loadRun(title, steps, o) {
 // seconds of a run (or the title screen) never stutter on drawing streets
 function chunkJobs(x, y) {
   const hw = W / 2 / ZOOM + 260, hh = H / 2 / ZOOM + 260, jobs = [];
-  const cx0 = Math.floor((x - hw) / CH), cx1 = Math.floor((x + hw) / CH), cy0 = Math.floor((y - hh) / CH), cy1 = Math.floor((y + hh) / CH);
+  const cx0 = Math.floor((x - hw) / CHS), cx1 = Math.floor((x + hw) / CHS), cy0 = Math.floor((y - hh) / CHS), cy1 = Math.floor((y + hh) / CHS);
   const list = [];
-  for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) list.push([cx, cy, Math.hypot((cx + 0.5) * CH - x, (cy + 0.5) * CH - y)]);
+  for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) list.push([cx, cy, Math.hypot((cx + 0.5) * CHS - x, (cy + 0.5) * CHS - y)]);
   list.sort((a, b) => a[2] - b[2]);   // the blocks you will see first are drawn first
   for (const [cx, cy] of list) jobs.push(() => { const c = getChunk(cx, cy); if (!c.can) { renderChunk(c); c.seen = frameNo; } });
   return jobs;
 }
 // waits until test() is true (or the time runs out), checking every frame
 async function loadUntil(test, ms) { const end = performance.now() + ms; while (performance.now() < end) { if (test()) return true; await loadPaint(); } return false; }
+// the warm-up: everything the first seconds of play would otherwise build on the fly is built here, behind the loading
+// screen: zombie sprites, glows, the lighting engine, weather and a few real frames. A list of small jobs, so the bar moves.
+function warmJobs() {
+  const jobs = [];
+  jobs.push(() => luxWarm());
+  // the trees, bushes and grass around the start, so their sprites are drawn before the first frame needs them
+  jobs.push(() => rebuildActive());
+  jobs.push(() => { let n = 0; for (const d of WD.act) { if (d.k === 'tree') treeSprite(d); else if (d.k === 'bush') bushSprite(d); if (++n > 160) break; } });
+  const seen = new Set();
+  for (const m of MUTS) {
+    const k = m.S && m.S.key; if (!k || seen.has(k)) continue; seen.add(k);
+    jobs.push(() => { getSprite(m, zombieR(m.size || 1, 1), true); });
+  }
+  jobs.push(() => { for (const c of ['#ff8a3a', '#ffc27a', '#ffd27a', '#ff3b3b', '#3b7bff', '#b6ff6a', '#9ad7ff', '#d2ff6a', '#e8eef4', '#bcd6ff']) glowSprite(c); atmCloudSprite(); grainCanvas(); });
+  jobs.push(() => { if (typeof drawWeatherScreen === 'function') drawWeatherScreen(0.016); });
+  for (let i = 0; i < 3; i++) jobs.push(() => { render(); });
+  jobs.push(() => { LUX.msAvg = 0; LUX.bad = 0; PERF.sec && (PERF.sec.lux = 0); });
+  return jobs;
+}

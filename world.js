@@ -53,7 +53,7 @@ function dHash(i, j) { return Z.hash32((i * 73856093) ^ (j * 19349663) ^ WORLD.s
 function worldSeed(s) {
   WORLD.seed = s | 0; citySeed = s | 0; noiseSeed(s);
   WORLD.dist.clear(); WORLD.dc.clear(); WORLD.cur = null; WORLD.seen.clear();
-  chunks.clear(); blockCache.clear(); FF.ready = false;
+  chunks.clear(); fieldsReset();
   if (typeof WCACHE !== 'undefined') WCACHE.clear();
 }
 function realSeason(d) { const m = (d || new Date()).getMonth(); return m >= 2 && m <= 4 ? 0 : m <= 7 ? 1 : m <= 10 ? 2 : 3; }
@@ -72,7 +72,8 @@ function seasonFromSetting() {
 }
 // a fresh world for a run (or the title screen): a new seed unless the player fixed one, the season, a start point
 function startWorld(title, o) {
-  // o (co-op): the host's seed, map type and season, so every player walks the same city
+  // o (co-op): the host's seed, map type, season and world scale, so every player walks the same city
+  setWorldScale(o && o.scale != null ? o.scale : SET.scale === 'classic' ? 1 : SCALE_REAL);
   WORLD.mix = (o && o.mix) || SET.world || 'mixed';
   const seed = o && o.seed != null ? (o.seed | 0) : SET.seedMode === 'fixed' && SET.seed ? (SET.seed | 0) : (Math.random() * 1e9) | 0;
   worldSeed(seed); WORLD.lastSeed = seed;
@@ -118,7 +119,7 @@ function distAt(cx, cy) {
   WORLD.dc.set(key, d);
   return d;
 }
-function bioAt(x, y) { return distAt(Math.floor(x / CH), Math.floor(y / CH)).bio; }
+function bioAt(x, y) { return distAt(Math.floor(x / CHS), Math.floor(y / CHS)).bio; }
 
 /* ---------- rivers and ponds ---------- */
 // a ridge of noise: zero along the river's centre line. Negative values are water, below -1.15 is deep.
@@ -187,6 +188,7 @@ function waterAtC(c, x, y) {
 }
 let WLC = null;   // the last chunk looked up, since most lookups land in the same one
 function waterAt(x, y) {
+  x /= SCL; y /= SCL;
   const cx = Math.floor(x / CH), cy = Math.floor(y / CH);
   let c = WLC;
   if (!c || c.cx !== cx || c.cy !== cy) { c = chunks.get(cx + ',' + cy); if (!c) return 0; WLC = c; }
@@ -199,18 +201,18 @@ function isWater(w) { return w === 1 || w === 2; }
 /* ---------- chunk generation ---------- */
 let RQ = 1;
 function bucketRects(c) {
-  const bk = []; for (let i = 0; i < 16; i++) bk.push([]);
+  const bk = [], b = c.k * 160; for (let i = 0; i < 16; i++) bk.push([]);
   for (const r of c.rects) {
-    const x0 = clamp(Math.floor((r.x - c.ox) / 160), 0, 3), x1 = clamp(Math.floor((r.x + r.w - c.ox) / 160), 0, 3);
-    const y0 = clamp(Math.floor((r.y - c.oy) / 160), 0, 3), y1 = clamp(Math.floor((r.y + r.h - c.oy) / 160), 0, 3);
+    const x0 = clamp(Math.floor((r.x - c.sx) / b), 0, 3), x1 = clamp(Math.floor((r.x + r.w - c.sx) / b), 0, 3);
+    const y0 = clamp(Math.floor((r.y - c.sy) / b), 0, 3), y1 = clamp(Math.floor((r.y + r.h - c.sy) / b), 0, 3);
     for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) bk[j * 4 + i].push(r);
   }
-  c.bk = bk;
+  c.bk = bk; c.bs = b;
 }
 function genChunk(cx, cy) {
   const R = chunkRng(cx, cy, 0), D = distAt(cx, cy), bio = D.bio;
   const ox = cx * CH, oy = cy * CH;
-  const c = { cx: cx, cy: cy, ox: ox, oy: oy, type: '', rects: [], can: null, seen: 0, bio: bio, D: D, wm: null, fv: null, wet: false, decks: [],
+  const c = { cx: cx, cy: cy, ox: ox, oy: oy, sx: ox * SCL, sy: oy * SCL, k: SCL, type: '', rects: [], can: null, seen: 0, bio: bio, D: D, wm: null, fv: null, wet: false, decks: [],
     deco: [], props: [], fires: [], birds: [], puddles: [], decals: [], lights: null, lm: cx === D.lx && cy === D.ly };
   waterField(c);
   const B = BIO[bio], k = BIOGEN[bio] || BIOGEN.city;
@@ -219,9 +221,37 @@ function genChunk(cx, cy) {
   railings(c);
   // cosmetic details use their own random stream, so a device drawing more or fewer of them never changes the map
   decorate(c, chunkRng(cx, cy, 0x77d1));
-  bucketRects(c);
+  scaleChunk(c);
   return c;
 }
+/* ---------- real-world scale ----------
+   A block is generated and drawn in its own units (CH = 640 wide, the numbers every drawing routine below uses). The
+   game itself runs in simulation units, which are SCL times bigger: with the world scale on, a road is about 8 m wide,
+   a car 4.5 m long and a person well under a metre across (32 units to the metre). So once a block has been laid out,
+   everything the game touches (walls, trees, props, fires, birds, puddles) is moved into simulation units here, and
+   renderChunk looks at the walls and fires through artView() so the drawing code keeps working in its own units. */
+function scaleChunk(c) {
+  const k = c.k;
+  if (k !== 1) {
+    for (const r of c.rects) { r.x *= k; r.y *= k; r.w *= k; r.h *= k; }
+    for (const d of c.deco) { d.x *= k; d.y *= k; d.r *= d.k === 'tree' ? k * 1.25 : k; }
+    for (const p of c.props) { p.x *= k; p.y *= k; }
+    for (const f of c.fires) { f.x *= k; f.y *= k; f.r *= k; }
+    for (const b of c.birds) { b.x *= k; b.y *= k; }
+    for (const p of c.puddles) { p.x *= k; p.y *= k; p.rx *= k; p.ry *= k; }
+  }
+  bucketRects(c);
+}
+// the walls, fires and puddles in the drawing code's own units, while a block is being painted
+function artView(c) {
+  if (c.k === 1) return null;
+  const q = 1 / c.k, keep = { rects: c.rects, fires: c.fires, puddles: c.puddles };
+  c.rects = keep.rects.map(r => Object.assign({}, r, { x: r.x * q, y: r.y * q, w: r.w * q, h: r.h * q }));
+  c.fires = keep.fires.map(f => Object.assign({}, f, { x: f.x * q, y: f.y * q, r: f.r * q }));
+  c.puddles = keep.puddles.map(p => Object.assign({}, p, { x: p.x * q, y: p.y * q, rx: p.rx * q, ry: p.ry * q }));
+  return keep;
+}
+function artDone(c, keep) { if (keep) { c.rects = keep.rects; c.fires = keep.fires; c.puddles = keep.puddles; } }
 // is this rectangle on dry land, inside the chunk's block, clear of everything solid?
 function freeAt(c, x, y, w, h, pad) {
   pad = pad || 0;
@@ -573,7 +603,7 @@ function railings(c) {
 }
 // bushes, grass, birds and the like: purely cosmetic amounts scale with the device (Q.deco)
 function decorate(c, R) {
-  const bio = c.bio, ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, dm = Q.deco || 1;
+  const bio = c.bio, ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, dm = (Q.deco || 1) * (c.k > 1.2 ? 1.9 : 1);
   const n = (k) => Math.floor(k * dm + R());
   const spot = (pad, road) => {
     for (let t = 0; t < 6; t++) {
@@ -592,10 +622,10 @@ function decorate(c, R) {
   };
   const puddles = (cnt) => { for (let i = 0; i < cnt; i++) { const onH = R() < 0.5; c.puddles.push({ x: onH ? ox + ROAD + R() * BS : ox + 14 + R() * (ROAD - 28), y: onH ? oy + 14 + R() * (ROAD - 28) : oy + ROAD + R() * BS, rx: 10 + R() * 18, ry: 6 + R() * 9, a: onH ? 0 : Math.PI / 2 }); } };
   switch (bio) {
-    case 'city': if (c.type === 'plaza') { bush(n(4), 'round'); birds(0.7, 'pigeon', 7); } else birds(0.15, 'pigeon', 5); puddles(n(3)); break;
+    case 'city': if (c.type === 'plaza') { bush(n(4), 'round'); birds(0.7, 'pigeon', 7); } else birds(0.15, 'pigeon', 5); puddles(n(3)); if (c.k > 1.2) for (let i = 0; i < n(6); i++) c.decals.push({ k: 'litter', x: ox + R() * CH, y: oy + R() * CH, s: (R() * 1e9) | 0 }); break;
     case 'burning': puddles(n(1)); break;
     case 'chaos': puddles(n(2)); birds(0.25, 'crow', 5); for (let i = 0; i < n(5); i++) c.decals.push({ k: 'litter', x: ox + R() * CH, y: oy + R() * CH, s: (R() * 1e9) | 0 }); break;
-    case 'ruins': bush(n(2), 'weed'); grass(n(5), 'weed'); birds(0.35, 'crow', 6); puddles(n(2)); break;
+    case 'ruins': bush(n(2), 'weed'); grass(n(5), 'weed'); birds(0.35, 'crow', 6); puddles(n(2)); if (c.k > 1.2) for (let i = 0; i < n(8); i++) c.decals.push({ k: 'litter', x: ox + R() * CH, y: oy + R() * CH, s: (R() * 1e9) | 0 }); break;
     case 'ash': birds(0.4, 'crow', 6); for (let i = 0; i < n(4); i++) c.decals.push({ k: 'drift', x: ox + R() * CH, y: oy + R() * CH, r: 20 + R() * 40, s: (R() * 1e9) | 0 }); break;
     case 'suburb': bush(n(8), 'round'); grass(n(10), 'lawn'); birds(0.3, 'pigeon', 5); puddles(n(2)); break;
     case 'desert': bush(n(4), 'dry'); grass(n(4), 'dry'); birds(0.25, 'vulture', 4); for (let i = 0; i < n(3); i++) c.decals.push({ k: 'dune', x: bx + R() * BS, y: by + R() * BS, r: 40 + R() * 60, a: R() * 0.6 - 0.3 }); if (R() < 0.3 * dm) c.decals.push({ k: 'bones', x: bx + 30 + R() * (BS - 60), y: by + 30 + R() * (BS - 60), a: R() * TAU }); break;
@@ -617,17 +647,17 @@ function pickStart(R) {
   for (let t = 0; t < 80; t++) {
     const cx = Math.floor((R() - 0.5) * 60), cy = Math.floor((R() - 0.5) * 60), D = distAt(cx, cy);
     if (WORLD.mix === 'city' && !TEMPERATE[D.bio]) continue;
-    const c = getChunk(cx, cy), x = cx * CH + 56, y = cy * CH + 56;
-    if (waterAtC(c, x, y) || blocked(x, y, 30)) continue;
-    let fire = false; for (const f of c.fires) if (f.hz && Math.hypot(f.x - x, f.y - y) < 200) fire = true;
+    const c = getChunk(cx, cy), x = cx * CH + 56, y = cy * CH + 56, sx = x * SCL, sy = y * SCL;
+    if (waterAtC(c, x, y) || blocked(sx, sy, 30)) continue;
+    let fire = false; for (const f of c.fires) if (f.hz && Math.hypot(f.x - sx, f.y - sy) < 200 * SCL) fire = true;
     if (fire) continue;
-    return { x: x, y: y };
+    return { x: sx, y: sy };
   }
-  return { x: 56, y: 56 };
+  return { x: 56 * SCL, y: 56 * SCL };
 }
 // the district under the camera; a new one is announced
 function trackDistrict(x, y) {
-  const D = distAt(Math.floor(x / CH), Math.floor(y / CH));
+  const D = distAt(Math.floor(x / CHS), Math.floor(y / CHS));
   if (D === WORLD.cur) return D;
   const prev = WORLD.cur; WORLD.cur = D;
   if (prev && G.mode === 'play' && SET.districts && G.time - WORLD.bannerT > 6) {
@@ -689,8 +719,11 @@ function isoBox(f, L) {
 function strokeSegs(g, s) { g.beginPath(); for (let i = 0; i < s.length; i += 4) { g.moveTo(s[i], s[i + 1]); g.lineTo(s[i + 2], s[i + 3]); } g.stroke(); }
 function winterOn(c) { return WORLD.season === 3 && TEMPERATE[c.bio]; }
 function renderChunk(c) {
-  const sc = Q.chunkScale, can = document.createElement('canvas'); can.width = can.height = Math.round(CH * sc);
-  const g = can.getContext('2d'); g.scale(sc, sc); c.sc = sc;
+  // the picture is sharp at the scale it is shown at: SCL times the block's drawing units (kept under 2048 pixels)
+  const sc = Q.chunkScale, px = Math.min(sc * c.k, 2048 / CH), can = document.createElement('canvas'); can.width = can.height = Math.round(CH * px);
+  const g = can.getContext('2d'); g.scale(px, px); c.sc = sc; c.px = px;
+  const keep = artView(c);
+  try {
   const R = chunkRng(c.cx, c.cy, 0xabc123), B = BIO[c.bio], ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, win = winterOn(c), dm = Q.deco || 1, sea = WORLD.season;
   g.translate(-ox, -oy);
   const RT = WORLD.rt || (WORLD.rt = { road: 0, block: 0, water: 0, decal: 0, rects: 0, light: 0 }); let t0 = performance.now(), t1;
@@ -698,10 +731,12 @@ function renderChunk(c) {
   g.fillStyle = B.road; g.fillRect(ox, oy, CH, CH);
   speckle(g, R, ox, oy, CH, CH, Math.floor(260 * dm), 'rgba(255,255,255,0.03)', 'rgba(0,0,0,0.16)');
   drawRoadMarks(g, c, B, R);
+  roadDetail(g, c, B, win, sea);
   blendSeams(g, c, B, R);
   t1 = performance.now(); RT.road += t1 - t0; t0 = t1;
   // the block
   drawBlock(g, c, B, R, win, sea);
+  walkDetail(g, c, B, win, sea);
   drawStreetFurniture(g, c, B, Z.mulberry32(Z.hash32(c.cx * 7919 + c.cy * 104729 + 0x5f)), win);
   t1 = performance.now(); RT.block += t1 - t0; t0 = t1;
   // rivers, ponds and bridges
@@ -725,6 +760,7 @@ function renderChunk(c) {
   c.can = can;
   c.wcan = null;
   WORLD.rf = (WORLD.rf || 0) + 1;
+  } finally { artDone(c, keep); }
 }
 // on a frame that drew no new blocks, build one just off screen in the direction the camera is heading,
 // so walking into new streets never stalls on drawing them
@@ -736,7 +772,7 @@ function streamChunks(x0, y0, x1, y1) {
   const ax = STREAM.vx >= 0 ? 1 : -1, ay = STREAM.vy >= 0 ? 1 : -1, ex = ax > 0 ? x1 + pad : x0 - pad, ey = ay > 0 ? y1 + pad : y0 - pad;
   const cand = [[ex, (y0 + y1) / 2], [(x0 + x1) / 2, ey], [ex, ey], [ex, ay > 0 ? y0 : y1], [ax > 0 ? x0 : x1, ey]];
   for (const [x, y] of cand) {
-    const c = getChunk(Math.floor(x / CH), Math.floor(y / CH));
+    const c = getChunk(Math.floor(x / CHS), Math.floor(y / CHS));
     if (!c.can) { renderChunk(c); c.seen = frameNo; return; }
   }
 }
@@ -873,6 +909,245 @@ function drawRoadMarks(g, c, B, R) {
     if (bio === 'snow') { g.strokeStyle = 'rgba(20,24,30,0.35)'; g.lineWidth = 5; g.beginPath(); g.moveTo(bx, oy + ROAD / 2 - 18); g.lineTo(ox + CH, oy + ROAD / 2 - 18); g.moveTo(bx, oy + ROAD / 2 + 18); g.lineTo(ox + CH, oy + ROAD / 2 + 18); g.moveTo(ox + ROAD / 2 - 18, by); g.lineTo(ox + ROAD / 2 - 18, oy + CH); g.moveTo(ox + ROAD / 2 + 18, by); g.lineTo(ox + ROAD / 2 + 18, oy + CH); g.stroke(); }
   }
 }
+/* ---------- fine detail: the things you only notice at real-world scale ----------
+   Asphalt grain, wheel ruts and oil down the lanes, patched and sealed cracks, concrete gutters, painted arrows,
+   sidewalk slabs, gum and utility covers, and what each season leaves on the street: fallen leaves in the gutters,
+   blossom on the sidewalks, plowed snow banks with slushy tyre tracks. Drawn into the block's picture, so it costs
+   nothing once drawn. Each block has its own random stream for this, so the rest of the art is unchanged. */
+let GRAIN = null;
+function grainCanvas() {
+  if (GRAIN) return GRAIN;
+  const n = 128, c = document.createElement('canvas'); c.width = c.height = n;
+  const g = c.getContext('2d'), im = g.createImageData(n, n), d = im.data, R = Z.mulberry32(0x9e3779b9);
+  for (let i = 0; i < n * n; i++) {
+    const v = R(), k = i * 4;
+    if (v < 0.12) { d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = 5 + R() * 12; }         // light stones in the mix
+    else if (v < 0.42) { d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = 10 + R() * 26; }        // pits and shadow
+  }
+  g.putImageData(im, 0, 0); GRAIN = c; return c;
+}
+function grainFill(g, x, y, w, h, scale, alpha) {
+  if (w <= 0 || h <= 0) return;
+  const pat = g.createPattern(grainCanvas(), 'repeat'); if (!pat) return;
+  if (pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix([scale, 0, 0, scale, 0, 0]));
+  g.save(); g.globalAlpha = alpha; g.fillStyle = pat; g.fillRect(x, y, w, h); g.restore();
+}
+// a soft band across a road: a wheel rut, an oil line, a wet track in the snow
+function band(g, horiz, at, from, len, wid, rgb, a, R) {
+  const gr = horiz ? g.createLinearGradient(0, at - wid, 0, at + wid) : g.createLinearGradient(at - wid, 0, at + wid, 0);
+  gr.addColorStop(0, 'rgba(' + rgb + ',0)'); gr.addColorStop(0.5, 'rgba(' + rgb + ',' + a + ')'); gr.addColorStop(1, 'rgba(' + rgb + ',0)');
+  g.fillStyle = gr;
+  // in pieces of different strength, so it reads as wear and not as paint
+  for (let s = 0; s < len;) {
+    const l = Math.min(len - s, 30 + R() * 70); g.globalAlpha = 0.55 + R() * 0.6;
+    if (horiz) g.fillRect(from + s, at - wid, l, wid * 2); else g.fillRect(at - wid, from + s, wid * 2, l);
+    s += l;
+  }
+  g.globalAlpha = 1;
+}
+function crackLine(g, R, x, y, ang, steps, step) {
+  g.beginPath(); g.moveTo(x, y);
+  for (let k = 0; k < steps; k++) { ang += (R() - 0.5) * 0.9; x += Math.cos(ang) * step; y += Math.sin(ang) * step; g.lineTo(x, y); }
+  g.stroke();
+}
+function roadDetail(g, c, B, win, sea) {
+  const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, bio = c.bio, real = c.k > 1.2, dm = Q.deco || 1;
+  const R = Z.mulberry32(Z.hash32(c.cx * 31337 + c.cy * 7331 + 0xde7a));
+  const paved = bio !== 'desert' && bio !== 'snow', urban = bio === 'city' || bio === 'chaos' || bio === 'suburb' || bio === 'burning' || bio === 'ruins' || bio === 'ash';
+  if (real) { grainFill(g, ox, oy, CH, ROAD, 0.5, 1); grainFill(g, ox, by, ROAD, BS, 0.5, 1); }
+  if (!paved) return;
+  const lanes = [ROAD * 0.25, ROAD * 0.75];
+  if (win) {
+    // a snowy road: plowed into banks at the curbs, packed snow on the lanes and dark wet tracks where the wheels went,
+    // each track a little wavy, a few cars' worth on top of each other
+    g.fillStyle = 'rgba(206,214,222,0.5)'; g.fillRect(ox, oy, CH, ROAD); g.fillRect(ox, by, ROAD, BS);
+    for (let i = 0; i < Math.floor(26 * dm); i++) softBlob(g, ox + R() * CH, oy + R() * ROAD, 10 + R() * 26, 6 + R() * 12, R() * 3, '236,240,244', 0.3);
+    for (let i = 0; i < Math.floor(20 * dm); i++) softBlob(g, ox + R() * ROAD, by + R() * BS, 6 + R() * 12, 10 + R() * 26, R() * 3, '236,240,244', 0.3);
+    g.lineCap = 'round';
+    const track = (horiz, at, from, len) => {
+      for (let pass = 0; pass < 2; pass++) {
+        const o = (R() - 0.5) * 5, ph = R() * 6, amp = 1 + R() * 2.2;
+        g.strokeStyle = pass ? 'rgba(24,28,34,0.3)' : 'rgba(40,46,54,0.22)'; g.lineWidth = pass ? 2.6 : 5;
+        g.beginPath();
+        for (let s = 0; s <= len; s += 16) { const q = at + o + Math.sin(s / 70 + ph) * amp; if (horiz) { if (!s) g.moveTo(from + s, q); else g.lineTo(from + s, q); } else { if (!s) g.moveTo(q, from + s); else g.lineTo(q, from + s); } }
+        g.stroke();
+      }
+    };
+    for (const lc of lanes) for (const off of [-10.5, 10.5]) { track(true, oy + lc + off, ox, CH); track(false, ox + lc + off, by, BS); }
+    g.lineCap = 'butt';
+    for (let i = 0; i < Math.floor(22 * dm); i++) {
+      const e = i % 4, t = R();
+      if (e === 0) softBlob(g, bx + t * BS, oy + 3 + R() * 3, 14 + R() * 18, 5 + R() * 3, 0, '240,244,248', 0.75);
+      else if (e === 1) softBlob(g, bx + t * BS, oy + ROAD - 3 - R() * 3, 14 + R() * 18, 5 + R() * 3, 0, '240,244,248', 0.75);
+      else if (e === 2) softBlob(g, ox + 3 + R() * 3, by + t * BS, 5 + R() * 3, 14 + R() * 18, 0, '240,244,248', 0.75);
+      else softBlob(g, ox + ROAD - 3 - R() * 3, by + t * BS, 5 + R() * 3, 14 + R() * 18, 0, '240,244,248', 0.75);
+    }
+    return;
+  }
+  // wheel ruts and the oil line down the middle of each lane
+  for (const lc of lanes) {
+    for (const off of [-10.5, 10.5]) { band(g, true, oy + lc + off, bx, BS, 2.6, '0,0,0', 0.1, R); band(g, false, ox + lc + off, by, BS, 2.6, '0,0,0', 0.1, R); }
+    band(g, true, oy + lc, bx, BS, 3.2, '0,0,0', 0.08, R); band(g, false, ox + lc, by, BS, 3.2, '0,0,0', 0.08, R);
+  }
+  if (!urban) return;
+  // concrete gutters along the curbs, with joints every few metres
+  g.fillStyle = bio === 'ash' ? 'rgba(170,170,170,0.08)' : 'rgba(170,166,156,0.13)';
+  g.fillRect(bx, oy, BS, 5); g.fillRect(bx, oy + ROAD - 5, BS, 5); g.fillRect(ox, by, 5, BS); g.fillRect(ox + ROAD - 5, by, 5, BS);
+  g.strokeStyle = 'rgba(0,0,0,0.2)'; g.lineWidth = 0.8; g.beginPath();
+  g.moveTo(bx, oy + 5); g.lineTo(bx + BS, oy + 5); g.moveTo(bx, oy + ROAD - 5); g.lineTo(bx + BS, oy + ROAD - 5);
+  g.moveTo(ox + 5, by); g.lineTo(ox + 5, by + BS); g.moveTo(ox + ROAD - 5, by); g.lineTo(ox + ROAD - 5, by + BS);
+  for (let s = 40; s < BS; s += 40) { g.moveTo(bx + s, oy); g.lineTo(bx + s, oy + 5); g.moveTo(bx + s, oy + ROAD - 5); g.lineTo(bx + s, oy + ROAD); g.moveTo(ox, by + s); g.lineTo(ox + 5, by + s); g.moveTo(ox + ROAD - 5, by + s); g.lineTo(ox + ROAD, by + s); }
+  g.stroke();
+  if (!real) return;
+  // patches where the road was dug up and filled again
+  const np = bio === 'ruins' || bio === 'chaos' ? 3 : 1 + (R() < 0.5 ? 1 : 0);
+  for (let i = 0; i < np; i++) {
+    const hz = R() < 0.5, w = 18 + R() * 46, h = 12 + R() * 30;
+    // never across the crossings: those were repainted
+    const x = hz ? bx + 34 + R() * (BS - w - 68) : ox + 6 + R() * (ROAD - w - 12), y = hz ? oy + 6 + R() * (ROAD - h - 12) : by + 34 + R() * (BS - h - 68);
+    if (w > ROAD - 12 && !hz) continue;
+    g.fillStyle = R() < 0.6 ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.03)'; g.fillRect(x, y, w, h);
+    g.strokeStyle = 'rgba(6,6,8,0.24)'; g.lineWidth = 0.8; g.strokeRect(x, y, w, h);
+  }
+  // cracks, sealed with shiny black tar
+  g.strokeStyle = 'rgba(10,10,12,0.5)'; g.lineWidth = 0.9; g.lineJoin = 'round';
+  const nc = Math.floor((bio === 'ruins' || bio === 'ash' ? 8 : 4) * dm + R() * 2);
+  for (let i = 0; i < nc; i++) {
+    const hz = R() < 0.5;
+    if (hz) crackLine(g, R, bx + R() * BS, oy + 8 + R() * (ROAD - 16), R() < 0.6 ? 0 : R() * TAU, 6 + Math.floor(R() * 6), 5 + R() * 4);
+    else crackLine(g, R, ox + 8 + R() * (ROAD - 16), by + R() * BS, R() < 0.6 ? Math.PI / 2 : R() * TAU, 6 + Math.floor(R() * 6), 5 + R() * 4);
+  }
+  g.lineJoin = 'miter';
+  // arrows on the lanes coming up to the crossing (traffic keeps right)
+  if (bio === 'city' || bio === 'chaos' || bio === 'suburb') {
+    g.fillStyle = bio === 'chaos' ? 'rgba(230,226,214,0.08)' : 'rgba(230,226,214,0.12)';
+    const arrow = (x, y, a) => { g.save(); g.translate(x, y); g.rotate(a); g.beginPath(); g.moveTo(-26, -1.3); g.lineTo(8, -1.3); g.lineTo(8, -4.5); g.lineTo(20, 0); g.lineTo(8, 4.5); g.lineTo(8, 1.3); g.lineTo(-26, 1.3); g.closePath(); g.fill(); g.restore(); };
+    arrow(bx + 74, oy + ROAD * 0.25, Math.PI); arrow(ox + CH - 78, oy + ROAD * 0.75, 0); arrow(ox + ROAD * 0.75, by + 74, -Math.PI / 2); arrow(ox + ROAD * 0.25, oy + CH - 78, Math.PI / 2);
+  }
+  // what the season leaves in the gutters
+  const gut = (n, cols, s0, s1, a) => {
+    for (let i = 0; i < n; i++) {
+      const e = Math.floor(R() * 4), t = R(), d = 1 + R() * 6;
+      const x = e === 0 || e === 1 ? bx + t * BS : e === 2 ? ox + d : ox + ROAD - d, y = e === 0 ? oy + d : e === 1 ? oy + ROAD - d : by + t * BS;
+      g.fillStyle = cols[Math.floor(R() * cols.length)]; g.globalAlpha = a; g.beginPath(); g.ellipse(x, y, s0 + R() * (s1 - s0), (s0 + R() * (s1 - s0)) * 0.6, R() * 3, 0, TAU); g.fill();
+    }
+    g.globalAlpha = 1;
+  };
+  if (sea === 2 && bio !== 'ash' && bio !== 'burning') gut(Math.floor(70 * dm), ['#c9762a', '#a8442a', '#e0a83a', '#8a5a2a', '#6a3a1e'], 1.2, 2.8, 0.85);
+  else if (sea === 0 && (bio === 'city' || bio === 'suburb')) gut(Math.floor(30 * dm), ['#ffd0e4', '#f7b8d4', '#fff0f6'], 0.8, 1.6, 0.8);
+  else if (bio !== 'ash') gut(Math.floor(12 * dm), ['#6a5a40', '#4a4a44', '#8a8270'], 0.8, 1.8, 0.5);   // grit and the odd scrap
+}
+function walkDetail(g, c, B, win, sea) {
+  const bio = c.bio; if (bio === 'desert' || bio === 'snow') return;
+  const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, real = c.k > 1.2, dm = Q.deco || 1;
+  const R = Z.mulberry32(Z.hash32(c.cx * 4271 + c.cy * 9157 + 0x3a1c));
+  // joints down the left and right sidewalks as well (the top and bottom have theirs)
+  g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1; g.beginPath();
+  for (let j = by + 24; j < by + BS; j += 24) { g.moveTo(bx, j); g.lineTo(bx + 14, j); g.moveTo(bx + BS - 14, j); g.lineTo(bx + BS, j); }
+  g.stroke();
+  if (!real) return;
+  const strips = [[bx, by, BS, 14, true], [bx, by + BS - 14, BS, 14, true], [bx, by + 14, 14, BS - 28, false], [bx + BS - 14, by + 14, 14, BS - 28, false]];
+  for (const [x, y, w, h] of strips) grainFill(g, x, y, w, h, 0.5, 0.55);
+  // every slab a shade of its own, a few cracked across
+  g.lineWidth = 0.7;
+  for (const [x, y, w, h, hz] of strips) {
+    const L = hz ? w : h;
+    for (let s = 0; s < L; s += 24) {
+      const sx = hz ? x + s : x, sy = hz ? y : y + s, sw = hz ? Math.min(24, w - s) : w, sh = hz ? h : Math.min(24, h - s);
+      if (R() < 0.45) { g.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.045)'; g.fillRect(sx, sy, sw, sh); }
+      if (R() < 0.07) { g.strokeStyle = 'rgba(0,0,0,0.35)'; crackLine(g, R, sx + R() * sw, sy + R() * sh, R() * TAU, 3, 4); }
+    }
+  }
+  // the curb's top edge catches the light
+  g.strokeStyle = win ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.1)'; g.lineWidth = 0.8; g.strokeRect(bx + 2.6, by + 2.6, BS - 5.2, BS - 5.2);
+  // utility covers, and gum trodden flat
+  for (let i = 0; i < 2 + Math.floor(R() * 3); i++) {
+    const S = strips[Math.floor(R() * 4)], x = S[0] + 3 + R() * (S[2] - 10), y = S[1] + 3 + R() * (S[3] - 10);
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x + 0.6, y + 0.8, 6, 6); g.fillStyle = win ? '#9aa4ab' : '#3c3d40'; g.fillRect(x, y, 6, 6);
+    g.strokeStyle = 'rgba(255,255,255,0.12)'; g.strokeRect(x + 0.8, y + 0.8, 4.4, 4.4);
+  }
+  if (bio === 'city' || bio === 'chaos') {
+    g.fillStyle = 'rgba(20,20,22,0.28)';
+    for (let i = 0; i < Math.floor(40 * dm); i++) { const S = strips[Math.floor(R() * 4)]; g.beginPath(); g.arc(S[0] + R() * S[2], S[1] + R() * S[3], 0.5 + R() * 0.6, 0, TAU); g.fill(); }
+  }
+  // leaves blown against the buildings in the fall, blossom in the spring
+  if (!win && (sea === 2 || sea === 0) && bio !== 'ash' && bio !== 'burning') {
+    const cols = sea === 2 ? ['#c9762a', '#a8442a', '#e0a83a', '#8a5a2a'] : ['#ffd0e4', '#f7b8d4', '#fff0f6'], n = Math.floor((sea === 2 ? 50 : 24) * dm);
+    for (let i = 0; i < n; i++) {
+      const S = strips[Math.floor(R() * 4)], x = S[0] + R() * S[2], y = S[1] + R() * S[3];
+      g.fillStyle = cols[Math.floor(R() * cols.length)]; g.globalAlpha = 0.8; g.beginPath(); g.ellipse(x, y, 1 + R() * 1.6, 0.7 + R() * 0.8, R() * 3, 0, TAU); g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+}
+// a flat roof up close: the parapet's shadow, membrane seams, drains with their water stains, vent pipes, a dish or a mast
+function roofFine(g, r, c, win, burnt) {
+  const R = Z.mulberry32(Z.hash32(Math.round(r.x * 131 + r.y * 977) | 0)), area = r.w * r.h;
+  if (r.w < 30 || r.h < 30) return;
+  g.fillStyle = 'rgba(0,0,0,0.2)'; g.fillRect(r.x + 4, r.y + 4, r.w - 8, 3.5); g.fillRect(r.x + 4, r.y + 7.5, 3.5, r.h - 11.5);
+  g.fillStyle = 'rgba(255,255,255,0.045)'; g.fillRect(r.x + 4, r.y + r.h - 7, r.w - 8, 3); g.fillRect(r.x + r.w - 7, r.y + 4, 3, r.h - 11);
+  grainFill(g, r.x + 4, r.y + 4, r.w - 8, r.h - 8, 0.5, win ? 0.25 : 0.6);
+  if (!win) {
+    g.strokeStyle = 'rgba(0,0,0,0.06)'; g.lineWidth = 0.7; g.beginPath();
+    if (r.w > r.h) for (let y = r.y + 13; y < r.y + r.h - 7; y += 13) { g.moveTo(r.x + 7, y); g.lineTo(r.x + r.w - 7, y); }
+    else for (let x = r.x + 13; x < r.x + r.w - 7; x += 13) { g.moveTo(x, r.y + 7); g.lineTo(x, r.y + r.h - 7); }
+    g.stroke();
+  }
+  const nd = Math.min(5, 1 + Math.floor(area / 30000));
+  for (let i = 0; i < nd; i++) {
+    const x = r.x + 14 + R() * (r.w - 28), y = r.y + 14 + R() * (r.h - 28);
+    softBlob(g, x, y, 10, 7, R() * 3, '0,0,0', 0.12);
+    g.fillStyle = '#1b1c1e'; g.beginPath(); g.arc(x, y, 2.2, 0, TAU); g.fill(); g.strokeStyle = 'rgba(170,170,170,0.28)'; g.lineWidth = 0.6; g.stroke();
+  }
+  if (burnt) return;
+  const nv = 2 + Math.floor(R() * Math.min(8, area / 8000));
+  for (let i = 0; i < nv; i++) {
+    const x = r.x + 10 + R() * (r.w - 20), y = r.y + 10 + R() * (r.h - 20), rr = 1.3 + R() * 1.4;
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x + rr * 0.9, y + rr * 1.1, rr, 0, TAU); g.fill();
+    g.fillStyle = win ? '#dfe5ea' : '#6d7075'; g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fill();
+    g.fillStyle = '#26272a'; g.beginPath(); g.arc(x, y, rr * 0.5, 0, TAU); g.fill();
+  }
+  if (R() < 0.3) {
+    const x = r.x + 16 + R() * (r.w - 32), y = r.y + 16 + R() * (r.h - 32), a = R() * TAU;
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(x + 4, y + 5, 6, 4.5, a, 0, TAU); g.fill();
+    g.fillStyle = win ? '#eef2f5' : '#c5c9ce'; g.beginPath(); g.ellipse(x, y, 6, 4.5, a, 0, TAU); g.fill();
+    g.strokeStyle = '#3a3c40'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); g.stroke();
+  }
+  if (R() < 0.22 && area > 20000) {
+    const x = r.x + 20 + R() * (r.w - 40), y = r.y + 20 + R() * (r.h - 40);
+    g.strokeStyle = 'rgba(0,0,0,0.32)'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 20, y + 24); g.stroke();
+    g.strokeStyle = '#7a7d82'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x - 4, y); g.lineTo(x + 4, y); g.moveTo(x, y - 4); g.lineTo(x, y + 4); g.stroke();
+    g.fillStyle = '#55585e'; g.beginPath(); g.arc(x, y, 1.6, 0, TAU); g.fill();
+  }
+  if (R() < 0.45) {
+    g.strokeStyle = 'rgba(28,28,30,0.55)'; g.lineWidth = 0.9; g.beginPath();
+    let x = r.x + 6, y = r.y + 10 + R() * (r.h - 20); g.moveTo(x, y);
+    for (let k = 0; k < 3; k++) { x += R() * (r.w - 12) / 3; g.lineTo(x, y); y += (R() - 0.5) * 30; y = clamp(y, r.y + 8, r.y + r.h - 8); g.lineTo(x, y); }
+    g.stroke();
+  }
+}
+// a pitched roof up close: gutters on the eaves, a ridge cap, vents, and a skylight or solar panels on the sunny side
+function houseFine(g, r, win) {
+  const R = Z.mulberry32(Z.hash32(Math.round(r.x * 71 + r.y * 313) | 0)), horiz = r.w >= r.h;
+  g.strokeStyle = win ? 'rgba(255,255,255,0.35)' : 'rgba(190,190,186,0.4)'; g.lineWidth = 1.3; g.beginPath();
+  if (horiz) { g.moveTo(r.x + 1, r.y + 1.2); g.lineTo(r.x + r.w - 1, r.y + 1.2); g.moveTo(r.x + 1, r.y + r.h - 1.2); g.lineTo(r.x + r.w - 1, r.y + r.h - 1.2); }
+  else { g.moveTo(r.x + 1.2, r.y + 1); g.lineTo(r.x + 1.2, r.y + r.h - 1); g.moveTo(r.x + r.w - 1.2, r.y + 1); g.lineTo(r.x + r.w - 1.2, r.y + r.h - 1); }
+  g.stroke();
+  grainFill(g, r.x, r.y, r.w, r.h, 0.5, 0.45);
+  for (let i = 0; i < 2 + Math.floor(R() * 2); i++) {
+    const x = r.x + 6 + R() * (r.w - 12), y = r.y + 6 + R() * (r.h - 12);
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x + 0.8, y + 1, 3, 3); g.fillStyle = win ? '#e3e8ec' : '#4a4644'; g.fillRect(x, y, 3, 3);
+  }
+  if (!win && R() < 0.35) {
+    const pw = horiz ? Math.min(r.w * 0.5, 40) : r.w * 0.36, ph = horiz ? r.h * 0.34 : Math.min(r.h * 0.5, 40);
+    const x = horiz ? r.x + (r.w - pw) * (0.2 + R() * 0.6) : r.x + r.w / 2 + 2, y = horiz ? r.y + r.h / 2 + 2 : r.y + (r.h - ph) * (0.2 + R() * 0.6);
+    g.fillStyle = '#1d2b45'; g.fillRect(x, y, pw, ph); g.strokeStyle = 'rgba(120,160,220,0.35)'; g.lineWidth = 0.6; g.beginPath();
+    for (let k = 6; k < pw; k += 6) { g.moveTo(x + k, y); g.lineTo(x + k, y + ph); } for (let k = 6; k < ph; k += 6) { g.moveTo(x, y + k); g.lineTo(x + pw, y + k); } g.stroke();
+  } else if (R() < 0.4) {
+    const x = r.x + r.w * (0.25 + R() * 0.4), y = r.y + r.h * (0.25 + R() * 0.4);
+    g.fillStyle = win ? 'rgba(200,214,226,0.8)' : '#2a3a48'; g.fillRect(x, y, 7, 9); g.strokeStyle = 'rgba(255,255,255,0.2)'; g.lineWidth = 0.6; g.strokeRect(x + 0.5, y + 0.5, 6, 8);
+  }
+}
 function drawBlock(g, c, B, R, win, sea) {
   const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, bio = c.bio, dm = Q.deco || 1;
   const grass = sea === 0 ? '#29421f' : sea === 1 ? '#233c1d' : sea === 2 ? '#3a3520' : '#2f3a2a';
@@ -1004,9 +1279,17 @@ function drawDecals(g, c, B, R, win, sea) {
         g.fillStyle = 'rgba(70,64,56,0.55)'; for (let i = 0; i < 26; i++) { const x = d.x + Rd() * d.w, y = d.y + Rd() * d.h, s = 3 + Rd() * 9; g.fillRect(x, y, s, s * (0.5 + Rd())); }
         g.fillStyle = 'rgba(30,26,22,0.5)'; for (let i = 0; i < 12; i++) { g.fillRect(d.x + Rd() * d.w, d.y + Rd() * d.h, 2 + Rd() * 5, 2 + Rd() * 5); }
         break;
-      case 'litter':
-        g.fillStyle = Rd() < 0.5 ? 'rgba(230,226,214,0.4)' : 'rgba(200,60,50,0.35)'; g.save(); g.translate(d.x, d.y); g.rotate(Rd() * 3); g.fillRect(-4, -3, 8, 6); g.restore();
+      case 'litter': {
+        // a scrap of paper, a crushed can, a bottle, a plastic bag or a coffee cup
+        const t = Rd(); g.save(); g.translate(d.x, d.y); g.rotate(Rd() * TAU);
+        if (t < 0.35) { g.fillStyle = 'rgba(232,228,216,0.55)'; g.fillRect(-4, -3, 8, 6); g.strokeStyle = 'rgba(0,0,0,0.15)'; g.lineWidth = 0.5; g.beginPath(); g.moveTo(-4, 0); g.lineTo(4, 0.6); g.stroke(); }
+        else if (t < 0.55) { g.fillStyle = ['#b8322a', '#2f5fb0', '#c9ccd0', '#2f8a4a'][Math.floor(Rd() * 4)]; g.fillRect(-1.6, -1, 3.2, 2); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(-1.6, -1, 3.2, 0.6); }
+        else if (t < 0.7) { g.fillStyle = Rd() < 0.5 ? 'rgba(60,120,60,0.75)' : 'rgba(120,70,30,0.75)'; g.fillRect(-3, -1, 5, 2); g.fillRect(2, -0.5, 1.6, 1); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(-2.6, -0.8, 4, 0.5); }
+        else if (t < 0.85) { g.fillStyle = 'rgba(235,238,240,0.32)'; g.beginPath(); g.ellipse(0, 0, 5, 3.4, 0, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.25)'; g.lineWidth = 0.5; g.stroke(); }
+        else { g.fillStyle = '#e6dccb'; g.beginPath(); g.arc(0, 0, 1.8, 0, TAU); g.fill(); g.fillStyle = '#6a4a30'; g.beginPath(); g.arc(0, 0, 1.1, 0, TAU); g.fill(); }
+        g.restore();
         break;
+      }
       case 'drift': {
         // a soft heap of ash or snow, darker on one side
         const col = c.bio === 'snow' ? '235,240,245' : '150,150,154', rr = d.r * 0.7, gr = g.createRadialGradient(d.x, d.y, 0, d.x, d.y, rr);
@@ -1175,6 +1458,7 @@ function drawBuilding(g, r, c, B, win, Rb) {
     g.strokeStyle = 'rgba(0,0,0,0.15)'; g.lineWidth = 1; g.beginPath();
     if (horiz) for (let y = r.y + 6; y < r.y + r.h; y += 7) { g.moveTo(r.x, y); g.lineTo(r.x + r.w, y); } else for (let x = r.x + 6; x < r.x + r.w; x += 7) { g.moveTo(x, r.y); g.lineTo(x, r.y + r.h); }
     g.stroke();
+    if (c.k > 1.2) houseFine(g, r, win);
     g.fillStyle = '#5a4a40'; g.fillRect(r.x + r.w * (0.2 + Rb() * 0.5), r.y + r.h * 0.2, 10, 10);   // chimney
     g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 2; g.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
     return;
@@ -1205,6 +1489,7 @@ function drawBuilding(g, r, c, B, win, Rb) {
   }
   g.strokeStyle = 'rgba(255,255,255,0.09)'; g.lineWidth = 4; g.strokeRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
   g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 2; g.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+  if (c.k > 1.2 && st !== 'ruin') roofFine(g, r, c, win, burnt);
   if (st === 'block') roofDetail(g, r, c, Rb, win, burnt);
   const n = 1 + Math.floor(Rb() * Math.min(5, r.w * r.h / 9000));
   for (let i = 0; i < n; i++) {
@@ -1239,11 +1524,6 @@ function drawBuilding(g, r, c, B, win, Rb) {
     if (c.bio === 'ash') { g.fillStyle = 'rgba(190,190,195,0.16)'; g.fillRect(r.x, r.y, r.w, r.h); }
   }
   if (c.bio === 'chaos' && Rb() < 0.5) { g.fillStyle = ['rgba(255,61,242,0.4)', 'rgba(125,255,74,0.35)', 'rgba(41,230,255,0.35)'][Math.floor(Rb() * 3)]; g.font = 'bold 18px sans-serif'; g.save(); g.translate(r.x + r.w * 0.5, r.y + r.h * 0.5); g.rotate(Rb() - 0.5); g.fillText(['RUN', 'HELP', 'NO WAY OUT', 'REPENT', 'GO WEST', 'X'][Math.floor(Rb() * 6)], -20, 6); g.restore(); }
-  if (Rb() < 0.25 && r.w > 120 && r.h > 120 && !burnt && !win && st === 'block' && c.bio !== 'ruins') {
-    g.save(); g.translate(r.x + r.w / 2, r.y + r.h / 2); g.rotate(-0.12);
-    g.fillStyle = 'rgba(242,204,58,0.75)'; g.fillRect(-r.w * 0.36, -5, r.w * 0.72, 10); g.rotate(0.24); g.fillRect(-r.w * 0.36, -5, r.w * 0.72, 10);
-    g.restore();
-  }
 }
 // what is up on a big flat roof: gravel, a taller tower set back from the edge, the stair hatch, a water tower on
 // legs, rows of solar panels, a rooftop garden, ducts running between the units
@@ -1498,7 +1778,7 @@ function snowCaps(g, c) {
   }
 }
 // streetlights for a chunk; how many work depends on the district
-function lightsOf(cx, cy) {
+function lightsOf0(cx, cy) {
   const R = chunkRng(cx, cy, 0x51f15e), ox = cx * CH, oy = cy * CH, L = [], b = distAt(cx, cy).bio;
   const p = { city: 0.85, burning: 0.45, chaos: 0.7, ruins: 0.35, ash: 0.35, suburb: 0.8, desert: 0.25, snow: 0.55 }[b] || 0.8;
   const cold = b === 'ash' || b === 'snow' ? 0.7 : 0.15;
@@ -1507,11 +1787,15 @@ function lightsOf(cx, cy) {
   if (R() < p * 0.6) L.push({ x: ox + ROAD + 9, y: oy + ROAD + BS * 0.5, cold: false, broken: b === 'ruins' && R() < 0.4 });
   return L;
 }
+// the street lamps of a block, in simulation units (the pole is a pole: only its position scales)
+function lightsOf(cx, cy) { const L = lightsOf0(cx, cy); for (const l of L) { l.x *= SCL; l.y *= SCL; } return L; }
 function bakeLights(g, c) {
   const ox = c.ox, oy = c.oy;
   g.globalCompositeOperation = 'lighter';
+  // with the lighting engine on, the lamps light the street for real (and only after dark): no painted-on pools
+  if (SET.lux !== 'off') { g.globalCompositeOperation = 'source-over'; for (const L of lightsOf0(c.cx, c.cy)) { g.fillStyle = '#111'; g.beginPath(); g.arc(L.x, L.y, 4, 0, TAU); g.fill(); g.fillStyle = L.broken ? '#444' : L.cold ? '#d6e6ff' : '#ffe2a6'; g.beginPath(); g.arc(L.x, L.y, 2.5, 0, TAU); g.fill(); } return; }
   for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-    for (const L of lightsOf(c.cx + dx, c.cy + dy)) {
+    for (const L of lightsOf0(c.cx + dx, c.cy + dy)) {
       if (L.broken || L.x < ox - 190 || L.x > ox + CH + 190 || L.y < oy - 190 || L.y > oy + CH + 190) continue;
       const gr = g.createRadialGradient(L.x, L.y, 4, L.x, L.y, 185);
       if (L.cold) { gr.addColorStop(0, 'rgba(150,190,255,0.24)'); gr.addColorStop(1, 'rgba(150,190,255,0)'); }
@@ -1520,13 +1804,13 @@ function bakeLights(g, c) {
     }
   }
   g.globalCompositeOperation = 'source-over';
-  for (const L of lightsOf(c.cx, c.cy)) { g.fillStyle = '#111'; g.beginPath(); g.arc(L.x, L.y, 4, 0, TAU); g.fill(); g.fillStyle = L.broken ? '#444' : L.cold ? '#d6e6ff' : '#ffe2a6'; g.beginPath(); g.arc(L.x, L.y, 2.5, 0, TAU); g.fill(); }
+  for (const L of lightsOf0(c.cx, c.cy)) { g.fillStyle = '#111'; g.beginPath(); g.arc(L.x, L.y, 4, 0, TAU); g.fill(); g.fillStyle = L.broken ? '#444' : L.cold ? '#d6e6ff' : '#ffe2a6'; g.beginPath(); g.arc(L.x, L.y, 2.5, 0, TAU); g.fill(); }
 }
 // the moving glints on a river, drawn once per chunk and slid back and forth while you play
 function waterLayer(c) {
   if (c.wcan !== null && c.wcan !== undefined) return c.wcan;
   if (!c.fv || c.bio === 'desert' || c.bio === 'snow' || winterOn(c)) { c.wcan = false; return false; }
-  const sc = Math.min(0.5, Q.chunkScale), can = document.createElement('canvas'); can.width = can.height = Math.round(CH * sc);
+  const sc = Math.min(0.5, Q.chunkScale) * Math.min(c.k, 1.5), can = document.createElement('canvas'); can.width = can.height = Math.round(CH * sc);
   const g = can.getContext('2d'); g.scale(sc, sc); g.translate(-c.ox, -c.oy);
   g.beginPath(); g.rect(c.ox + ROAD, c.oy + ROAD, BS, BS); g.clip();
   const bx = c.wbox || (c.wbox = isoBox(c.fv, 0.9)); if (!bx) { c.wcan = false; return false; }

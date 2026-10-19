@@ -57,8 +57,9 @@ function volley(a, mul) {
   const p = G.p, S = p.S, w = p.weapon, n = S.pellets, kind = S.kind, cone = w.F.key === 'shotgun' || kind === 'flame';
   // the muzzle: the gun is drawn from 8 px in front of the player and is GUN_LEN long, pointing along p.aim
   // (if the barrel is poking into a wall, the shot starts from the player so a zombie pinned against the wall still gets hit)
-  let md = 10 + (GUN_LEN[w.F.key] || 20), mx = p.x + Math.cos(p.aim) * md, my = p.y + Math.sin(p.aim) * md;
+  let md = (10 + (GUN_LEN[w.F.key] || 20)) * PK, mx = p.x + Math.cos(p.aim) * md, my = p.y + Math.sin(p.aim) * md;
   if (pointInRect(mx, my)) { mx = p.x; my = p.y; }
+  luxFlash(p.x + Math.cos(p.aim) * md * 0.8, p.y + Math.sin(p.aim) * md * 0.8, (kind === 'flame' ? 150 : cone ? 330 : 260) * (0.55 + 0.45 * SCL), kind === 'flame' ? '255,150,60' : '255,214,140', 1, 0.09, { shade: true });
   const gap = 0.11 * Math.min(1, 6 / Math.max(1, n));
   for (let i = 0; i < n; i++) {
     let ang = a;

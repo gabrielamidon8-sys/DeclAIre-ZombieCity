@@ -4,10 +4,10 @@
    Every change applies at once and is saved on the device. Graphics options default to "Auto", which follows the
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
-  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', fog: 'auto',
+  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: true, tod: 'cycle', nightDark: 'gentle', fog: 'auto',
   decals: 'normal', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
-  wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
+  wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
   aimKbm: 'manual', fireKbm: 'hold', aimPad: 'assist', firePad: 'stick', padDead: 18, padSwap: false, padRumble: true, xhair: 'cross', xhairSize: 100, xhairColor: 'yellow',
   motion: 'auto', flash: false, hudScale: 100, contrast: false,
@@ -71,6 +71,7 @@ function setSetting(k, v) {
     case 'wxMode': if (v !== 'dynamic') { WX.kind = v; WX.t = 60; } else WX.t = Math.min(WX.t, 20); break;
     case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
     case 'veg': case 'water': WSPR.clear(); break;
+    case 'lux': for (const c of chunks.values()) c.stale = 1; LUX.adapt = 0; LUX.offUntil = 0; LUX.errT.length = 0; LUX.A = null; break;
     case 'aimKbm': case 'aimPad': case 'fireKbm': case 'firePad': DEV.fireOn = false; DEV.aimFlip = false; updDevUi(); break;
     case 'lefty': applyLook(); updDevUi(); break;
     default:
@@ -95,7 +96,11 @@ const SET_ROWS = [
   { id: 'veg', tab: 'graphics', type: 'seg', label: 'Trees and bushes', desc: 'Light draws them still; Full lets them sway and shake.', opts: AUTO_LH },
   { id: 'water', tab: 'graphics', type: 'seg', label: 'Animated water', desc: 'Glints drifting on rivers and ponds.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { id: 'fog', tab: 'graphics', type: 'seg', label: 'Fog and haze', desc: 'Drifting clouds of fog over the street.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
-  { id: 'light', tab: 'graphics', type: 'seg', label: 'Lighting', desc: 'Full adds flickering firelight, police lights and glowing lamps.', opts: [['auto', 'Auto'], ['simple', 'Simple'], ['full', 'Full']] },
+  { id: 'lux', tab: 'graphics', basic: true, type: 'seg', label: 'Ray-traced lighting', desc: 'Real shadows from buildings, cars and zombies, with bloom, lit gunfire and lit windows. Auto adapts to your device and repairs itself.', opts: [['auto', 'Auto'], ['off', 'Off'], ['basic', 'Basic'], ['full', 'Full'], ['ultra', 'Ultra']] },
+  { id: 'bloom', tab: 'graphics', type: 'seg', label: 'Bloom', desc: 'A soft glow around lamps, fires, gunfire and explosions.', opts: ON_OFF },
+  { id: 'tod', tab: 'graphics', type: 'seg', label: 'Time of day', desc: 'A run starts in the morning; Cycle moves through dusk and night.', opts: [['cycle', 'Cycle'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['real', 'Clock']] },
+  { id: 'nightDark', tab: 'graphics', type: 'seg', label: 'Night darkness', desc: 'How dark the night gets.', opts: [['gentle', 'Gentle'], ['deep', 'Deep']] },
+  { id: 'light', tab: 'graphics', type: 'seg', label: 'Light glows', desc: 'Glow sprites on fires, police lights and flickering lamps, on top of the ray-traced lighting.', opts: [['auto', 'Auto'], ['simple', 'Simple'], ['full', 'Full']] },
   { id: 'life', tab: 'graphics', type: 'seg', label: 'Birds', desc: 'Crows and pigeons that take off when you get close.', opts: ON_OFF },
   { tab: 'graphics', group: 'Effects' },
   { id: 'particles', tab: 'graphics', type: 'slider', label: 'Particles', desc: 'Blood, sparks, smoke and debris.', min: 25, max: 150, step: 25, fmt: v => v + '%' },
@@ -124,6 +129,7 @@ const SET_ROWS = [
   { id: 'wxMode', tab: 'gameplay', type: 'seg', label: 'Weather', desc: 'Changing weather, or keep one kind all the time.', opts: [['dynamic', 'Changing'], ['clear', 'Clear'], ['rain', 'Rain'], ['storm', 'Storms'], ['snow', 'Snow'], ['fog', 'Fog'], ['sand', 'Sand']] },
   { id: 'wxPlay', tab: 'gameplay', type: 'seg', label: 'Weather affects play', desc: 'Fog and sand cut how far you see, blizzards slow everyone, lightning strikes.', opts: ON_OFF },
   { id: 'season', tab: 'gameplay', type: 'seg', label: 'Season', desc: 'Real date follows the calendar; Turning changes every 5 waves.', opts: [['auto', 'Real date'], ['cycle', 'Turning'], ['spring', 'Spring'], ['summer', 'Summer'], ['fall', 'Fall'], ['winter', 'Winter']] },
+  { id: 'scale', tab: 'gameplay', basic: true, type: 'seg', label: 'World scale', desc: 'Real-world: people, zombies, cars and buildings in true proportion. Classic: the old, smaller city. Applies from the next run.', opts: [['real', 'Real-world'], ['classic', 'Classic']] },
   { id: 'world', tab: 'gameplay', type: 'seg', label: 'Map', desc: 'What the city is made of. Applies from the next run.', opts: [['mixed', 'Everything'], ['city', 'City only'], ['wild', 'More wilds']] },
   { id: 'seedMode', tab: 'gameplay', type: 'seg', label: 'Same map every run', desc: 'Keep the map from your last run so you can learn it.', opts: [['random', 'Off'], ['fixed', 'On']] },
   { tab: 'gameplay', group: 'Screen' },

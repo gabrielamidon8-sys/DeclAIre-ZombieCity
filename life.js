@@ -13,7 +13,7 @@ function worldReset() {
 // everything interactive within a chunk of the screen
 function rebuildActive() {
   const hw = W / ZOOM / 2 + 260, hh = H / ZOOM / 2 + 260;
-  const x0 = Math.floor((cam.x - hw) / CH), x1 = Math.floor((cam.x + hw) / CH), y0 = Math.floor((cam.y - hh) / CH), y1 = Math.floor((cam.y + hh) / CH);
+  const x0 = Math.floor((cam.x - hw) / CHS), x1 = Math.floor((cam.x + hw) / CHS), y0 = Math.floor((cam.y - hh) / CHS), y1 = Math.floor((cam.y + hh) / CHS);
   WD.act.length = 0; WD.props.length = 0; WD.fires.length = 0; WD.birds.length = 0; WD.lights.length = 0;
   for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
     const c = getChunk(cx, cy);
@@ -50,6 +50,7 @@ function visNearCam(x, y, m) { const hw = W / ZOOM / 2 + m, hh = H / ZOOM / 2 + 
 function boomBarrel(o) {
   if (o.dead) return; o.dead = true;
   const x = o.x, y = o.y, R = 105;
+  luxFlash(x, y, 480, '255,160,70', 1.3, 0.6, { shade: true });
   near(x, y, R, z => { if (z.dead) return; const d = Math.hypot(z.x - x, z.y - y); if (d < R + z.r) { hurtZombie(z, (60 + G.wave * 9) * (z.boss ? 0.5 : 1) * (1 - d / (R * 1.6)), { src: 'blast', kx: (z.x - x) / (d || 1) * 320, ky: (z.y - y) / (d || 1) * 320 }); if (!z.dead && !z.boss) { z.burnT = 3; z.burnDps = Math.max(z.burnDps || 0, 8 + G.wave); } } });
   const p = G.p; if (p && G.mode === 'play') { const d = Math.hypot(p.x - x, p.y - y); if (d < 72) hurtPlayer(10 + G.wave * 0.6); }
   burst(x, y, 26, '#ffb347', 340, 5, 0.55); burst(x, y, 14, '#5a1a10', 200, 7, 0.8); burst(x, y, 10, '#c4262c', 260, 4, 0.5);
@@ -197,7 +198,7 @@ function surfaceAt(x, y) {
   const b = bioAt(x, y);
   if (b === 'snow' || (WORLD.season === 3 && TEMPERATE[b])) return 'snow';
   if (b === 'desert') return 'sand'; if (b === 'ash') return 'ash';
-  if (b === 'suburb') { const lx = ((x % CH) + CH) % CH, ly = ((y % CH) + CH) % CH; if (lx > ROAD + 16 && ly > ROAD + 16 && lx < CH - 16 && ly < CH - 16) return 'grass'; }
+  if (b === 'suburb') { const xc = x / SCL, yc = y / SCL, lx = ((xc % CH) + CH) % CH, ly = ((yc % CH) + CH) % CH; if (lx > ROAD + 16 && ly > ROAD + 16 && lx < CH - 16 && ly < CH - 16) return 'grass'; }
   return (WX.wet || 0) > 0.45 ? 'wet' : 'road';
 }
 const PRINT_COL = { snow: 'rgba(60,80,104,0.42)', sand: 'rgba(40,28,16,0.38)', ash: 'rgba(22,22,24,0.5)', mud: 'rgba(30,22,14,0.55)', wet: 'rgba(14,22,30,0.4)' };
@@ -289,6 +290,7 @@ function bushSprite(d) {
     for (let i = 0; i < n; i++) { const a = i / n * TAU + R(), r = rq * (0.4 + R() * 0.2), cr = rq * (0.4 + R() * 0.15); g.fillStyle = cols[Math.min(cols.length - 1, i % 2)]; g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r, cr, 0, TAU); g.fill(); }
     g.fillStyle = cols[0]; g.beginPath(); g.arc(0, 0, rq * 0.5, 0, TAU); g.fill();
     g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.arc(-rq * 0.25, -rq * 0.3, rq * 0.3, 0, TAU); g.fill();
+    if (rq > 20) { const nd = Math.min(160, Math.round(rq * rq / 16)); for (let i = 0; i < nd; i++) { const a = R() * TAU, r = Math.sqrt(R()) * rq * 0.85; g.fillStyle = i % 3 ? shade(cols[0], 0.18) : shade(cols[0], -0.35); g.fillRect(Math.cos(a) * r - 1, Math.sin(a) * r - 1, 2, 2); } }
     if (v === 'round' && sea === 0) { g.fillStyle = '#ffb6d5'; for (let i = 0; i < 6; i++) { const a = R() * TAU, r = R() * rq * 0.8; g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r, 1.6, 0, TAU); g.fill(); } }
     if (win || v === 'snowy') { g.fillStyle = 'rgba(240,245,250,0.85)'; for (let i = 0; i < 5; i++) { const a = R() * TAU, r = R() * rq * 0.6; g.beginPath(); g.arc(Math.cos(a) * r - 2, Math.sin(a) * r - 2, rq * 0.25, 0, TAU); g.fill(); } }
   });
@@ -322,14 +324,22 @@ function treeSprite(d) {
     // a dark rim first so the crown reads as foliage, not a blob of color
     g.fillStyle = 'rgba(10,14,8,0.55)';
     for (let i = 0; i < 7; i++) { const a = i / 7 * TAU, r = rq * 0.62; g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r, rq * 0.46, 0, TAU); g.fill(); }
+    // the crown in layers of leaf clusters; a big tree (the real-world city) gets more, smaller clusters so it reads
+    // as thousands of leaves and not as a few balls. Each cluster is lit on the side toward the sun.
+    const big = Math.max(1, rq / 34), extra = Math.floor((big - 1) * 6);
     for (let k = 0; k < 3; k++) {
-      const n = 7 - k, base = rq * (0.62 - k * 0.14);
-      g.fillStyle = cols[k];
-      for (let i = 0; i < n; i++) { const a = i / n * TAU + R() * 0.6 + k, r = base * (0.8 + R() * 0.3), cr = rq * (0.42 - k * 0.08) * (0.85 + R() * 0.3); g.beginPath(); g.arc(Math.cos(a) * r * (k ? 0.7 : 1), Math.sin(a) * r * (k ? 0.7 : 1) - k * 2, cr, 0, TAU); g.fill(); }
+      const n = 7 - k + extra, base = rq * (0.62 - k * 0.14);
+      for (let i = 0; i < n; i++) {
+        const a = i / n * TAU + R() * 0.6 + k, r = base * (0.8 + R() * 0.3) * (k ? 0.7 : 1), cr = rq * (0.42 - k * 0.08) * (0.85 + R() * 0.3) / Math.sqrt(1 + extra / 14);
+        const x = Math.cos(a) * r, y = Math.sin(a) * r - k * 2 * big;
+        g.fillStyle = cols[k]; g.beginPath(); g.arc(x, y, cr, 0, TAU); g.fill();
+        if (big > 1.2) { g.fillStyle = 'rgba(255,255,230,0.07)'; g.beginPath(); g.arc(x - cr * 0.28, y - cr * 0.3, cr * 0.55, 0, TAU); g.fill(); g.fillStyle = 'rgba(0,0,0,0.12)'; g.beginPath(); g.arc(x + cr * 0.35, y + cr * 0.4, cr * 0.5, 0, TAU); g.fill(); }
+      }
     }
-    // leaves: little dots of lighter and darker color across the crown
-    const dots = v === 'blossom' && sea <= 1 ? ['#ffd6e8', '#f2b0d0'] : sea === 2 ? ['#c94a24', '#d8a03a', '#7a2a18'] : sea === 0 ? ['#7ab85a', '#3a6a2e'] : ['#467a40', '#18301c'];
-    for (let i = 0; i < 26; i++) { const a = R() * TAU, r = R() * rq * 0.85; g.fillStyle = dots[i % dots.length]; g.fillRect(Math.cos(a) * r - 1, Math.sin(a) * r - 1, 2.2, 2.2); }
+    // leaves: little dots of lighter and darker color across the crown, as many as the crown has room for
+    const dots = v === 'blossom' && sea <= 1 ? ['#ffd6e8', '#f2b0d0', '#fff2f8'] : sea === 2 ? ['#c94a24', '#d8a03a', '#7a2a18', '#e8b84a'] : sea === 0 ? ['#7ab85a', '#3a6a2e', '#9ad070'] : ['#467a40', '#18301c', '#5a8a48'];
+    const nd = Math.min(420, Math.round(26 * big * big)), ds = 2.2 * Math.min(1.8, Math.sqrt(big));
+    for (let i = 0; i < nd; i++) { const a = R() * TAU, r = Math.sqrt(R()) * rq * 0.88; g.fillStyle = dots[i % dots.length]; g.fillRect(Math.cos(a) * r - ds / 2, Math.sin(a) * r - ds / 2, ds, ds); }
     g.fillStyle = 'rgba(255,255,255,0.07)'; g.beginPath(); g.arc(-rq * 0.25, -rq * 0.3, rq * 0.35, 0, TAU); g.fill();
   });
 }
@@ -348,7 +358,7 @@ function drawWorldUnder(vis) {
   // puddles shine when it rains
   if (wet > 0.12) {
     ctx.fillStyle = 'rgba(70,90,110,' + (0.3 * wet).toFixed(3) + ')';
-    for (let cx = Math.floor((cam.x - W / ZOOM / 2) / CH); cx <= Math.floor((cam.x + W / ZOOM / 2) / CH); cx++) for (let cy = Math.floor((cam.y - H / ZOOM / 2) / CH); cy <= Math.floor((cam.y + H / ZOOM / 2) / CH); cy++) {
+    for (let cx = Math.floor((cam.x - W / ZOOM / 2) / CHS); cx <= Math.floor((cam.x + W / ZOOM / 2) / CHS); cx++) for (let cy = Math.floor((cam.y - H / ZOOM / 2) / CHS); cy <= Math.floor((cam.y + H / ZOOM / 2) / CHS); cy++) {
       const c = chunks.get(cx + ',' + cy); if (!c) continue;
       for (const p of c.puddles) { if (!vis(p.x, p.y, p.rx)) continue; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx * (0.6 + wet * 0.5), p.ry * (0.6 + wet * 0.5), p.a, 0, TAU); ctx.fill(); }
     }
@@ -356,13 +366,13 @@ function drawWorldUnder(vis) {
   // the glints on rivers drift with the current
   const wa = SET.water === 'auto' ? Q.water : SET.water === 'on' ? 1 : 0;
   if (wa) {
-    const x0 = Math.floor((cam.x - W / ZOOM / 2) / CH), x1 = Math.floor((cam.x + W / ZOOM / 2) / CH), y0 = Math.floor((cam.y - H / ZOOM / 2) / CH), y1 = Math.floor((cam.y + H / ZOOM / 2) / CH);
+    const x0 = Math.floor((cam.x - W / ZOOM / 2) / CHS), x1 = Math.floor((cam.x + W / ZOOM / 2) / CHS), y0 = Math.floor((cam.y - H / ZOOM / 2) / CHS), y1 = Math.floor((cam.y + H / ZOOM / 2) / CHS);
     for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
       const c = chunks.get(cx + ',' + cy); if (!c || !c.wet) continue;
       const L = waterLayer(c); if (!L) continue;
       const k = Math.sin(t * (0.9 + WX.wind * 0.8) + cx) * 6 + WX.wx * 5, k2 = Math.cos(t * (0.7 + WX.wind * 0.6) + cy) * 5 + WX.wy * 5;
-      ctx.globalAlpha = 0.35 + 0.2 * Math.sin(t * 1.7 + cx * 3); ctx.drawImage(L, c.ox + k, c.oy + k2, CH, CH);
-      ctx.globalAlpha = 0.25 + 0.2 * Math.cos(t * 1.3 + cy * 2); ctx.drawImage(L, c.ox - k * 0.7 + 14, c.oy - k2 * 0.6 + 9, CH, CH);
+      ctx.globalAlpha = 0.35 + 0.2 * Math.sin(t * 1.7 + cx * 3); ctx.drawImage(L, c.sx + k * SCL, c.sy + k2 * SCL, CHS, CHS);
+      ctx.globalAlpha = 0.25 + 0.2 * Math.cos(t * 1.3 + cy * 2); ctx.drawImage(L, c.sx - k * 0.7 * SCL + 14 * SCL, c.sy - k2 * 0.6 * SCL + 9 * SCL, CHS, CHS);
     }
     ctx.globalAlpha = 1;
   }
@@ -381,11 +391,12 @@ function drawWorldUnder(vis) {
       if (d.k !== 'grass' || !vis(d.x, d.y, 20)) continue;
       const col = (GRASS_COL[d.v] || GRASS_COL.lawn)[sea]; (cols[col] || (cols[col] = [])).push(d);
     }
-    ctx.lineCap = 'round'; ctx.lineWidth = 1.6;
+    const real = SCL > 1.2;
+    ctx.lineCap = 'round'; ctx.lineWidth = real ? 2.4 : 1.6;
     for (const col in cols) {
       ctx.strokeStyle = col; ctx.beginPath();
       for (const d of cols[col]) {
-        const R = Z.mulberry32(d.s), n = 7, wk = veg >= 2 && wlv ? windAt(d.x, d.y) : 0, sway = veg >= 2 ? Math.sin(t * 2.2 + d.ph) * 0.1 + wk * (0.42 + 0.14 * Math.sin(t * 3.4 + d.ph)) : 0;
+        const R = Z.mulberry32(d.s), n = real ? 11 : 7, wk = veg >= 2 && wlv ? windAt(d.x, d.y) : 0, sway = veg >= 2 ? Math.sin(t * 2.2 + d.ph) * 0.1 + wk * (0.42 + 0.14 * Math.sin(t * 3.4 + d.ph)) : 0;
         for (let i = 0; i < n; i++) {
           const a = (R() - 0.5) * 2.2 - Math.PI / 2, l = d.r * (0.6 + R() * 0.5), bx = d.x + (R() - 0.5) * d.r * 0.8, by = d.y + (R() - 0.5) * d.r * 0.5;
           let ex = bx + Math.cos(a) * l * 0.5 + Math.cos(wdir) * sway * l, ey = by + Math.sin(a) * l * 0.5 + Math.sin(wdir) * sway * l * 0.6;
@@ -512,7 +523,7 @@ function drawWorldOver(vis) {
   if (lightLevel() >= 1) {
     ctx.globalCompositeOperation = 'lighter';
     for (const a of (G.alarms || [])) { if (!vis(a.x, a.y, 40)) continue; const on = Math.floor(t * 5) % 2; ctx.globalAlpha = 0.9; ctx.fillStyle = on ? '#fff2b0' : '#ff9a3a'; const r = a.r; if (r.w > r.h) { ctx.fillRect(r.x + r.w - 4, r.y + 3, 4, 5); ctx.fillRect(r.x + r.w - 4, r.y + r.h - 8, 4, 5); } else { ctx.fillRect(r.x + 3, r.y + r.h - 4, 5, 4); ctx.fillRect(r.x + r.w - 8, r.y + r.h - 4, 5, 4); } }
-    for (const cx of [Math.floor(cam.x / CH) - 1, Math.floor(cam.x / CH), Math.floor(cam.x / CH) + 1]) for (const cy of [Math.floor(cam.y / CH) - 1, Math.floor(cam.y / CH), Math.floor(cam.y / CH) + 1]) {
+    for (const cx of [Math.floor(cam.x / CHS) - 1, Math.floor(cam.x / CHS), Math.floor(cam.x / CHS) + 1]) for (const cy of [Math.floor(cam.y / CHS) - 1, Math.floor(cam.y / CHS), Math.floor(cam.y / CHS) + 1]) {
       const c = chunks.get(cx + ',' + cy); if (!c || c.bio !== 'chaos') continue;
       for (const r of c.rects) {
         if (!r.police || !vis(r.x + r.w / 2, r.y + r.h / 2, 60)) continue;

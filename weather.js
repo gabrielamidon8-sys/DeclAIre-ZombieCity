@@ -201,6 +201,7 @@ function updWind(rdt, target) {
   WX.wdir += (Math.sin(G.time * 0.031) * 0.012 + Math.sin(G.time * 0.17 + 2) * 0.006 * (1 + WX.storm * 2)) * rdt;
   WX.wx = Math.cos(WX.wdir) * WX.wind; WX.wy = Math.sin(WX.wdir) * WX.wind;
   updWindDebris(rdt);
+  updAtmos(rdt);
 }
 // how strongly the wind moves something standing at (x, y) right now (0 calm, about 1 a strong wind, more in a gust):
 // the steady wind ripples through in waves, and a gust is a brighter band moving along with it
@@ -289,6 +290,8 @@ function drawWindStreaks(rdt, mx, my) {
 function lightning(canStrike) {
   const rf = SET.flash;   // reduce flashing
   WX.flash = rf ? 0.28 : 1;
+  // the sky lights up from one side: every building throws a long shadow for an instant
+  { const a = rand(TAU), d = W / ZOOM * 0.75; luxFlash(cam.x + Math.cos(a) * d, cam.y + Math.sin(a) * d, d * 2.4, '190,210,255', rf ? 0.35 : 1.1, 0.32, { shade: true }); }
   const strikeIt = canStrike && Math.random() < 0.6;
   if (!strikeIt) { SFX.thunder(0.7 + Math.random() * 1.8, false); WX.bolts.push(skyBolt()); return; }
   // pick a spot: usually a zombie on screen, never right on top of the player
@@ -303,7 +306,7 @@ function lightning(canStrike) {
 }
 function strike(s) {
   const x = s.x, y = s.y, R = 78, p = G.p;
-  WX.flash = SET.flash ? 0.3 : 1; WX.bolts.push(groundBolt(x, y));
+  WX.flash = SET.flash ? 0.3 : 1; WX.bolts.push(groundBolt(x, y)); luxFlash(x, y, 520, '200,220,255', 1.4, 0.35, { shade: true });
   SFX.thunder(0.05, true); shakeIt(12); buzz(60);
   burst(x, y, 22, '#dff0ff', 320, 3, 0.4); burst(x, y, 10, '#ffffff', 200, 2, 0.25);
   ring(x, y, 6, R, 0.35, '210,230,255', 5); ring(x, y, 4, R * 1.8, 0.6, '160,200,255', 2);
@@ -381,8 +384,11 @@ function drawWeatherScreen(rdt) {
   const lc = WX.lastCam || (WX.lastCam = { x: cam.x, y: cam.y }), mx = (cam.x - lc.x) * ZOOM, my = (cam.y - lc.y) * ZOOM; lc.x = cam.x; lc.y = cam.y;
   const jump = Math.abs(mx) > W || Math.abs(my) > H;
   const dt = Math.min(0.05, rdt);
+  // at night rain, snow and fog are only as bright as the light falling on them
+  const lum = LUX.live ? 0.3 + 0.7 * Math.max(LUX.amb[0], LUX.amb[1], LUX.amb[2]) : 1;
   if (lv > 0) {
     const sc = Math.min(W, H) / 480;
+    ctx.globalAlpha = lum;
     // rain
     if (WX.rain > 0.02) {
       const P = pool('rain', 520), n = Math.floor(P.max * WX.rain * lv), wx = WX.wx * 260, vy = 900 * sc;
@@ -437,9 +443,9 @@ function drawWeatherScreen(rdt) {
       for (let i = 0; i < nc; i++) {
         C.x[i] += dx * sp * 0.5 * C.z[i] * dt - mx * 0.6; C.y[i] += dy * sp * 0.4 * dt - my * 0.6;
         if (C.x[i] > W + 300) { C.x[i] = -300; C.y[i] = Math.random() * H; } else if (C.x[i] < -300) { C.x[i] = W + 300; C.y[i] = Math.random() * H; }
-        const r = 180 * C.z[i] * sc + 80; ctx.globalAlpha = 0.2 * WX.sand; ctx.drawImage(spr, C.x[i] - r, C.y[i] - r, r * 2, r * 2);
+        const r = 180 * C.z[i] * sc + 80; ctx.globalAlpha = 0.2 * WX.sand * lum; ctx.drawImage(spr, C.x[i] - r, C.y[i] - r, r * 2, r * 2);
       }
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = lum;
     }
     // falling ash
     if (WX.ash > 0.02) {
@@ -493,15 +499,15 @@ function drawWeatherScreen(rdt) {
       const T = fogTex(), ts = 520 * sc;
       for (let L = 0; L < (lv > 0.5 ? 2 : 1); L++) {
         const k = L ? 1.35 : 1, ox = ((-(cam.x * ZOOM) * (L ? 0.9 : 1) - G.time * 14 * WX.wx * (L + 1) * 10) % (ts * k) + ts * k) % (ts * k), oy = ((-(cam.y * ZOOM) * (L ? 0.9 : 1) - G.time * 6 * (L + 1)) % (ts * k) + ts * k) % (ts * k);
-        ctx.globalAlpha = Math.min(0.85, WX.fog * (L ? 0.38 : 0.5) * Math.min(1, lv + 0.3));
+        ctx.globalAlpha = Math.min(0.85, WX.fog * (L ? 0.38 : 0.5) * Math.min(1, lv + 0.3)) * lum;
         for (let x = ox - ts * k; x < W; x += ts * k) for (let y = oy - ts * k; y < H; y += ts * k) ctx.drawImage(T, x, y, ts * k, ts * k);
       }
-      ctx.globalAlpha = 1;
     }
+    ctx.globalAlpha = 1;
   }
   // the sky over everything: storm darkness, the place's color, blowing sand and snow, folded into one fill
   const grade = SET.grade !== false, L = [];
-  if (WX.dark > 0.02 && lv > 0) L.push([8, 12, 22, WX.dark * 0.55]);
+  if (WX.dark > 0.02 && lv > 0) L.push([8, 12, 22, WX.dark * (LUX.live ? 0.2 : 0.55)]);   // with the lighting engine on, storms darken the ambient light instead (so lamps still cut through)
   if (grade) {
     const bio = WORLD.cur ? WORLD.cur.bio : 'city', g = GRADE[bio] || GRADE.city, gr = WX.gr;
     const e = Math.min(1, rdt * 0.8); for (let i = 0; i < 4; i++) gr[i] += (g[i] - gr[i]) * e;
@@ -553,4 +559,108 @@ function updWhere() {
   }
   // the arrow turns with the wind
   if (WXH.ar && (WXH.ang == null || Math.abs(WX.wdir - WXH.ang) > 0.03)) { WXH.ang = WX.wdir; WXH.ar.style.transform = 'rotate(' + WX.wdir.toFixed(2) + 'rad)'; }
+}
+
+/* ---------- atmosphere: the small things that make a season and an hour ----------
+   Cloud shadows sailing over the city on a fair day, fireflies over the lawns and parks on a summer night, your breath
+   showing in the cold, rings spreading in the puddles when it rains. All of it for looks, local to the view, and
+   scaled down (or off) with the weather detail setting. */
+const ATM = { ff: [], puffs: [], rip: [], breathT: 1, cx: 0, cy: 0, cloud: null };
+function atmCloudSprite() {
+  if (ATM.cloud) return ATM.cloud;
+  // a lumpy cloud: a few soft blobs overlapping, so the shadow is not a perfect circle
+  const n = 256, c = document.createElement('canvas'); c.width = c.height = n;
+  const g = c.getContext('2d'), R = Z.mulberry32(0xc10d);
+  for (let i = 0; i < 9; i++) {
+    const a = R() * TAU, d = R() * n * 0.22, x = n / 2 + Math.cos(a) * d, y = n / 2 + Math.sin(a) * d * 0.7, r = n * (0.16 + R() * 0.14);
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(0,0,0,0.42)'); gr.addColorStop(0.65, 'rgba(0,0,0,0.36)'); gr.addColorStop(0.85, 'rgba(0,0,0,0.14)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ATM.cloud = c; return c;
+}
+function atmCloudiness() {
+  const k = WX.kind, bio = WORLD.cur ? WORLD.cur.bio : 'city';
+  let c = k === 'clear' ? (bio === 'desert' ? 0.2 : 0.45) : k === 'overcast' ? 0.25 : k === 'windy' ? 0.5 : k === 'snow' ? 0.12 : 0;
+  return c * (1 - WX.rain) * (1 - WX.fog) * (LUX.live ? LUX.day : 1);
+}
+function updAtmos(rdt) {
+  const lv = wxLevel(); if (!lv || G.mode === 'intro') { ATM.ff.length = ATM.puffs.length = ATM.rip.length = 0; return; }
+  // the clouds drift with the wind
+  const sp = 60 + WX.wind * 110; ATM.cx += Math.cos(WX.wdir) * sp * rdt; ATM.cy += Math.sin(WX.wdir) * sp * rdt;
+  const bio = WORLD.cur ? WORLD.cur.bio : 'city', sea = WORLD.season, night = LUX.live ? 1 - LUX.day : 0, hw = W / ZOOM / 2, hh = H / ZOOM / 2;
+  // fireflies: summer (and late spring) nights, over grass and parks, not in rain or a strong wind
+  const ffOn = (sea === 1 || sea === 0) && night > 0.45 && WX.rain < 0.1 && WX.snow < 0.1 && WX.wind < 0.7 && (bio === 'suburb' || bio === 'city' || bio === 'ruins') && SET.life !== false;
+  const ffMax = ffOn ? Math.round((bio === 'suburb' ? 34 : 18) * Math.min(1, lv + 0.2) * (sea === 1 ? 1 : 0.5)) : 0;
+  if (ATM.ff.length < ffMax && Math.random() < rdt * 8) ATM.ff.push({ x: cam.x + rand(-hw, hw) * 1.1, y: cam.y + rand(-hh, hh) * 1.1, ph: Math.random() * 20, sp: 0.6 + Math.random() * 0.8, a: Math.random() * TAU, life: 8 + Math.random() * 10, t: 0 });
+  for (let i = ATM.ff.length - 1; i >= 0; i--) {
+    const f = ATM.ff[i]; f.t += rdt; f.ph += rdt * f.sp; f.a += Math.sin(f.ph * 1.3) * rdt * 1.6;
+    const v = 14 * SCL * f.sp; f.x += Math.cos(f.a) * v * rdt + WX.wx * 10 * rdt; f.y += Math.sin(f.a) * v * rdt + WX.wy * 10 * rdt;
+    if (f.t > f.life || !ffMax || Math.abs(f.x - cam.x) > hw * 1.4 || Math.abs(f.y - cam.y) > hh * 1.4) ATM.ff.splice(i, 1);
+  }
+  // breath in the cold: winter in the temperate city, anywhere in the snow, and cold nights out of summer
+  const p = G.p, cold = (sea === 3 && TEMPERATE[bio]) || bio === 'snow' || (night > 0.7 && sea !== 1 && bio !== 'desert');
+  if (cold && p && !p.down && (G.mode === 'play' || G.mode === 'title')) {
+    ATM.breathT -= rdt * (p.dashT > 0 || Math.hypot(p.vx || 0, p.vy || 0) > 100 ? 1.6 : 1);
+    if (ATM.breathT <= 0) {
+      ATM.breathT = 1.6 + Math.random() * 0.9;
+      const a = p.aim || 0, d = 9 * PK;
+      ATM.puffs.push({ x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, vx: Math.cos(a) * 16 * PK + WX.wx * 20, vy: Math.sin(a) * 16 * PK + WX.wy * 20, t: 0, life: 1.3 });
+    }
+  }
+  for (let i = ATM.puffs.length - 1; i >= 0; i--) { const q = ATM.puffs[i]; q.t += rdt; q.x += q.vx * rdt; q.y += q.vy * rdt; q.vx *= 0.97; q.vy *= 0.97; if (q.t > q.life) ATM.puffs.splice(i, 1); }
+  // rain rings in the puddles
+  if (WX.rain > 0.15 && ATM.rip.length < 70) {
+    let n = WX.rain * rdt * 70 * lv;
+    const cx0 = Math.floor((cam.x - hw) / CHS), cx1 = Math.floor((cam.x + hw) / CHS), cy0 = Math.floor((cam.y - hh) / CHS), cy1 = Math.floor((cam.y + hh) / CHS), list = [];
+    for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) { const c = chunks.get(cx + ',' + cy); if (c) for (const q of c.puddles) if (Math.abs(q.x - cam.x) < hw + q.rx && Math.abs(q.y - cam.y) < hh + q.rx) list.push(q); }
+    while (list.length && (n >= 1 || Math.random() < n)) {
+      n -= 1; const q = list[Math.floor(Math.random() * list.length)], a = Math.random() * TAU, d = Math.sqrt(Math.random()) * 0.75;
+      const s = 0.6 + (WX.wet || 0) * 0.5, x = q.x + Math.cos(a) * q.rx * d * s, y = q.y + Math.sin(a) * q.ry * d * s;
+      ATM.rip.push({ x: x, y: y, t: 0, life: 0.55 + Math.random() * 0.3 });
+    }
+  }
+  for (let i = ATM.rip.length - 1; i >= 0; i--) { const r = ATM.rip[i]; r.t += rdt; if (r.t > r.life) ATM.rip.splice(i, 1); }
+}
+// on the ground, under everyone: rain rings in puddles, and breath clouds
+function drawAtmosGround(vis) {
+  if (ATM.rip.length) {
+    const k = SCL > 1.2 ? 2 : 1; ctx.lineWidth = 0.8 * k; ctx.strokeStyle = 'rgba(205,220,238,0.4)';
+    for (const r of ATM.rip) { if (!vis(r.x, r.y, 20)) continue; const f = r.t / r.life; ctx.globalAlpha = 1 - f; ctx.beginPath(); ctx.ellipse(r.x, r.y, (1 + f * 7) * k, (0.7 + f * 5) * k, 0, 0, TAU); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  if (ATM.puffs.length) {
+    const spr = glowSprite('#e8eef4');
+    for (const q of ATM.puffs) { const f = q.t / q.life, r = (4 + f * 14) * PK * (SCL > 1.2 ? 1.6 : 1); ctx.globalAlpha = 0.34 * (1 - f) * Math.min(1, q.t * 6); ctx.drawImage(spr, q.x - r, q.y - r, r * 2, r * 2); }
+    ctx.globalAlpha = 1;
+  }
+}
+// cloud shadows: big soft shapes sliding over streets, roofs and zombies alike
+function drawCloudShadows(x0, y0, x1, y1) {
+  const lv = wxLevel(); if (!lv || G.mode === 'intro') return;
+  const a = atmCloudiness(); if (a < 0.03) return;
+  // (real clouds are bigger than the whole view; these are kept small enough that their edges sweep past now and then)
+  const T = 1400 * SCL, spr = atmCloudSprite(), R = Z.mulberry32((WORLD.seed | 0) + 0x5eed);
+  ctx.globalAlpha = Math.min(0.6, a * 1.05); ATM.drawn = 0;
+  for (let i = 0; i < 7; i++) {
+    const bx = R() * T, by = R() * T, s = (150 + R() * 200) * SCL;
+    // the copy of this cloud nearest the view (the sky repeats every T units)
+    let x = bx + ATM.cx, y = by + ATM.cy;
+    x = cam.x + ((((x - cam.x) % T) + T * 1.5) % T - T / 2); y = cam.y + ((((y - cam.y) % T) + T * 1.5) % T - T / 2);
+    if (x + s < x0 || x - s > x1 || y + s < y0 || y - s > y1) continue;
+    ctx.drawImage(spr, x - s, y - s * 0.75, s * 2, s * 1.5); ATM.drawn++;
+  }
+  ctx.globalAlpha = 1;
+}
+// what glows by itself after dark, drawn after the lighting: fireflies
+function drawAtmosLit(vis) {
+  if (!ATM.ff.length) return;
+  const spr = glowSprite('#d2ff6a'), k = SCL > 1.2 ? 1.6 : 1;
+  ctx.globalCompositeOperation = 'lighter';
+  for (const f of ATM.ff) {
+    if (!vis(f.x, f.y, 20)) continue;
+    const b = Math.pow(Math.max(0, Math.sin(f.ph * 2.1)), 6) * Math.min(1, f.t, f.life - f.t); if (b < 0.02) continue;
+    const r = 16 * k; ctx.globalAlpha = b; ctx.drawImage(spr, f.x - r, f.y - r, r * 2, r * 2);
+    ctx.fillStyle = '#f4ffc0'; ctx.fillRect(f.x - 1.2 * k, f.y - 1.2 * k, 2.4 * k, 2.4 * k);
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
 }
