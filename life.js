@@ -297,10 +297,11 @@ function bushSprite(d) {
 }
 function treeSprite(d) {
   const sea = WORLD.season, rq = Math.round(d.r / 3) * 3, v = d.v, snowy = sea === 3 || bioAt(d.x, d.y) === 'snow';
-  const key = 't|' + v + '|' + sea + '|' + rq + '|' + (d.s & 3) + '|' + (snowy ? 1 : 0);
+  const sunSh = luxSunShadowsOn(), key = 't|' + v + '|' + sea + '|' + rq + '|' + (d.s & 3) + '|' + (snowy ? 1 : 0) + (sunSh ? 's' : '');
   return wSprite(key, rq + 8, g => {
     const R = Z.mulberry32((d.s & 3) * 977 + rq);
-    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(8, 10, rq, rq * 0.9, 0, 0, TAU); g.fill();
+    // (with the sun on, the lighting engine casts the crown's shadow where the sun puts it)
+    if (!sunSh) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(8, 10, rq, rq * 0.9, 0, 0, TAU); g.fill(); }
     const bare = v === 'dead' || (sea === 3 && (v === 'oak' || v === 'blossom'));
     if (bare) {
       g.strokeStyle = v === 'dead' ? '#24201e' : '#3a2e26'; g.lineCap = 'round';

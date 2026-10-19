@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.930';
+const ZC_VERSION = '1.9.940';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -57,9 +57,7 @@ function getSprite(m, r, plain) {
   let s = sprites.get(key);
   if (s) { sprites.delete(key); sprites.set(key, s); return s; }   // keep the map in least-recently-used order
   const half = rq * 2.4, size = Math.ceil(half * 2 * SPR);
-  const c = document.createElement('canvas'); c.width = c.height = size;
-  const g = c.getContext('2d'); g.scale(SPR, SPR); g.translate(half, half);
-  Z.drawMutation(g, m, rq, { noAbility: plain });
+  const c = texelZombie(m, rq, plain, half, size);   // drawn, textured and sized by the texture engine
   s = { c: c, half: half, rq: rq };
   sprites.set(key, s);
   if (sprites.size > Q.sprCap * 1.25) sprites.delete(sprites.keys().next().value);
@@ -1430,8 +1428,9 @@ function spawnAttract(anywhere) {
   const m = MUTS[Math.floor(Math.random() * MUTS.length)], hw = W / ZOOM / 2, hh = H / ZOOM / 2;
   for (let t = 0; t < 10; t++) {
     const x = anywhere ? cam.x + rand(-hw, hw) : cam.x + hw + rand(40, 160), y = cam.y + rand(-hh, hh);
-    if (!blocked(x, y, 24)) { const z = spawnZombie(m, x, y); z.wx = x; z.wy = y; return; }
+    if (!blocked(x, y, 24)) { const z = spawnZombie(m, x, y); z.wx = x; z.wy = y; return true; }
   }
+  return false;
 }
 function updAttract(dt) {
   cam.x += 26 * dt; cam.y += 8 * dt;
@@ -1445,7 +1444,8 @@ function updAttract(dt) {
     if (z.x < cam.x - hw - 120) z.dead = true;
   }
   G.zs = G.zs.filter(z => !z.dead);
-  while (G.zs.length < 18) spawnAttract(false);
+  // a few tries a frame, never a loop: at real-world scale one building can fill the whole strip past the edge of the screen
+  for (let k = 0; k < 4 && G.zs.length < 18; k++) if (!spawnAttract(false)) break;
   updFx(dt);
 }
 
@@ -1456,6 +1456,7 @@ function render() {
   const s = DPR * ZOOM;
   ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - cam.x * s, DPR * (H / 2 + shy) - cam.y * s);
   const hw = W / 2 / ZOOM, hh = H / 2 / ZOOM, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake;
+  coreFrame(x0, y0, x1, y1, G.rdt || 0.016);   // the shared frame every engine reads from
   // the city tiles cover every pixel, so the frame is never cleared first (one less full-screen fill per frame)
   let rebuild = 1; WORLD.rf = 0;
   for (let cx = Math.floor((x0 - pad) / CHS); cx <= Math.floor((x1 + pad) / CHS); cx++) for (let cy = Math.floor((y0 - pad) / CHS); cy <= Math.floor((y1 + pad) / CHS); cy++) {
@@ -1567,13 +1568,14 @@ function render() {
   ctx.globalAlpha = 1;
   // screen space
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (SET.grade) ctx.drawImage(screenGrad('vig', 0.32, 0.62, '4,5,8', 0.74), 0, 0, W, H);
+  if (SET.grade && !PRISM.vigGpu) ctx.drawImage(screenGrad('vig', 0.32, 0.62, '4,5,8', 0.74), 0, 0, W, H);   // (the shader engine draws its own on the GPU)
   if (vz) drawVizScreen(vz);
   tw = performance.now(); drawWeatherScreen(Math.min(0.05, (performance.now() - (render.lt || performance.now())) / 1000)); render.lt = performance.now(); PERF.sec.wx += performance.now() - tw;
   if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') {
     drawScreenFx(); drawDashScreen(); drawAim(); if (NET.started) netDrawPointers();
     if (G.flashA > 0) { ctx.globalAlpha = Math.min(0.5, G.flashA); ctx.drawImage(screenGrad('a10', 0.1, 0.8, '255,214,150', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
   }
+  prismFrame();   // the shader engine finishes the frame (GPU or CPU)
 }
 // after the lighting has darkened the night: what makes its own light is drawn again on top, so tracers, flames,
 // sparks and glowing shots stay bright in the dark
@@ -1746,19 +1748,10 @@ function drawPlayer(p) {
   if (p.dashT > 0 && p.dashK === 'meteor') { const h = Math.sin((1 - p.dashT / p.dashDur) * Math.PI); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 6, 13, 10, 0, 0, TAU); ctx.fill(); ctx.translate(0, -h * 34); ctx.scale(1 + h * 0.5, 1 + h * 0.5); }
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(2, 4, 13, 12, 0, 0, TAU); ctx.fill();
   ctx.rotate(p.aim);
-  const sw = Math.sin(p.walk) * 2.5;
-  ctx.fillStyle = '#2b2f2a'; ctx.fillRect(-12, -7, 7, 14);
-  ctx.fillStyle = '#3e4a3a'; ctx.beginPath(); ctx.ellipse(0, 0, 9, 13, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#f2cc3a'; ctx.fillRect(-4, -12, 3, 24); ctx.fillRect(2, -11, 2, 22);
-  ctx.strokeStyle = '#c9a27e'; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(2, -8); ctx.lineTo(14 + sw * 0.2, -2); ctx.moveTo(2, 8); ctx.lineTo(11, 2); ctx.stroke();
-  const fk = p.weapon.F.key, gl = GUN_LEN[fk] || 20, gw = GUN_W[fk] || 5;
-  if (fk === 'flamer') { ctx.fillStyle = '#7a2a1a'; ctx.beginPath(); ctx.ellipse(-12, 0, 6, 9, 0, 0, TAU); ctx.fill(); }
-  ctx.fillStyle = '#16181b'; ctx.fillRect(8, -gw / 2, gl, gw); ctx.fillRect(10, gw / 2 - 1, 5, 4);
-  ctx.fillStyle = p.weapon.color; ctx.fillRect(12, -1, gl * 0.45, 2);
-  ctx.fillStyle = '#c9a27e'; ctx.beginPath(); ctx.arc(2, 0, 6.5, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#2d332b'; ctx.beginPath(); ctx.arc(0.5, 0, 6.6, Math.PI * 0.5, Math.PI * 1.5); ctx.fill(); ctx.fillRect(2, -6.6, 4, 2.4);
-  if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
+  // the survivor is one textured sprite per weapon and walking pose (made once by the texture engine), turned to the aim
+  const fk = (p.weapon && p.weapon.F && p.weapon.F.key) || 'pistol', gl = GUN_LEN[fk] || 20, PS = texelPlayer(p);
+  ctx.drawImage(PS.c, -PS.half, -PS.half, PS.half * 2, PS.half * 2);
+  if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M && p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
   if (p.frozenT > 0) { ctx.fillStyle = 'rgba(200,240,255,0.55)'; ctx.fillRect(-15, -15, 30, 30); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(-15, -15, 30, 30); }
   if (p.rootT > 0) { ctx.strokeStyle = '#4d5e22'; ctx.lineWidth = 3; for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + 0.4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 18, Math.sin(a) * 18); ctx.quadraticCurveTo(Math.cos(a + 0.6) * 8, Math.sin(a + 0.6) * 8, Math.cos(a + 1.2) * 14, Math.sin(a + 1.2) * 14); ctx.stroke(); } }
   if (p.jamT > 0) { ctx.rotate(-p.aim); ctx.fillStyle = '#fff36b'; ctx.font = "bold 12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('JAM', 0, -24); }
@@ -1769,6 +1762,7 @@ function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (
 const NEON = ['#ff3df2', '#29e6ff', '#7dff4a', '#ffb627', '#ff3b5c', '#9b5cff', '#2bff9e', '#ff7a2b'];
 const VZ = { I: 0, col: NEON[1], col2: NEON[0], rgb: '41,230,255', css: '' };
 let vzNow = null;
+const VIZ_PAUSED = true;
 const glowCache = new Map();
 function glowSprite(col) {
   let c = glowCache.get(col); if (c) return c;
@@ -2062,7 +2056,8 @@ function frame(now) {
     if (SFX.tick) SFX.tick();
     padPoll(rdt);
     netTick(rdt);
-    vzNow = vizFrame();
+    // the music light show (the city pulsing to the radio, the bars along the bottom) is paused while 2.0 is built
+    vzNow = VIZ_PAUSED ? null : vizFrame();
     if (G.mode === 'play') update(dt);
     else if (G.mode === 'cine') updCine(dt);
     else if (G.mode === 'title') { G.time += dt; updAttract(dt); updWorld(dt); }
@@ -2077,6 +2072,7 @@ function frame(now) {
     if (frameNo % 120 === 0 && G.mode === 'title') $('seasonLeft').textContent = seasonLeft();
   } catch (err) { perfError(err); }
   perfFrame(now, iv, performance.now() - t0);
+  coreTick(performance.now());
   requestAnimationFrame(frame);
 }
 

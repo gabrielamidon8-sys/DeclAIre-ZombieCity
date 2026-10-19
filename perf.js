@@ -198,7 +198,7 @@ function perfFrame(now, rawIv, work) {
     const fillBound = wk < T * 0.45, heavyWx = WX.fog + WX.dark + WX.sand + WX.rain * 0.5 + WX.snow * 0.5 > 0.55;
     if (PERF.bad >= 1 && (wxShare > 0.2 || (fillBound && heavyWx)) && PERF.wxScale > (fillBound && wxShare <= 0.2 ? 0.51 : 0.26) && SET.weather === 'auto') { PERF.wxScale = Math.max(0.25, PERF.wxScale - 0.25); PERF.bad = 0; PERF.holdT = now + 1200; logTrim('weather ' + Math.round(PERF.wxScale * 100) + '%'); return; }
     // the lighting engine taking a big slice steps itself down a level before the whole picture loses resolution
-    if (PERF.bad >= 1 && luxShare > 0.22 && LUX.adapt > -3 && SET.lux !== 'off') { LUX.adapt--; LUX.bad = 0; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('lighting'); return; }
+    if (PERF.bad >= 1 && luxShare > 0.22 && coreTrim(T)) { PERF.bad = 0; PERF.holdT = now + 1200; return; }
     if (PERF.bad >= 1 && lifeShare > 0.18 && !PERF.vegCut && SET.veg === 'auto') { PERF.vegCut = true; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('still trees'); return; }
     if (++PERF.bad >= 2 && PERF.rung < LADDER.length - 1) {
       const from = PERF.rung, step = avg > T * 2 ? 2 : 1;
@@ -251,6 +251,7 @@ function trimCaches(level) {
   let kept = keep; if (level < 2) { const budget = [60, 100, 150, 210][PERF.tier] * 1048576; let b = 0; for (let i = 0; i < Math.min(kept, live.length); i++) { b += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); if (b > budget && i >= 6) { kept = i; break; } } }
   for (let i = kept; i < live.length; i++) { freed += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); live[i].can = null; live[i].wcan = null; }
   if (level >= 1 && typeof WSPR !== 'undefined') { for (const v of WSPR.values()) freed += canvasBytes(v.c); WSPR.clear(); }
+  if (level >= 1 && typeof TEXEL !== 'undefined') { for (const v of TEXEL.players.values()) freed += canvasBytes(v.c); TEXEL.players.clear(); for (const c of TEXEL.scratch) freed += canvasBytes(c); TEXEL.scratch.length = 0; }
   for (const [key, c] of chunks) if (Math.abs(c.sx + CHS / 2 - cam.x) > CHS * 5 || Math.abs(c.sy + CHS / 2 - cam.y) > CHS * 5) chunks.delete(key);
   if (level >= 1 || glowCache.size > 16) { for (const c of glowCache.values()) freed += canvasBytes(c); glowCache.clear(); ZB.clearCache(); EDGE.col = ''; VZ.specGr = null; SG.clear(); }
   for (const [id, sheet] of [['cxGrid', 'codex'], ['arGrid', 'armory'], ['blGrid', 'bosslog']]) {

@@ -1040,6 +1040,7 @@ button.lcd{cursor:pointer}
 .maint-when{font-family:var(--f-num);color:var(--tape)!important;font-size:14px!important}
 .maint-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .maint-note{font-size:13px!important;color:var(--muted)!important}
+.maint-code{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}.maint-code input{flex:1 1 180px;min-width:0;max-width:260px;padding:9px 11px;background:rgba(8,10,13,.85);border:1px solid rgba(41,230,255,.45);border-radius:3px;color:#e8f6ff;font-family:var(--f-num);font-size:14px;letter-spacing:.12em}.maint-code input:focus{outline:2px solid rgba(41,230,255,.6);outline-offset:1px}.maint-code-msg{font-size:12px;color:#ffb38a;font-family:var(--f-num);min-height:1em}
 .maint-soon,.maint-admin{position:fixed;left:50%;transform:translateX(-50%);z-index:59;padding:7px 14px;border-radius:3px;font-family:var(--f-num);font-size:12px;letter-spacing:.06em;max-width:calc(100vw - 32px);text-align:center}
 .maint-soon{bottom:16px;background:rgba(242,204,58,.94);color:#17140b}
 /* 2.0: the construction-site maintenance screen (maint.js) */
@@ -1293,7 +1294,8 @@ button.lcd{cursor:pointer}
         </div>
         <div class="mmeta"><span class="mhints" id="mHints"></span><span class="mprogw"><span class="mprog-l">Progress <em>(made up)</em></span><span class="mprog"><i id="mBar"></i></span><span class="mstatus" id="mStatus"></span></span></div>
       </div>
-      <div class="maint-row"><button class="btn primary" id="maintRetry" type="button">Check again</button><button class="btn" id="maintUpdate" type="button" hidden>Update</button><button class="btn ghost" id="maintSite" type="button">Website</button></div>
+      <div class="maint-row"><button class="btn primary" id="maintRetry" type="button">Check again</button><button class="btn" id="maintUpdate" type="button" hidden>Update</button><button class="btn ghost" id="maintSite" type="button">Website</button><button class="btn ghost" id="maintTester" type="button">Tester code</button></div>
+      <div class="maint-code" id="maintCodeRow" hidden><input id="maintCode" type="password" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" placeholder="Tester code" aria-label="Tester code"><button class="btn" id="maintCodeGo" type="button">Unlock</button><span class="maint-code-msg" id="maintCodeMsg" role="status"></span></div>
       <p class="maint-note">Your progress is safe on this device and in your account. The game checks again by itself every minute.</p>
     </div>
   </section>

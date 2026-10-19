@@ -36,7 +36,9 @@ function luxHourNow() {
   if (G.mode === 'title') return set - 0.7;                       // the title screen waits in the golden hour
   if (m === 'day') return 13; if (m === 'dusk') return set - 0.7; if (m === 'dawn') return rise + 0.35; if (m === 'night') return 23.2;
   if (m === 'real') { const d = new Date(); return d.getHours() + d.getMinutes() / 60; }
-  return (LUX.h0 + G.time / 24) % 24;                             // a day lasts about ten minutes of play
+  // a day lasts about ten minutes of play; the run's morning hour comes from the city's seed, so co-op players share it
+  if (LUX.h0s !== WORLD.seed) { LUX.h0s = WORLD.seed; LUX.h0 = 8.5 + ((WORLD.seed >>> 0) % 551) / 100; }
+  return (LUX.h0 + G.time / 24) % 24;
 }
 // how bright the world is without any lamp: a colour to multiply the picture by
 function luxAmbient(out) {
@@ -259,6 +261,7 @@ function luxCast(lx, ly, R, dx, dy) {
 // the shape a light can see: rays toward the corners of every wall (so the edges of shadows are sharp) plus an even
 // fan around. Returns the number of points written to LUX.pts (x, y pairs).
 function luxPoly(lx, ly, R, rays, a0, a1, ents) {
+  if (!isFinite(a0) || !isFinite(a1)) { a0 = 0; a1 = 6.2832; }
   const n = luxOcc(lx, ly, R, ents), A = LUX.ang; let na = 0, full = a1 - a0 >= 6.28;
   for (let i = 0; i < rays && na < 1500; i++) A[na++] = a0 + (a1 - a0) * (i / (rays - (full ? 0 : 1)));
   const o = LUX.occ, R2 = R * R * 1.3;
@@ -270,7 +273,8 @@ function luxPoly(lx, ly, R, rays, a0, a1, ents) {
       const an = Math.atan2(vy, vx);
       for (const d of [-0.0009, 0.0009]) {
         let q = an + d;
-        if (!full) { while (q < a0 - 3.1416) q += 6.2832; while (q > a0 + 3.1416) q -= 6.2832; if (q < a0 || q > a1) continue; }
+        // into the beam's turn (one modulo, never a loop: an aim angle can grow large over a long run)
+        if (!full) { q = a0 + (((q - a0 + 3.1416) % 6.2832) + 6.2832) % 6.2832 - 3.1416; if (!(q >= a0 && q <= a1)) continue; }
         A[na++] = q;
       }
     }
@@ -362,17 +366,36 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
       for (const r of c.rects) { if (r.k === 'b' && !r.burn && r.x < x1 && r.x + r.w > x0 && r.y < y1 && r.y + r.h > y0) g.fillRect(r.x, r.y, r.w, r.h); }
     }
   }
-  // the map: ambient colour plus the lights, multiplied over the picture
+  // the sun: where it stands, how strong it is through the weather, and which way the shadows fall
+  const sun = luxSun(amb), shadowed = sun.on && sun.k > 0.02;
+  // a light day on a slower device (the two lowest levels, no bounce light) or one that can't multiply pictures: the sun's
+  // shadows go straight onto the picture as one shape, with no light map over the whole screen
+  const lite = shadowed && !dark && (!LUX.mul || (LUX.level <= 1 && !luxGIwanted(lq))), lit = dark || (shadowed && !lite);
+  // the map: sunlight (or the night's ambient), the sun's shadows, then the lamps and fires, multiplied over the picture
   const m = LUX.mg; m.setTransform(1, 0, 0, 1, 0, 0); m.globalCompositeOperation = 'source-over';
   m.fillStyle = 'rgb(' + Math.round(amb[0] * 255) + ',' + Math.round(amb[1] * 255) + ',' + Math.round(amb[2] * 255) + ')'; m.fillRect(0, 0, LUX.cw, LUX.ch);
+  if (shadowed && !lite) { m.setTransform(tr.a * s, tr.b * s, tr.c * s, tr.d * s, tr.e * s, tr.f * s); try { luxSunShadows(m, sun, x0, y0, x1, y1); } catch (e) { luxHurt(e); } m.setTransform(1, 0, 0, 1, 0, 0); }
   m.globalCompositeOperation = 'lighter'; m.drawImage(LUX.A, 0, 0);
+  // light that bounces off walls and the street, path traced: here on the CPU, or by the shader engine on the GPU
+  LUX.giOn = lit && luxGIwanted(lq);
+  if (LUX.giOn) { try { luxGIgrid(x0, y0, x1, y1, lq); if (!(typeof PRISM !== 'undefined' && PRISM.giGpu)) luxGI(m, tr, s, lq); } catch (e) { luxHurt(e); LUX.giOn = false; } }
+  m.globalCompositeOperation = 'source-over';
+  luxExport(amb, use);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (dark && LUX.mul) { ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(LUX.M, 0, 0, cv.width, cv.height); }
+  if (lit && LUX.mul) { ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(LUX.M, 0, 0, cv.width, cv.height); }
+  else if (lite) {
+    ctx.setTransform(tr);
+    if (LUX.mul) { ctx.globalCompositeOperation = 'multiply'; try { luxSunShadows(ctx, sun, x0, y0, x1, y1); } catch (e) { luxHurt(e); } }
+    else { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.3 * sun.k; try { luxSunShadows(ctx, sun, x0, y0, x1, y1, '#0c1424'); } catch (e) { luxHurt(e); } ctx.globalAlpha = 1; }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
   else if (dark) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1 - (amb[0] + amb[1] + amb[2]) / 3; ctx.fillStyle = '#080c16'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }   // no multiply on this device: a plain dark veil
+  LUX.lit = lit && LUX.mul;
   // glow and bloom: the light itself, added on top
   ctx.globalCompositeOperation = 'lighter';
   const night = 1 - LUX.day, wet = clamp(WX.rain * 1.2 + (WX.storm || 0) * 0.4, 0, 1), fogk = clamp(WX.fog, 0, 1);
-  if (use) {
+  const gpuBloom = typeof PRISM !== 'undefined' && PRISM.bloomGpu;
+  if (use && !gpuBloom) {
     // wet streets shine and fog glows around every lamp
     ctx.globalAlpha = Math.min(1, (0.1 + 0.12 * night) * (1 + 0.6 * wet + 0.8 * fogk)); ctx.drawImage(LUX.A, 0, 0, cv.width, cv.height);
     if (lq.bloom && SET.bloom !== false) {
@@ -383,6 +406,8 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
         ctx.globalAlpha = Math.min(1, (0.2 + 0.14 * night) * (1 + 0.4 * wet + 1.2 * fogk)); ctx.drawImage(LUX.B2, 0, 0, cv.width, cv.height);
       }
     }
+  }
+  if (use) {
     // rain and snow caught in the light: streaks and flakes, only where a lamp, a fire or your flashlight reaches
     if (lq.bloom && (WX.rain > 0.08 || WX.snow > 0.08) && wxLevel() > 0 && night > 0.15) { luxGlints(lq); ctx.globalAlpha = 0.85 * night; ctx.drawImage(LUX.G1, 0, 0, cv.width, cv.height); }
   }
@@ -408,7 +433,7 @@ function luxGlints(lq) {
 function noteLux() { if (LUX.repairs++ > 0) noteRepair('Rebuilt the lighting canvases'); }
 // something went wrong inside the engine: remember it, and back off if it keeps going wrong
 function luxHurt(e) {
-  const now = performance.now(); LUX.lastErr = String(e && e.message || e).slice(0, 120);
+  const now = performance.now(); LUX.lastErr = String(e && e.message || e).slice(0, 120); coreHurt('LUX', e);
   LUX.errT.push(now); while (LUX.errT.length && now - LUX.errT[0] > 8000) LUX.errT.shift();
   try { console.error(e); } catch (x) { }
   if (LUX.errT.length >= 3 && LUX.adapt > -3) { LUX.adapt--; LUX.A = null; LUX.errT.length = 0; noteRepair('Lighting engine dropped a level'); }
@@ -434,10 +459,10 @@ function luxRun(x0, y0, x1, y1, shx, shy, dt) {
   try { luxFrame(x0, y0, x1, y1, shx, shy, dt); }
   catch (e) { luxHurt(e); }
   ctx.restore(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  const ms = performance.now() - t0; PERF.sec.lux = (PERF.sec.lux || 0) + ms; luxWatch(ms);
+  const ms = performance.now() - t0; PERF.sec.lux = (PERF.sec.lux || 0) + ms; luxWatch(ms); coreCost('LUX', ms);
 }
 // a new run: the morning
-function luxNewRun() { LUX.h0 = 8.5 + Math.random() * 5.5; LUX.fx.length = 0; LUX.adapt = Math.min(0, LUX.adapt + 1); }
+function luxNewRun() { LUX.h0s = null; LUX.fx.length = 0; LUX.adapt = Math.min(0, LUX.adapt + 1); }
 // the loading screen calls this: builds the canvases, tests the device, and draws one shadowed light so the first real frame is cheap
 function luxWarm() {
   if (!LUX.probe) LUX.probe = luxProbe() ? 1 : -1;
@@ -457,3 +482,205 @@ function luxWarm() {
     LUX.nocc = 0;
   } catch (e) { luxHurt(e); }
 }
+
+/* ---------- the sun ----------
+   It rises in the east, crosses the south at noon and sets in the west (north is up the screen), climbing higher in
+   summer than in winter. Its light is the day's ambient colour; where a building, a car, a tree or a body blocks it,
+   only the blue light of the sky is left. Shadows are as long as the sun is low: a tower's shadow at dusk crosses the
+   street, at noon it hugs the wall. Clouds, rain and fog soften them until, under a storm, there are none. */
+const LUX_SUNMAX = [52, 72, 46, 28];                 // how high the sun climbs (degrees), by season
+const LUX_COVER = { clear: 0, overcast: 0.72, rain: 0.86, storm: 0.95, fog: 0.82, snow: 0.7, blizzard: 0.96, sand: 0.55, ash: 0.7 };
+const LUX_SKY = [0.7, 0.75, 0.88];                  // what is left in the shade: the sky's blue
+function luxSunShadowsOn() { return SET.lux !== 'off' && SET.sun !== false; }
+function luxSun(amb) {
+  const S = CORE.frame.sun, sea = WORLD.season, rise = LUX_RISE[sea], set = LUX_SET[sea], h = LUX.hour;
+  if (h <= rise + 0.05 || h >= set - 0.05 || !luxSunShadowsOn()) { S.on = false; S.k = 0; return S; }
+  const p = (h - rise) / (set - rise), el = LUX_SUNMAX[sea] * Math.sin(p * Math.PI), az = 90 + p * 180;
+  const cover = LUX_COVER[WX.kind] != null ? LUX_COVER[WX.kind] : 0.5;
+  S.k = clamp(el / 9, 0, 1) * (1 - cover) * (1 - (WX.fog || 0) * 0.5) * (1 - clamp(WX.dark || 0, 0, 1) * 0.6);
+  S.on = S.k > 0.02; S.el = el; S.az = az;
+  const len = Math.min(10, 1 / Math.tan(Math.max(5, el) * Math.PI / 180)), ar = az * Math.PI / 180;
+  S.dx = -Math.sin(ar) * len; S.dy = Math.cos(ar) * len;   // metres of shadow per metre of height, pointing away from the sun
+  S.col[0] = amb[0]; S.col[1] = amb[1]; S.col[2] = amb[2];
+  for (let i = 0; i < 3; i++) S.sky[i] = amb[i] * (1 - S.k * 0.85 * (1 - LUX_SKY[i]));
+  S.css = 'rgb(' + Math.round(S.sky[0] * 255) + ',' + Math.round(S.sky[1] * 255) + ',' + Math.round(S.sky[2] * 255) + ')';
+  return S;
+}
+// how tall things stand, in metres (a building's height comes from its own seed, so it is the same every time)
+const LUX_HT = { car: 1.5, tanker: 3.4, plow: 3, planter: 4, rub: 2.4, barrier: 1, rail: 0.9, fence: 1.8, rock: 2, mesa: 22, cactus: 3, pump: 1.6, bench: 0.8, dumpster: 1.6, hoop: 3, kiosk: 3, log: 0.5, stall: 2.8, tank: 8, trough: 0.9, windmill: 11, wood: 1.2, checkpoint: 3, statue: 6 };
+function luxHeight(r) {
+  if (r._ht !== undefined) return r._ht;
+  let h = 0;
+  if (r.k === 'b') {
+    const st = r.st || 'block', u = ((((r.s || (r.x * 31 + r.y * 17) | 0) * 2654435761) >>> 0) % 10000) / 10000;
+    h = st === 'block' ? 10 + u * u * 26 + Math.min(8, Math.sqrt(r.w * r.h) / (SCL * 60)) : st === 'ruin' ? 5 + u * 8 : st === 'house' ? 7 : st === 'adobe' ? 4.5 : st === 'cabin' || st === 'lodge' ? 7 : st === 'barn' ? 9 : 3.4;
+  } else if (r.k === 'lm') h = r.lm === 'statue' ? 7 : r.lm === 'plane' ? 4 : r.lm === 'fountain' ? 1.6 : 3;
+  else h = LUX_HT[r.k] || 0;
+  return r._ht = h;
+}
+// the shadow a box throws, minus the box itself (so its own roof stays in the sun): an L-shaped outline. Every outline
+// is wound the same way round, so all of them fill as one shape in a single pass.
+function luxShadowPath(m, x, y, w, h, ox, oy) {
+  const a = Math.abs(ox), b = Math.abs(oy), fx = ox >= 0, fy = oy >= 0;
+  const P = [w, 0, w + a, b, w + a, h + b, a, h + b, 0, h, w, h];
+  const X = i => fx ? x + P[i] : x + w - P[i], Y = i => fy ? y + P[i + 1] : y + h - P[i + 1];
+  if (fx === fy) { m.moveTo(X(0), Y(0)); for (let i = 2; i < 12; i += 2) m.lineTo(X(i), Y(i)); }
+  else { m.moveTo(X(10), Y(10)); for (let i = 8; i >= 0; i -= 2) m.lineTo(X(i), Y(i)); }
+  m.closePath();
+}
+function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
+  const UPM = 32 * SCL / SCALE_REAL, ux = sun.dx * UPM, uy = sun.dy * UPM, maxL = 900 * Math.max(0.5, SCL / SCALE_REAL), mg = maxL;
+  m.fillStyle = col || sun.css; m.beginPath();
+  const cx0 = Math.floor((x0 - mg) / CHS), cx1 = Math.floor((x1 + mg) / CHS), cy0 = Math.floor((y0 - mg) / CHS), cy1 = Math.floor((y1 + mg) / CHS);
+  let n = 0;
+  for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
+    const c = chunks.get(cx + ',' + cy); if (!c) continue;
+    for (const r of c.rects) {
+      const h = luxHeight(r); if (!h) continue;
+      let ox = ux * h, oy = uy * h; const L = Math.hypot(ox, oy); if (L > maxL) { ox *= maxL / L; oy *= maxL / L; }
+      if (Math.min(r.x, r.x + ox) > x1 || Math.max(r.x + r.w, r.x + r.w + ox) < x0 || Math.min(r.y, r.y + oy) > y1 || Math.max(r.y + r.h, r.y + r.h + oy) < y0) continue;
+      luxShadowPath(m, r.x, r.y, r.w, r.h, ox, oy); n++;
+    }
+  }
+  if (n) m.fill();
+  // tree crowns, and everyone standing in the street
+  m.beginPath(); n = 0;
+  for (const d of WD.act) {
+    if (d.k !== 'tree') continue;
+    const cxw = d.x + ux * 6, cyw = d.y + uy * 6, rr = d.r * 0.82;
+    if (cxw + rr < x0 || cxw - rr > x1 || cyw + rr < y0 || cyw - rr > y1) continue;
+    m.moveTo(cxw + rr, cyw); m.arc(cxw, cyw, rr, 0, TAU); n++;
+  }
+  const body = (x, y, r, hm) => {
+    const ox = ux * hm, oy = uy * hm, L = Math.hypot(ox, oy); if (x + L + r < x0 || x - L - r > x1 || y + L + r < y0 || y - L - r > y1) return;
+    const rx = L / 2 + r * 0.6, ry = r * 0.62, a = Math.atan2(oy, ox), ex = x + ox * 0.5, ey = y + oy * 0.5;
+    m.moveTo(ex + Math.cos(a) * rx, ey + Math.sin(a) * rx); m.ellipse(ex, ey, rx, ry, a, 0, TAU); n++;
+  };
+  let nz = 0;
+  for (const z of G.zs) { if (z.dead || z.fly || (z.st && z.st.under)) continue; body(z.x, z.y, z.r, clamp(z.r * 0.17, 1.2, 6)); if (++nz > 80) break; }
+  if (G.p && G.mode !== 'title' && !G.p.down) body(G.p.x, G.p.y, G.p.r, 1.75);
+  if (NET.started) { const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values()); for (const q of each) if (q && !q.down) body(q.x, q.y, 9 * PK, 1.75); }
+  if (n) m.fill();
+}
+
+/* ---------- bounce light: path traced ----------
+   The view is laid over with a grid of cells (fixed to the world, so it does not swim as the camera moves). Each
+   frame, half of the cells send a few rays in random directions; a ray runs through the grid until it reaches a random
+   distance or hits a wall, and brings back the light it finds there (the street's or the wall's colour times the light
+   on it). The average is the light bouncing into that cell: sunlight spilling into the shade, a fire turning the
+   walls around it orange, lamplight reaching round a corner. Rays that hit a wall close by also tell how much of the
+   sky the cell can see, so the shade deepens where buildings crowd round (ambient occlusion). Every frame's answer is
+   blended into the last ones, so the noise of a few rays per cell settles into a smooth picture. With a GPU the
+   shader engine traces the same paths, more of them, on the graphics chip. */
+const GI = { cell: 0, gx: 0, gy: 0, gw: 0, gh: 0, acc: null, vis: null, occ: null, src: null, out: null, outImg: null, ao: null, aoImg: null, gs: null, gsg: null, f: 0, seed: 1, ms: 0, rays: 0 };
+const GI_COLS = [0, 40, 48, 56, 64], GI_COLS_GPU = [0, 64, 96, 112, 128];   // the CPU traces a coarser grid than the GPU
+const GI_ALB = { city: [0.34, 0.34, 0.36], chaos: [0.34, 0.32, 0.34], burning: [0.32, 0.25, 0.2], ruins: [0.36, 0.34, 0.3], ash: [0.42, 0.42, 0.43], suburb: [0.27, 0.35, 0.22], desert: [0.56, 0.46, 0.33], snow: [0.8, 0.84, 0.9] };
+function luxGIwanted(lq) {
+  const w = SET.gi || 'auto'; if (w === 'off' || !lq.rays) return false;
+  // with the shader engine on the GPU, the GPU traces (if its level allows); the CPU tracer reads the light map back,
+  // which would stall a graphics chip, so it only runs where the canvas is drawn on the CPU anyway
+  if (typeof PRISM !== 'undefined' && PRISM.mode === 'gpu') return PRQ[PRISM.lvl].gi > 0;
+  return w === 'on' || LUX.level >= 2;
+}
+// the grid for this frame and which of its cells are solid (also handed to the shader engine for its GPU pass)
+function luxGIgrid(x0, y0, x1, y1, lq) {
+  const gpu = typeof PRISM !== 'undefined' && PRISM.mode === 'gpu', cols = (gpu ? GI_COLS_GPU : GI_COLS)[LUX.level] || 48, cell = Math.max(4, Math.round((x1 - x0) / cols * 4) / 4);
+  const gx = Math.floor(x0 / cell) - 1, gy = Math.floor(y0 / cell) - 1, gw = Math.ceil((x1 - x0) / cell) + 3, gh = Math.ceil((y1 - y0) / cell) + 3, N = gw * gh;
+  if (cell !== GI.cell || gw !== GI.gw || gh !== GI.gh || !GI.acc) {
+    GI.cell = cell; GI.gw = gw; GI.gh = gh; GI.gx = gx; GI.gy = gy;
+    GI.acc = new Float32Array(N * 3); GI.vis = new Float32Array(N).fill(1); GI.occ = new Uint8Array(N); GI.src = new Float32Array(N * 3);
+    GI.out = null; GI.ao = null;
+  } else if (gx !== GI.gx || gy !== GI.gy) {
+    // the camera moved: slide what has been gathered so far along with the world
+    const sx = gx - GI.gx, sy = gy - GI.gy, a = new Float32Array(N * 3), v = new Float32Array(N).fill(1);
+    for (let y = 0; y < gh; y++) { const oy = y + sy; if (oy < 0 || oy >= gh) continue; for (let x = 0; x < gw; x++) { const ox = x + sx; if (ox < 0 || ox >= gw) continue; const i = y * gw + x, j = oy * gw + ox; a[i * 3] = GI.acc[j * 3]; a[i * 3 + 1] = GI.acc[j * 3 + 1]; a[i * 3 + 2] = GI.acc[j * 3 + 2]; v[i] = GI.vis[j]; } }
+    GI.acc = a; GI.vis = v; GI.gx = gx; GI.gy = gy;
+  }
+  const occ = GI.occ; occ.fill(0);
+  const wx0 = gx * cell, wy0 = gy * cell, wx1 = wx0 + gw * cell, wy1 = wy0 + gh * cell;
+  const cx0 = Math.floor(wx0 / CHS), cx1 = Math.floor(wx1 / CHS), cy0 = Math.floor(wy0 / CHS), cy1 = Math.floor(wy1 / CHS);
+  for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
+    const c = chunks.get(cx + ',' + cy); if (!c) continue;
+    for (const r of c.rects) {
+      if (luxHeight(r) < 2 || r.x > wx1 || r.x + r.w < wx0 || r.y > wy1 || r.y + r.h < wy0) continue;
+      const ia = Math.max(0, Math.floor((r.x - wx0) / cell)), ib = Math.min(gw - 1, Math.floor((r.x + r.w - wx0) / cell)), ja = Math.max(0, Math.floor((r.y - wy0) / cell)), jb = Math.min(gh - 1, Math.floor((r.y + r.h - wy0) / cell));
+      for (let j = ja; j <= jb; j++) occ.fill(1, j * gw + ia, j * gw + ib + 1);
+    }
+  }
+  const F = CORE.frame; F.gi = GI;
+}
+function luxGI(m, tr, s, lq) {
+  const t0 = performance.now(), gw = GI.gw, gh = GI.gh, N = gw * gh, cell = GI.cell;
+  // the light on the ground, read back small from the light map (every other frame is plenty)
+  if (!GI.gs || GI.gs.width !== gw || GI.gs.height !== gh) { GI.gs = luxCanvas(gw, gh); GI.gsg = GI.gs.getContext('2d', { willReadFrequently: true }); GI.f = 0; }
+  if ((GI.f & 1) === 0) {
+    const wx = GI.gx * cell, wy = GI.gy * cell, sx = (tr.a * wx + tr.e) * s, sy = (tr.d * wy + tr.f) * s, sw = tr.a * gw * cell * s, sh = tr.d * gh * cell * s;
+    GI.gsg.setTransform(1, 0, 0, 1, 0, 0); GI.gsg.globalCompositeOperation = 'source-over'; GI.gsg.fillStyle = '#000'; GI.gsg.fillRect(0, 0, gw, gh);
+    GI.gsg.drawImage(LUX.M, sx, sy, sw, sh, 0, 0, gw, gh);
+    const d = GI.gsg.getImageData(0, 0, gw, gh).data, src = GI.src;
+    for (let i = 0; i < N; i++) { src[i * 3] = d[i * 4] / 255; src[i * 3 + 1] = d[i * 4 + 1] / 255; src[i * 3 + 2] = d[i * 4 + 2] / 255; }
+  }
+  // trace: half the cells this frame, the other half next frame
+  const occ = GI.occ, src = GI.src, acc = GI.acc, vis = GI.vis, alb = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city;
+  const R = LUX.level >= 3 ? 3 : 2, S = 10, blend = 0.22, WALL = 0.5;
+  let seed = GI.seed = (GI.seed * 1664525 + 1013904223) >>> 0, rays = 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  for (let c = GI.f & 1; c < N; c += 2) {
+    if (occ[c]) { acc[c * 3] = acc[c * 3 + 1] = acc[c * 3 + 2] = 0; vis[c] = 1; continue; }
+    const cx = c % gw, cy = (c / gw) | 0; let r = 0, g = 0, b = 0, open = 0;
+    for (let k = 0; k < R; k++) {
+      const an = (k + rnd()) / R * 6.2832, dx = Math.cos(an), dy = Math.sin(an), len = 1 + rnd() * S;
+      let lx = cx, ly = cy, hit = false;
+      for (let t = 0.75; t < len; t += 0.75) {
+        const ix = (cx + 0.5 + dx * t) | 0, iy = (cy + 0.5 + dy * t) | 0;
+        if (ix < 0 || iy < 0 || ix >= gw || iy >= gh) break;
+        if (occ[iy * gw + ix]) { hit = true; break; }
+        lx = ix; ly = iy;
+      }
+      const j = (ly * gw + lx) * 3, w = hit ? WALL : 1;
+      r += src[j] * alb[0] * w; g += src[j + 1] * alb[1] * w; b += src[j + 2] * alb[2] * w; if (!hit) open++;
+    }
+    rays += R;
+    acc[c * 3] += (r / R - acc[c * 3]) * blend; acc[c * 3 + 1] += (g / R - acc[c * 3 + 1]) * blend; acc[c * 3 + 2] += (b / R - acc[c * 3 + 2]) * blend;
+    vis[c] += (open / R - vis[c]) * blend;
+  }
+  GI.f++; GI.rays = rays;
+  // into the light map: the bounce added, the crowded corners darkened a little
+  if (!GI.out || GI.out.width !== gw || GI.out.height !== gh) { GI.out = luxCanvas(gw, gh); GI.outG = GI.out.getContext('2d'); GI.outImg = GI.outG.createImageData(gw, gh); GI.ao = luxCanvas(gw, gh); GI.aoG = GI.ao.getContext('2d'); GI.aoImg = GI.aoG.createImageData(gw, gh); }
+  const gain = 0.9, day = LUX.day, aoK = 0.12 + 0.18 * day, o = GI.outImg.data, q = GI.aoImg.data;
+  for (let i = 0; i < N; i++) {
+    o[i * 4] = Math.min(255, acc[i * 3] * gain * 255); o[i * 4 + 1] = Math.min(255, acc[i * 3 + 1] * gain * 255); o[i * 4 + 2] = Math.min(255, acc[i * 3 + 2] * gain * 255); o[i * 4 + 3] = 255;
+    const a = 255 * (1 - aoK * (1 - vis[i])); q[i * 4] = q[i * 4 + 1] = q[i * 4 + 2] = a; q[i * 4 + 3] = 255;
+  }
+  GI.outG.putImageData(GI.outImg, 0, 0); GI.aoG.putImageData(GI.aoImg, 0, 0);
+  m.setTransform(tr.a * s, tr.b * s, tr.c * s, tr.d * s, tr.e * s, tr.f * s); m.imageSmoothingEnabled = true;
+  const wx = GI.gx * cell, wy = GI.gy * cell, ww = gw * cell, wh = gh * cell;
+  m.globalCompositeOperation = 'multiply'; m.drawImage(GI.ao, wx, wy, ww, wh);
+  m.globalCompositeOperation = 'lighter'; m.drawImage(GI.out, wx, wy, ww, wh);
+  m.setTransform(1, 0, 0, 1, 0, 0); m.globalCompositeOperation = 'source-over';
+  GI.ms = performance.now() - t0;
+}
+
+/* ---------- what the other engines need from this one ---------- */
+// the brightest lights on screen (for light shafts and bloom), the hot spots (for heat haze), the sun and the sky
+function luxExport(amb, use) {
+  const F = CORE.frame, L = LUX.lights, idx = LUX.idx, out = F.lights; out.length = 0;
+  F.amb = amb; F.day = LUX.day; F.night = 1 - LUX.day;
+  const sc = [0, 0];
+  for (let q = 0; q < Math.min(use, LUX.n) && out.length < 6; q++) {
+    const l = L[idx[q]]; if (l.i < 0.35 || l.pr < 0) continue;
+    coreToScreen(l.x, l.y, sc); out.push({ sx: sc[0], sy: sc[1], r: l.r * CORE.frame.zoom * CORE.frame.dpr, c0: l.c0, c1: l.c1, c2: l.c2, i: l.i, cone: l.cone });
+  }
+  const hot = F.hot; hot.length = 0;
+  for (const f of WD.fires) { if (hot.length >= 8) break; if (f.lit === 0 || f.x < F.x0 - 200 || f.x > F.x1 + 200 || f.y < F.y0 - 200 || f.y > F.y1 + 200) continue; coreToScreen(f.x, f.y, sc); hot.push({ sx: sc[0], sy: sc[1], r: f.r * 4 * F.zoom * F.dpr, k: 0.8 }); }
+  for (const e of LUX.fx) { if (hot.length >= 8) break; if (e.i < 1.1) continue; coreToScreen(e.x, e.y, sc); hot.push({ sx: sc[0], sy: sc[1], r: e.r * 0.5 * F.zoom * F.dpr, k: e.life / e.max }); }
+  for (const h of G.haz) { if (hot.length >= 8) break; if (h.k !== 'fire' || h.x < F.x0 - 100 || h.x > F.x1 + 100 || h.y < F.y0 - 100 || h.y > F.y1 + 100) continue; coreToScreen(h.x, h.y, sc); hot.push({ sx: sc[0], sy: sc[1], r: h.r * 2.5 * F.zoom * F.dpr, k: 0.6 }); }
+}
+
+coreAdd({
+  name: 'LUX', kind: 'render', does: 'Lighting engine: ray-traced shadows from every lamp, fire, muzzle flash and the flashlight, a moving sun with building shadows, path-traced bounce light, day and night, bloom.',
+  state: () => SET.lux === 'off' ? 'off' : LUX.offUntil && performance.now() < LUX.offUntil ? 'paused' : LUX.live ? 'on' : 'idle',
+  level: () => ['glow only', 'few shadows', 'shadows + bloom', 'soft shadows', 'full'][LUX.level] + (LUX.giOn ? ', bounce light' + (typeof PRISM !== 'undefined' && PRISM.giGpu ? ' (GPU)' : ' (CPU)') : '') + (CORE.frame.sun.on ? ', sun' : ''),
+  canTrim: () => LUX.level > 0, trim: () => { if (LUX.adapt <= -3) return false; LUX.adapt--; LUX.A = null; return true; }, boost: () => { if (LUX.adapt >= 0) return false; LUX.adapt++; LUX.A = null; return true; },
+  repair: () => { LUX.A = null; LUX.offUntil = 0; LUX.errT.length = 0; }
+});

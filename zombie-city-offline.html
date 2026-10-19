@@ -1395,6 +1395,7 @@ button.lcd{cursor:pointer}
 .maint-when{font-family:var(--f-num);color:var(--tape)!important;font-size:14px!important}
 .maint-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .maint-note{font-size:13px!important;color:var(--muted)!important}
+.maint-code{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}.maint-code input{flex:1 1 180px;min-width:0;max-width:260px;padding:9px 11px;background:rgba(8,10,13,.85);border:1px solid rgba(41,230,255,.45);border-radius:3px;color:#e8f6ff;font-family:var(--f-num);font-size:14px;letter-spacing:.12em}.maint-code input:focus{outline:2px solid rgba(41,230,255,.6);outline-offset:1px}.maint-code-msg{font-size:12px;color:#ffb38a;font-family:var(--f-num);min-height:1em}
 .maint-soon,.maint-admin{position:fixed;left:50%;transform:translateX(-50%);z-index:59;padding:7px 14px;border-radius:3px;font-family:var(--f-num);font-size:12px;letter-spacing:.06em;max-width:calc(100vw - 32px);text-align:center}
 .maint-soon{bottom:16px;background:rgba(242,204,58,.94);color:#17140b}
 /* 2.0: the construction-site maintenance screen (maint.js) */
@@ -1648,7 +1649,8 @@ button.lcd{cursor:pointer}
         </div>
         <div class="mmeta"><span class="mhints" id="mHints"></span><span class="mprogw"><span class="mprog-l">Progress <em>(made up)</em></span><span class="mprog"><i id="mBar"></i></span><span class="mstatus" id="mStatus"></span></span></div>
       </div>
-      <div class="maint-row"><button class="btn primary" id="maintRetry" type="button">Check again</button><button class="btn" id="maintUpdate" type="button" hidden>Update</button><button class="btn ghost" id="maintSite" type="button">Website</button></div>
+      <div class="maint-row"><button class="btn primary" id="maintRetry" type="button">Check again</button><button class="btn" id="maintUpdate" type="button" hidden>Update</button><button class="btn ghost" id="maintSite" type="button">Website</button><button class="btn ghost" id="maintTester" type="button">Tester code</button></div>
+      <div class="maint-code" id="maintCodeRow" hidden><input id="maintCode" type="password" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" placeholder="Tester code" aria-label="Tester code"><button class="btn" id="maintCodeGo" type="button">Unlock</button><span class="maint-code-msg" id="maintCodeMsg" role="status"></span></div>
       <p class="maint-note">Your progress is safe on this device and in your account. The game checks again by itself every minute.</p>
     </div>
   </section>
@@ -6001,7 +6003,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.930';
+const ZC_VERSION = '1.9.940';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -6045,9 +6047,7 @@ function getSprite(m, r, plain) {
   let s = sprites.get(key);
   if (s) { sprites.delete(key); sprites.set(key, s); return s; }   // keep the map in least-recently-used order
   const half = rq * 2.4, size = Math.ceil(half * 2 * SPR);
-  const c = document.createElement('canvas'); c.width = c.height = size;
-  const g = c.getContext('2d'); g.scale(SPR, SPR); g.translate(half, half);
-  Z.drawMutation(g, m, rq, { noAbility: plain });
+  const c = texelZombie(m, rq, plain, half, size);   // drawn, textured and sized by the texture engine
   s = { c: c, half: half, rq: rq };
   sprites.set(key, s);
   if (sprites.size > Q.sprCap * 1.25) sprites.delete(sprites.keys().next().value);
@@ -7418,8 +7418,9 @@ function spawnAttract(anywhere) {
   const m = MUTS[Math.floor(Math.random() * MUTS.length)], hw = W / ZOOM / 2, hh = H / ZOOM / 2;
   for (let t = 0; t < 10; t++) {
     const x = anywhere ? cam.x + rand(-hw, hw) : cam.x + hw + rand(40, 160), y = cam.y + rand(-hh, hh);
-    if (!blocked(x, y, 24)) { const z = spawnZombie(m, x, y); z.wx = x; z.wy = y; return; }
+    if (!blocked(x, y, 24)) { const z = spawnZombie(m, x, y); z.wx = x; z.wy = y; return true; }
   }
+  return false;
 }
 function updAttract(dt) {
   cam.x += 26 * dt; cam.y += 8 * dt;
@@ -7433,7 +7434,8 @@ function updAttract(dt) {
     if (z.x < cam.x - hw - 120) z.dead = true;
   }
   G.zs = G.zs.filter(z => !z.dead);
-  while (G.zs.length < 18) spawnAttract(false);
+  // a few tries a frame, never a loop: at real-world scale one building can fill the whole strip past the edge of the screen
+  for (let k = 0; k < 4 && G.zs.length < 18; k++) if (!spawnAttract(false)) break;
   updFx(dt);
 }
 
@@ -7444,6 +7446,7 @@ function render() {
   const s = DPR * ZOOM;
   ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - cam.x * s, DPR * (H / 2 + shy) - cam.y * s);
   const hw = W / 2 / ZOOM, hh = H / 2 / ZOOM, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake;
+  coreFrame(x0, y0, x1, y1, G.rdt || 0.016);   // the shared frame every engine reads from
   // the city tiles cover every pixel, so the frame is never cleared first (one less full-screen fill per frame)
   let rebuild = 1; WORLD.rf = 0;
   for (let cx = Math.floor((x0 - pad) / CHS); cx <= Math.floor((x1 + pad) / CHS); cx++) for (let cy = Math.floor((y0 - pad) / CHS); cy <= Math.floor((y1 + pad) / CHS); cy++) {
@@ -7555,13 +7558,14 @@ function render() {
   ctx.globalAlpha = 1;
   // screen space
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (SET.grade) ctx.drawImage(screenGrad('vig', 0.32, 0.62, '4,5,8', 0.74), 0, 0, W, H);
+  if (SET.grade && !PRISM.vigGpu) ctx.drawImage(screenGrad('vig', 0.32, 0.62, '4,5,8', 0.74), 0, 0, W, H);   // (the shader engine draws its own on the GPU)
   if (vz) drawVizScreen(vz);
   tw = performance.now(); drawWeatherScreen(Math.min(0.05, (performance.now() - (render.lt || performance.now())) / 1000)); render.lt = performance.now(); PERF.sec.wx += performance.now() - tw;
   if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'over' || G.mode === 'skull' || G.mode === 'cine') {
     drawScreenFx(); drawDashScreen(); drawAim(); if (NET.started) netDrawPointers();
     if (G.flashA > 0) { ctx.globalAlpha = Math.min(0.5, G.flashA); ctx.drawImage(screenGrad('a10', 0.1, 0.8, '255,214,150', 1), 0, 0, W, H); ctx.globalAlpha = 1; }
   }
+  prismFrame();   // the shader engine finishes the frame (GPU or CPU)
 }
 // after the lighting has darkened the night: what makes its own light is drawn again on top, so tracers, flames,
 // sparks and glowing shots stay bright in the dark
@@ -7734,19 +7738,10 @@ function drawPlayer(p) {
   if (p.dashT > 0 && p.dashK === 'meteor') { const h = Math.sin((1 - p.dashT / p.dashDur) * Math.PI); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 6, 13, 10, 0, 0, TAU); ctx.fill(); ctx.translate(0, -h * 34); ctx.scale(1 + h * 0.5, 1 + h * 0.5); }
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(2, 4, 13, 12, 0, 0, TAU); ctx.fill();
   ctx.rotate(p.aim);
-  const sw = Math.sin(p.walk) * 2.5;
-  ctx.fillStyle = '#2b2f2a'; ctx.fillRect(-12, -7, 7, 14);
-  ctx.fillStyle = '#3e4a3a'; ctx.beginPath(); ctx.ellipse(0, 0, 9, 13, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#f2cc3a'; ctx.fillRect(-4, -12, 3, 24); ctx.fillRect(2, -11, 2, 22);
-  ctx.strokeStyle = '#c9a27e'; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(2, -8); ctx.lineTo(14 + sw * 0.2, -2); ctx.moveTo(2, 8); ctx.lineTo(11, 2); ctx.stroke();
-  const fk = p.weapon.F.key, gl = GUN_LEN[fk] || 20, gw = GUN_W[fk] || 5;
-  if (fk === 'flamer') { ctx.fillStyle = '#7a2a1a'; ctx.beginPath(); ctx.ellipse(-12, 0, 6, 9, 0, 0, TAU); ctx.fill(); }
-  ctx.fillStyle = '#16181b'; ctx.fillRect(8, -gw / 2, gl, gw); ctx.fillRect(10, gw / 2 - 1, 5, 4);
-  ctx.fillStyle = p.weapon.color; ctx.fillRect(12, -1, gl * 0.45, 2);
-  ctx.fillStyle = '#c9a27e'; ctx.beginPath(); ctx.arc(2, 0, 6.5, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#2d332b'; ctx.beginPath(); ctx.arc(0.5, 0, 6.6, Math.PI * 0.5, Math.PI * 1.5); ctx.fill(); ctx.fillRect(2, -6.6, 4, 2.4);
-  if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
+  // the survivor is one textured sprite per weapon and walking pose (made once by the texture engine), turned to the aim
+  const fk = (p.weapon && p.weapon.F && p.weapon.F.key) || 'pistol', gl = GUN_LEN[fk] || 20, PS = texelPlayer(p);
+  ctx.drawImage(PS.c, -PS.half, -PS.half, PS.half * 2, PS.half * 2);
+  if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M && p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
   if (p.frozenT > 0) { ctx.fillStyle = 'rgba(200,240,255,0.55)'; ctx.fillRect(-15, -15, 30, 30); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(-15, -15, 30, 30); }
   if (p.rootT > 0) { ctx.strokeStyle = '#4d5e22'; ctx.lineWidth = 3; for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + 0.4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 18, Math.sin(a) * 18); ctx.quadraticCurveTo(Math.cos(a + 0.6) * 8, Math.sin(a + 0.6) * 8, Math.cos(a + 1.2) * 14, Math.sin(a + 1.2) * 14); ctx.stroke(); } }
   if (p.jamT > 0) { ctx.rotate(-p.aim); ctx.fillStyle = '#fff36b'; ctx.font = "bold 12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('JAM', 0, -24); }
@@ -7757,6 +7752,7 @@ function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (
 const NEON = ['#ff3df2', '#29e6ff', '#7dff4a', '#ffb627', '#ff3b5c', '#9b5cff', '#2bff9e', '#ff7a2b'];
 const VZ = { I: 0, col: NEON[1], col2: NEON[0], rgb: '41,230,255', css: '' };
 let vzNow = null;
+const VIZ_PAUSED = true;
 const glowCache = new Map();
 function glowSprite(col) {
   let c = glowCache.get(col); if (c) return c;
@@ -8050,7 +8046,8 @@ function frame(now) {
     if (SFX.tick) SFX.tick();
     padPoll(rdt);
     netTick(rdt);
-    vzNow = vizFrame();
+    // the music light show (the city pulsing to the radio, the bars along the bottom) is paused while 2.0 is built
+    vzNow = VIZ_PAUSED ? null : vizFrame();
     if (G.mode === 'play') update(dt);
     else if (G.mode === 'cine') updCine(dt);
     else if (G.mode === 'title') { G.time += dt; updAttract(dt); updWorld(dt); }
@@ -8065,8 +8062,98 @@ function frame(now) {
     if (frameNo % 120 === 0 && G.mode === 'title') $('seasonLeft').textContent = seasonLeft();
   } catch (err) { perfError(err); }
   perfFrame(now, iv, performance.now() - t0);
+  coreTick(performance.now());
   requestAnimationFrame(frame);
 }
+
+/* ================= CORE: the engine hub =================
+   Zombie City is built from engines (lighting, shaders, textures, weather, the city, pathfinding, sound, co-op...).
+   CORE is where they meet, so they work as one system instead of side by side:
+   - Every engine registers here with its name, what it does, and a few hooks: its state, its level, what it costs,
+     how to step it down or back up, and how to repair it.
+   - Each frame the renderer fills CORE.frame once (the view, the camera, the sun, the brightest lights, the hot spots)
+     and every engine reads the same numbers from it, so the shader engine knows where the lighting engine put the
+     lamps and the sun, and the texture engine knows how sharp the screen is.
+   - Engines report their own cost each frame. Once a second CORE adds it up; when the frame is running late the
+     performance governor asks CORE which engine to step down first (the one taking the biggest share), and when there
+     is room again CORE steps the most recently trimmed engine back up.
+   - Errors go through CORE too: an engine that keeps failing is stepped down or paused by its own repair hook, and the
+     count shows in Settings > System > Engines.
+   Nothing here may stop the game: every hook call is guarded. */
+const CORE = {
+  list: [], by: {}, sec: 0, lastSec: 0, trims: [],
+  frame: { n: 0, t: 0, dt: 0.016, x0: 0, y0: 0, x1: 0, y1: 0, cx: 0, cy: 0, zoom: 1, dpr: 1, w: 1, h: 1,
+    sun: { on: false, az: 0, el: 0, k: 0, dx: 0, dy: 0, col: [1, 1, 1], sky: [1, 1, 1] }, amb: [1, 1, 1], day: 1, night: 0, lights: [], hot: [], wet: 0, fog: 0, dust: 0 }
+};
+// e: { name, does, kind: 'render' | 'world' | 'sim' | 'audio' | 'net' | 'data', state(), level(), trim(), boost(), repair() }
+function coreAdd(e) {
+  if (CORE.by[e.name]) return CORE.by[e.name];
+  e.ms = 0; e.msAvg = 0; e.errs = 0; e.repairs = e.repairs || 0; e.lastErr = '';
+  CORE.list.push(e); CORE.by[e.name] = e; return e;
+}
+// an engine reports what a frame cost it (milliseconds)
+function coreCost(name, ms) { const e = CORE.by[name]; if (e) e.ms += ms; }
+// an engine reports an error; its own repair hook decides what to do about it
+function coreHurt(name, err) {
+  const e = CORE.by[name]; if (!e) return;
+  e.errs++; e.lastErr = String(err && err.message || err).slice(0, 120);
+}
+function coreRepaired(name, what) { const e = CORE.by[name]; if (e) e.repairs++; if (typeof noteRepair === 'function') noteRepair(what); }
+const coreCall = (e, k, d) => { try { return e[k] ? e[k]() : d; } catch (x) { return d; } };
+// once a second: average each engine's cost over the frames of that second
+function coreTick(now) {
+  CORE.fc = (CORE.fc || 0) + 1;
+  if (now - CORE.lastSec < 1000) return; CORE.lastSec = now;
+  const n = Math.max(1, CORE.fc); CORE.fc = 0;
+  for (const e of CORE.list) { const ms = e.ms / n; e.msAvg = e.msAvg ? e.msAvg * 0.6 + ms * 0.4 : ms; e.ms = 0; if (e.sec) coreCall(e, 'sec'); }
+}
+// the frame is running late: step down the render engine taking the biggest share (above a floor), true if one did
+function coreTrim(frameMs) {
+  let best = null, bestMs = Math.max(0.6, frameMs * 0.12);
+  for (const e of CORE.list) if (e.kind === 'render' && e.trim && e.msAvg > bestMs && coreCall(e, 'canTrim', true)) { best = e; bestMs = e.msAvg; }
+  if (!best) return false;
+  if (coreCall(best, 'trim', false)) { CORE.trims.push(best.name); if (CORE.trims.length > 12) CORE.trims.shift(); if (typeof logTrim === 'function') logTrim(best.name.toLowerCase()); return true; }
+  return false;
+}
+// there is room again: give the last trimmed engine a level back
+function coreBoost() {
+  while (CORE.trims.length) {
+    const e = CORE.by[CORE.trims[CORE.trims.length - 1]];
+    if (e && coreCall(e, 'boost', false)) return true;
+    CORE.trims.pop();
+  }
+  return false;
+}
+// for Settings > System: one line per engine
+function coreStatus() {
+  return CORE.list.map(e => ({ name: e.name, does: e.does, kind: e.kind, state: coreCall(e, 'state', 'on'), level: coreCall(e, 'level', ''), ms: Math.round(e.msAvg * 100) / 100, errs: e.errs, repairs: e.repairs }));
+}
+// the renderer fills the shared frame once, before the engines that read it
+function coreFrame(x0, y0, x1, y1, dt) {
+  const F = CORE.frame; F.n++; F.t = G.time; F.dt = dt; F.x0 = x0; F.y0 = y0; F.x1 = x1; F.y1 = y1; F.cx = cam.x; F.cy = cam.y;
+  F.zoom = ZOOM; F.dpr = DPR; F.w = W; F.h = H; F.tr = ctx.getTransform(); F.wet = WX.wet || 0; F.fog = WX.fog || 0; F.dust = (WX.sand || 0) + (WX.ash || 0) * 0.5;
+  return F;
+}
+// world point to screen pixel (of the game canvas), using the frame's camera
+function coreToScreen(x, y, out) {
+  const F = CORE.frame, s = F.zoom * F.dpr; out[0] = (x - F.cx) * s + cv.width / 2; out[1] = (y - F.cy) * s + cv.height / 2; return out;
+}
+
+coreAdd({ name: 'CORE', kind: 'sim', does: 'Engine hub: connects every engine through one shared frame, one time budget and one repair log, and steps the costliest one down when the frame runs late.', state: () => 'on', level: () => CORE.list.length + ' engines' });
+// the engines that were here before the hub: registered so the whole set shows in one place and shares one budget
+coreAdd({ name: 'PERF', kind: 'sim', does: 'Performance governor: detects the hardware, sets resolution, quality tier and frame cap, trims caches and restarts a stalled game loop.', state: () => PERF.mode === 'auto' ? 'on' : 'manual', level: () => (typeof TIER_NAMES !== 'undefined' ? TIER_NAMES[PERF.tier] : PERF.tier) + ' ' + Math.round((PERF.resLock || RES_STEPS[PERF.res]) * 100) + '%' });
+coreAdd({ name: 'WORLD', kind: 'world', does: 'City generator: builds the endless city from a seed, district by district (blocks, rivers, bridges, props, seasons) at real-world scale.', state: () => 'on', level: () => (SCL > 1.2 ? 'real scale' : 'classic') + ', ' + chunks.size + ' blocks' });
+coreAdd({ name: 'FLOW', kind: 'sim', does: 'Pathfinding: flow fields that lead every zombie to the nearest player, with wider paths for big mutants and bosses.', state: () => FF.ready ? 'on' : 'idle', level: () => FF_N + 'x' + FF_N + ' cells' });
+coreAdd({ name: 'NET', kind: 'net', does: 'Wi-Fi co-op: host and clients, snapshots, reconnects, shared cards and revives for 2 to 4 players.', state: () => NET.started ? NET.role : 'off', level: () => NET.started ? (NET.role === 'host' ? NET.peers.size + ' joined' : 'joined') : '' });
+coreAdd({ name: 'LOADER', kind: 'sim', does: 'Loading screens and warm-up: prepares the streets, textures, lights and shaders before play so nothing stutters.', state: () => LOADING.on ? 'loading' : 'idle', level: () => '' });
+coreAdd({ name: 'WX', kind: 'world', does: 'Weather and atmosphere: rain, storms and lightning, fog, snow, sand, ash, wind and gusts, seasons, fireflies, breath in the cold, puddle rings and cloud shadows.', state: () => wxLevel() > 0 ? 'on' : 'off', level: () => WX.kind + ' ' + Math.round(wxLevel() * 100) + '%' });
+coreAdd({ name: 'LIFE', kind: 'world', does: 'Living city: trees, grass and bushes that sway, birds, props you can kick, explosive barrels, fires and car alarms.', state: () => 'on', level: () => WD.act.length + ' plants' });
+coreAdd({ name: 'SFX', kind: 'audio', does: 'Sound engine: synthesizes every gunshot, impact, kill chain and ambience live, with echoes that change by district.', state: () => SFX.sfxOn && SFX.sfxOn() === false ? 'muted' : 'on', level: () => '' });
+coreAdd({ name: 'RADIO', kind: 'audio', does: 'FM 66.6: writes and renders its own songs ahead of time on a separate audio thread, 7 channels of 35 songs, or your own music.', state: () => 'on', level: () => { try { return SFX.nowPlaying().name || ''; } catch (e) { return ''; } } });
+coreAdd({ name: 'MUTAGEN', kind: 'data', does: 'Mutation engine: builds the 1,000 zombie mutations (strain, ability, size, colors) and draws each one.', state: () => 'on', level: () => MUTS.length + ' mutations' });
+coreAdd({ name: 'BOSS', kind: 'sim', does: 'Boss engine: 50 bosses with attack patterns that mutate into new forms mid-fight, plus the Snatcher and the Overlord.', state: () => G.boss && !G.boss.dead ? 'fighting' : 'idle', level: () => '' });
+coreAdd({ name: 'ACCOUNT', kind: 'data', does: 'Accounts and cloud saves: encrypts each save on the device (AES-GCM, PBKDF2) and merges progress across devices.', state: () => typeof ACCT !== 'undefined' ? ACCT.status : 'off', level: () => '' });
+coreAdd({ name: 'FILTER', kind: 'data', does: 'Name filter: keeps slurs, threats, personal details and fake studio names out of every name shown.', state: () => 'on', level: () => '' });
 
 /* ================= the world: districts, biomes, rivers, bridges and seasons =================
    The city never ends and is generated from a seed. It is split into districts a few blocks wide, each with its own
@@ -8984,18 +9071,7 @@ function drawRoadMarks(g, c, B, R) {
    sidewalk slabs, gum and utility covers, and what each season leaves on the street: fallen leaves in the gutters,
    blossom on the sidewalks, plowed snow banks with slushy tyre tracks. Drawn into the block's picture, so it costs
    nothing once drawn. Each block has its own random stream for this, so the rest of the art is unchanged. */
-let GRAIN = null;
-function grainCanvas() {
-  if (GRAIN) return GRAIN;
-  const n = 128, c = document.createElement('canvas'); c.width = c.height = n;
-  const g = c.getContext('2d'), im = g.createImageData(n, n), d = im.data, R = Z.mulberry32(0x9e3779b9);
-  for (let i = 0; i < n * n; i++) {
-    const v = R(), k = i * 4;
-    if (v < 0.12) { d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = 5 + R() * 12; }         // light stones in the mix
-    else if (v < 0.42) { d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = 10 + R() * 26; }        // pits and shadow
-  }
-  g.putImageData(im, 0, 0); GRAIN = c; return c;
-}
+function grainCanvas() { return texelCanvas('grain'); }   // the texture engine's asphalt grain
 function grainFill(g, x, y, w, h, scale, alpha) {
   if (w <= 0 || h <= 0) return;
   const pat = g.createPattern(grainCanvas(), 'repeat'); if (!pat) return;
@@ -9518,7 +9594,9 @@ function drawRectArt(g, r, c, B, win) {
 }
 function drawBuilding(g, r, c, B, win, Rb) {
   const st = r.st || 'block';
-  g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(r.x + 10, r.y + 12, r.w, r.h);
+  // with the lighting engine's sun on, the real shadow moves with the time of day: only a soft contact shadow is painted
+  if (luxSunShadowsOn()) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(r.x + 1.5, r.y + 2, r.w, r.h); }
+  else { g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(r.x + 10, r.y + 12, r.w, r.h); }
   if (st === 'house') {
     // a pitched roof: two halves and a ridge
     const horiz = r.w >= r.h, sh = win ? '#d8dfe4' : r.roof;
@@ -10194,10 +10272,11 @@ function bushSprite(d) {
 }
 function treeSprite(d) {
   const sea = WORLD.season, rq = Math.round(d.r / 3) * 3, v = d.v, snowy = sea === 3 || bioAt(d.x, d.y) === 'snow';
-  const key = 't|' + v + '|' + sea + '|' + rq + '|' + (d.s & 3) + '|' + (snowy ? 1 : 0);
+  const sunSh = luxSunShadowsOn(), key = 't|' + v + '|' + sea + '|' + rq + '|' + (d.s & 3) + '|' + (snowy ? 1 : 0) + (sunSh ? 's' : '');
   return wSprite(key, rq + 8, g => {
     const R = Z.mulberry32((d.s & 3) * 977 + rq);
-    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(8, 10, rq, rq * 0.9, 0, 0, TAU); g.fill();
+    // (with the sun on, the lighting engine casts the crown's shadow where the sun puts it)
+    if (!sunSh) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(8, 10, rq, rq * 0.9, 0, 0, TAU); g.fill(); }
     const bare = v === 'dead' || (sea === 3 && (v === 'oak' || v === 'blossom'));
     if (bare) {
       g.strokeStyle = v === 'dead' ? '#24201e' : '#3a2e26'; g.lineCap = 'round';
@@ -11158,7 +11237,9 @@ function luxHourNow() {
   if (G.mode === 'title') return set - 0.7;                       // the title screen waits in the golden hour
   if (m === 'day') return 13; if (m === 'dusk') return set - 0.7; if (m === 'dawn') return rise + 0.35; if (m === 'night') return 23.2;
   if (m === 'real') { const d = new Date(); return d.getHours() + d.getMinutes() / 60; }
-  return (LUX.h0 + G.time / 24) % 24;                             // a day lasts about ten minutes of play
+  // a day lasts about ten minutes of play; the run's morning hour comes from the city's seed, so co-op players share it
+  if (LUX.h0s !== WORLD.seed) { LUX.h0s = WORLD.seed; LUX.h0 = 8.5 + ((WORLD.seed >>> 0) % 551) / 100; }
+  return (LUX.h0 + G.time / 24) % 24;
 }
 // how bright the world is without any lamp: a colour to multiply the picture by
 function luxAmbient(out) {
@@ -11381,6 +11462,7 @@ function luxCast(lx, ly, R, dx, dy) {
 // the shape a light can see: rays toward the corners of every wall (so the edges of shadows are sharp) plus an even
 // fan around. Returns the number of points written to LUX.pts (x, y pairs).
 function luxPoly(lx, ly, R, rays, a0, a1, ents) {
+  if (!isFinite(a0) || !isFinite(a1)) { a0 = 0; a1 = 6.2832; }
   const n = luxOcc(lx, ly, R, ents), A = LUX.ang; let na = 0, full = a1 - a0 >= 6.28;
   for (let i = 0; i < rays && na < 1500; i++) A[na++] = a0 + (a1 - a0) * (i / (rays - (full ? 0 : 1)));
   const o = LUX.occ, R2 = R * R * 1.3;
@@ -11392,7 +11474,8 @@ function luxPoly(lx, ly, R, rays, a0, a1, ents) {
       const an = Math.atan2(vy, vx);
       for (const d of [-0.0009, 0.0009]) {
         let q = an + d;
-        if (!full) { while (q < a0 - 3.1416) q += 6.2832; while (q > a0 + 3.1416) q -= 6.2832; if (q < a0 || q > a1) continue; }
+        // into the beam's turn (one modulo, never a loop: an aim angle can grow large over a long run)
+        if (!full) { q = a0 + (((q - a0 + 3.1416) % 6.2832) + 6.2832) % 6.2832 - 3.1416; if (!(q >= a0 && q <= a1)) continue; }
         A[na++] = q;
       }
     }
@@ -11484,17 +11567,36 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
       for (const r of c.rects) { if (r.k === 'b' && !r.burn && r.x < x1 && r.x + r.w > x0 && r.y < y1 && r.y + r.h > y0) g.fillRect(r.x, r.y, r.w, r.h); }
     }
   }
-  // the map: ambient colour plus the lights, multiplied over the picture
+  // the sun: where it stands, how strong it is through the weather, and which way the shadows fall
+  const sun = luxSun(amb), shadowed = sun.on && sun.k > 0.02;
+  // a light day on a slower device (the two lowest levels, no bounce light) or one that can't multiply pictures: the sun's
+  // shadows go straight onto the picture as one shape, with no light map over the whole screen
+  const lite = shadowed && !dark && (!LUX.mul || (LUX.level <= 1 && !luxGIwanted(lq))), lit = dark || (shadowed && !lite);
+  // the map: sunlight (or the night's ambient), the sun's shadows, then the lamps and fires, multiplied over the picture
   const m = LUX.mg; m.setTransform(1, 0, 0, 1, 0, 0); m.globalCompositeOperation = 'source-over';
   m.fillStyle = 'rgb(' + Math.round(amb[0] * 255) + ',' + Math.round(amb[1] * 255) + ',' + Math.round(amb[2] * 255) + ')'; m.fillRect(0, 0, LUX.cw, LUX.ch);
+  if (shadowed && !lite) { m.setTransform(tr.a * s, tr.b * s, tr.c * s, tr.d * s, tr.e * s, tr.f * s); try { luxSunShadows(m, sun, x0, y0, x1, y1); } catch (e) { luxHurt(e); } m.setTransform(1, 0, 0, 1, 0, 0); }
   m.globalCompositeOperation = 'lighter'; m.drawImage(LUX.A, 0, 0);
+  // light that bounces off walls and the street, path traced: here on the CPU, or by the shader engine on the GPU
+  LUX.giOn = lit && luxGIwanted(lq);
+  if (LUX.giOn) { try { luxGIgrid(x0, y0, x1, y1, lq); if (!(typeof PRISM !== 'undefined' && PRISM.giGpu)) luxGI(m, tr, s, lq); } catch (e) { luxHurt(e); LUX.giOn = false; } }
+  m.globalCompositeOperation = 'source-over';
+  luxExport(amb, use);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (dark && LUX.mul) { ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(LUX.M, 0, 0, cv.width, cv.height); }
+  if (lit && LUX.mul) { ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(LUX.M, 0, 0, cv.width, cv.height); }
+  else if (lite) {
+    ctx.setTransform(tr);
+    if (LUX.mul) { ctx.globalCompositeOperation = 'multiply'; try { luxSunShadows(ctx, sun, x0, y0, x1, y1); } catch (e) { luxHurt(e); } }
+    else { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.3 * sun.k; try { luxSunShadows(ctx, sun, x0, y0, x1, y1, '#0c1424'); } catch (e) { luxHurt(e); } ctx.globalAlpha = 1; }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
   else if (dark) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1 - (amb[0] + amb[1] + amb[2]) / 3; ctx.fillStyle = '#080c16'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }   // no multiply on this device: a plain dark veil
+  LUX.lit = lit && LUX.mul;
   // glow and bloom: the light itself, added on top
   ctx.globalCompositeOperation = 'lighter';
   const night = 1 - LUX.day, wet = clamp(WX.rain * 1.2 + (WX.storm || 0) * 0.4, 0, 1), fogk = clamp(WX.fog, 0, 1);
-  if (use) {
+  const gpuBloom = typeof PRISM !== 'undefined' && PRISM.bloomGpu;
+  if (use && !gpuBloom) {
     // wet streets shine and fog glows around every lamp
     ctx.globalAlpha = Math.min(1, (0.1 + 0.12 * night) * (1 + 0.6 * wet + 0.8 * fogk)); ctx.drawImage(LUX.A, 0, 0, cv.width, cv.height);
     if (lq.bloom && SET.bloom !== false) {
@@ -11505,6 +11607,8 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
         ctx.globalAlpha = Math.min(1, (0.2 + 0.14 * night) * (1 + 0.4 * wet + 1.2 * fogk)); ctx.drawImage(LUX.B2, 0, 0, cv.width, cv.height);
       }
     }
+  }
+  if (use) {
     // rain and snow caught in the light: streaks and flakes, only where a lamp, a fire or your flashlight reaches
     if (lq.bloom && (WX.rain > 0.08 || WX.snow > 0.08) && wxLevel() > 0 && night > 0.15) { luxGlints(lq); ctx.globalAlpha = 0.85 * night; ctx.drawImage(LUX.G1, 0, 0, cv.width, cv.height); }
   }
@@ -11530,7 +11634,7 @@ function luxGlints(lq) {
 function noteLux() { if (LUX.repairs++ > 0) noteRepair('Rebuilt the lighting canvases'); }
 // something went wrong inside the engine: remember it, and back off if it keeps going wrong
 function luxHurt(e) {
-  const now = performance.now(); LUX.lastErr = String(e && e.message || e).slice(0, 120);
+  const now = performance.now(); LUX.lastErr = String(e && e.message || e).slice(0, 120); coreHurt('LUX', e);
   LUX.errT.push(now); while (LUX.errT.length && now - LUX.errT[0] > 8000) LUX.errT.shift();
   try { console.error(e); } catch (x) { }
   if (LUX.errT.length >= 3 && LUX.adapt > -3) { LUX.adapt--; LUX.A = null; LUX.errT.length = 0; noteRepair('Lighting engine dropped a level'); }
@@ -11556,10 +11660,10 @@ function luxRun(x0, y0, x1, y1, shx, shy, dt) {
   try { luxFrame(x0, y0, x1, y1, shx, shy, dt); }
   catch (e) { luxHurt(e); }
   ctx.restore(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  const ms = performance.now() - t0; PERF.sec.lux = (PERF.sec.lux || 0) + ms; luxWatch(ms);
+  const ms = performance.now() - t0; PERF.sec.lux = (PERF.sec.lux || 0) + ms; luxWatch(ms); coreCost('LUX', ms);
 }
 // a new run: the morning
-function luxNewRun() { LUX.h0 = 8.5 + Math.random() * 5.5; LUX.fx.length = 0; LUX.adapt = Math.min(0, LUX.adapt + 1); }
+function luxNewRun() { LUX.h0s = null; LUX.fx.length = 0; LUX.adapt = Math.min(0, LUX.adapt + 1); }
 // the loading screen calls this: builds the canvases, tests the device, and draws one shadowed light so the first real frame is cheap
 function luxWarm() {
   if (!LUX.probe) LUX.probe = luxProbe() ? 1 : -1;
@@ -11579,6 +11683,791 @@ function luxWarm() {
     LUX.nocc = 0;
   } catch (e) { luxHurt(e); }
 }
+
+/* ---------- the sun ----------
+   It rises in the east, crosses the south at noon and sets in the west (north is up the screen), climbing higher in
+   summer than in winter. Its light is the day's ambient colour; where a building, a car, a tree or a body blocks it,
+   only the blue light of the sky is left. Shadows are as long as the sun is low: a tower's shadow at dusk crosses the
+   street, at noon it hugs the wall. Clouds, rain and fog soften them until, under a storm, there are none. */
+const LUX_SUNMAX = [52, 72, 46, 28];                 // how high the sun climbs (degrees), by season
+const LUX_COVER = { clear: 0, overcast: 0.72, rain: 0.86, storm: 0.95, fog: 0.82, snow: 0.7, blizzard: 0.96, sand: 0.55, ash: 0.7 };
+const LUX_SKY = [0.7, 0.75, 0.88];                  // what is left in the shade: the sky's blue
+function luxSunShadowsOn() { return SET.lux !== 'off' && SET.sun !== false; }
+function luxSun(amb) {
+  const S = CORE.frame.sun, sea = WORLD.season, rise = LUX_RISE[sea], set = LUX_SET[sea], h = LUX.hour;
+  if (h <= rise + 0.05 || h >= set - 0.05 || !luxSunShadowsOn()) { S.on = false; S.k = 0; return S; }
+  const p = (h - rise) / (set - rise), el = LUX_SUNMAX[sea] * Math.sin(p * Math.PI), az = 90 + p * 180;
+  const cover = LUX_COVER[WX.kind] != null ? LUX_COVER[WX.kind] : 0.5;
+  S.k = clamp(el / 9, 0, 1) * (1 - cover) * (1 - (WX.fog || 0) * 0.5) * (1 - clamp(WX.dark || 0, 0, 1) * 0.6);
+  S.on = S.k > 0.02; S.el = el; S.az = az;
+  const len = Math.min(10, 1 / Math.tan(Math.max(5, el) * Math.PI / 180)), ar = az * Math.PI / 180;
+  S.dx = -Math.sin(ar) * len; S.dy = Math.cos(ar) * len;   // metres of shadow per metre of height, pointing away from the sun
+  S.col[0] = amb[0]; S.col[1] = amb[1]; S.col[2] = amb[2];
+  for (let i = 0; i < 3; i++) S.sky[i] = amb[i] * (1 - S.k * 0.85 * (1 - LUX_SKY[i]));
+  S.css = 'rgb(' + Math.round(S.sky[0] * 255) + ',' + Math.round(S.sky[1] * 255) + ',' + Math.round(S.sky[2] * 255) + ')';
+  return S;
+}
+// how tall things stand, in metres (a building's height comes from its own seed, so it is the same every time)
+const LUX_HT = { car: 1.5, tanker: 3.4, plow: 3, planter: 4, rub: 2.4, barrier: 1, rail: 0.9, fence: 1.8, rock: 2, mesa: 22, cactus: 3, pump: 1.6, bench: 0.8, dumpster: 1.6, hoop: 3, kiosk: 3, log: 0.5, stall: 2.8, tank: 8, trough: 0.9, windmill: 11, wood: 1.2, checkpoint: 3, statue: 6 };
+function luxHeight(r) {
+  if (r._ht !== undefined) return r._ht;
+  let h = 0;
+  if (r.k === 'b') {
+    const st = r.st || 'block', u = ((((r.s || (r.x * 31 + r.y * 17) | 0) * 2654435761) >>> 0) % 10000) / 10000;
+    h = st === 'block' ? 10 + u * u * 26 + Math.min(8, Math.sqrt(r.w * r.h) / (SCL * 60)) : st === 'ruin' ? 5 + u * 8 : st === 'house' ? 7 : st === 'adobe' ? 4.5 : st === 'cabin' || st === 'lodge' ? 7 : st === 'barn' ? 9 : 3.4;
+  } else if (r.k === 'lm') h = r.lm === 'statue' ? 7 : r.lm === 'plane' ? 4 : r.lm === 'fountain' ? 1.6 : 3;
+  else h = LUX_HT[r.k] || 0;
+  return r._ht = h;
+}
+// the shadow a box throws, minus the box itself (so its own roof stays in the sun): an L-shaped outline. Every outline
+// is wound the same way round, so all of them fill as one shape in a single pass.
+function luxShadowPath(m, x, y, w, h, ox, oy) {
+  const a = Math.abs(ox), b = Math.abs(oy), fx = ox >= 0, fy = oy >= 0;
+  const P = [w, 0, w + a, b, w + a, h + b, a, h + b, 0, h, w, h];
+  const X = i => fx ? x + P[i] : x + w - P[i], Y = i => fy ? y + P[i + 1] : y + h - P[i + 1];
+  if (fx === fy) { m.moveTo(X(0), Y(0)); for (let i = 2; i < 12; i += 2) m.lineTo(X(i), Y(i)); }
+  else { m.moveTo(X(10), Y(10)); for (let i = 8; i >= 0; i -= 2) m.lineTo(X(i), Y(i)); }
+  m.closePath();
+}
+function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
+  const UPM = 32 * SCL / SCALE_REAL, ux = sun.dx * UPM, uy = sun.dy * UPM, maxL = 900 * Math.max(0.5, SCL / SCALE_REAL), mg = maxL;
+  m.fillStyle = col || sun.css; m.beginPath();
+  const cx0 = Math.floor((x0 - mg) / CHS), cx1 = Math.floor((x1 + mg) / CHS), cy0 = Math.floor((y0 - mg) / CHS), cy1 = Math.floor((y1 + mg) / CHS);
+  let n = 0;
+  for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
+    const c = chunks.get(cx + ',' + cy); if (!c) continue;
+    for (const r of c.rects) {
+      const h = luxHeight(r); if (!h) continue;
+      let ox = ux * h, oy = uy * h; const L = Math.hypot(ox, oy); if (L > maxL) { ox *= maxL / L; oy *= maxL / L; }
+      if (Math.min(r.x, r.x + ox) > x1 || Math.max(r.x + r.w, r.x + r.w + ox) < x0 || Math.min(r.y, r.y + oy) > y1 || Math.max(r.y + r.h, r.y + r.h + oy) < y0) continue;
+      luxShadowPath(m, r.x, r.y, r.w, r.h, ox, oy); n++;
+    }
+  }
+  if (n) m.fill();
+  // tree crowns, and everyone standing in the street
+  m.beginPath(); n = 0;
+  for (const d of WD.act) {
+    if (d.k !== 'tree') continue;
+    const cxw = d.x + ux * 6, cyw = d.y + uy * 6, rr = d.r * 0.82;
+    if (cxw + rr < x0 || cxw - rr > x1 || cyw + rr < y0 || cyw - rr > y1) continue;
+    m.moveTo(cxw + rr, cyw); m.arc(cxw, cyw, rr, 0, TAU); n++;
+  }
+  const body = (x, y, r, hm) => {
+    const ox = ux * hm, oy = uy * hm, L = Math.hypot(ox, oy); if (x + L + r < x0 || x - L - r > x1 || y + L + r < y0 || y - L - r > y1) return;
+    const rx = L / 2 + r * 0.6, ry = r * 0.62, a = Math.atan2(oy, ox), ex = x + ox * 0.5, ey = y + oy * 0.5;
+    m.moveTo(ex + Math.cos(a) * rx, ey + Math.sin(a) * rx); m.ellipse(ex, ey, rx, ry, a, 0, TAU); n++;
+  };
+  let nz = 0;
+  for (const z of G.zs) { if (z.dead || z.fly || (z.st && z.st.under)) continue; body(z.x, z.y, z.r, clamp(z.r * 0.17, 1.2, 6)); if (++nz > 80) break; }
+  if (G.p && G.mode !== 'title' && !G.p.down) body(G.p.x, G.p.y, G.p.r, 1.75);
+  if (NET.started) { const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values()); for (const q of each) if (q && !q.down) body(q.x, q.y, 9 * PK, 1.75); }
+  if (n) m.fill();
+}
+
+/* ---------- bounce light: path traced ----------
+   The view is laid over with a grid of cells (fixed to the world, so it does not swim as the camera moves). Each
+   frame, half of the cells send a few rays in random directions; a ray runs through the grid until it reaches a random
+   distance or hits a wall, and brings back the light it finds there (the street's or the wall's colour times the light
+   on it). The average is the light bouncing into that cell: sunlight spilling into the shade, a fire turning the
+   walls around it orange, lamplight reaching round a corner. Rays that hit a wall close by also tell how much of the
+   sky the cell can see, so the shade deepens where buildings crowd round (ambient occlusion). Every frame's answer is
+   blended into the last ones, so the noise of a few rays per cell settles into a smooth picture. With a GPU the
+   shader engine traces the same paths, more of them, on the graphics chip. */
+const GI = { cell: 0, gx: 0, gy: 0, gw: 0, gh: 0, acc: null, vis: null, occ: null, src: null, out: null, outImg: null, ao: null, aoImg: null, gs: null, gsg: null, f: 0, seed: 1, ms: 0, rays: 0 };
+const GI_COLS = [0, 40, 48, 56, 64], GI_COLS_GPU = [0, 64, 96, 112, 128];   // the CPU traces a coarser grid than the GPU
+const GI_ALB = { city: [0.34, 0.34, 0.36], chaos: [0.34, 0.32, 0.34], burning: [0.32, 0.25, 0.2], ruins: [0.36, 0.34, 0.3], ash: [0.42, 0.42, 0.43], suburb: [0.27, 0.35, 0.22], desert: [0.56, 0.46, 0.33], snow: [0.8, 0.84, 0.9] };
+function luxGIwanted(lq) {
+  const w = SET.gi || 'auto'; if (w === 'off' || !lq.rays) return false;
+  // with the shader engine on the GPU, the GPU traces (if its level allows); the CPU tracer reads the light map back,
+  // which would stall a graphics chip, so it only runs where the canvas is drawn on the CPU anyway
+  if (typeof PRISM !== 'undefined' && PRISM.mode === 'gpu') return PRQ[PRISM.lvl].gi > 0;
+  return w === 'on' || LUX.level >= 2;
+}
+// the grid for this frame and which of its cells are solid (also handed to the shader engine for its GPU pass)
+function luxGIgrid(x0, y0, x1, y1, lq) {
+  const gpu = typeof PRISM !== 'undefined' && PRISM.mode === 'gpu', cols = (gpu ? GI_COLS_GPU : GI_COLS)[LUX.level] || 48, cell = Math.max(4, Math.round((x1 - x0) / cols * 4) / 4);
+  const gx = Math.floor(x0 / cell) - 1, gy = Math.floor(y0 / cell) - 1, gw = Math.ceil((x1 - x0) / cell) + 3, gh = Math.ceil((y1 - y0) / cell) + 3, N = gw * gh;
+  if (cell !== GI.cell || gw !== GI.gw || gh !== GI.gh || !GI.acc) {
+    GI.cell = cell; GI.gw = gw; GI.gh = gh; GI.gx = gx; GI.gy = gy;
+    GI.acc = new Float32Array(N * 3); GI.vis = new Float32Array(N).fill(1); GI.occ = new Uint8Array(N); GI.src = new Float32Array(N * 3);
+    GI.out = null; GI.ao = null;
+  } else if (gx !== GI.gx || gy !== GI.gy) {
+    // the camera moved: slide what has been gathered so far along with the world
+    const sx = gx - GI.gx, sy = gy - GI.gy, a = new Float32Array(N * 3), v = new Float32Array(N).fill(1);
+    for (let y = 0; y < gh; y++) { const oy = y + sy; if (oy < 0 || oy >= gh) continue; for (let x = 0; x < gw; x++) { const ox = x + sx; if (ox < 0 || ox >= gw) continue; const i = y * gw + x, j = oy * gw + ox; a[i * 3] = GI.acc[j * 3]; a[i * 3 + 1] = GI.acc[j * 3 + 1]; a[i * 3 + 2] = GI.acc[j * 3 + 2]; v[i] = GI.vis[j]; } }
+    GI.acc = a; GI.vis = v; GI.gx = gx; GI.gy = gy;
+  }
+  const occ = GI.occ; occ.fill(0);
+  const wx0 = gx * cell, wy0 = gy * cell, wx1 = wx0 + gw * cell, wy1 = wy0 + gh * cell;
+  const cx0 = Math.floor(wx0 / CHS), cx1 = Math.floor(wx1 / CHS), cy0 = Math.floor(wy0 / CHS), cy1 = Math.floor(wy1 / CHS);
+  for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
+    const c = chunks.get(cx + ',' + cy); if (!c) continue;
+    for (const r of c.rects) {
+      if (luxHeight(r) < 2 || r.x > wx1 || r.x + r.w < wx0 || r.y > wy1 || r.y + r.h < wy0) continue;
+      const ia = Math.max(0, Math.floor((r.x - wx0) / cell)), ib = Math.min(gw - 1, Math.floor((r.x + r.w - wx0) / cell)), ja = Math.max(0, Math.floor((r.y - wy0) / cell)), jb = Math.min(gh - 1, Math.floor((r.y + r.h - wy0) / cell));
+      for (let j = ja; j <= jb; j++) occ.fill(1, j * gw + ia, j * gw + ib + 1);
+    }
+  }
+  const F = CORE.frame; F.gi = GI;
+}
+function luxGI(m, tr, s, lq) {
+  const t0 = performance.now(), gw = GI.gw, gh = GI.gh, N = gw * gh, cell = GI.cell;
+  // the light on the ground, read back small from the light map (every other frame is plenty)
+  if (!GI.gs || GI.gs.width !== gw || GI.gs.height !== gh) { GI.gs = luxCanvas(gw, gh); GI.gsg = GI.gs.getContext('2d', { willReadFrequently: true }); GI.f = 0; }
+  if ((GI.f & 1) === 0) {
+    const wx = GI.gx * cell, wy = GI.gy * cell, sx = (tr.a * wx + tr.e) * s, sy = (tr.d * wy + tr.f) * s, sw = tr.a * gw * cell * s, sh = tr.d * gh * cell * s;
+    GI.gsg.setTransform(1, 0, 0, 1, 0, 0); GI.gsg.globalCompositeOperation = 'source-over'; GI.gsg.fillStyle = '#000'; GI.gsg.fillRect(0, 0, gw, gh);
+    GI.gsg.drawImage(LUX.M, sx, sy, sw, sh, 0, 0, gw, gh);
+    const d = GI.gsg.getImageData(0, 0, gw, gh).data, src = GI.src;
+    for (let i = 0; i < N; i++) { src[i * 3] = d[i * 4] / 255; src[i * 3 + 1] = d[i * 4 + 1] / 255; src[i * 3 + 2] = d[i * 4 + 2] / 255; }
+  }
+  // trace: half the cells this frame, the other half next frame
+  const occ = GI.occ, src = GI.src, acc = GI.acc, vis = GI.vis, alb = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city;
+  const R = LUX.level >= 3 ? 3 : 2, S = 10, blend = 0.22, WALL = 0.5;
+  let seed = GI.seed = (GI.seed * 1664525 + 1013904223) >>> 0, rays = 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  for (let c = GI.f & 1; c < N; c += 2) {
+    if (occ[c]) { acc[c * 3] = acc[c * 3 + 1] = acc[c * 3 + 2] = 0; vis[c] = 1; continue; }
+    const cx = c % gw, cy = (c / gw) | 0; let r = 0, g = 0, b = 0, open = 0;
+    for (let k = 0; k < R; k++) {
+      const an = (k + rnd()) / R * 6.2832, dx = Math.cos(an), dy = Math.sin(an), len = 1 + rnd() * S;
+      let lx = cx, ly = cy, hit = false;
+      for (let t = 0.75; t < len; t += 0.75) {
+        const ix = (cx + 0.5 + dx * t) | 0, iy = (cy + 0.5 + dy * t) | 0;
+        if (ix < 0 || iy < 0 || ix >= gw || iy >= gh) break;
+        if (occ[iy * gw + ix]) { hit = true; break; }
+        lx = ix; ly = iy;
+      }
+      const j = (ly * gw + lx) * 3, w = hit ? WALL : 1;
+      r += src[j] * alb[0] * w; g += src[j + 1] * alb[1] * w; b += src[j + 2] * alb[2] * w; if (!hit) open++;
+    }
+    rays += R;
+    acc[c * 3] += (r / R - acc[c * 3]) * blend; acc[c * 3 + 1] += (g / R - acc[c * 3 + 1]) * blend; acc[c * 3 + 2] += (b / R - acc[c * 3 + 2]) * blend;
+    vis[c] += (open / R - vis[c]) * blend;
+  }
+  GI.f++; GI.rays = rays;
+  // into the light map: the bounce added, the crowded corners darkened a little
+  if (!GI.out || GI.out.width !== gw || GI.out.height !== gh) { GI.out = luxCanvas(gw, gh); GI.outG = GI.out.getContext('2d'); GI.outImg = GI.outG.createImageData(gw, gh); GI.ao = luxCanvas(gw, gh); GI.aoG = GI.ao.getContext('2d'); GI.aoImg = GI.aoG.createImageData(gw, gh); }
+  const gain = 0.9, day = LUX.day, aoK = 0.12 + 0.18 * day, o = GI.outImg.data, q = GI.aoImg.data;
+  for (let i = 0; i < N; i++) {
+    o[i * 4] = Math.min(255, acc[i * 3] * gain * 255); o[i * 4 + 1] = Math.min(255, acc[i * 3 + 1] * gain * 255); o[i * 4 + 2] = Math.min(255, acc[i * 3 + 2] * gain * 255); o[i * 4 + 3] = 255;
+    const a = 255 * (1 - aoK * (1 - vis[i])); q[i * 4] = q[i * 4 + 1] = q[i * 4 + 2] = a; q[i * 4 + 3] = 255;
+  }
+  GI.outG.putImageData(GI.outImg, 0, 0); GI.aoG.putImageData(GI.aoImg, 0, 0);
+  m.setTransform(tr.a * s, tr.b * s, tr.c * s, tr.d * s, tr.e * s, tr.f * s); m.imageSmoothingEnabled = true;
+  const wx = GI.gx * cell, wy = GI.gy * cell, ww = gw * cell, wh = gh * cell;
+  m.globalCompositeOperation = 'multiply'; m.drawImage(GI.ao, wx, wy, ww, wh);
+  m.globalCompositeOperation = 'lighter'; m.drawImage(GI.out, wx, wy, ww, wh);
+  m.setTransform(1, 0, 0, 1, 0, 0); m.globalCompositeOperation = 'source-over';
+  GI.ms = performance.now() - t0;
+}
+
+/* ---------- what the other engines need from this one ---------- */
+// the brightest lights on screen (for light shafts and bloom), the hot spots (for heat haze), the sun and the sky
+function luxExport(amb, use) {
+  const F = CORE.frame, L = LUX.lights, idx = LUX.idx, out = F.lights; out.length = 0;
+  F.amb = amb; F.day = LUX.day; F.night = 1 - LUX.day;
+  const sc = [0, 0];
+  for (let q = 0; q < Math.min(use, LUX.n) && out.length < 6; q++) {
+    const l = L[idx[q]]; if (l.i < 0.35 || l.pr < 0) continue;
+    coreToScreen(l.x, l.y, sc); out.push({ sx: sc[0], sy: sc[1], r: l.r * CORE.frame.zoom * CORE.frame.dpr, c0: l.c0, c1: l.c1, c2: l.c2, i: l.i, cone: l.cone });
+  }
+  const hot = F.hot; hot.length = 0;
+  for (const f of WD.fires) { if (hot.length >= 8) break; if (f.lit === 0 || f.x < F.x0 - 200 || f.x > F.x1 + 200 || f.y < F.y0 - 200 || f.y > F.y1 + 200) continue; coreToScreen(f.x, f.y, sc); hot.push({ sx: sc[0], sy: sc[1], r: f.r * 4 * F.zoom * F.dpr, k: 0.8 }); }
+  for (const e of LUX.fx) { if (hot.length >= 8) break; if (e.i < 1.1) continue; coreToScreen(e.x, e.y, sc); hot.push({ sx: sc[0], sy: sc[1], r: e.r * 0.5 * F.zoom * F.dpr, k: e.life / e.max }); }
+  for (const h of G.haz) { if (hot.length >= 8) break; if (h.k !== 'fire' || h.x < F.x0 - 100 || h.x > F.x1 + 100 || h.y < F.y0 - 100 || h.y > F.y1 + 100) continue; coreToScreen(h.x, h.y, sc); hot.push({ sx: sc[0], sy: sc[1], r: h.r * 2.5 * F.zoom * F.dpr, k: 0.6 }); }
+}
+
+coreAdd({
+  name: 'LUX', kind: 'render', does: 'Lighting engine: ray-traced shadows from every lamp, fire, muzzle flash and the flashlight, a moving sun with building shadows, path-traced bounce light, day and night, bloom.',
+  state: () => SET.lux === 'off' ? 'off' : LUX.offUntil && performance.now() < LUX.offUntil ? 'paused' : LUX.live ? 'on' : 'idle',
+  level: () => ['glow only', 'few shadows', 'shadows + bloom', 'soft shadows', 'full'][LUX.level] + (LUX.giOn ? ', bounce light' + (typeof PRISM !== 'undefined' && PRISM.giGpu ? ' (GPU)' : ' (CPU)') : '') + (CORE.frame.sun.on ? ', sun' : ''),
+  canTrim: () => LUX.level > 0, trim: () => { if (LUX.adapt <= -3) return false; LUX.adapt--; LUX.A = null; return true; }, boost: () => { if (LUX.adapt >= 0) return false; LUX.adapt++; LUX.A = null; return true; },
+  repair: () => { LUX.A = null; LUX.offUntil = 0; LUX.errT.length = 0; }
+});
+
+/* ================= PRISM: the shader engine =================
+   The last step of every frame. The game draws the city into its canvas as always; PRISM takes that picture and
+   finishes it with shaders, on the graphics chip when there is one and on the CPU when there is not.
+   On the GPU (WebGL 2, or WebGL 1 on older devices) the frame goes through:
+   - bounce light: the lighting engine's light map and a grid of what is solid go in, and a path tracer sends rays
+     through the grid from every cell, many more than the CPU can afford, blending each frame into the last;
+   - bloom: the brightest parts and every light glow outward through a chain of smaller and smaller copies;
+   - light shafts: rays of light streaming from the strongest lamps and the flashlight when the air is heavy (fog, rain,
+     dust, smoke, night);
+   - the final pass: heat haze shimmering over fires and blasts, sharpening that brings back edges (and upscaling with
+     a sharper filter when the governor has lowered the resolution), a touch of colour fringing at the edges, then
+     exposure and a soft highlight roll-off, white balance from the colour temperature of the hour (warm at dusk,
+     cool at night), saturation (which drains in the dark, as eyes do), contrast, toning, vignette and film grain.
+   On the CPU the same look is approached with canvas blend modes: the white balance, the night's desaturation and
+   grain (the lighting engine's own bloom and bounce light do the rest).
+   It looks after itself. It picks the GPU only when the graphics chip is real hardware (a software renderer is slower
+   than the CPU path), measures what it costs, and steps down when the frame runs late: no shafts, smaller bounce grid,
+   fewer bloom steps, no upscaling. A shader that will not compile switches off only its own effect. A lost GPU context
+   (a driver reset, the phone reclaiming memory) hands over to the CPU path at once and rebuilds when the GPU comes back.
+   A run of errors drops a level; if it keeps failing it falls back to the CPU for a minute and tries the GPU again. */
+// GPU levels: 0 colour only · 1 + bloom, sharpening, upscaling, grain · 2 + bounce light, shafts, heat haze · 3 more of all
+const PRQ = [
+  { bloom: 0, shafts: 0, gi: 0, haze: 0, sharp: 1, up: 0, grain: 1, ca: 0 },
+  { bloom: 1, shafts: 0, gi: 0, haze: 0, sharp: 1, up: 1, grain: 1, ca: 0 },
+  { bloom: 2, shafts: 1, gi: 1, haze: 1, sharp: 1, up: 1, grain: 1, ca: 1 },
+  { bloom: 3, shafts: 1, gi: 2, haze: 1, sharp: 1, up: 2, grain: 1, ca: 1 }
+];
+const PRISM = {
+  mode: 'none', want: '', gl: null, glcv: null, v2: false, soft: false, renderer: '', reason: '', lost: false, ok: false,
+  adapt: 0, lvl: 2, slow: 0, fast: 0, slowCopy: 0, errT: [], offUntil: 0, ms: 0, msAvg: 0, frames: 0, P: {}, T: {}, F: {}, quad: null, giGpu: false, bloomGpu: false, vigGpu: false,
+  gi: { a: null, b: null, w: 0, h: 0, gx: 0, gy: 0, cell: 0, rays: 0 }, wb: [1, 1, 1], temp: 6500, cpuG: null
+};
+function prismLevel() { return PRISM.lvl = clamp(([1, 2, 2, 3][clamp(PERF.tier | 0, 0, 3)]) + PRISM.adapt, 0, 3); }
+function prismWanted() {
+  const w = SET.prism || 'auto';
+  if (w === 'off') return 'off';
+  if (PRISM.offUntil && performance.now() < PRISM.offUntil) return 'cpu';
+  if (w === 'cpu') return 'cpu';
+  if (w === 'gpu') return 'gpu';
+  return PRISM.soft ? 'cpu' : 'gpu';
+}
+
+/* ---------- GPU setup ---------- */
+const PR_VS = 'attribute vec2 a; varying vec2 v; void main() { v = a * 0.5 + 0.5; gl_Position = vec4(a, 0.0, 1.0); }';
+const PR_HEAD = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nvarying vec2 v;\n';
+const PR_FS = {
+  // the bright parts of the picture, plus every light from the lighting engine, for bloom and shafts
+  bright: 'uniform sampler2D uS, uL; uniform vec2 uPx; uniform float uTh, uLk;\n' +
+    'void main() { vec3 c = (texture2D(uS, v - uPx).rgb + texture2D(uS, v + uPx).rgb + texture2D(uS, v + vec2(uPx.x, -uPx.y)).rgb + texture2D(uS, v - vec2(uPx.x, -uPx.y)).rgb) * 0.25;\n' +
+    ' float l = max(c.r, max(c.g, c.b)); float k = clamp((l - uTh) / (1.0 - uTh + 0.0001), 0.0, 1.0); k *= k;\n' +
+    ' gl_FragColor = vec4(c * k + texture2D(uL, v).rgb * uLk, 1.0); }',
+  // a step down the bloom chain (13 taps folded into 5)
+  down: 'uniform sampler2D uT; uniform vec2 uPx;\n' +
+    'void main() { vec3 s = texture2D(uT, v).rgb * 4.0 + texture2D(uT, v - uPx).rgb + texture2D(uT, v + uPx).rgb + texture2D(uT, v + vec2(uPx.x, -uPx.y)).rgb + texture2D(uT, v - vec2(uPx.x, -uPx.y)).rgb;\n' +
+    ' gl_FragColor = vec4(s / 8.0, 1.0); }',
+  // a step back up, added to the level above (a tent filter, so the glow has no blocky edges)
+  up: 'uniform sampler2D uT, uB; uniform vec2 uPx;\n' +
+    'void main() { vec3 s = texture2D(uT, v + vec2(-2.0 * uPx.x, 0.0)).rgb + texture2D(uT, v + vec2(-uPx.x, uPx.y)).rgb * 2.0 + texture2D(uT, v + vec2(0.0, 2.0 * uPx.y)).rgb\n' +
+    ' + texture2D(uT, v + uPx).rgb * 2.0 + texture2D(uT, v + vec2(2.0 * uPx.x, 0.0)).rgb + texture2D(uT, v + vec2(uPx.x, -uPx.y)).rgb * 2.0 + texture2D(uT, v + vec2(0.0, -2.0 * uPx.y)).rgb + texture2D(uT, v - uPx).rgb * 2.0;\n' +
+    ' gl_FragColor = vec4((texture2D(uB, v).rgb + s / 12.0) * 0.5, 1.0); }',
+  // light shafts: march from each pixel toward each strong light, gathering the glow along the way
+  shafts: 'uniform sampler2D uB; uniform vec4 uL[4]; uniform vec3 uC[4]; uniform float uN, uD, uAsp;\n' +
+    'void main() { vec3 acc = vec3(0.0);\n' +
+    ' for (int i = 0; i < 4; i++) { if (float(i) >= uN) break; vec2 lp = uL[i].xy; vec2 d = lp - v; float dist = length(d * vec2(uAsp, 1.0)); float fall = clamp(1.0 - dist / uL[i].z, 0.0, 1.0);\n' +
+    '  if (fall <= 0.0) continue; vec2 st = d / 16.0; vec2 p = v; float w = 1.0; vec3 s = vec3(0.0);\n' +
+    '  for (int k = 0; k < 16; k++) { p += st; s += texture2D(uB, p).rgb * w; w *= 0.92; }\n' +
+    '  acc += s * uC[i] * fall * fall; }\n' +
+    ' gl_FragColor = vec4(acc * uD / 16.0, 1.0); }',
+  // bounce light: a Monte Carlo path tracer over the grid of solid cells, blended over the frames
+  gi: 'uniform sampler2D uOcc, uM, uPrev; uniform vec2 uG, uOrg, uCv, uShift; uniform float uCell, uFrame, uBlend; uniform vec4 uTr; uniform vec3 uAlb;\n' +
+    'float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }\n' +
+    'float occ(vec2 c) { vec2 uv = vec2((c.x + 0.5) / uG.x, 1.0 - (c.y + 0.5) / uG.y); if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return -1.0; return texture2D(uOcc, uv).a; }\n' +
+    'vec3 lightAt(vec2 c) { vec2 w = uOrg + (c + 0.5) * uCell; vec2 px = vec2(uTr.x * w.x + uTr.y, uTr.z * w.y + uTr.w); return texture2D(uM, vec2(px.x / uCv.x, 1.0 - px.y / uCv.y)).rgb; }\n' +
+    'void main() { vec2 cf = vec2(floor(v.x * uG.x), floor((1.0 - v.y) * uG.y));\n' +
+    ' if (occ(cf) > 0.5) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }\n' +
+    ' vec3 sum = vec3(0.0); float open = 0.0;\n' +
+    ' for (int k = 0; k < RAYS; k++) { float fk = float(k); float an = (fk + hash(cf + vec2(uFrame * 0.131, fk * 7.13))) / float(RAYS) * 6.28318; vec2 d = vec2(cos(an), sin(an));\n' +
+    '  float len = 1.0 + hash(cf * 1.71 + vec2(fk * 3.37, uFrame * 0.719)) * float(STEPS) * 0.75; vec2 last = cf; float hit = 0.0;\n' +
+    '  for (int s = 1; s <= STEPS; s++) { float t = float(s) * 0.75; if (t > len) break; vec2 c = floor(cf + 0.5 + d * t); float o = occ(c); if (o < 0.0) break; if (o > 0.5) { hit = 1.0; break; } last = c; }\n' +
+    '  sum += lightAt(last) * uAlb * (hit > 0.5 ? 0.5 : 1.0); open += 1.0 - hit; }\n' +
+    ' vec4 cur = vec4(sum / float(RAYS), open / float(RAYS)); vec4 prev = texture2D(uPrev, v + uShift);\n' +
+    ' gl_FragColor = mix(prev, cur, uBlend); }',
+  // the final pass: everything together, then the grade
+  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM; uniform vec2 uIn, uCv, uOrg, uG, uRes; uniform vec4 uTr; uniform vec4 uHot[8];\n' +
+    'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub; uniform vec3 uWB, uTS, uTH;\n' +
+    'vec3 tap(vec2 p) { return texture2D(uS, p).rgb; }\n' +
+    'vec3 cubic(vec2 uv) { vec2 sz = 1.0 / uIn; vec2 sp = uv * sz; vec2 tp = floor(sp - 0.5) + 0.5; vec2 f = sp - tp;\n' +
+    ' vec2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f)); vec2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f); vec2 w2 = f * (0.5 + f * (2.0 - 1.5 * f)); vec2 w3 = f * f * (-0.5 + 0.5 * f);\n' +
+    ' vec2 w12 = w1 + w2; vec2 t0 = (tp - 1.0) * uIn; vec2 t3 = (tp + 2.0) * uIn; vec2 t12 = (tp + w2 / w12) * uIn;\n' +
+    ' vec3 r = tap(vec2(t0.x, t0.y)) * w0.x * w0.y + tap(vec2(t12.x, t0.y)) * w12.x * w0.y + tap(vec2(t3.x, t0.y)) * w3.x * w0.y\n' +
+    '  + tap(vec2(t0.x, t12.y)) * w0.x * w12.y + tap(vec2(t12.x, t12.y)) * w12.x * w12.y + tap(vec2(t3.x, t12.y)) * w3.x * w12.y\n' +
+    '  + tap(vec2(t0.x, t3.y)) * w0.x * w3.y + tap(vec2(t12.x, t3.y)) * w12.x * w3.y + tap(vec2(t3.x, t3.y)) * w3.x * w3.y; return max(r, vec3(0.0)); }\n' +
+    'void main() { vec2 uv = v;\n' +
+    ' if (uHaze > 0.0) { vec2 off = vec2(0.0); for (int i = 0; i < 8; i++) { if (float(i) >= uNH) break; vec4 h = uHot[i]; float r = length((uv - h.xy) * vec2(uAsp, 1.0)); float f = clamp(1.0 - r / h.z, 0.0, 1.0);\n' +
+    '  off += vec2(sin(uv.y * 140.0 + uTime * 7.0 + float(i) * 1.7), cos(uv.x * 120.0 + uTime * 6.0)) * f * f * h.w; } uv += off * uHaze * 0.003; }\n' +
+    ' vec3 c = uCub > 0.5 ? cubic(uv) : tap(uv);\n' +
+    ' if (uSharp > 0.0) { vec3 n = tap(uv + vec2(0.0, uIn.y)), s = tap(uv - vec2(0.0, uIn.y)), e = tap(uv + vec2(uIn.x, 0.0)), w = tap(uv - vec2(uIn.x, 0.0));\n' +
+    '  vec3 mn = min(c, min(min(n, s), min(e, w))), mx = max(c, max(max(n, s), max(e, w))); vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, vec3(0.001)), 0.0, 1.0));\n' +
+    '  vec3 wg = -amp * uSharp * 0.2; c = max((c + (n + s + e + w) * wg) / (1.0 + 4.0 * wg), vec3(0.0)); }\n' +
+    ' if (uCA > 0.0) { vec2 dc = uv - 0.5; float e2 = dot(dc, dc); c.r = mix(c.r, tap(uv - dc * uCA * e2).r, 0.85); c.b = mix(c.b, tap(uv + dc * uCA * e2).b, 0.85); }\n' +
+    ' if (uGIK > 0.0) { vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 w = vec2((px.x - uTr.y) / uTr.x, (px.y - uTr.w) / uTr.z);\n' +
+    '  vec4 gi = texture2D(uGI, vec2((w.x - uOrg.x) / (uG.x * uCell), 1.0 - (w.y - uOrg.y) / (uG.y * uCell))); vec3 m = max(texture2D(uM, uv).rgb, vec3(0.07));\n' +
+    '  c = c * (1.0 - uAOK * (1.0 - gi.a)) + c * min(gi.rgb * uGIK / m, vec3(1.6)); }\n' +
+    ' c += texture2D(uBl, uv).rgb * uBlK + texture2D(uSh, uv).rgb * uShK;\n' +
+    ' c *= uExp; c = c / (1.0 + max(c - 0.85, 0.0));\n' +
+    ' c *= uWB; float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); c = mix(vec3(l), c, uSat); c = (c - 0.5) * uCon + 0.5; c += uTS * (1.0 - l) * (1.0 - l) + uTH * l * l;\n' +
+    ' vec2 q = v - 0.5; c *= 1.0 - uVig * smoothstep(0.18, 0.75, dot(q, q) * 2.0);\n' +
+    ' c += (fract(sin(dot(v * uRes + vec2(uTime * 61.0, uTime * 37.0), vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * uGrain;\n' +
+    ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'
+};
+function prismInit() {
+  if (PRISM.glcv) return;
+  const c = document.createElement('canvas'); c.id = 'glfx'; c.setAttribute('aria-hidden', 'true');
+  c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none';
+  cv.parentNode.insertBefore(c, cv.nextSibling); PRISM.glcv = c;
+  const opt = { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' };
+  let gl = null;
+  try { gl = c.getContext('webgl2', opt); PRISM.v2 = !!gl; if (!gl) gl = c.getContext('webgl', opt) || c.getContext('experimental-webgl', opt); } catch (e) { gl = null; }
+  if (!gl) { PRISM.reason = 'no WebGL on this device'; PRISM.soft = true; return; }
+  PRISM.gl = gl;
+  try {
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    PRISM.renderer = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER) || '');
+  } catch (e) { PRISM.renderer = ''; }
+  // a software renderer draws shaders on the CPU, slower than the CPU path itself
+  PRISM.soft = /swiftshader|llvmpipe|softpipe|software|basic render|mesa offscreen/i.test(PRISM.renderer);
+  if (PRISM.soft) PRISM.reason = 'software graphics (' + PRISM.renderer.slice(0, 40) + ')';
+  c.addEventListener('webglcontextlost', e => { e.preventDefault(); PRISM.lost = true; PRISM.ok = false; prismShow(false); coreHurt('PRISM', 'GPU context lost'); coreRepaired('PRISM', 'Shaders: the GPU reset, using the CPU path until it is back'); }, false);
+  c.addEventListener('webglcontextrestored', () => { PRISM.lost = false; prismBuild(); coreRepaired('PRISM', 'Shaders rebuilt after the GPU came back'); }, false);
+  prismBuild();
+}
+function prismShader(type, src) {
+  const gl = PRISM.gl, s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { const log = gl.getShaderInfoLog(s); gl.deleteShader(s); throw new Error('shader: ' + String(log).slice(0, 160)); }
+  return s;
+}
+function prismProgram(name, fs, defs) {
+  const gl = PRISM.gl;
+  try {
+    const p = gl.createProgram();
+    gl.attachShader(p, prismShader(gl.VERTEX_SHADER, PR_VS)); gl.attachShader(p, prismShader(gl.FRAGMENT_SHADER, (defs || '') + PR_HEAD + fs));
+    gl.bindAttribLocation(p, 0, 'a'); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('link: ' + String(gl.getProgramInfoLog(p)).slice(0, 160));
+    const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i), nm = info.name.replace(/\[0\]$/, ''); u[nm] = gl.getUniformLocation(p, info.name); }
+    return { p: p, u: u };
+  } catch (e) { coreHurt('PRISM', name + ': ' + e.message); try { console.error(e); } catch (x) { } return null; }
+}
+function prismTex(filter) {
+  const gl = PRISM.gl, t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter || gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter || gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+  return t;
+}
+// a texture you can draw into, of w x h
+function prismFbo(o, w, h) {
+  const gl = PRISM.gl; w = Math.max(1, w | 0); h = Math.max(1, h | 0);
+  if (o && o.w === w && o.h === h) return o;
+  if (!o) { o = { t: prismTex(), f: gl.createFramebuffer(), w: 0, h: 0 }; }
+  gl.bindTexture(gl.TEXTURE_2D, o.t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, o.f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, o.t, 0);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('framebuffer incomplete');
+  o.w = w; o.h = h; return o;
+}
+function prismBuild() {
+  const gl = PRISM.gl; if (!gl || gl.isContextLost()) return;
+  PRISM.P = {}; PRISM.T = {}; PRISM.F = {}; PRISM.gi.a = PRISM.gi.b = null; PRISM.gi.w = 0;
+  const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0); PRISM.quad = b;
+  gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  for (const k of ['bright', 'down', 'up', 'shafts', 'final']) PRISM.P[k] = prismProgram(k, PR_FS[k]);
+  PRISM.P.gi1 = prismProgram('gi', PR_FS.gi, '#define RAYS 6\n#define STEPS 12\n');
+  PRISM.P.gi2 = prismProgram('gi', PR_FS.gi, '#define RAYS 12\n#define STEPS 16\n');
+  for (const k of ['scene', 'light', 'amb', 'occ']) PRISM.T[k] = prismTex();
+  PRISM.T.black = prismTex();
+  PRISM.ok = !!PRISM.P.final;
+  if (!PRISM.ok) PRISM.reason = 'the final shader did not compile';
+}
+function prismShow(on) { if (PRISM.glcv) PRISM.glcv.style.display = on ? 'block' : 'none'; }
+function prismUpload(t, src) {
+  const gl = PRISM.gl; gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+}
+function prismDraw(prog, fbo, w, h) {
+  const gl = PRISM.gl; gl.bindFramebuffer(gl.FRAMEBUFFER, fbo ? fbo.f : null); gl.viewport(0, 0, w, h); gl.useProgram(prog.p); gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+function prismBind(prog, name, unit, tex) { const gl = PRISM.gl, u = prog.u[name]; if (u == null) return; gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u, unit); }
+
+/* ---------- colour of the hour ---------- */
+// the colour of light at a temperature (kelvin), as a multiplier that leaves 6500 K white
+function prismKelvin(K, out) {
+  const f = k => { const t = k / 100; let r, g, b; if (t <= 66) { r = 255; g = 99.47 * Math.log(t) - 161.12; b = t <= 19 ? 0 : 138.52 * Math.log(t - 10) - 305.04; } else { r = 329.7 * Math.pow(t - 60, -0.1332); g = 288.12 * Math.pow(t - 60, -0.0755); b = 255; } return [clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255)]; };
+  const a = f(K), w = f(6500); out[0] = a[0] / w[0]; out[1] = a[1] / w[1]; out[2] = a[2] / w[2];
+  const m = Math.max(out[0], out[1], out[2]); out[0] /= m; out[1] /= m; out[2] /= m;   // never brighter than it was
+  return out;
+}
+// the grade for this frame: temperature from the hour and the weather, saturation that drains in the dark
+function prismGrade() {
+  const F = CORE.frame, night = F.night || 0, sun = F.sun, bio = WORLD.cur ? WORLD.cur.bio : 'city';
+  let K = 6500;
+  if (LUX.live) {
+    const h = LUX.hour, sea = WORLD.season, rise = LUX_RISE[sea], set = LUX_SET[sea], gold = Math.max(0, 1 - Math.min(Math.abs(h - set), Math.abs(h - rise)) / 1.3);
+    K = 6500 - gold * 2600 * (1 - night) + night * 2200;
+  }
+  K += (WX.dark || 0) * 1200 + (WX.snow || 0) * 700 + (WX.fog || 0) * 500 - (WX.sand || 0) * 1400 - (bio === 'desert' ? 500 : 0) - (bio === 'burning' ? 700 : 0);
+  const t = SET.temp || 'auto'; K += t === 'warm' ? -1100 : t === 'cool' ? 1400 : 0;
+  // blend toward neutral, so the effect is a tint and not a filter
+  prismKelvin(clamp(K, 2500, 12000), PRISM.wb);
+  for (let i = 0; i < 3; i++) PRISM.wb[i] = 1 - (1 - PRISM.wb[i]) * 0.45;
+  PRISM.temp = Math.round(K);
+  return { sat: 1.06 - night * 0.24 - (WX.fog || 0) * 0.1, con: 1.04 + (sun && sun.on ? 0.04 * sun.k : 0), exp: 1 + night * 0.1 };
+}
+
+/* ---------- one frame ---------- */
+function prismGpu() {
+  const gl = PRISM.gl, q = PRQ[prismLevel()], F = CORE.frame, P = PRISM.P, T = PRISM.T;
+  if (!gl || gl.isContextLost() || !PRISM.ok) throw new Error('gpu not ready');
+  // the output: full display sharpness when upscaling is on (the game may be drawing at a lower resolution)
+  const outDpr = q.up ? Math.min(window.devicePixelRatio || 1, Math.max(DPR, Q.dpr)) : DPR;
+  let ow = Math.round(W * outDpr), oh = Math.round(H * outDpr);
+  const maxPx = 3840 * 2160; if (ow * oh > maxPx) { const k = Math.sqrt(maxPx / (ow * oh)); ow = Math.round(ow * k); oh = Math.round(oh * k); }
+  const c = PRISM.glcv; if (c.width !== ow || c.height !== oh) { c.width = ow; c.height = oh; }
+  const cw = cv.width, ch = cv.height;
+  prismUpload(T.scene, cv);
+  const lux = LUX.live && LUX.A && LUX.M;
+  if (lux) { prismUpload(T.light, LUX.A); prismUpload(T.amb, LUX.M); }
+  // bounce light on the GPU
+  PRISM.giGpu = false;
+  const giP = q.gi >= 2 ? P.gi2 : P.gi1;
+  if (q.gi && giP && lux && LUX.giOn && F.gi && F.gi.occ && PRISM.tr) {
+    const G2 = F.gi, g = PRISM.gi, gw = G2.gw, gh = G2.gh;
+    gl.bindTexture(gl.TEXTURE_2D, T.occ); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    if (!G2.occ255 || G2.occ255.length !== gw * gh) G2.occ255 = new Uint8Array(gw * gh);
+    const o255 = G2.occ255, oc = G2.occ; for (let i = 0; i < o255.length; i++) o255[i] = oc[i] ? 255 : 0;
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, gw, gh, 0, gl.ALPHA, gl.UNSIGNED_BYTE, o255);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    const resize = g.w !== gw || g.h !== gh || g.cell !== G2.cell;
+    g.a = prismFbo(g.a, gw, gh); g.b = prismFbo(g.b, gw, gh);
+    if (resize) { for (const f of [g.a, g.b]) { gl.bindFramebuffer(gl.FRAMEBUFFER, f.f); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); } g.gx = G2.gx; g.gy = G2.gy; }
+    const sx = (G2.gx - g.gx) / gw, sy = -(G2.gy - g.gy) / gh;
+    gl.useProgram(giP.p); const u = giP.u, t = PRISM.tr, alb = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city;
+    gl.uniform2f(u.uG, gw, gh); gl.uniform2f(u.uOrg, G2.gx * G2.cell, G2.gy * G2.cell); gl.uniform2f(u.uCv, cw, ch); gl.uniform2f(u.uShift, sx, sy);
+    gl.uniform1f(u.uCell, G2.cell); gl.uniform1f(u.uFrame, PRISM.frames % 997); gl.uniform1f(u.uBlend, resize ? 1 : 0.18); gl.uniform4f(u.uTr, t.a, t.e, t.d, t.f); gl.uniform3f(u.uAlb, alb[0], alb[1], alb[2]);
+    prismBind(giP, 'uOcc', 0, T.occ); prismBind(giP, 'uM', 1, T.amb); prismBind(giP, 'uPrev', 2, g.a.t);
+    prismDraw(giP, g.b, gw, gh);
+    const sw = g.a; g.a = g.b; g.b = sw; g.w = gw; g.h = gh; g.cell = G2.cell; g.gx = G2.gx; g.gy = G2.gy;
+    PRISM.giGpu = true;
+  }
+  // bloom: bright parts at half size, then down a chain and back up
+  PRISM.bloomGpu = false;
+  let bloomT = T.black;
+  const hw = Math.max(1, cw >> 1), hh = Math.max(1, ch >> 1);
+  if (q.bloom && P.bright && P.down && P.up && SET.bloom !== false) {
+    const B = PRISM.F; B.b0 = prismFbo(B.b0, hw, hh);
+    gl.useProgram(P.bright.p); gl.uniform2f(P.bright.u.uPx, 1 / cw, 1 / ch); gl.uniform1f(P.bright.u.uTh, 0.75); gl.uniform1f(P.bright.u.uLk, lux ? 0.18 + 0.22 * (F.night || 0) : 0);
+    prismBind(P.bright, 'uS', 0, T.scene); prismBind(P.bright, 'uL', 1, lux ? T.light : T.black); prismDraw(P.bright, B.b0, hw, hh);
+    const steps = q.bloom + 1, chain = [B.b0];
+    for (let i = 1; i <= steps; i++) { const f = B['b' + i] = prismFbo(B['b' + i], Math.max(1, hw >> i), Math.max(1, hh >> i)), src = chain[i - 1]; gl.useProgram(P.down.p); gl.uniform2f(P.down.u.uPx, 1 / src.w, 1 / src.h); prismBind(P.down, 'uT', 0, src.t); prismDraw(P.down, f, f.w, f.h); chain.push(f); }
+    for (let i = steps; i >= 1; i--) { const src = i === steps ? chain[i] : B['u' + i], dst = B['u' + (i - 1)] = prismFbo(B['u' + (i - 1)], chain[i - 1].w, chain[i - 1].h); gl.useProgram(P.up.p); gl.uniform2f(P.up.u.uPx, 1 / src.w, 1 / src.h); prismBind(P.up, 'uT', 0, src.t); prismBind(P.up, 'uB', 1, chain[i - 1].t); prismDraw(P.up, dst, dst.w, dst.h); }
+    bloomT = B.u0.t; PRISM.bloomGpu = true;
+  }
+  // light shafts from the strongest lights, when the air is heavy enough to show them
+  let shT = T.black, shK = 0;
+  const air = clamp(0.05 + (F.fog || 0) * 0.6 + (WX.rain || 0) * 0.25 + (F.dust || 0) * 0.35 + (F.night || 0) * 0.18 + (WX.ash || 0) * 0.3, 0, 1);
+  if (q.shafts && P.shafts && PRISM.bloomGpu && F.lights.length && air > 0.08) {
+    const B = PRISM.F; B.sh = prismFbo(B.sh, hw, hh); const u = P.shafts.u, Ls = F.lights.slice(0, 4), lv = new Float32Array(16), lc = new Float32Array(12);
+    Ls.forEach((l, i) => { lv[i * 4] = l.sx / cw; lv[i * 4 + 1] = 1 - l.sy / ch; lv[i * 4 + 2] = Math.min(1.2, l.r / ch * 1.6); const k = Math.min(1.5, l.i) / 255; lc[i * 3] = l.c0 * k; lc[i * 3 + 1] = l.c1 * k; lc[i * 3 + 2] = l.c2 * k; });
+    gl.useProgram(P.shafts.p); gl.uniform4fv(u.uL, lv); gl.uniform3fv(u.uC, lc); gl.uniform1f(u.uN, Ls.length); gl.uniform1f(u.uD, 0.32 * air); gl.uniform1f(u.uAsp, cw / ch);
+    prismBind(P.shafts, 'uB', 0, B.b0.t); prismDraw(P.shafts, B.sh, hw, hh); shT = B.sh.t; shK = 1;
+  }
+  // the final pass, to the screen
+  const fp = P.final, u = fp.u, gr = prismGrade(), night = F.night || 0, t = PRISM.tr || { a: 1, e: 0, d: 1, f: 0 };
+  gl.useProgram(fp.p);
+  gl.uniform2f(u.uIn, 1 / cw, 1 / ch); gl.uniform2f(u.uCv, cw, ch); gl.uniform2f(u.uRes, ow, oh); gl.uniform4f(u.uTr, t.a, t.e, t.d, t.f);
+  const sharp = (SET.sharp == null ? 40 : SET.sharp) / 100, up = ow / cw;
+  gl.uniform1f(u.uSharp, q.sharp ? clamp(sharp * (up > 1.05 ? 1.3 : 1), 0, 1.6) : 0); gl.uniform1f(u.uCub, q.up >= 2 && up > 1.05 ? 1 : 0);
+  gl.uniform1f(u.uBlK, PRISM.bloomGpu ? 0.5 + 0.3 * night + 0.5 * (F.fog || 0) + 0.25 * (F.wet || 0) : 0); gl.uniform1f(u.uShK, shK);
+  const gig = PRISM.giGpu && F.gi;
+  gl.uniform1f(u.uGIK, gig ? 0.9 : 0); gl.uniform1f(u.uAOK, gig ? 0.12 + 0.18 * (F.day || 0) : 0);
+  if (gig) { gl.uniform2f(u.uOrg, F.gi.gx * F.gi.cell, F.gi.gy * F.gi.cell); gl.uniform2f(u.uG, F.gi.gw, F.gi.gh); gl.uniform1f(u.uCell, F.gi.cell); }
+  gl.uniform1f(u.uExp, gr.exp); gl.uniform1f(u.uSat, gr.sat); gl.uniform1f(u.uCon, gr.con);
+  gl.uniform3f(u.uWB, PRISM.wb[0], PRISM.wb[1], PRISM.wb[2]);
+  gl.uniform3f(u.uTS, -0.012 * (1 - night), 0.004, 0.02 + 0.015 * night); gl.uniform3f(u.uTH, 0.018 * (1 - night * 0.6), 0.008, -0.012);
+  gl.uniform1f(u.uVig, SET.grade === false ? 0 : (SET.vig == null ? 50 : SET.vig) / 100 * (0.42 + 0.12 * night));
+  gl.uniform1f(u.uGrain, q.grain && SET.grain !== false ? 0.022 + 0.018 * night : 0); gl.uniform1f(u.uTime, (G.time || 0) % 100);
+  gl.uniform1f(u.uCA, q.ca ? 0.006 : 0); gl.uniform1f(u.uAsp, cw / ch);
+  const hot = q.haze && !RM ? F.hot : null, hv = new Float32Array(32);
+  if (hot) hot.forEach((h, i) => { if (i < 8) { hv[i * 4] = h.sx / cw; hv[i * 4 + 1] = 1 - h.sy / ch; hv[i * 4 + 2] = Math.max(0.01, h.r / ch); hv[i * 4 + 3] = h.k; } });
+  gl.uniform4fv(u.uHot, hv); gl.uniform1f(u.uNH, hot ? Math.min(8, hot.length) : 0); gl.uniform1f(u.uHaze, hot && hot.length ? 1 : 0);
+  prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
+  prismDraw(fp, null, ow, oh);
+  if (++PRISM.frames % 120 === 0) { const e = gl.getError(); if (e !== gl.NO_ERROR && e !== gl.CONTEXT_LOST_WEBGL) throw new Error('GL error ' + e); }
+}
+// the CPU path: white balance, the night's desaturation and a little grain, with canvas blend modes
+function prismCpu() {
+  const gr = prismGrade(), F = CORE.frame, lvl = prismLevel(), wb = PRISM.wb, night = F.night || 0;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const dev = Math.abs(1 - wb[0]) + Math.abs(1 - wb[1]) + Math.abs(1 - wb[2]);
+  if (dev > 0.03) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(' + Math.round(wb[0] * 255) + ',' + Math.round(wb[1] * 255) + ',' + Math.round(wb[2] * 255) + ')'; ctx.fillRect(0, 0, cv.width, cv.height); }
+  if (lvl >= 1 && gr.sat < 0.98) { ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = clamp((1 - gr.sat) * 1.4, 0, 0.6); ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }
+  if (lvl >= 2 && SET.grain !== false && !PERF.saver) {
+    const pat = texelPattern(ctx, 'noise', Math.max(1, DPR)); if (pat) { ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = 0.035 + 0.025 * night; ctx.translate(Math.random() * 128, Math.random() * 128); ctx.fillStyle = pat; ctx.fillRect(-128, -128, cv.width + 256, cv.height + 256); }
+  }
+  ctx.restore(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+// render() calls this at the very end of every frame; nothing in here may stop the game
+function prismFrame() {
+  const t0 = performance.now();
+  const want = prismWanted();
+  PRISM.tr = CORE.frame.tr || null;
+  if (want === 'gpu' && !PRISM.glcv) prismInit();
+  let mode = want;
+  if (mode === 'gpu' && (!PRISM.gl || PRISM.lost || !PRISM.ok)) mode = 'cpu';
+  if (mode !== PRISM.mode) { PRISM.mode = mode; prismShow(mode === 'gpu'); if (mode !== 'gpu') { PRISM.giGpu = PRISM.bloomGpu = false; } }
+  PRISM.vigGpu = mode === 'gpu';
+  try {
+    if (mode === 'gpu') prismGpu();
+    else if (mode === 'cpu') prismCpu();
+  } catch (e) { prismHurt(e); if (PRISM.mode === 'gpu') { PRISM.mode = 'cpu'; prismShow(false); PRISM.giGpu = PRISM.bloomGpu = PRISM.vigGpu = false; } }
+  const ms = performance.now() - t0; PRISM.ms = ms; PRISM.msAvg += (ms - PRISM.msAvg) * 0.05; coreCost('PRISM', ms);
+}
+// once a second: a graphics chip that is the bottleneck (the frame is late but the CPU is not busy) steps the shaders
+// down first; a canvas-to-texture copy that is slow on this device even at the lowest level hands over to the CPU path
+function prismWatch() {
+  if (PRISM.mode !== 'gpu' || document.hidden) return;
+  const T = 1000 / targetFps(), now = performance.now();
+  if (PERF.fps && PERF.fps < targetFps() * 0.85 && PERF.workMs < T * 0.5) { if (++PRISM.slow >= 2 && PRISM.adapt > -3) { PRISM.adapt--; PRISM.slow = 0; } }
+  else if (PERF.fps >= targetFps() * 0.97) { PRISM.slow = 0; if (++PRISM.fast >= 15 && PRISM.adapt < 0) { PRISM.adapt++; PRISM.fast = 0; } }
+  if (PRISM.msAvg > T * 0.35 && prismLevel() === 0) { if (++PRISM.slowCopy >= 3) { PRISM.offUntil = now + 300000; PRISM.slowCopy = 0; PRISM.reason = 'the GPU copy is slow on this device'; coreRepaired('PRISM', 'Shaders moved to the CPU: the GPU copy was too slow'); } }
+  else PRISM.slowCopy = 0;
+}
+function prismHurt(e) {
+  const now = performance.now(); coreHurt('PRISM', e); try { console.error(e); } catch (x) { }
+  PRISM.errT.push(now); while (PRISM.errT.length && now - PRISM.errT[0] > 10000) PRISM.errT.shift();
+  if (PRISM.errT.length >= 6) { PRISM.offUntil = now + 60000; PRISM.errT.length = 0; coreRepaired('PRISM', 'Shaders on the CPU for a minute after GPU errors'); }
+  else if (PRISM.errT.length >= 3 && PRISM.adapt > -3) { PRISM.adapt--; coreRepaired('PRISM', 'Shaders stepped down a level'); }
+  if (PRISM.gl && !PRISM.gl.isContextLost() && (!PRISM.P.final || PRISM.errT.length === 2)) prismBuild();
+}
+coreAdd({
+  name: 'PRISM', kind: 'render', does: 'Shader engine: GPU shaders (WebGL 2 or 1) with a CPU fallback for path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, color temperature and grading, vignette and film grain.',
+  state: () => PRISM.mode === 'gpu' ? 'GPU' + (PRISM.v2 ? ' (WebGL 2)' : ' (WebGL 1)') : PRISM.mode === 'cpu' ? 'CPU' + (PRISM.reason ? ': ' + PRISM.reason : '') : PRISM.mode,
+  level: () => PRISM.mode === 'gpu' ? ['color', 'bloom + sharpen', 'bounce light + shafts', 'full'][PRISM.lvl] + ', ' + PRISM.temp + ' K' : PRISM.temp + ' K',
+  sec: prismWatch, canTrim: () => prismLevel() > 0,
+  trim: () => { if (PRISM.adapt <= -3) return false; PRISM.adapt--; return true; }, boost: () => { if (PRISM.adapt >= 0) return false; PRISM.adapt++; return true; },
+  repair: () => { PRISM.offUntil = 0; PRISM.errT.length = 0; if (PRISM.gl && !PRISM.gl.isContextLost()) prismBuild(); }
+});
+
+/* ================= TEXEL: the texture and resolution engine =================
+   Every zombie, the player and the city's ground get their surface detail here.
+   - A library of procedural textures, each made once as a small tiling picture from seeded noise: asphalt grain, skin
+     mottling, cloth weave, grime and concrete. Anything can paint with them at any scale.
+   - Zombie sprites: each mutation is drawn by the mutation engine as before, then TEXEL works on it at a higher
+     resolution than the screen needs: skin texture and blotches of grime and blood inside the body only (it asks the
+     mutation engine for the body's silhouette to know where the body is), shading from above so it has volume
+     whatever the sun is doing, and a thin dark rim so it reads on any ground. Then it is scaled down to the screen's
+     exact sharpness, which smooths every edge.
+   - The player: no longer rebuilt shape by shape every frame. Four walking poses per weapon are drawn once, textured
+     the same way, and the game just turns the right one to face your aim.
+   - It looks after itself: it measures how long making sprites takes each second and steps down (less supersampling,
+     then no texture passes) when that eats into the frame, and back up when there is room. A texture pass that throws
+     falls back to the plain sprite for that one picture; a run of errors pauses the passes for a minute. When the
+     device refuses a new canvas (out of memory), it clears the caches and tries once more, then draws without them. */
+// levels: 0 plain · 1 textures · 2 textures, rim, 1.5x supersampling · 3 everything, 2x supersampling and fine detail
+const TEXQ = [
+  { ss: 1, tex: 0, rim: 0, detail: 0 },
+  { ss: 1, tex: 1, rim: 0, detail: 0 },
+  { ss: 1.5, tex: 1, rim: 1, detail: 1 },
+  { ss: 2, tex: 1, rim: 1, detail: 2 }
+];
+const TEXEL = { adapt: 0, lib: new Map(), scratch: [], ms: 0, made: 0, errT: [], offUntil: 0, msAvg: 0, bad: 0, good: 0, players: new Map(), lvl: 2 };
+function texelLevel() {
+  if (TEXEL.offUntil && performance.now() < TEXEL.offUntil) return 0;
+  const want = SET.texel || 'auto', base = want === 'auto' ? [1, 2, 2, 3][clamp(PERF.tier | 0, 0, 3)] : want === 'low' ? 1 : want === 'high' ? 2 : want === 'ultra' ? 3 : want === 'off' ? 0 : 2;
+  return TEXEL.lvl = clamp(base + TEXEL.adapt, 0, 3);
+}
+function texelMk(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, w | 0); c.height = Math.max(1, h | 0); return c; }
+// a scratch canvas big enough for one sprite (reused, so making sprites does not churn memory)
+function texelScratch(i, S) {
+  let c = TEXEL.scratch[i];
+  if (!c || c.width < S || c.height < S || c.width > S * 2.5) { c = texelMk(S, S); TEXEL.scratch[i] = c; c.g = c.getContext('2d'); }
+  c.g.setTransform(1, 0, 0, 1, 0, 0); c.g.globalCompositeOperation = 'source-over'; c.g.globalAlpha = 1; c.g.clearRect(0, 0, c.width, c.height);
+  return c;
+}
+
+/* ---------- the texture library ---------- */
+// value noise, smoothed, tiling over n pixels
+function texelNoise(n, cell, seed) {
+  const R = Z.mulberry32(seed), gw = Math.max(2, Math.round(n / cell)), grid = new Float32Array(gw * gw), out = new Float32Array(n * n);
+  for (let i = 0; i < grid.length; i++) grid[i] = R();
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const fx = x / n * gw, fy = y / n * gw, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty), x1 = (ix + 1) % gw, y1 = (iy + 1) % gw;
+    const a = grid[iy * gw + ix], b = grid[iy * gw + x1], c = grid[y1 * gw + ix], d = grid[y1 * gw + x1];
+    out[y * n + x] = a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  }
+  return out;
+}
+function texelCanvas(kind) {
+  let c = TEXEL.lib.get(kind); if (c) return c;
+  const n = 128; c = texelMk(n, n); const g = c.getContext('2d'), im = g.createImageData(n, n), d = im.data, R = Z.mulberry32(0x9e3779b9 ^ kind.length * 7919);
+  if (kind === 'grain') {
+    // asphalt: light stones and dark pits, pixel sized
+    for (let i = 0; i < n * n; i++) { const v = R(), k = i * 4; if (v < 0.12) { d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = 5 + R() * 12; } else if (v < 0.42) { d[k + 3] = 10 + R() * 26; } }
+  } else if (kind === 'skin') {
+    // mottled skin: two scales of soft noise around mid grey, with pores
+    const a = texelNoise(n, 16, 11), b = texelNoise(n, 5, 23);
+    for (let i = 0; i < n * n; i++) { const v = 128 + (a[i] - 0.5) * 120 + (b[i] - 0.5) * 70 + (R() < 0.04 ? -50 : 0), k = i * 4; d[k] = d[k + 1] = d[k + 2] = clamp(v, 0, 255); d[k + 3] = 255; }
+  } else if (kind === 'cloth') {
+    // a woven fabric: crossing threads with slub
+    const a = texelNoise(n, 24, 37);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const k = (y * n + x) * 4, w = ((x >> 1) + (y >> 1)) & 1 ? 18 : -18, v = 128 + w * (0.6 + 0.4 * Math.sin(x * 1.7) * Math.sin(y * 1.3)) + (a[y * n + x] - 0.5) * 60; d[k] = d[k + 1] = d[k + 2] = clamp(v, 0, 255); d[k + 3] = 255; }
+  } else if (kind === 'grime') {
+    // patchy dirt: dark blotches with soft edges, mostly transparent
+    const a = texelNoise(n, 22, 51), b = texelNoise(n, 7, 67);
+    for (let i = 0; i < n * n; i++) { const v = a[i] * 0.7 + b[i] * 0.3, k = i * 4; d[k] = 40; d[k + 1] = 30; d[k + 2] = 22; d[k + 3] = v > 0.55 ? Math.min(200, (v - 0.55) * 900) : 0; }
+  } else if (kind === 'concrete') {
+    const a = texelNoise(n, 32, 79), b = texelNoise(n, 4, 83);
+    for (let i = 0; i < n * n; i++) { const v = 128 + (a[i] - 0.5) * 50 + (b[i] - 0.5) * 40, k = i * 4; d[k] = d[k + 1] = d[k + 2] = clamp(v, 0, 255); d[k + 3] = 255; }
+  } else {
+    for (let i = 0; i < n * n; i++) { const v = R() * 255, k = i * 4; d[k] = d[k + 1] = d[k + 2] = v; d[k + 3] = 255; }
+  }
+  g.putImageData(im, 0, 0); TEXEL.lib.set(kind, c); return c;
+}
+// a pattern of a library texture, drawn at `scale` (pattern pixels per unit of the context it paints)
+function texelPattern(g, kind, scale) {
+  const pat = g.createPattern(texelCanvas(kind), 'repeat'); if (!pat) return null;
+  if (scale && scale !== 1 && pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix([scale, 0, 0, scale, 0, 0]));
+  return pat;
+}
+
+/* ---------- zombie sprites ---------- */
+// draws mutation m (radius rq units) into a new canvas of `size` pixels, centred at half*SPR
+function texelZombie(m, rq, plain, half, size) {
+  const t0 = performance.now(), q = TEXQ[texelLevel()];
+  let c = texelMk(size, size), g = c.getContext('2d');
+  if (!g) { texelOOM(); c = texelMk(size, size); g = c.getContext('2d'); if (!g) return c; }
+  const plainDraw = () => { g.setTransform(SPR, 0, 0, SPR, half * SPR, half * SPR); Z.drawMutation(g, m, rq, { noAbility: plain }); };
+  if (!q.tex) { plainDraw(); const dt = performance.now() - t0; TEXEL.ms += dt; TEXEL.made++; coreCost('TEXEL', dt); return c; }
+  try {
+    const ss = q.ss, k = SPR * ss, S = Math.ceil(half * 2 * k), cx = half * k;
+    const A = texelScratch(0, S), M = texelScratch(1, S), T = texelScratch(2, S), a = A.g, mg = M.g, t = T.g;
+    // the zombie as the mutation engine draws it, and its body alone
+    a.setTransform(k, 0, 0, k, cx, cx); Z.drawMutation(a, m, rq, { noAbility: plain });
+    mg.setTransform(k, 0, 0, k, cx, cx); Z.drawMutation(mg, m, rq, { noAbility: plain, sil: true });
+    mg.setTransform(1, 0, 0, 1, 0, 0);
+    // the texture layer, only inside the body: mid grey (no change), skin mottling, grime and blood, then shading
+    t.drawImage(M, 0, 0); t.globalCompositeOperation = 'source-in'; t.fillStyle = '#808080'; t.fillRect(0, 0, S, S);
+    t.globalCompositeOperation = 'source-atop';
+    const feat = Math.max(0.6, rq * 0.11 * k / 4);
+    t.globalAlpha = 0.6; t.fillStyle = texelPattern(t, 'skin', feat); t.save(); t.translate((m.seed & 63), (m.seed >> 6) & 63); t.fillRect(-64, -64, S + 128, S + 128); t.restore();
+    t.globalAlpha = 0.75; t.fillStyle = texelPattern(t, 'grime', feat * 1.4); t.save(); t.translate((m.seed >> 3) & 127, (m.seed >> 10) & 127); t.fillRect(-128, -128, S + 256, S + 256); t.restore();
+    t.globalAlpha = 1;
+    const R = Z.mulberry32((m.seed ^ 0x7e1) >>> 0), nb = 2 + Math.floor(R() * 3 + q.detail);
+    for (let i = 0; i < nb; i++) {
+      const ang = R() * TAU, dd = R() * rq * 0.7 * k, rr = rq * k * (0.12 + R() * 0.2), blood = R() < 0.55;
+      t.fillStyle = blood ? 'rgba(70,6,8,0.55)' : 'rgba(30,24,18,0.45)';
+      t.beginPath(); t.ellipse(cx + Math.cos(ang) * dd, cx + Math.sin(ang) * dd, rr, rr * (0.5 + R() * 0.5), R() * 3, 0, TAU); t.fill();
+      if (blood && q.detail) for (let j = 0; j < 3; j++) { t.beginPath(); t.arc(cx + Math.cos(ang) * dd + (R() - 0.5) * rr * 3, cx + Math.sin(ang) * dd + (R() - 0.5) * rr * 3, rr * 0.18, 0, TAU); t.fill(); }
+    }
+    if (q.detail >= 2) {
+      // veins and cracks
+      t.strokeStyle = 'rgba(40,20,30,0.45)'; t.lineWidth = Math.max(1, k * 0.35);
+      for (let i = 0; i < 4; i++) { let x = cx + (R() - 0.5) * rq * k, y = cx + (R() - 0.5) * rq * k, an = R() * TAU; t.beginPath(); t.moveTo(x, y); for (let s = 0; s < 4; s++) { an += (R() - 0.5) * 1.4; x += Math.cos(an) * rq * k * 0.14; y += Math.sin(an) * rq * k * 0.14; t.lineTo(x, y); } t.stroke(); }
+    }
+    // shading from above: a soft highlight up top, darker toward the edges and the bottom
+    const sh = t.createRadialGradient(cx - rq * k * 0.2, cx - rq * k * 0.3, rq * k * 0.1, cx, cx, rq * k * 1.25);
+    sh.addColorStop(0, 'rgba(255,255,255,0.42)'); sh.addColorStop(0.45, 'rgba(128,128,128,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.55)');
+    t.fillStyle = sh; t.fillRect(0, 0, S, S);
+    // laid over the zombie: soft light keeps its colours and adds the detail
+    a.setTransform(1, 0, 0, 1, 0, 0); a.globalCompositeOperation = 'soft-light'; a.drawImage(T, 0, 0); a.globalCompositeOperation = 'source-over';
+    if (q.rim) {
+      // a thin dark rim round the body: the body stamped around itself, minus the body
+      const O = texelScratch(3, S), o = O.g, w = Math.max(1, ss * 0.9);
+      for (const [dx, dy] of [[w, 0], [-w, 0], [0, w], [0, -w], [w * 0.7, w * 0.7], [-w * 0.7, w * 0.7], [w * 0.7, -w * 0.7], [-w * 0.7, -w * 0.7]]) o.drawImage(M, dx, dy);
+      o.globalCompositeOperation = 'destination-out'; o.drawImage(M, 0, 0);
+      o.globalCompositeOperation = 'source-in'; o.fillStyle = 'rgba(8,6,5,0.6)'; o.fillRect(0, 0, S, S);
+      a.drawImage(O, 0, 0);
+    }
+    // down to the screen's exact sharpness
+    g.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
+    g.drawImage(A, 0, 0, S, S, 0, 0, size, size);
+  } catch (e) {
+    texelHurt(e);
+    try { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, size, size); plainDraw(); } catch (x) { }
+  }
+  const dt = performance.now() - t0; TEXEL.ms += dt; TEXEL.made++; coreCost('TEXEL', dt);
+  return c;
+}
+
+/* ---------- the player ---------- */
+// the survivor seen from above, facing +x, in the player's own units (the game scales by PK): backpack, jacket,
+// arms on the gun, head with a cap. f: walking pose 0..3
+function texelPlayerArt(g, fk, gl, gw, col, f) {
+  const sw = [0, 1, 0, -1][f] * 2.2;
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  // backpack with a rolled mat and straps
+  g.fillStyle = '#2b2f2a'; g.beginPath(); g.ellipse(-9.5, 0, 4.6, 7.6, 0, 0, TAU); g.fill();
+  g.fillStyle = '#3a4033'; g.fillRect(-13.4, -6.5, 6, 13); g.fillStyle = '#1f221e'; g.fillRect(-13.4, -2, 6, 1.2);
+  g.fillStyle = '#5a4630'; g.beginPath(); g.ellipse(-14.6, 0, 1.8, 7.2, 0, 0, TAU); g.fill();
+  // jacket (the body), shoulders swinging a little with the walk
+  g.save(); g.rotate(sw * 0.02);
+  g.fillStyle = '#3e4a3a'; g.beginPath(); g.ellipse(0, 0, 9, 13, 0, 0, TAU); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-6, -9.5); g.quadraticCurveTo(0, -11, 4.5, -8); g.moveTo(-6, 9.5); g.quadraticCurveTo(0, 11, 4.5, 8); g.stroke();
+  g.fillStyle = '#f2cc3a'; g.fillRect(-4.2, -12, 2.6, 24); g.fillRect(2, -11, 1.8, 22);     // the yellow straps
+  g.fillStyle = '#2f382c'; g.beginPath(); g.ellipse(-1, 0, 2.4, 10, 0, 0, TAU); g.fill();     // collar and zip
+  g.restore();
+  // arms reaching to the gun: the back hand on the grip, the front hand under the barrel
+  g.strokeStyle = '#334030'; g.lineWidth = 5.2;
+  g.beginPath(); g.moveTo(1, 8.5); g.lineTo(9.5 + sw * 0.15, 3.2); g.moveTo(1, -8.5); g.lineTo(13 + sw * 0.25, -2.4); g.stroke();
+  g.fillStyle = '#c9a27e'; g.beginPath(); g.arc(10.5 + sw * 0.15, 2.6, 2.4, 0, TAU); g.arc(14 + sw * 0.25, -1.8, 2.3, 0, TAU); g.fill();
+  // the gun: body, stock, magazine, rail, and the weapon's colour along it
+  if (fk === 'flamer') { g.fillStyle = '#7a2a1a'; g.beginPath(); g.ellipse(-12, 0, 6, 9, 0, 0, TAU); g.fill(); g.strokeStyle = '#2a1a14'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-8, 4); g.quadraticCurveTo(2, 9, 9, 2); g.stroke(); }
+  g.fillStyle = '#16181b'; g.fillRect(8, -gw / 2, gl, gw); g.fillRect(4, -gw / 2 + 0.6, 4.5, gw - 1.2);
+  g.fillStyle = '#0d0e10'; g.fillRect(10, gw / 2 - 1, 5, 4); g.fillRect(8 + gl - 3, -gw / 2 - 0.6, 3, gw + 1.2);
+  g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(9, -gw / 2, gl - 2, 0.8);
+  g.fillStyle = col; g.fillRect(12, -1, gl * 0.45, 2);
+  // head: hair and a cap with its brim to the front
+  g.fillStyle = '#c9a27e'; g.beginPath(); g.arc(2, 0, 6.4, 0, TAU); g.fill();
+  g.fillStyle = '#2d332b'; g.beginPath(); g.arc(0.6, 0, 6.6, Math.PI * 0.5, Math.PI * 1.5); g.fill();
+  g.fillStyle = '#262b24'; g.beginPath(); g.ellipse(6.6, 0, 2.2, 5.2, 0, -Math.PI / 2, Math.PI / 2); g.fill();
+  g.fillStyle = '#b48c6a'; g.beginPath(); g.arc(1.6, -6.2, 1.3, 0, TAU); g.arc(1.6, 6.2, 1.3, 0, TAU); g.fill();
+}
+// the player's sprite for a weapon and pose, made once at the screen's sharpness (and supersampled)
+function texelPlayer(p) {
+  const w = p.weapon || {}, fk = (w.F && w.F.key) || 'pistol', gl = GUN_LEN[fk] || 20, gw = GUN_W[fk] || 5, col = w.color || '#c9c9c9';
+  const f = Math.floor(((p.walk || 0) / Math.PI * 2 % 4 + 4) % 4), q = TEXQ[texelLevel()], half = 48, px = SPR * PK;
+  const key = fk + '|' + col + '|' + f + '|' + Math.round(px * 100) + '|' + TEXEL.lvl;
+  let s = TEXEL.players.get(key); if (s) return s;
+  const t0 = performance.now(), ss = q.ss, size = Math.max(8, Math.ceil(half * 2 * px)), S = Math.ceil(size * ss), k = px * ss;
+  let c = texelMk(size, size), g = c.getContext('2d'); if (!g) { texelOOM(); c = texelMk(size, size); g = c.getContext('2d'); }
+  try {
+    if (!q.tex) { g.setTransform(px, 0, 0, px, size / 2, size / 2); texelPlayerArt(g, fk, gl, gw, col, f); }
+    else {
+      const A = texelScratch(0, S), T = texelScratch(2, S), a = A.g, t = T.g;
+      a.setTransform(k, 0, 0, k, S / 2, S / 2); texelPlayerArt(a, fk, gl, gw, col, f); a.setTransform(1, 0, 0, 1, 0, 0);
+      // fabric and shading only where the survivor is
+      t.drawImage(A, 0, 0); t.globalCompositeOperation = 'source-in'; t.fillStyle = '#808080'; t.fillRect(0, 0, S, S);
+      t.globalCompositeOperation = 'source-atop'; t.globalAlpha = 0.5; t.fillStyle = texelPattern(t, 'cloth', Math.max(0.5, k * 0.18)); t.fillRect(0, 0, S, S); t.globalAlpha = 1;
+      const sh = t.createRadialGradient(S / 2 - 2 * k, S / 2 - 3 * k, k, S / 2, S / 2, 15 * k);
+      sh.addColorStop(0, 'rgba(255,255,255,0.4)'); sh.addColorStop(0.5, 'rgba(128,128,128,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.5)');
+      t.fillStyle = sh; t.fillRect(0, 0, S, S);
+      a.globalCompositeOperation = 'soft-light'; a.drawImage(T, 0, 0); a.globalCompositeOperation = 'source-over';
+      if (q.rim) {
+        const O = texelScratch(3, S), o = O.g, wd = Math.max(1, ss);
+        for (const [dx, dy] of [[wd, 0], [-wd, 0], [0, wd], [0, -wd]]) o.drawImage(A, dx, dy);
+        o.globalCompositeOperation = 'destination-out'; o.drawImage(A, 0, 0); o.globalCompositeOperation = 'source-in'; o.fillStyle = 'rgba(6,6,6,0.6)'; o.fillRect(0, 0, S, S);
+        a.drawImage(O, 0, 0);
+      }
+      g.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
+      g.drawImage(A, 0, 0, S, S, 0, 0, size, size);
+    }
+  } catch (e) { texelHurt(e); try { g.setTransform(px, 0, 0, px, size / 2, size / 2); texelPlayerArt(g, fk, gl, gw, col, f); } catch (x) { } }
+  s = { c: c, half: half };
+  TEXEL.players.set(key, s); if (TEXEL.players.size > 48) TEXEL.players.delete(TEXEL.players.keys().next().value);
+  const dt = performance.now() - t0; TEXEL.ms += dt; TEXEL.made++; coreCost('TEXEL', dt);
+  return s;
+}
+
+/* ---------- looking after itself ---------- */
+function texelOOM() { try { trimCaches(1); } catch (e) { } TEXEL.players.clear(); TEXEL.scratch.length = 0; coreRepaired('TEXEL', 'Textures: freed memory for new sprites'); }
+function texelHurt(e) {
+  const now = performance.now(); coreHurt('TEXEL', e); try { console.error(e); } catch (x) { }
+  TEXEL.errT.push(now); while (TEXEL.errT.length && now - TEXEL.errT[0] > 10000) TEXEL.errT.shift();
+  if (TEXEL.errT.length >= 6) { TEXEL.offUntil = now + 60000; TEXEL.errT.length = 0; coreRepaired('TEXEL', 'Textures paused for a minute after errors'); }
+  else if (TEXEL.errT.length >= 3 && TEXEL.adapt > -3) { TEXEL.adapt--; coreRepaired('TEXEL', 'Textures stepped down a level'); }
+}
+// once a second: what making sprites cost, and whether to step down or back up
+function texelWatch() {
+  const ms = TEXEL.ms; TEXEL.ms = 0; TEXEL.msAvg = TEXEL.msAvg * 0.7 + ms * 0.3;
+  const T = 1000 / targetFps();
+  // a burst of new sprites is normal (a new wave, a new district); a steady cost of over a frame per second is not
+  if (TEXEL.msAvg > T * 1.2 && PERF.fps && PERF.fps < targetFps() * 0.9) { if (++TEXEL.bad >= 3 && TEXEL.adapt > -2) { TEXEL.adapt--; TEXEL.bad = 0; } }
+  else if (TEXEL.msAvg < T * 0.2 && TEXEL.adapt < 0) { if (++TEXEL.good >= 20) { TEXEL.adapt++; TEXEL.good = 0; } }
+  else { TEXEL.bad = Math.max(0, TEXEL.bad - 1); }
+}
+coreAdd({
+  name: 'TEXEL', kind: 'render', does: 'Texture and resolution engine: procedural textures for zombies, the player and the city, sprites supersampled and scaled to the screen\'s exact sharpness, memory and error repair.',
+  state: () => TEXEL.offUntil && performance.now() < TEXEL.offUntil ? 'paused' : texelLevel() ? 'on' : 'plain',
+  level: () => ['plain', 'textured', 'textured, rim, 1.5x', 'full, 2x'][texelLevel()],
+  sec: texelWatch, canTrim: () => texelLevel() > 0, trim: () => { if (TEXEL.adapt <= -3) return false; TEXEL.adapt--; return true; }, boost: () => { if (TEXEL.adapt >= 0) return false; TEXEL.adapt++; return true; }
+});
 
 /* ================= arsenal: weapons, cards, chain kills, armory, sound settings ================= */
 /* This file is inserted inside the game's closure at build time, so it shares G, $, store and the helpers. */
@@ -13651,7 +14540,7 @@ function perfFrame(now, rawIv, work) {
     const fillBound = wk < T * 0.45, heavyWx = WX.fog + WX.dark + WX.sand + WX.rain * 0.5 + WX.snow * 0.5 > 0.55;
     if (PERF.bad >= 1 && (wxShare > 0.2 || (fillBound && heavyWx)) && PERF.wxScale > (fillBound && wxShare <= 0.2 ? 0.51 : 0.26) && SET.weather === 'auto') { PERF.wxScale = Math.max(0.25, PERF.wxScale - 0.25); PERF.bad = 0; PERF.holdT = now + 1200; logTrim('weather ' + Math.round(PERF.wxScale * 100) + '%'); return; }
     // the lighting engine taking a big slice steps itself down a level before the whole picture loses resolution
-    if (PERF.bad >= 1 && luxShare > 0.22 && LUX.adapt > -3 && SET.lux !== 'off') { LUX.adapt--; LUX.bad = 0; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('lighting'); return; }
+    if (PERF.bad >= 1 && luxShare > 0.22 && coreTrim(T)) { PERF.bad = 0; PERF.holdT = now + 1200; return; }
     if (PERF.bad >= 1 && lifeShare > 0.18 && !PERF.vegCut && SET.veg === 'auto') { PERF.vegCut = true; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('still trees'); return; }
     if (++PERF.bad >= 2 && PERF.rung < LADDER.length - 1) {
       const from = PERF.rung, step = avg > T * 2 ? 2 : 1;
@@ -13704,6 +14593,7 @@ function trimCaches(level) {
   let kept = keep; if (level < 2) { const budget = [60, 100, 150, 210][PERF.tier] * 1048576; let b = 0; for (let i = 0; i < Math.min(kept, live.length); i++) { b += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); if (b > budget && i >= 6) { kept = i; break; } } }
   for (let i = kept; i < live.length; i++) { freed += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); live[i].can = null; live[i].wcan = null; }
   if (level >= 1 && typeof WSPR !== 'undefined') { for (const v of WSPR.values()) freed += canvasBytes(v.c); WSPR.clear(); }
+  if (level >= 1 && typeof TEXEL !== 'undefined') { for (const v of TEXEL.players.values()) freed += canvasBytes(v.c); TEXEL.players.clear(); for (const c of TEXEL.scratch) freed += canvasBytes(c); TEXEL.scratch.length = 0; }
   for (const [key, c] of chunks) if (Math.abs(c.sx + CHS / 2 - cam.x) > CHS * 5 || Math.abs(c.sy + CHS / 2 - cam.y) > CHS * 5) chunks.delete(key);
   if (level >= 1 || glowCache.size > 16) { for (const c of glowCache.values()) freed += canvasBytes(c); glowCache.clear(); ZB.clearCache(); EDGE.col = ''; VZ.specGr = null; SG.clear(); }
   for (const [id, sheet] of [['cxGrid', 'codex'], ['arGrid', 'armory'], ['blGrid', 'bosslog']]) {
@@ -13805,7 +14695,7 @@ perfInit();
    Every change applies at once and is saved on the device. Graphics options default to "Auto", which follows the
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
-  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: true, tod: 'cycle', nightDark: 'gentle', fog: 'auto',
+  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: true, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
   decals: 'normal', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
@@ -13872,7 +14762,10 @@ function setSetting(k, v) {
     case 'wxMode': if (v !== 'dynamic') { WX.kind = v; WX.t = 60; } else WX.t = Math.min(WX.t, 20); break;
     case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
     case 'veg': case 'water': WSPR.clear(); break;
-    case 'lux': for (const c of chunks.values()) c.stale = 1; LUX.adapt = 0; LUX.offUntil = 0; LUX.errT.length = 0; LUX.A = null; break;
+    case 'sun': for (const c of chunks.values()) c.stale = 1; WSPR.clear(); break;
+    case 'texel': sprites.clear(); TEXEL.players.clear(); TEXEL.adapt = 0; TEXEL.offUntil = 0; break;
+    case 'prism': PRISM.adapt = 0; PRISM.offUntil = 0; PRISM.errT.length = 0; break;
+    case 'lux': WSPR.clear(); for (const c of chunks.values()) c.stale = 1; LUX.adapt = 0; LUX.offUntil = 0; LUX.errT.length = 0; LUX.A = null; break;
     case 'aimKbm': case 'aimPad': case 'fireKbm': case 'firePad': DEV.fireOn = false; DEV.aimFlip = false; updDevUi(); break;
     case 'lefty': applyLook(); updDevUi(); break;
     default:
@@ -13897,17 +14790,27 @@ const SET_ROWS = [
   { id: 'veg', tab: 'graphics', type: 'seg', label: 'Trees and bushes', desc: 'Light draws them still; Full lets them sway and shake.', opts: AUTO_LH },
   { id: 'water', tab: 'graphics', type: 'seg', label: 'Animated water', desc: 'Glints drifting on rivers and ponds.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { id: 'fog', tab: 'graphics', type: 'seg', label: 'Fog and haze', desc: 'Drifting clouds of fog over the street.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
+  { id: 'life', tab: 'graphics', type: 'seg', label: 'Birds', desc: 'Crows and pigeons that take off when you get close.', opts: ON_OFF },
+  { tab: 'graphics', group: 'Shaders and textures' },
+  { id: 'prism', tab: 'graphics', basic: true, type: 'seg', label: 'Shader engine', desc: 'Finishes every frame with shaders: on the graphics chip when there is a real one, on the CPU otherwise. Auto picks for you.', opts: [['auto', 'Auto'], ['gpu', 'GPU'], ['cpu', 'CPU'], ['off', 'Off']] },
+  { id: 'texel', tab: 'graphics', type: 'seg', label: 'Texture detail', desc: 'Skin, cloth and grime on zombies and the survivor, drawn sharper than the screen and scaled down.', opts: [['auto', 'Auto'], ['low', 'Low'], ['high', 'High'], ['ultra', 'Ultra'], ['off', 'Off']] },
+  { id: 'sharp', tab: 'graphics', type: 'slider', label: 'Sharpness', desc: 'Brings back fine edges, most of all when the resolution is lowered (GPU).', min: 0, max: 100, step: 10, fmt: v => v + '%' },
+  { id: 'vig', tab: 'graphics', type: 'slider', label: 'Vignette', desc: 'How much the corners of the screen darken.', min: 0, max: 100, step: 10, fmt: v => v + '%' },
+  { id: 'grain', tab: 'graphics', type: 'seg', label: 'Film grain', desc: 'A faint grain over the picture, a little stronger at night.', opts: ON_OFF },
+  { id: 'temp', tab: 'graphics', type: 'seg', label: 'Color temperature', desc: 'Auto follows the hour and the weather: warm at dusk, cool at night.', opts: [['auto', 'Auto'], ['warm', 'Warm'], ['neutral', 'Neutral'], ['cool', 'Cool']] },
+  { tab: 'graphics', group: 'Light' },
   { id: 'lux', tab: 'graphics', basic: true, type: 'seg', label: 'Ray-traced lighting', desc: 'Real shadows from buildings, cars and zombies, with bloom, lit gunfire and lit windows. Auto adapts to your device and repairs itself.', opts: [['auto', 'Auto'], ['off', 'Off'], ['basic', 'Basic'], ['full', 'Full'], ['ultra', 'Ultra']] },
+  { id: 'sun', tab: 'graphics', type: 'seg', label: 'Sun shadows', desc: 'Buildings, cars, trees and people throw shadows that move with the sun.', opts: ON_OFF },
+  { id: 'gi', tab: 'graphics', type: 'seg', label: 'Bounce light', desc: 'Path-traced light bouncing off walls and streets, into the shade and round corners.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { id: 'bloom', tab: 'graphics', type: 'seg', label: 'Bloom', desc: 'A soft glow around lamps, fires, gunfire and explosions.', opts: ON_OFF },
   { id: 'tod', tab: 'graphics', type: 'seg', label: 'Time of day', desc: 'A run starts in the morning; Cycle moves through dusk and night.', opts: [['cycle', 'Cycle'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['real', 'Clock']] },
   { id: 'nightDark', tab: 'graphics', type: 'seg', label: 'Night darkness', desc: 'How dark the night gets.', opts: [['gentle', 'Gentle'], ['deep', 'Deep']] },
   { id: 'light', tab: 'graphics', type: 'seg', label: 'Light glows', desc: 'Glow sprites on fires, police lights and flickering lamps, on top of the ray-traced lighting.', opts: [['auto', 'Auto'], ['simple', 'Simple'], ['full', 'Full']] },
-  { id: 'life', tab: 'graphics', type: 'seg', label: 'Birds', desc: 'Crows and pigeons that take off when you get close.', opts: ON_OFF },
   { tab: 'graphics', group: 'Effects' },
   { id: 'particles', tab: 'graphics', type: 'slider', label: 'Particles', desc: 'Blood, sparks, smoke and debris.', min: 25, max: 150, step: 25, fmt: v => v + '%' },
   { id: 'decals', tab: 'graphics', type: 'seg', label: 'Marks on the ground', desc: 'Bloodstains, bullet holes and footprints.', opts: [['low', 'Few'], ['normal', 'Normal'], ['high', 'Lots']] },
   { id: 'grade', tab: 'graphics', type: 'seg', label: 'Color grading', desc: 'Each district and the weather tint the screen.', opts: ON_OFF },
-  { id: 'vis', tab: 'graphics', type: 'seg', label: 'Light show', desc: 'The city pulses to the radio.', opts: [['full', 'Full'], ['low', 'Low'], ['off', 'Off']] },
+  { id: 'vis', tab: 'graphics', paused: true, type: 'seg', label: 'Light show', desc: 'The city pulses to the radio.', opts: [['full', 'Full'], ['low', 'Low'], ['off', 'Off']] },
   { id: 'fpsShow', tab: 'graphics', type: 'seg', label: 'Show frame rate', desc: 'A small counter in the corner.', opts: ON_OFF },
   // sound
   { tab: 'sound', group: 'Volume' },
@@ -13977,6 +14880,10 @@ const SET_ROWS = [
   { tab: 'system', info: 'device' },
   { id: 'saver', tab: 'system', basic: true, type: 'seg', label: 'Battery saver', desc: 'Caps the game at 30 fps and Medium quality. Auto turns on when the battery is low.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { tab: 'system', action: 'fullscreen', desk: true, basic: 'kbm', label: 'Full screen', desc: 'Fill the whole screen, or play in a window. F11 or Alt+Enter also switch.', btn: 'Switch' },
+  { tab: 'system', group: 'Engines' },
+  { tab: 'system', info: 'engines' },
+  { tab: 'system', group: 'Tools' },
+  { tab: 'system', action: 'tester', tester: true, label: 'Tester mode', desc: 'This device got past maintenance with the tester code. Leave to follow maintenance again.', btn: 'Leave' },
   { tab: 'system', action: 'cache', label: 'Refresh cache', desc: 'Frees the graphics the game has stored. They rebuild as needed.', btn: 'Refresh' },
   { tab: 'system', action: 'recheck', label: 'Check the device again', desc: 'Re-runs the quick speed test and picks a new starting quality.', btn: 'Check' },
   { tab: 'system', action: 'reset', label: 'Reset all settings', desc: 'Back to the defaults. Your weapons, specimens and scores are kept.', btn: 'Reset', danger: true }
@@ -13992,6 +14899,8 @@ function closeSettings() { stopListen(); $('settings').hidden = true; renderPerf
 // whether a row belongs on screen: each device's options appear once the game has seen that device
 function rowOn(r) {
   if (r.touch && !TOUCH) return false;
+  if (r.tester && !(typeof testerOn === 'function' && testerOn())) return false;
+  if (r.paused) return false;
   if (r.desk && !window.ZCDesktop) return false;
   switch (r.dev) {
     case 'kbm': return DEV.seen.kbm;
@@ -14025,6 +14934,7 @@ function renderSettings(keep) {
   for (const r of rows) {
     if (r.group) { box.append(el('h3', 'set-group', r.group)); continue; }
     if (r.info === 'device') { box.append(deviceInfo()); continue; }
+    if (r.info === 'engines') { box.append(engineInfo()); continue; }
     if (r.info === 'devnow') { box.append(devNow()); continue; }
     if (r.info === 'nopad') { box.append(setNote('Plug in or pair a controller and press any button on it. The game switches to it on its own, and its aiming options and button layout show up here.')); continue; }
     if (r.info === 'binds-kb' || r.info === 'binds-pad') { const h = el('h4', 'set-sub', r.label); box.append(h, bindTable(r.info === 'binds-pad' ? 'pad' : 'kb')); continue; }
@@ -14083,6 +14993,7 @@ function actionRow(r) {
 function settingsAction(a, b) {
   SFX.click();
   if (a === 'radio') { openRadio(); return; }
+  if (a === 'tester') { testerLeave(); renderSettings(); return; }
   if (a === 'fullscreen') { if (window.ZCDesktop) window.ZCDesktop.fullscreen(); return; }
   if (a === 'cache') { const before = cacheBytes().total; trimCaches(2); WSPR.clear(); toast('Cache refreshed', 'Freed ' + fmtMB(Math.max(0, before - cacheBytes().total)), '#7dff4a'); renderSettings(); return; }
   if (a === 'recheck') {
@@ -14096,6 +15007,17 @@ function settingsAction(a, b) {
     for (const a of ACTIONS) for (const k of ['kb', 'pad']) if (a[k]) BIND[k][a.id] = a[k].slice();
     saveBinds(); toast('Settings reset', 'Back to the defaults', '#f2cc3a'); renderSettings();
   }
+}
+// every engine in the game, its state, its level and what it costs a frame (from the engine hub)
+function engineInfo() {
+  const box = el('div', 'set-device'), list = coreStatus();
+  const dl = el('dl', 'build-stats eng-list'); dl.id = 'setEngines';
+  for (const e of list) {
+    const d = el('div'), dd = el('dd', '', String(e.state) + (e.level ? ' · ' + e.level : '') + (e.kind === 'render' ? ' · ' + e.ms.toFixed(2) + ' ms' : '') + (e.repairs ? ' · fixed itself ' + e.repairs + 'x' : ''));
+    d.title = e.does; d.append(el('dt', '', e.name), dd); dl.appendChild(d);
+  }
+  box.append(dl, setNote(list.length + ' engines work together through the engine hub: they share one frame, one time budget and one repair log. Hover or long-press a name for what it does.'));
+  return box;
 }
 function deviceInfo() {
   const p = PERF.prof || {}, cb = cacheBytes(), box = el('div', 'set-device');
@@ -14123,7 +15045,7 @@ $('setMode').querySelectorAll('button').forEach(b => b.addEventListener('click',
 // the old performance panel now opens the System tab
 function openPerf() { openSettings('system'); }
 function closePerf() { closeSettings(); }
-function renderPerfPanel() { if (!$('settings').hidden && SP.mode === 'advanced' && SP.tab === 'system') { const s = $('setStats'); if (s) s.parentNode.replaceWith(deviceInfo()); } }
+function renderPerfPanel() { if (!$('settings').hidden && SP.mode === 'advanced' && SP.tab === 'system') { const s = $('setStats'); if (s) s.parentNode.replaceWith(deviceInfo()); const e = $('setEngines'); if (e) e.parentNode.replaceWith(engineInfo()); } }
 for (const id of ['titlePerf', 'pausePerf']) { const b = $(id); if (b) { b.replaceWith(b.cloneNode(true)); $(id).addEventListener('click', () => openSettings()); } }
 function renderPerfBtn() { for (const id of ['titlePerf', 'pausePerf']) { const b = $(id); if (b) b.textContent = 'Settings'; } }
 
@@ -16278,27 +17200,47 @@ if (ACCT.status === 'in') setTimeout(() => acctSync('start'), 6000);
    - stable / test: which version is published, and which one is being tested (the launcher's test channel and the
      test copy of the web version get it first). The game shows a "Test build" tag when it is the test version.
    Offline, none of this applies: the game plays as normal. */
-const STATUS = { maint: false, msg: '', until: 0, stable: '', test: '', minVer: '', ok: false, t: 0 };
+const STATUS = { maint: false, msg: '', until: 0, stable: '', test: '', minVer: '', testerHash: '', ok: false, t: 0 };
 const vcmpG = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; };
 async function statusCheck() {
   try {
     const d = await AcctCore.wix('/wix-data/v2/items/query', { body: { dataCollectionId: ACCT_CFG.status, query: { filter: { key: { $eq: 'live' } }, paging: { limit: 1 } } } });
     const it = d && d.dataItems && d.dataItems[0]; if (!it || !it.data) return;
     const s = it.data;
-    Object.assign(STATUS, { maint: !!s.maintenance, msg: String(s.message || '').slice(0, 300), until: +s.until || 0, stable: String(s.stable || ''), test: String(s.test || ''), minVer: String(s.minVer || ''), ok: true, t: Date.now() });
+    Object.assign(STATUS, { maint: !!s.maintenance, msg: String(s.message || '').slice(0, 300), until: +s.until || 0, stable: String(s.stable || ''), test: String(s.test || ''), minVer: String(s.minVer || ''), testerHash: String(s.testerHash || '').toLowerCase(), ok: true, t: Date.now() });
   } catch (e) { /* no connection: play on */ }
   statusApply();
 }
 const statusOutdated = () => !!(STATUS.ok && STATUS.minVer && vcmpG(ZC_VERSION, STATUS.minVer) < 0);
 // ?maintpreview shows the maintenance screen on this device (even for the admin); "Check again" ends the preview
 let MAINT_PREVIEW = /[?&]maintpreview/.test(location.search);
-function statusBlocked() { return MAINT_PREVIEW || (STATUS.ok && !meAdmin() && (STATUS.maint || statusOutdated())); }
+function statusBlocked() { return MAINT_PREVIEW || (STATUS.ok && !meAdmin() && !testerOn() && (STATUS.maint || statusOutdated())); }
+/* Tester code: a tester who is not on the admin account gets past maintenance with a code typed on the maintenance
+   screen. The game never holds the code itself, only a PBKDF2-SHA256 hash of it (150,000 rounds, its own salt); Game
+   Status can carry a newer hash (testerHash, same salt) to change the code without an update, which also locks every
+   device that used the old one. A device that unlocked remembers it until the tester leaves tester mode (Settings >
+   System) or the code changes. Five wrong tries in a row and the box waits 30 seconds. */
+const TESTER = { salt: 'ddc699bd4d5a20ce9699d75931abbc57', iter: 150000, hash: '5e4f2e6dae507d370c9dd309db2a11a6bedd91763ab5cf94eeba68e5d7fd3d3e', fails: 0, waitUntil: 0 };
+const testerHash = () => (STATUS.testerHash && /^[0-9a-f]{64}$/.test(STATUS.testerHash) ? STATUS.testerHash : TESTER.hash);
+function testerOn() { return store.get('zc_tester', '') === testerHash(); }
+async function testerCheck(code) {
+  const clean = String(code || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (clean.length < 6 || !(window.crypto && crypto.subtle)) return false;
+  const enc = new TextEncoder(), salt = new Uint8Array(TESTER.salt.match(/../g).map(h => parseInt(h, 16)));
+  const key = await crypto.subtle.importKey('raw', enc.encode(clean), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: salt, iterations: TESTER.iter }, key, 256));
+  const hex = Array.from(bits, b => b.toString(16).padStart(2, '0')).join('');
+  return hex === testerHash() ? hex : false;
+}
+function testerLeave() { store.set('zc_tester', ''); statusApply(); toast('Tester mode off', 'This device follows maintenance again', '#29e6ff'); }
 const statusInRun = () => ['play', 'pause', 'upgrade', 'skull', 'cine', 'loading'].indexOf(G.mode) >= 0;
 function statusApply() {
   const ov = $('maint'); if (!ov) return;
   const tb = $('testBadge'), isTest = STATUS.ok && STATUS.test === ZC_VERSION && STATUS.stable !== ZC_VERSION;
   tb.hidden = !isTest || statusInRun(); if (isTest) tb.textContent = 'Test build ' + ZC_VERSION;
-  $('maintAdmin').hidden = !(STATUS.ok && STATUS.maint && meAdmin());
+  const tester = testerOn() && !meAdmin();
+  $('maintAdmin').hidden = !(STATUS.ok && (STATUS.maint || statusOutdated()) && (meAdmin() || tester));
+  $('maintAdmin').textContent = tester ? 'Maintenance is on · tester mode' : 'Maintenance is on · you can play as admin';
   const out = !MAINT_PREVIEW && statusOutdated();
   if (!statusBlocked()) {
     $('maintSoon').hidden = true;
@@ -16320,6 +17262,23 @@ function statusApply() {
 }
 $('maintRetry').addEventListener('click', () => { MAINT_PREVIEW = false; $('maintRetry').textContent = 'Checking'; statusCheck().finally(() => { $('maintRetry').textContent = 'Check again'; }); });
 $('maintSite').addEventListener('click', () => openWeb('https://declairestudios.wordpress.com'));
+$('maintTester').addEventListener('click', () => { const r = $('maintCodeRow'); r.hidden = !r.hidden; if (!r.hidden) setTimeout(() => $('maintCode').focus(), 30); });
+async function testerSubmit() {
+  const inp = $('maintCode'), msg = $('maintCodeMsg'), now = Date.now();
+  if (now < TESTER.waitUntil) { msg.textContent = 'Too many tries. Wait ' + Math.ceil((TESTER.waitUntil - now) / 1000) + ' seconds.'; return; }
+  msg.textContent = 'Checking';
+  let ok = false; try { ok = await testerCheck(inp.value); } catch (e) { ok = false; }
+  if (ok) {
+    TESTER.fails = 0; store.set('zc_tester', ok); inp.value = ''; msg.textContent = ''; $('maintCodeRow').hidden = true;
+    toast('Tester mode on', 'You can play while maintenance is on. Settings > System turns it off.', '#29e6ff');
+    statusApply();
+  } else {
+    TESTER.fails++; if (TESTER.fails >= 5) { TESTER.fails = 0; TESTER.waitUntil = now + 30000; }
+    msg.textContent = 'That code did not work.'; SFX.refuse && SFX.refuse();
+  }
+}
+$('maintCodeGo').addEventListener('click', testerSubmit);
+$('maintCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); testerSubmit(); } e.stopPropagation(); });
 $('maintUpdate').addEventListener('click', () => {
   if (window.ZCDesktop && window.ZCDesktop.launcher) window.ZCDesktop.launcher();
   else if (IS_APP) openWeb('https://github.com/gabrielamidon8-sys/DeclAIre-ZombieCity/releases/latest/download/ZombieCity-Android.apk');
@@ -16622,7 +17581,7 @@ function netLobbyView(pl) {
   if (NET.hostOk && h) NET.hostName = ADMIN_TAG;
 }
 function netSendStart(to) {
-  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, scale: SCL, wave: G.wave, wx: WX.kind, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
+  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, scale: SCL, wave: G.wave, wx: WX.kind, hour: Math.round(luxHourNow() * 100) / 100, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
 }
 // the host presses Start: a normal run, and everyone else starts in the same city
 function netHostRun() {
@@ -16821,7 +17780,7 @@ function netSnapshot() {
   }
   const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000]);
   const s = {
-    t: 's', tm: Math.round(G.time * 100) / 100, w: G.wave, sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
+    t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
     wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zs, B: B, pl: pl,
     e: G.eshots.filter(q => !q.dead).slice(0, 160).map(q => [r1(q.x), r1(q.y), r1(q.vx), r1(q.vy), NET_SK.indexOf(q.k), q.r]),
     hz: G.haz.slice(0, 60).map(h => [NET_HK.indexOf(h.k), r1(h.x), r1(h.y), r1(h.r), Math.round(h.life * 10) / 10, h.max]),
@@ -16888,6 +17847,8 @@ function netClientStart(m) {
   NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
   newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season, scale: m.scale == null ? 1 : m.scale }, wave: m.wave, at: { x: m.x, y: m.y } });
   WX.kind = m.wx || WX.kind; WX.t = 999;
+  // the same hour of the day as the host (the sun, the shadows and the night come with it)
+  if (typeof m.hour === 'number' && isFinite(m.hour)) { LUX.h0 = ((m.hour - G.time / 24) % 24 + 24) % 24; LUX.h0s = WORLD.seed; }
   banner('Co-op', 'In ' + NET.hostName + "'s game · wave " + m.wave);
 }
 function netMakePuppet(e, B) {
@@ -16914,6 +17875,8 @@ function netApply(s) {
   G.chain = s.ch; G.air = s.air; G.warpT = s.warp ? 0.2 : 0;
   if (s.wx && WX.kind !== s.wx) WX.kind = s.wx; WX.t = 999;
   if (s.ss != null && WORLD.season !== s.ss) setSeason(s.ss, true);
+  // the host's hour of the day: keeps the sun, the shadows and the night in step if this device fell behind (a pause, a slow frame)
+  if (typeof s.hr === 'number' && isFinite(s.hr)) { const h0 = ((s.hr - G.time / 24) % 24 + 24) % 24, d = Math.abs(h0 - LUX.h0); if (Math.min(d, 24 - d) > 0.04) { LUX.h0 = h0; LUX.h0s = WORLD.seed; } }
   // zombies: move the ones we have toward where the host has them, make new ones, drop the gone ones
   const seen = new Set();
   for (const e of s.z) {

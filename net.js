@@ -291,7 +291,7 @@ function netLobbyView(pl) {
   if (NET.hostOk && h) NET.hostName = ADMIN_TAG;
 }
 function netSendStart(to) {
-  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, scale: SCL, wave: G.wave, wx: WX.kind, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
+  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, scale: SCL, wave: G.wave, wx: WX.kind, hour: Math.round(luxHourNow() * 100) / 100, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
 }
 // the host presses Start: a normal run, and everyone else starts in the same city
 function netHostRun() {
@@ -490,7 +490,7 @@ function netSnapshot() {
   }
   const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000]);
   const s = {
-    t: 's', tm: Math.round(G.time * 100) / 100, w: G.wave, sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
+    t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
     wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zs, B: B, pl: pl,
     e: G.eshots.filter(q => !q.dead).slice(0, 160).map(q => [r1(q.x), r1(q.y), r1(q.vx), r1(q.vy), NET_SK.indexOf(q.k), q.r]),
     hz: G.haz.slice(0, 60).map(h => [NET_HK.indexOf(h.k), r1(h.x), r1(h.y), r1(h.r), Math.round(h.life * 10) / 10, h.max]),
@@ -557,6 +557,8 @@ function netClientStart(m) {
   NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
   newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season, scale: m.scale == null ? 1 : m.scale }, wave: m.wave, at: { x: m.x, y: m.y } });
   WX.kind = m.wx || WX.kind; WX.t = 999;
+  // the same hour of the day as the host (the sun, the shadows and the night come with it)
+  if (typeof m.hour === 'number' && isFinite(m.hour)) { LUX.h0 = ((m.hour - G.time / 24) % 24 + 24) % 24; LUX.h0s = WORLD.seed; }
   banner('Co-op', 'In ' + NET.hostName + "'s game · wave " + m.wave);
 }
 function netMakePuppet(e, B) {
@@ -583,6 +585,8 @@ function netApply(s) {
   G.chain = s.ch; G.air = s.air; G.warpT = s.warp ? 0.2 : 0;
   if (s.wx && WX.kind !== s.wx) WX.kind = s.wx; WX.t = 999;
   if (s.ss != null && WORLD.season !== s.ss) setSeason(s.ss, true);
+  // the host's hour of the day: keeps the sun, the shadows and the night in step if this device fell behind (a pause, a slow frame)
+  if (typeof s.hr === 'number' && isFinite(s.hr)) { const h0 = ((s.hr - G.time / 24) % 24 + 24) % 24, d = Math.abs(h0 - LUX.h0); if (Math.min(d, 24 - d) > 0.04) { LUX.h0 = h0; LUX.h0s = WORLD.seed; } }
   // zombies: move the ones we have toward where the host has them, make new ones, drop the gone ones
   const seen = new Set();
   for (const e of s.z) {

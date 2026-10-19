@@ -4,7 +4,7 @@
    Every change applies at once and is saved on the device. Graphics options default to "Auto", which follows the
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
-  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: true, tod: 'cycle', nightDark: 'gentle', fog: 'auto',
+  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: true, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
   decals: 'normal', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
@@ -71,7 +71,10 @@ function setSetting(k, v) {
     case 'wxMode': if (v !== 'dynamic') { WX.kind = v; WX.t = 60; } else WX.t = Math.min(WX.t, 20); break;
     case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
     case 'veg': case 'water': WSPR.clear(); break;
-    case 'lux': for (const c of chunks.values()) c.stale = 1; LUX.adapt = 0; LUX.offUntil = 0; LUX.errT.length = 0; LUX.A = null; break;
+    case 'sun': for (const c of chunks.values()) c.stale = 1; WSPR.clear(); break;
+    case 'texel': sprites.clear(); TEXEL.players.clear(); TEXEL.adapt = 0; TEXEL.offUntil = 0; break;
+    case 'prism': PRISM.adapt = 0; PRISM.offUntil = 0; PRISM.errT.length = 0; break;
+    case 'lux': WSPR.clear(); for (const c of chunks.values()) c.stale = 1; LUX.adapt = 0; LUX.offUntil = 0; LUX.errT.length = 0; LUX.A = null; break;
     case 'aimKbm': case 'aimPad': case 'fireKbm': case 'firePad': DEV.fireOn = false; DEV.aimFlip = false; updDevUi(); break;
     case 'lefty': applyLook(); updDevUi(); break;
     default:
@@ -96,17 +99,27 @@ const SET_ROWS = [
   { id: 'veg', tab: 'graphics', type: 'seg', label: 'Trees and bushes', desc: 'Light draws them still; Full lets them sway and shake.', opts: AUTO_LH },
   { id: 'water', tab: 'graphics', type: 'seg', label: 'Animated water', desc: 'Glints drifting on rivers and ponds.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { id: 'fog', tab: 'graphics', type: 'seg', label: 'Fog and haze', desc: 'Drifting clouds of fog over the street.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
+  { id: 'life', tab: 'graphics', type: 'seg', label: 'Birds', desc: 'Crows and pigeons that take off when you get close.', opts: ON_OFF },
+  { tab: 'graphics', group: 'Shaders and textures' },
+  { id: 'prism', tab: 'graphics', basic: true, type: 'seg', label: 'Shader engine', desc: 'Finishes every frame with shaders: on the graphics chip when there is a real one, on the CPU otherwise. Auto picks for you.', opts: [['auto', 'Auto'], ['gpu', 'GPU'], ['cpu', 'CPU'], ['off', 'Off']] },
+  { id: 'texel', tab: 'graphics', type: 'seg', label: 'Texture detail', desc: 'Skin, cloth and grime on zombies and the survivor, drawn sharper than the screen and scaled down.', opts: [['auto', 'Auto'], ['low', 'Low'], ['high', 'High'], ['ultra', 'Ultra'], ['off', 'Off']] },
+  { id: 'sharp', tab: 'graphics', type: 'slider', label: 'Sharpness', desc: 'Brings back fine edges, most of all when the resolution is lowered (GPU).', min: 0, max: 100, step: 10, fmt: v => v + '%' },
+  { id: 'vig', tab: 'graphics', type: 'slider', label: 'Vignette', desc: 'How much the corners of the screen darken.', min: 0, max: 100, step: 10, fmt: v => v + '%' },
+  { id: 'grain', tab: 'graphics', type: 'seg', label: 'Film grain', desc: 'A faint grain over the picture, a little stronger at night.', opts: ON_OFF },
+  { id: 'temp', tab: 'graphics', type: 'seg', label: 'Color temperature', desc: 'Auto follows the hour and the weather: warm at dusk, cool at night.', opts: [['auto', 'Auto'], ['warm', 'Warm'], ['neutral', 'Neutral'], ['cool', 'Cool']] },
+  { tab: 'graphics', group: 'Light' },
   { id: 'lux', tab: 'graphics', basic: true, type: 'seg', label: 'Ray-traced lighting', desc: 'Real shadows from buildings, cars and zombies, with bloom, lit gunfire and lit windows. Auto adapts to your device and repairs itself.', opts: [['auto', 'Auto'], ['off', 'Off'], ['basic', 'Basic'], ['full', 'Full'], ['ultra', 'Ultra']] },
+  { id: 'sun', tab: 'graphics', type: 'seg', label: 'Sun shadows', desc: 'Buildings, cars, trees and people throw shadows that move with the sun.', opts: ON_OFF },
+  { id: 'gi', tab: 'graphics', type: 'seg', label: 'Bounce light', desc: 'Path-traced light bouncing off walls and streets, into the shade and round corners.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { id: 'bloom', tab: 'graphics', type: 'seg', label: 'Bloom', desc: 'A soft glow around lamps, fires, gunfire and explosions.', opts: ON_OFF },
   { id: 'tod', tab: 'graphics', type: 'seg', label: 'Time of day', desc: 'A run starts in the morning; Cycle moves through dusk and night.', opts: [['cycle', 'Cycle'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['real', 'Clock']] },
   { id: 'nightDark', tab: 'graphics', type: 'seg', label: 'Night darkness', desc: 'How dark the night gets.', opts: [['gentle', 'Gentle'], ['deep', 'Deep']] },
   { id: 'light', tab: 'graphics', type: 'seg', label: 'Light glows', desc: 'Glow sprites on fires, police lights and flickering lamps, on top of the ray-traced lighting.', opts: [['auto', 'Auto'], ['simple', 'Simple'], ['full', 'Full']] },
-  { id: 'life', tab: 'graphics', type: 'seg', label: 'Birds', desc: 'Crows and pigeons that take off when you get close.', opts: ON_OFF },
   { tab: 'graphics', group: 'Effects' },
   { id: 'particles', tab: 'graphics', type: 'slider', label: 'Particles', desc: 'Blood, sparks, smoke and debris.', min: 25, max: 150, step: 25, fmt: v => v + '%' },
   { id: 'decals', tab: 'graphics', type: 'seg', label: 'Marks on the ground', desc: 'Bloodstains, bullet holes and footprints.', opts: [['low', 'Few'], ['normal', 'Normal'], ['high', 'Lots']] },
   { id: 'grade', tab: 'graphics', type: 'seg', label: 'Color grading', desc: 'Each district and the weather tint the screen.', opts: ON_OFF },
-  { id: 'vis', tab: 'graphics', type: 'seg', label: 'Light show', desc: 'The city pulses to the radio.', opts: [['full', 'Full'], ['low', 'Low'], ['off', 'Off']] },
+  { id: 'vis', tab: 'graphics', paused: true, type: 'seg', label: 'Light show', desc: 'The city pulses to the radio.', opts: [['full', 'Full'], ['low', 'Low'], ['off', 'Off']] },
   { id: 'fpsShow', tab: 'graphics', type: 'seg', label: 'Show frame rate', desc: 'A small counter in the corner.', opts: ON_OFF },
   // sound
   { tab: 'sound', group: 'Volume' },
@@ -176,6 +189,10 @@ const SET_ROWS = [
   { tab: 'system', info: 'device' },
   { id: 'saver', tab: 'system', basic: true, type: 'seg', label: 'Battery saver', desc: 'Caps the game at 30 fps and Medium quality. Auto turns on when the battery is low.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { tab: 'system', action: 'fullscreen', desk: true, basic: 'kbm', label: 'Full screen', desc: 'Fill the whole screen, or play in a window. F11 or Alt+Enter also switch.', btn: 'Switch' },
+  { tab: 'system', group: 'Engines' },
+  { tab: 'system', info: 'engines' },
+  { tab: 'system', group: 'Tools' },
+  { tab: 'system', action: 'tester', tester: true, label: 'Tester mode', desc: 'This device got past maintenance with the tester code. Leave to follow maintenance again.', btn: 'Leave' },
   { tab: 'system', action: 'cache', label: 'Refresh cache', desc: 'Frees the graphics the game has stored. They rebuild as needed.', btn: 'Refresh' },
   { tab: 'system', action: 'recheck', label: 'Check the device again', desc: 'Re-runs the quick speed test and picks a new starting quality.', btn: 'Check' },
   { tab: 'system', action: 'reset', label: 'Reset all settings', desc: 'Back to the defaults. Your weapons, specimens and scores are kept.', btn: 'Reset', danger: true }
@@ -191,6 +208,8 @@ function closeSettings() { stopListen(); $('settings').hidden = true; renderPerf
 // whether a row belongs on screen: each device's options appear once the game has seen that device
 function rowOn(r) {
   if (r.touch && !TOUCH) return false;
+  if (r.tester && !(typeof testerOn === 'function' && testerOn())) return false;
+  if (r.paused) return false;
   if (r.desk && !window.ZCDesktop) return false;
   switch (r.dev) {
     case 'kbm': return DEV.seen.kbm;
@@ -224,6 +243,7 @@ function renderSettings(keep) {
   for (const r of rows) {
     if (r.group) { box.append(el('h3', 'set-group', r.group)); continue; }
     if (r.info === 'device') { box.append(deviceInfo()); continue; }
+    if (r.info === 'engines') { box.append(engineInfo()); continue; }
     if (r.info === 'devnow') { box.append(devNow()); continue; }
     if (r.info === 'nopad') { box.append(setNote('Plug in or pair a controller and press any button on it. The game switches to it on its own, and its aiming options and button layout show up here.')); continue; }
     if (r.info === 'binds-kb' || r.info === 'binds-pad') { const h = el('h4', 'set-sub', r.label); box.append(h, bindTable(r.info === 'binds-pad' ? 'pad' : 'kb')); continue; }
@@ -282,6 +302,7 @@ function actionRow(r) {
 function settingsAction(a, b) {
   SFX.click();
   if (a === 'radio') { openRadio(); return; }
+  if (a === 'tester') { testerLeave(); renderSettings(); return; }
   if (a === 'fullscreen') { if (window.ZCDesktop) window.ZCDesktop.fullscreen(); return; }
   if (a === 'cache') { const before = cacheBytes().total; trimCaches(2); WSPR.clear(); toast('Cache refreshed', 'Freed ' + fmtMB(Math.max(0, before - cacheBytes().total)), '#7dff4a'); renderSettings(); return; }
   if (a === 'recheck') {
@@ -295,6 +316,17 @@ function settingsAction(a, b) {
     for (const a of ACTIONS) for (const k of ['kb', 'pad']) if (a[k]) BIND[k][a.id] = a[k].slice();
     saveBinds(); toast('Settings reset', 'Back to the defaults', '#f2cc3a'); renderSettings();
   }
+}
+// every engine in the game, its state, its level and what it costs a frame (from the engine hub)
+function engineInfo() {
+  const box = el('div', 'set-device'), list = coreStatus();
+  const dl = el('dl', 'build-stats eng-list'); dl.id = 'setEngines';
+  for (const e of list) {
+    const d = el('div'), dd = el('dd', '', String(e.state) + (e.level ? ' · ' + e.level : '') + (e.kind === 'render' ? ' · ' + e.ms.toFixed(2) + ' ms' : '') + (e.repairs ? ' · fixed itself ' + e.repairs + 'x' : ''));
+    d.title = e.does; d.append(el('dt', '', e.name), dd); dl.appendChild(d);
+  }
+  box.append(dl, setNote(list.length + ' engines work together through the engine hub: they share one frame, one time budget and one repair log. Hover or long-press a name for what it does.'));
+  return box;
 }
 function deviceInfo() {
   const p = PERF.prof || {}, cb = cacheBytes(), box = el('div', 'set-device');
@@ -322,7 +354,7 @@ $('setMode').querySelectorAll('button').forEach(b => b.addEventListener('click',
 // the old performance panel now opens the System tab
 function openPerf() { openSettings('system'); }
 function closePerf() { closeSettings(); }
-function renderPerfPanel() { if (!$('settings').hidden && SP.mode === 'advanced' && SP.tab === 'system') { const s = $('setStats'); if (s) s.parentNode.replaceWith(deviceInfo()); } }
+function renderPerfPanel() { if (!$('settings').hidden && SP.mode === 'advanced' && SP.tab === 'system') { const s = $('setStats'); if (s) s.parentNode.replaceWith(deviceInfo()); const e = $('setEngines'); if (e) e.parentNode.replaceWith(engineInfo()); } }
 for (const id of ['titlePerf', 'pausePerf']) { const b = $(id); if (b) { b.replaceWith(b.cloneNode(true)); $(id).addEventListener('click', () => openSettings()); } }
 function renderPerfBtn() { for (const id of ['titlePerf', 'pausePerf']) { const b = $(id); if (b) b.textContent = 'Settings'; } }
 

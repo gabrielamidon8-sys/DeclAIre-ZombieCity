@@ -392,27 +392,47 @@ if (ACCT.status === 'in') setTimeout(() => acctSync('start'), 6000);
    - stable / test: which version is published, and which one is being tested (the launcher's test channel and the
      test copy of the web version get it first). The game shows a "Test build" tag when it is the test version.
    Offline, none of this applies: the game plays as normal. */
-const STATUS = { maint: false, msg: '', until: 0, stable: '', test: '', minVer: '', ok: false, t: 0 };
+const STATUS = { maint: false, msg: '', until: 0, stable: '', test: '', minVer: '', testerHash: '', ok: false, t: 0 };
 const vcmpG = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; };
 async function statusCheck() {
   try {
     const d = await AcctCore.wix('/wix-data/v2/items/query', { body: { dataCollectionId: ACCT_CFG.status, query: { filter: { key: { $eq: 'live' } }, paging: { limit: 1 } } } });
     const it = d && d.dataItems && d.dataItems[0]; if (!it || !it.data) return;
     const s = it.data;
-    Object.assign(STATUS, { maint: !!s.maintenance, msg: String(s.message || '').slice(0, 300), until: +s.until || 0, stable: String(s.stable || ''), test: String(s.test || ''), minVer: String(s.minVer || ''), ok: true, t: Date.now() });
+    Object.assign(STATUS, { maint: !!s.maintenance, msg: String(s.message || '').slice(0, 300), until: +s.until || 0, stable: String(s.stable || ''), test: String(s.test || ''), minVer: String(s.minVer || ''), testerHash: String(s.testerHash || '').toLowerCase(), ok: true, t: Date.now() });
   } catch (e) { /* no connection: play on */ }
   statusApply();
 }
 const statusOutdated = () => !!(STATUS.ok && STATUS.minVer && vcmpG(ZC_VERSION, STATUS.minVer) < 0);
 // ?maintpreview shows the maintenance screen on this device (even for the admin); "Check again" ends the preview
 let MAINT_PREVIEW = /[?&]maintpreview/.test(location.search);
-function statusBlocked() { return MAINT_PREVIEW || (STATUS.ok && !meAdmin() && (STATUS.maint || statusOutdated())); }
+function statusBlocked() { return MAINT_PREVIEW || (STATUS.ok && !meAdmin() && !testerOn() && (STATUS.maint || statusOutdated())); }
+/* Tester code: a tester who is not on the admin account gets past maintenance with a code typed on the maintenance
+   screen. The game never holds the code itself, only a PBKDF2-SHA256 hash of it (150,000 rounds, its own salt); Game
+   Status can carry a newer hash (testerHash, same salt) to change the code without an update, which also locks every
+   device that used the old one. A device that unlocked remembers it until the tester leaves tester mode (Settings >
+   System) or the code changes. Five wrong tries in a row and the box waits 30 seconds. */
+const TESTER = { salt: 'ddc699bd4d5a20ce9699d75931abbc57', iter: 150000, hash: '5e4f2e6dae507d370c9dd309db2a11a6bedd91763ab5cf94eeba68e5d7fd3d3e', fails: 0, waitUntil: 0 };
+const testerHash = () => (STATUS.testerHash && /^[0-9a-f]{64}$/.test(STATUS.testerHash) ? STATUS.testerHash : TESTER.hash);
+function testerOn() { return store.get('zc_tester', '') === testerHash(); }
+async function testerCheck(code) {
+  const clean = String(code || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (clean.length < 6 || !(window.crypto && crypto.subtle)) return false;
+  const enc = new TextEncoder(), salt = new Uint8Array(TESTER.salt.match(/../g).map(h => parseInt(h, 16)));
+  const key = await crypto.subtle.importKey('raw', enc.encode(clean), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: salt, iterations: TESTER.iter }, key, 256));
+  const hex = Array.from(bits, b => b.toString(16).padStart(2, '0')).join('');
+  return hex === testerHash() ? hex : false;
+}
+function testerLeave() { store.set('zc_tester', ''); statusApply(); toast('Tester mode off', 'This device follows maintenance again', '#29e6ff'); }
 const statusInRun = () => ['play', 'pause', 'upgrade', 'skull', 'cine', 'loading'].indexOf(G.mode) >= 0;
 function statusApply() {
   const ov = $('maint'); if (!ov) return;
   const tb = $('testBadge'), isTest = STATUS.ok && STATUS.test === ZC_VERSION && STATUS.stable !== ZC_VERSION;
   tb.hidden = !isTest || statusInRun(); if (isTest) tb.textContent = 'Test build ' + ZC_VERSION;
-  $('maintAdmin').hidden = !(STATUS.ok && STATUS.maint && meAdmin());
+  const tester = testerOn() && !meAdmin();
+  $('maintAdmin').hidden = !(STATUS.ok && (STATUS.maint || statusOutdated()) && (meAdmin() || tester));
+  $('maintAdmin').textContent = tester ? 'Maintenance is on · tester mode' : 'Maintenance is on · you can play as admin';
   const out = !MAINT_PREVIEW && statusOutdated();
   if (!statusBlocked()) {
     $('maintSoon').hidden = true;
@@ -434,6 +454,23 @@ function statusApply() {
 }
 $('maintRetry').addEventListener('click', () => { MAINT_PREVIEW = false; $('maintRetry').textContent = 'Checking'; statusCheck().finally(() => { $('maintRetry').textContent = 'Check again'; }); });
 $('maintSite').addEventListener('click', () => openWeb('https://declairestudios.wordpress.com'));
+$('maintTester').addEventListener('click', () => { const r = $('maintCodeRow'); r.hidden = !r.hidden; if (!r.hidden) setTimeout(() => $('maintCode').focus(), 30); });
+async function testerSubmit() {
+  const inp = $('maintCode'), msg = $('maintCodeMsg'), now = Date.now();
+  if (now < TESTER.waitUntil) { msg.textContent = 'Too many tries. Wait ' + Math.ceil((TESTER.waitUntil - now) / 1000) + ' seconds.'; return; }
+  msg.textContent = 'Checking';
+  let ok = false; try { ok = await testerCheck(inp.value); } catch (e) { ok = false; }
+  if (ok) {
+    TESTER.fails = 0; store.set('zc_tester', ok); inp.value = ''; msg.textContent = ''; $('maintCodeRow').hidden = true;
+    toast('Tester mode on', 'You can play while maintenance is on. Settings > System turns it off.', '#29e6ff');
+    statusApply();
+  } else {
+    TESTER.fails++; if (TESTER.fails >= 5) { TESTER.fails = 0; TESTER.waitUntil = now + 30000; }
+    msg.textContent = 'That code did not work.'; SFX.refuse && SFX.refuse();
+  }
+}
+$('maintCodeGo').addEventListener('click', testerSubmit);
+$('maintCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); testerSubmit(); } e.stopPropagation(); });
 $('maintUpdate').addEventListener('click', () => {
   if (window.ZCDesktop && window.ZCDesktop.launcher) window.ZCDesktop.launcher();
   else if (IS_APP) openWeb('https://github.com/gabrielamidon8-sys/DeclAIre-ZombieCity/releases/latest/download/ZombieCity-Android.apk');

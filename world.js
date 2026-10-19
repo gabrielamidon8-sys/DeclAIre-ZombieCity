@@ -914,18 +914,7 @@ function drawRoadMarks(g, c, B, R) {
    sidewalk slabs, gum and utility covers, and what each season leaves on the street: fallen leaves in the gutters,
    blossom on the sidewalks, plowed snow banks with slushy tyre tracks. Drawn into the block's picture, so it costs
    nothing once drawn. Each block has its own random stream for this, so the rest of the art is unchanged. */
-let GRAIN = null;
-function grainCanvas() {
-  if (GRAIN) return GRAIN;
-  const n = 128, c = document.createElement('canvas'); c.width = c.height = n;
-  const g = c.getContext('2d'), im = g.createImageData(n, n), d = im.data, R = Z.mulberry32(0x9e3779b9);
-  for (let i = 0; i < n * n; i++) {
-    const v = R(), k = i * 4;
-    if (v < 0.12) { d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = 5 + R() * 12; }         // light stones in the mix
-    else if (v < 0.42) { d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = 10 + R() * 26; }        // pits and shadow
-  }
-  g.putImageData(im, 0, 0); GRAIN = c; return c;
-}
+function grainCanvas() { return texelCanvas('grain'); }   // the texture engine's asphalt grain
 function grainFill(g, x, y, w, h, scale, alpha) {
   if (w <= 0 || h <= 0) return;
   const pat = g.createPattern(grainCanvas(), 'repeat'); if (!pat) return;
@@ -1448,7 +1437,9 @@ function drawRectArt(g, r, c, B, win) {
 }
 function drawBuilding(g, r, c, B, win, Rb) {
   const st = r.st || 'block';
-  g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(r.x + 10, r.y + 12, r.w, r.h);
+  // with the lighting engine's sun on, the real shadow moves with the time of day: only a soft contact shadow is painted
+  if (luxSunShadowsOn()) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(r.x + 1.5, r.y + 2, r.w, r.h); }
+  else { g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(r.x + 10, r.y + 12, r.w, r.h); }
   if (st === 'house') {
     // a pitched roof: two halves and a ridge
     const horiz = r.w >= r.h, sh = win ? '#d8dfe4' : r.roof;
