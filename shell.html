@@ -1046,7 +1046,7 @@ button.lcd{cursor:pointer}
 .maint{overflow-y:auto;align-items:safe center}
 .maint-in:has(.mscene:not([hidden])){width:min(700px, 100%)}
 .mscene{display:flex;flex-direction:column;gap:10px;margin:2px 0}
-.mcanvas{display:block;width:100%;height:180px;border-radius:3px;border:1px solid var(--line);background:#141a22}
+.mcanvas{display:block;width:100%;height:220px;border-radius:3px;border:1px solid var(--line);background:#141a22}
 .mtalk{display:flex;align-items:flex-end;gap:10px;min-height:96px}
 .mskull{flex:0 0 auto;width:84px;padding:0;border:0;background:none;cursor:pointer;filter:drop-shadow(0 0 14px rgba(255,45,74,.3)) drop-shadow(0 8px 10px rgba(0,0,0,.7));animation:mkbob 3.2s ease-in-out infinite}
 .mskull svg{display:block;width:100%;height:auto;overflow:visible}
@@ -1058,6 +1058,10 @@ button.lcd{cursor:pointer}
 .mskull.talk .mk-jaw{animation:mkchat .17s steps(2) infinite}
 .mskull.hint .mk-eye{opacity:1;animation:eyepulse .5s ease-in-out infinite}
 .mskull.hint{filter:drop-shadow(0 0 20px rgba(242,204,58,.45)) drop-shadow(0 8px 10px rgba(0,0,0,.7))}
+.mskull.laugh{animation:mklaugh .22s ease-in-out 5}
+.mskull.laugh .mk-jaw{animation:mkchat .09s steps(2) infinite}
+.mskull.laugh .mk-eye{opacity:1;animation:eyepulse .2s ease-in-out infinite}
+@keyframes mklaugh{50%{transform:translateY(-5px) rotate(-5deg) scale(1.04)}}
 .mskull.done{animation:mkhop .5s ease-out 2}
 .mskull.done .mk-hat{animation:mktip 1.2s ease-in-out forwards}
 .mskull.done .mk-jaw{transform:translateY(14px)}
@@ -1089,7 +1093,7 @@ button.lcd{cursor:pointer}
   .maint-in:has(.mscene:not([hidden])) h2{font-size:30px}
   .mtalk{min-height:70px}.mskull{width:62px}.mbubble{min-height:56px;padding:7px 11px}.mline{font-size:13.5px!important}
 }
-@media (prefers-reduced-motion:reduce){.mskull,.mskull.talk .mk-jaw,.mskull.hint .mk-eye,.mk-eye,.mskull.done,.mskull.done .mk-hat,.mbubble.pop{animation:none}.mprog i{transition:none}}
+@media (prefers-reduced-motion:reduce){.mskull,.mskull.talk .mk-jaw,.mskull.hint .mk-eye,.mk-eye,.mskull.done,.mskull.done .mk-hat,.mbubble.pop,.mskull.laugh,.mskull.laugh .mk-jaw,.mskull.laugh .mk-eye{animation:none}.mprog i{transition:none}}
 .maint-admin{top:12px;background:rgba(20,24,30,.92);color:#ffb38a;border:1px solid rgba(255,138,26,.5)}
 .test-badge{position:fixed;right:14px;bottom:12px;z-index:58;padding:5px 10px;border:1px dashed rgba(41,230,255,.6);border-radius:2px;background:rgba(8,10,13,.8);color:#29e6ff;font-family:var(--f-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 </style>
