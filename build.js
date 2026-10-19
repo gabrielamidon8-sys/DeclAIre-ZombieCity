@@ -4,7 +4,7 @@ const fs = require('fs');
 const test = process.argv.includes('test');
 const rd = f => fs.readFileSync(__dirname + '/' + f, 'utf8');
 const introMusic = fs.existsSync(__dirname + '/media/intro-claude.mp3') ? fs.readFileSync(__dirname + '/media/intro-claude.mp3').toString('base64') : '';
-let game = (rd('filterdata.js') + '\n' + rd('filter.js') + '\n' + rd('acct-core.js') + '\n' + rd('game.js')).replace('/*__ARSENAL__*/', () => rd('world.js') + '\n' + rd('life.js') + '\n' + rd('weather.js') + '\n' + rd('arsenal.js') + '\n' + rd('dashes.js') + '\n' + rd('keeper.js') + '\n' + rd('bossai.js') + '\n' + rd('perf.js') + '\n' + rd('settings.js') + '\n' + rd('loader.js') + '\n' + rd('input.js') + '\n' + rd('profile.js') + '\n' + rd('account.js') + '\n' + rd('net.js') + '\n' + rd('intro.js').replace('/*__INTROMUSIC__*/', () => introMusic));
+let game = (rd('filterdata.js') + '\n' + rd('filter.js') + '\n' + rd('acct-core.js') + '\n' + rd('game.js')).replace('/*__ARSENAL__*/', () => rd('world.js') + '\n' + rd('life.js') + '\n' + rd('weather.js') + '\n' + rd('arsenal.js') + '\n' + rd('dashes.js') + '\n' + rd('keeper.js') + '\n' + rd('bossai.js') + '\n' + rd('perf.js') + '\n' + rd('settings.js') + '\n' + rd('loader.js') + '\n' + rd('input.js') + '\n' + rd('profile.js') + '\n' + rd('maint.js') + '\n' + rd('account.js') + '\n' + rd('net.js') + '\n' + rd('intro.js').replace('/*__INTROMUSIC__*/', () => introMusic));
 // every module shares one script, so two functions with the same name would silently replace each other (that is
 // how the intro's drawCar once hid every parked car in the city): refuse to build if it happens
 {

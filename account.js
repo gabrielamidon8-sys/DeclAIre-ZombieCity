@@ -404,27 +404,35 @@ async function statusCheck() {
   statusApply();
 }
 const statusOutdated = () => !!(STATUS.ok && STATUS.minVer && vcmpG(ZC_VERSION, STATUS.minVer) < 0);
-function statusBlocked() { return STATUS.ok && !meAdmin() && (STATUS.maint || statusOutdated()); }
+// ?maintpreview shows the maintenance screen on this device (even for the admin); "Check again" ends the preview
+let MAINT_PREVIEW = /[?&]maintpreview/.test(location.search);
+function statusBlocked() { return MAINT_PREVIEW || (STATUS.ok && !meAdmin() && (STATUS.maint || statusOutdated())); }
 const statusInRun = () => ['play', 'pause', 'upgrade', 'skull', 'cine', 'loading'].indexOf(G.mode) >= 0;
 function statusApply() {
   const ov = $('maint'); if (!ov) return;
   const tb = $('testBadge'), isTest = STATUS.ok && STATUS.test === ZC_VERSION && STATUS.stable !== ZC_VERSION;
   tb.hidden = !isTest || statusInRun(); if (isTest) tb.textContent = 'Test build ' + ZC_VERSION;
   $('maintAdmin').hidden = !(STATUS.ok && STATUS.maint && meAdmin());
-  const out = statusOutdated();
-  if (!statusBlocked()) { ov.hidden = true; $('maintSoon').hidden = true; return; }
+  const out = !MAINT_PREVIEW && statusOutdated();
+  if (!statusBlocked()) {
+    $('maintSoon').hidden = true;
+    // maintenance just ended while the card was up: the foreman says it's done, then the card goes
+    if (!ov.hidden && MaintScene.on) { if (!MaintScene.finishing) MaintScene.done(() => { ov.hidden = true; }); return; }
+    MaintScene.stop(); ov.hidden = true; return;
+  }
   if (statusInRun()) { const s = $('maintSoon'); s.hidden = false; s.textContent = out ? 'A required update is out. Finish this run, then update.' : 'Maintenance is starting. Finish this run; new runs open again soon.'; ov.hidden = true; return; }
   $('maintSoon').hidden = true;
   if (G.mode === 'intro') return;
-  $('maintTitle').textContent = out ? 'Update needed' : 'Down for maintenance';
+  $('maintTitle').textContent = out ? 'Update needed' : 'Under construction';
   $('maintMsg').textContent = out ? 'You have version ' + ZC_VERSION + '. Version ' + STATUS.minVer + ' or newer is needed to play.' : (STATUS.msg || 'Zombie City is getting an update. It will be back shortly.');
   const left = STATUS.until - Date.now();
   $('maintWhen').textContent = !out && left > 0 ? 'Back in about ' + (left > 3600000 ? Math.round(left / 3600000) + ' hours' : Math.max(1, Math.round(left / 60000)) + ' minutes') : '';
   const up = $('maintUpdate'); up.hidden = !out;
   up.textContent = window.ZCDesktop && window.ZCDesktop.launcher ? 'Open the launcher' : IS_APP ? 'Download the update' : 'Reload';
   if (ov.hidden) { ov.hidden = false; SFX.click(); }
+  if (out) MaintScene.stop(); else MaintScene.start();
 }
-$('maintRetry').addEventListener('click', () => { $('maintRetry').textContent = 'Checking'; statusCheck().finally(() => { $('maintRetry').textContent = 'Check again'; }); });
+$('maintRetry').addEventListener('click', () => { MAINT_PREVIEW = false; $('maintRetry').textContent = 'Checking'; statusCheck().finally(() => { $('maintRetry').textContent = 'Check again'; }); });
 $('maintSite').addEventListener('click', () => openWeb('https://declairestudios.wordpress.com'));
 $('maintUpdate').addEventListener('click', () => {
   if (window.ZCDesktop && window.ZCDesktop.launcher) window.ZCDesktop.launcher();
