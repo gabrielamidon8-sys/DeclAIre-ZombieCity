@@ -247,3 +247,19 @@ coreAdd({
   isolate: () => { BAL.offUntil = performance.now() + 60000; }, restore: () => { BAL.offUntil = 0; },
   on: { run: () => { BAL.shots = BAL.hits = BAL.kills = BAL.heads = BAL.ric = BAL.pen = BAL.stopped = 0; BAL.reg = { head: 0, torso: 0, arm: 0, leg: 0 }; } }
 });
+// CORE v3: bullets decide who lives, so BALLISTICS learns nothing (it must work the same on every device and for
+// everyone in co-op); it checks itself instead: its numbers against real rounds at start, its rounds while flying
+coreMeta('BALLISTICS', { ver: 2, noLearn: 'Learns nothing on purpose: how a bullet flies and kills has to be the same on every device and for everyone in co-op.',
+  check: () => { if (G.bullets.length > 3000) return 'rounds piled up (' + G.bullets.length + ')'; for (const b of G.bullets) if (b.bal && !(b.x === b.x && b.E === b.E)) return 'a round lost its place'; return ''; },
+  repair: () => { G.bullets = G.bullets.filter(b => !b.bal || (b.x === b.x && b.E === b.E)); if (G.bullets.length > 3000) G.bullets.splice(0, G.bullets.length - 1500); BAL.errT.length = 0; },
+  selfTest: () => {
+    const r = [], t = (ok, why) => r.push([ok, why]);
+    t(Object.values(BAL_GUN).every(B => B.v > 0 && B.g > 0 && B.cd > 0 && B.max > 0), 'a gun has a missing number');
+    const e9 = balE0('pistol'), e5 = balE0('rifle'), e7 = balE0('sniper');
+    t(e9 > 400 && e9 < 700, 'the 9 mm round has the wrong energy (' + Math.round(e9) + ' J)');
+    t(e5 > 1500 && e5 < 2000, 'the 5.56 round has the wrong energy (' + Math.round(e5) + ' J)');
+    t(e7 > 3000 && e7 < 4000, 'the 7.62 round has the wrong energy (' + Math.round(e7) + ' J)');
+    t(balE0('sniper') > balE0('rifle') && balE0('rifle') > balE0('pistol'), 'the rounds are in the wrong order of power');
+    const bad = r.find(x => !x[0]);
+    return { ok: !bad, n: r.length, pass: r.filter(x => x[0]).length, why: bad ? bad[1] : '' };
+  } });

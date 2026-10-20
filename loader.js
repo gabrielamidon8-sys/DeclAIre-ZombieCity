@@ -39,7 +39,7 @@ function loadStep(label, frac) {
   LOADING.frac = Math.max(LOADING.frac, clamp(frac, 0, 1));
   if (label) e.step.textContent = label;
   e.fill.style.width = (LOADING.frac * 100).toFixed(1) + '%';
-  e.pct.textContent = Math.round(LOADING.frac * 100) + '%';
+  const left = loadLeft(); e.pct.textContent = Math.round(LOADING.frac * 100) + '%' + (left >= 1.5 ? ' · about ' + Math.round(left) + ' s' : '');
 }
 function loadHide() {
   const e = loadEls(); if (!e.box || e.box.hidden) return;
@@ -51,17 +51,22 @@ function loadHide() {
 // screen shows straight away; otherwise only if the work takes long enough to notice.
 async function loadRun(title, steps, o) {
   o = o || {};
-  LOADING.on = true; LOADING.frac = 0; LOADING.title = title;
+  LOADING.on = true; LOADING.frac = 0; LOADING.title = title; LOADING.since = performance.now(); LOADING.steps = steps.map(s => s[0]); LOADING.at = 0; LOADING.t0 = performance.now();
   const e = loadEls();
   clearTimeout(LOADING.timer);
   if (o.now || (e.box && !e.box.hidden && !e.box.classList.contains('out'))) loadShow(title);
   else LOADING.timer = setTimeout(() => { if (LOADING.on) loadShow(title); }, 140);
   loadStep(steps.length ? steps[0][0] : '', 0);
   for (let i = 0; i < steps.length; i++) {
+    LOADING.at = i; LOADING.stepT = performance.now();
     loadStep(steps[i][0], i / steps.length);
     await loadPaint();
     let r;
-    try { r = steps[i][1](); if (r && typeof r.then === 'function') r = await r; } catch (err) { perfError(err); r = null; }
+    // (CORE v3: a step that waits on something that never comes is let go after 12 seconds, so the screen never hangs)
+    try {
+      r = steps[i][1]();
+      if (r && typeof r.then === 'function') { let fin = false; r = await Promise.race([r.then(v => { fin = true; return v; }), loadWait(12000).then(() => { if (fin) return null; coreLog('LOADER let go of "' + steps[i][0] + '": it waited 12 seconds on something that never came'); coreHurt('LOADER', 'a step hung'); return null; })]); }
+    } catch (err) { perfError(err); r = null; }
     if (Array.isArray(r)) {
       let lastY = performance.now();
       for (let j = 0; j < r.length; j++) {
@@ -69,6 +74,7 @@ async function loadRun(title, steps, o) {
         if (performance.now() - lastY > 14) { loadStep(steps[i][0], (i + (j + 1) / r.length) / steps.length); await loadPaint(); lastY = performance.now(); }
       }
     }
+    loadLearn(title, steps[i][0], performance.now() - LOADING.stepT);
   }
   loadStep(o.done || 'Ready', 1);
   clearTimeout(LOADING.timer);
@@ -98,7 +104,7 @@ function warmJobs() {
   jobs.push(() => rebuildActive());
   jobs.push(() => { let n = 0; for (const d of WD.act) { if (d.k === 'tree') treeSprite(d); else if (d.k === 'bush') bushSprite(d); if (++n > 160) break; } });
   // the 2.0 zombies of the first waves: their walk frames
-  if (typeof animaWarm === 'function' && typeof ZR_ONLY !== 'undefined' && ZR_ONLY) for (const m of zrPool(2)) jobs.push(() => animaWarm(m));
+  if (typeof animaWarm === 'function' && typeof ZR_ONLY !== 'undefined' && ZR_ONLY) for (const m of mutaWarmList(2)) jobs.push(() => animaWarm(m));
   const seen = new Set();
   for (const m of (typeof ZR_ONLY !== 'undefined' && ZR_ONLY ? [] : MUTS)) {
     const k = m.S && m.S.key; if (!k || seen.has(k)) continue; seen.add(k);
@@ -110,3 +116,24 @@ function warmJobs() {
   jobs.push(() => { LUX.msAvg = 0; LUX.bad = 0; PERF.sec && (PERF.sec.lux = 0); });
   return jobs;
 }
+/* CORE v3: what the loader learns. It times every step of every loading screen on this device, so the screen can say
+   about how long is left; a step that hangs is let go (above), and a loading screen stuck up for 45 seconds is taken
+   down by the watchdog. */
+function loadKey(title, label) { return String(title).slice(0, 24) + '|' + String(label).slice(0, 32); }
+function loadLearn(title, label, ms) {
+  if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.LOADER) return;
+  const o = learnOwn('LOADER'), s = o.s || (o.s = {}), k = loadKey(title, label);
+  s[k] = s[k] ? s[k] * 0.7 + ms * 0.3 : ms; const ks = Object.keys(s); if (ks.length > 24) delete s[ks[0]]; learnDirty();
+}
+// seconds left on this loading screen, from what each remaining step took last time (0 when it does not know)
+function loadLeft() {
+  if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.LOADER || !LOADING.steps) return 0;
+  const s = learnOwn('LOADER').s; if (!s) return 0;
+  let left = 0, known = 0;
+  LOADING.steps.forEach((l, i) => { const v = s[loadKey(LOADING.title, l)]; if (v == null || i < LOADING.at) return; known++; left += i === LOADING.at ? Math.max(0, v - (performance.now() - LOADING.stepT)) : v; });
+  return known ? left / 1000 : 0;
+}
+coreMeta('LOADER', { ver: 2, adapts: 'spreads its work over frames', provides: ['warmup'],
+  check: () => LOADING.on && performance.now() - (LOADING.since || 0) > 45000 ? 'its loading screen has been up for ' + Math.round((performance.now() - LOADING.since) / 1000) + ' s' : '',
+  repair: () => { LOADING.on = false; LOADING.shown = false; loadHide(); },
+  learned: () => { const s = learnOwn('LOADER').s; if (!s) return []; const tot = t => Object.entries(s).filter(([k]) => k.indexOf(t) === 0).reduce((a, [, v]) => a + v, 0) / 1000; const a = tot('Starting Zombie City'); return a ? ['Starting the game takes about ' + a.toFixed(1) + ' s on this device; the loading screen counts down from what each step took last time.'] : []; } });

@@ -758,7 +758,7 @@ function goreWatch(ms) {
   const now = performance.now(); if (now - GORE.msT < 1000) return; GORE.msT = now;
   const budget = 1000 / targetFps() * 0.07;
   if (GORE.msAvg > budget && PERF.fps && PERF.fps < targetFps() * 0.95) { if (GORE.perf > -3) { GORE.perf--; GORE.good = 0; } }
-  else if (GORE.msAvg < budget * 0.4) { if (++GORE.good >= 6 && GORE.perf < 0) { GORE.perf++; GORE.good = 0; } }
+  else if (GORE.msAvg < budget * 0.4) { if (++GORE.good >= 6 && GORE.perf < 0 && coreRise('GORE')) { GORE.perf++; GORE.good = 0; } }
   else GORE.good = 0;
 }
 // what the engine hub asks: is everything sound? (and if not, mend it)
@@ -794,3 +794,8 @@ coreAdd({
   save: () => ({ a: GORE.adapt, p: GORE.perf }), load: v => { if (v) { GORE.adapt = clamp(v.a | 0, -2, 0); GORE.perf = clamp(v.p | 0, -2, 0); } },
   on: { run: () => goreReset(), quality: () => { GORE.perf = 0; GORE.good = 0; }, lowMemory: d => { goreForget(); if (d && d.level >= 1 && GORE.pieces.length > 20) GORE.pieces.splice(0, GORE.pieces.length - 20); } }
 });
+// CORE v3: its level (stepped by CORE and by errors) and its detail (stepped by its own watch) read as one ladder;
+// CORE climbs the level back when there is room (it used to stay down until a new run)
+coreMeta('GORE', { ver: 3, climb: true, lv: () => goreLevel() * 4 + (GORE.perf + 3), adaptGet: () => GORE.adapt * 4 + GORE.perf,
+  load: () => G.splats.length, loadName: 'stains', zload: 0.15,
+  reset: () => { goreReset(); goreForget(); GORE.perf = 0; GORE.good = 0; GORE.errT.length = 0; GORE.offUntil = 0; } });

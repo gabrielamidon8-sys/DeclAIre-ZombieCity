@@ -149,7 +149,7 @@ function applyRung(i, why) {
   const r = LADDER[i], tierChanged = r[0] !== PERF.tier;
   PERF.rung = i; PERF.tier = r[0]; PERF.res = r[1];
   Object.assign(Q, TIER_Q[r[0]]); applyOverrides();
-  ZB.setDetail(Q.boss); SFX.setQuality(Q.audio);
+  ZB.setDetail(Q.boss); SFX.setQuality(sfxAutoQ(Q.audio));
   if (tierChanged && typeof coreEmit === 'function') coreEmit('quality', { tier: r[0], rung: i, why: why });   // the engines find their level again
   if (!Q.beat) { const a = $('app'); a.style.setProperty('--beat', '0'); VZ.css = ''; }
   resize();
@@ -172,6 +172,7 @@ function setMode(m) {
 /* ---------- governor: runs every frame, decides once a second ---------- */
 function perfFrame(now, rawIv, work) {
   PERF.frames++;
+  coreCost('WX', PERF.sec.wx || 0); coreCost('LIFE', PERF.sec.life || 0);   // (the hub's time budget: weather and plants report through PERF)
   if (document.hidden) return;
   const live = G.mode === 'play' || G.mode === 'title' || G.mode === 'cine';
   const w = PERF.win;
@@ -186,6 +187,7 @@ function perfFrame(now, rawIv, work) {
   w.iv.sort((a, b) => a - b); const p90 = w.iv[Math.floor(w.n * 0.9)];
   w.n = w.sum = w.work = 0; w.iv.length = 0;
   PERF.fps = Math.round(1000 / avg * 10) / 10; PERF.workMs = Math.round(wk * 10) / 10;
+  if (G.mode === 'play') PERF.playS = (PERF.playS || 0) + 1;   // (each window is about a second)
   if (PERF.mode !== 'auto') return;
   const T = 1000 / targetFps();
   const bad = p90 > T * 1.4 || avg > T * 1.18, good = avg < T * 1.08 && p90 < T * 1.3 && wk < T * 0.55;
@@ -205,6 +207,7 @@ function perfFrame(now, rawIv, work) {
       const from = PERF.rung, step = avg > T * 2 ? 2 : 1;
       // stepping down soon after stepping up means that rung is too much: wait longer before trying it again
       if (PERF.lastUp.rung === from && now - PERF.lastUp.t < 15000) PERF.upWait[from] = Math.min(240, (PERF.upWait[from] || 6) * 2);
+      perfHeatSaw(now);
       applyRung(Math.min(LADDER.length - 1, from + step), 'slow');
     }
   } else if (good) {
@@ -308,6 +311,7 @@ function perfCare() {
     if (pm && pm.jsHeapSizeLimit && pm.usedJSHeapSize / pm.jsHeapSizeLimit > 0.75) { trimCaches(1); noteRepair('Freed memory'); }
   }
   if (perfTicks % 10 === 0) trimCaches(0);   // every 20 s: keep caches inside the budget
+  try { perfHeatTick(); } catch (e) { }
   renderPerfPanel();
 }
 
@@ -349,3 +353,29 @@ function perfInit() {
 /* ---------- the panel lives in Settings > System (settings.js) ---------- */
 function fmtMB(b) { return b >= 1048576 ? (b / 1048576).toFixed(b >= 10485760 ? 0 : 1) + ' MB' : Math.round(b / 1024) + ' KB'; }
 perfInit();
+/* ---------- CORE v3: learning when this device runs hot ----------
+   Phones (and some thin laptops) slow down after a while of play as they heat up. When the governor has to step
+   down after minutes of a steady level, with nothing else changing, it notes how long into the session that was.
+   Once that has happened at about the same time in two sessions, it eases off one step just before that time instead
+   of stuttering into it, and it keeps checking the time against new sessions. */
+function perfHeatSaw(now) {
+  if (G.mode !== 'play' || !(PERF.playS > 240) || now - PERF.stableT < 180000 || PERF.heatSeen || typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.PERF) return;
+  PERF.heatSeen = true;
+  const o = learnOwn('PERF'), h = o.heat || (o.heat = []); h.push(Math.round(PERF.playS / 6) / 10); if (h.length > 4) h.shift(); learnDirty();
+}
+function perfHeatAt() {
+  if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.PERF) return 0;
+  const h = (learnOwn('PERF').heat || []).slice().sort((a, b) => a - b); if (h.length < 2) return 0;
+  return h[h.length - 1] / h[0] < 1.6 ? h[Math.floor(h.length / 2)] : 0;
+}
+function perfHeatTick() {
+  if (PERF.heatDone || PERF.mode !== 'auto' || G.mode !== 'play') return;
+  const at = perfHeatAt(); if (!at || !(PERF.playS / 60 >= at * 0.92) || PERF.rung >= LADDER.length - 1) return;
+  PERF.heatDone = true; applyRung(PERF.rung + 1, 'cooler');
+  coreLog('PERF learned this device starts to run hot after about ' + at.toFixed(1) + ' minutes of play; it eased off one step just before');
+}
+coreMeta('PERF', { ver: 2, adapts: 'the quality ladder', provides: ['governor', 'quality'], feats: { want: ['storage'] },
+  check: () => sprites.size > Math.max(600, Q.sprCap * 2.5) ? 'the sprite cache is far over budget (' + sprites.size + ')' : !(PERF.rung >= 0 && PERF.rung < LADDER.length) ? 'its quality rung went out of range' : '',
+  repair: () => { trimCaches(0); if (!(PERF.rung >= 0 && PERF.rung < LADDER.length)) applyRung(firstRung(PERF.start || 1), 'repair'); },
+  reset: () => trimCaches(1),
+  learned: () => { const out = []; if (PS.learned && PS.learned.key === PERF.key) { const r = LADDER[PS.learned.rung]; if (r) out.push('Settled on ' + TIER_NAMES[r[0]] + ' at ' + Math.round(RES_STEPS[r[1]] * 100) + '% on this device; the next launch starts there.'); } const at = perfHeatAt(); if (at) out.push('Runs hot after about ' + at.toFixed(1) + ' minutes of play here; it eases off a step just before.'); return out; } });

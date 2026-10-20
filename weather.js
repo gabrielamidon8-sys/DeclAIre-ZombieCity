@@ -37,6 +37,7 @@ function wxNext() {
   let r = Math.random() * tot, k = W8[0][0];
   for (const w of W8) { if (w[0] === WX.kind) continue; if (r < w[1]) { k = w[0]; break; } r -= w[1]; }
   WX.kind = k; WX.t = 45 + Math.random() * 60;
+  wxAhead(wxLocal(k, bioAt(cam.x, cam.y), WORLD.season));
 }
 // the global weather as it looks where you are standing
 function wxLocal(kind, bio, sea) {
@@ -664,3 +665,28 @@ function drawAtmosLit(vis) {
   }
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
 }
+/* CORE v3: what the weather learns. Every second spent in strong weather teaches it what each kind costs at full
+   density on this device (a blizzard, a sandstorm, a thunderstorm); when the next weather is chosen and what it
+   learned says it will not fit the frame, it starts thinner instead of building up and then being cut back. Its
+   density is a ladder CORE can step too (the same one the performance governor uses). */
+const wxStrength = () => Math.max(WX.rain || 0, WX.snow || 0, WX.sand || 0, WX.ash || 0, WX.fog || 0, WX.storm || 0);
+function wxLearn() {
+  const e = CORE.by.WX; if (!e || !(e.msSec > 0) || typeof LEARN === 'undefined' || !LEARN.ready || G.mode !== 'play') return;
+  const lv = wxLevel(); if (wxStrength() < 0.6 || lv < 0.2) return;
+  const o = learnOwn('WX'), k = WX.local || WX.kind, ms = e.msSec / lv; o.k = o.k || {};
+  o.k[k] = o.k[k] ? o.k[k] * 0.85 + ms * 0.15 : ms; if ((o.n = (o.n | 0) + 1) % 10 === 0) learnDirty();
+}
+function wxAhead(k) {
+  if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.WX || SET.weather !== 'auto' || G.mode !== 'play') return;
+  const o = learnOwn('WX'), full = o.k && o.k[k]; if (!full) return;
+  const add = full * wxLevel() - (CORE.by.WX.msAvg || 0);
+  if (add > learnFree() && PERF.wxScale > 0.26) { PERF.wxScale = Math.max(0.25, PERF.wxScale - 0.25); coreLog('WX starts the coming ' + k + ' thinner: it costs about ' + full.toFixed(1) + ' ms a frame at full density on this device'); }
+}
+coreMeta('WX', { ver: 2, provides: ['weather', 'wind', 'wetness'], sec: wxLearn,
+  lv: () => Math.round(wxLevel() * 4), adaptGet: () => Math.round(PERF.wxScale * 4), load: () => Math.round(wxStrength() * 10) + WXD.length, loadName: 'weather strength',
+  canTrim: () => SET.weather === 'auto' && PERF.wxScale > 0.26, trim: () => { if (SET.weather !== 'auto' || PERF.wxScale <= 0.26) return false; PERF.wxScale = Math.max(0.25, PERF.wxScale - 0.25); return true; },
+  boost: () => { if (PERF.wxScale >= 1) return false; PERF.wxScale = Math.min(1, PERF.wxScale + 0.25); return true; },
+  check: () => WXD.length > 600 ? 'its drifting debris piled up' : WXD.some(d => !(d.x === d.x && d.y === d.y)) ? 'a drifting leaf lost its place' : !(WX.wet >= 0 && WX.wet <= 1.5) ? 'its wetness went out of range' : '',
+  repair: () => { for (let i = WXD.length - 1; i >= 0; i--) if (!(WXD[i].x === WXD[i].x && WXD[i].y === WXD[i].y)) WXD.splice(i, 1); if (WXD.length > 600) WXD.length = 300; WX.wet = clamp(WX.wet || 0, 0, 1); },
+  reset: () => { WXD.length = 0; WX.splash = []; WX.strikes = []; WX.bolts = []; },
+  learned: () => { const o = learnOwn('WX'), ks = o.k ? Object.entries(o.k).sort((a, b) => b[1] - a[1]).slice(0, 3) : []; return ks.length ? ['At full density here: ' + ks.map(([k, v]) => k + ' ' + v.toFixed(1) + ' ms').join(', ') + '.'] : []; } });

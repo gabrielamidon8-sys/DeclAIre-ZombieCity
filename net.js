@@ -60,7 +60,7 @@ const netCan = {
 function netReset() {
   if (NET.ws) { try { NET.ws.onclose = null; NET.ws.close(); } catch (e) { } }
   Object.assign(NET, { role: null, ws: null, me: 1, status: 'off', started: false, hold: 0, md: 0, local: null, finishing: false, hits: [], zfx: [], shots: [], kills: [], evs: [],
-    round: 0, roundDl: 0, myRound: 0, myPicked: 0, roundPicked: [], rtt: 0, recon: 0, reconT: 0, target: null, hostVer: '', hostOk: false, hostNonce: '', lobbyRaw: [] });
+    round: 0, roundDl: 0, myRound: 0, myPicked: 0, roundPicked: [], rtt: 0, recon: 0, reconT: 0, target: null, hostVer: '', hostOk: false, hostNonce: '', lobbyRaw: [], snapAt: 0, ivMs: 0, jitMs: null });
   NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.zsent.clear(); NET.zst.clear(); NET.snapN = 0; NET.picked.clear(); NET.acked.clear(); NET.blastsDone.clear(); NET.pings.clear(); NET.marks = []; NET.lobby = [];
   $('app').classList.remove('coop'); netReconBanner(false);
 }
@@ -605,6 +605,7 @@ function netMakePuppet(e, B) {
 }
 const ZSTAT = ['burnT', 'poisonT', 'slowT', 'stun'];
 function netApply(s) {
+  netSnapClock();
   NET.md = s.md; NET.hold = s.md === 2 || s.md === 3 || s.md === 4 ? s.md : 0;
   G.wave = s.w; G.score = s.sc; G.kills = s.k; G.bestChain = Math.max(G.bestChain, s.bc || 0);
   // the host's wave clock (a teammate's game counts it down between snapshots)
@@ -628,8 +629,8 @@ function netApply(s) {
     let z = NET.zmap.get(nid);
     if (!z || z.dead) { z = netMakePuppet([nid, st[0], x, y, ZD[i + 3] * 10, ZD[i + 4] * 10, f, st[1], st[2]], s.B); if (!z) continue; z.r = st[1] / 10; if (st[2]) { z.shieldMax = 100; z.shield = st[2]; } }
     if (seen) seen.add(nid);
-    z.tx = x; z.ty = y; z.tang = ZD[i + 3] / 10; z.hp = ZD[i + 4] * 10;
-    if (Math.hypot(z.tx - z.x, z.ty - z.y) > 260) { z.x = z.tx; z.y = z.ty; }
+    netVel(z, x, y); z.tx = x; z.ty = y; z.tang = ZD[i + 3] / 10; z.hp = ZD[i + 4] * 10;
+    if (Math.hypot(z.tx - z.x, z.ty - z.y) > 260) { z.x = z.tx; z.y = z.ty; z.nvx = z.nvy = 0; }
     z.st.under = !!(f & 32); z.st.down = f & 64 ? 1 : 0; z.st.phased = !!(f & 128);
     z.frozen = f & 256 ? 1 : 0; z.stun = f & 256 ? 0.2 : 0; z.burnT = f & 512 ? 1 : 0; z.poisonT = f & 1024 ? 1 : 0; z.slowT = f & 2048 ? 0.2 : 0; z.buffT = f & 4096 ? 1 : 0;
     z.warn = f & 8192 ? 0.2 : 0; z.st.fuse = f & 16384 ? 0.3 : 0; z.st.surgeT = f & 32768 ? 1 : 0;
@@ -666,7 +667,7 @@ function netApply(s) {
     let o = NET.others.get(id);
     if (!o) { o = { id: id, x: q[1], y: q[2], r: 12, aim: 0, walk: 0, iframe: 0, dashT: 0, dashK: 'sprint', db: { stealthT: 0 }, flashT: 0, frozenT: 0, rootT: 0, jamT: 0, weapon: WEAPONS[0], col: netCol(id) }; NET.others.set(id, o); }
     const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.acct = info ? info.acct : undefined; o.col = info && info.col ? info.col : netCol(id);
-    o.tx = q[1]; o.ty = q[2]; o.aim = q[3] / 100; o.hp = q[4]; o.maxHp = q[5]; o.down = !!q[6]; o.dashT = q[7] ? 0.1 : 0; o.weapon = WEAPONS[q[8]] || o.weapon; o.rv = q[9] / 100 * 2.4; o.dashK = q[10] || 'sprint'; o.walk = q[11] / 10;
+    netVel(o, q[1], q[2]); o.tx = q[1]; o.ty = q[2]; o.aim = q[3] / 100; o.hp = q[4]; o.maxHp = q[5]; o.down = !!q[6]; o.dashT = q[7] ? 0.1 : 0; o.weapon = WEAPONS[q[8]] || o.weapon; o.rv = q[9] / 100 * 2.4; o.dashK = q[10] || 'sprint'; o.walk = q[11] / 10;
     if (Math.hypot(o.tx - o.x, o.ty - o.y) > 260) { o.x = o.tx; o.y = o.ty; }
   }
   for (const id of Array.from(NET.others.keys())) if (!live.has(id)) NET.others.delete(id);
@@ -719,13 +720,16 @@ function netClientUpdate(dt) {
   const p = G.p;
   if (!NET.hold) updPlayer(dt);
   else if (p) { p.fireCd -= dt; }
-  const k = Math.min(1, dt * 14);
+  // (CORE v3: each zombie and teammate is drawn a little ahead along the way it was moving, by about as long as the
+  // next snapshot takes on this link, and followed more softly when the link is jittery: smooth instead of stepping)
+  const k = Math.min(1, dt * netFollowK()), lead = netLead();
   for (const z of G.zs) {
     if (z.dead) continue;
-    z.x += (z.tx - z.x) * k; z.y += (z.ty - z.y) * k; z.ang = angLerp(z.ang, z.tang, k); z.flash = Math.max(0, z.flash - dt);
+    const tx = z.tx + (z.nvx || 0) * lead, ty = z.ty + (z.nvy || 0) * lead;
+    z.x += (tx - z.x) * k; z.y += (ty - z.y) * k; z.ang = angLerp(z.ang, z.tang, k); z.flash = Math.max(0, z.flash - dt);
     if (z.illusion) z.life = 1;
   }
-  for (const o of NET.others.values()) { o.x += (o.tx - o.x) * k; o.y += (o.ty - o.y) * k; if (o.flashT > 0) o.flashT -= dt; }
+  for (const o of NET.others.values()) { const tx = o.tx + (o.nvx || 0) * lead, ty = o.ty + (o.nvy || 0) * lead; o.x += (tx - o.x) * k; o.y += (ty - o.y) * k; if (o.flashT > 0) o.flashT -= dt; }
   for (const s of G.eshots) { s.x += s.vx * dt; s.y += s.vy * dt; }
   for (const h of G.haz) h.life -= dt;
   for (const q of G.picks) q.life -= dt;
@@ -1072,3 +1076,40 @@ $('coopHostBtn').addEventListener('click', netHost);
 $('coopStartBtn').addEventListener('click', () => { if (NET.role === 'host') netHostRun(); });
 $('coopLeave').addEventListener('click', () => { if (G.mode !== 'title' && G.p) toTitle(); else netLeave(); });
 $('coopJoinForm').addEventListener('submit', e => { e.preventDefault(); netJoin($('coopIp').value); });
+/* CORE v3: what co-op learns about the link. A teammate's game measures how often the host's snapshots really arrive
+   and how much that wobbles (the jitter); it draws each zombie and teammate a little ahead along the way it was moving,
+   by about as long as the next snapshot takes, and follows more softly on a jittery link. That is only how the
+   joiner's screen shows things: the host still decides every position, hit and kill. What it learned about this
+   network is kept, so the next game starts from it. */
+function netSnapClock() {
+  const t = performance.now();
+  if (NET.snapAt) {
+    const iv = t - NET.snapAt;
+    if (iv > 5 && iv < 1000) { NET.ivMs = NET.ivMs ? NET.ivMs * 0.92 + iv * 0.08 : iv; const dv = Math.abs(iv - NET.ivMs); NET.jitMs = NET.jitMs != null ? NET.jitMs * 0.92 + dv * 0.08 : dv; }
+    NET.snapDt = clamp(iv / 1000, 0.02, 0.4);
+  } else {
+    NET.snapDt = 0.066;
+    if (typeof LEARN !== 'undefined' && LEARN.ready && CORE.by.NET) { const o = learnOwn('NET'); if (o.iv) { NET.ivMs = o.iv; NET.jitMs = o.jit || 0; } }
+  }
+  NET.snapAt = t;
+  if (typeof LEARN !== 'undefined' && LEARN.ready && CORE.by.NET && t - (NET.learnT || 0) > 30000 && NET.ivMs) {
+    NET.learnT = t; const o = learnOwn('NET'); o.iv = o.iv ? o.iv * 0.7 + NET.ivMs * 0.3 : NET.ivMs; o.jit = o.jit != null ? o.jit * 0.7 + (NET.jitMs || 0) * 0.3 : (NET.jitMs || 0); o.rtt = NET.rtt || o.rtt; learnDirty();
+  }
+}
+// how fast something was moving between the last two snapshots (units a second, capped at a sprint)
+function netVel(o, x, y) {
+  if (o.tx == null || !(NET.snapDt > 0)) { o.nvx = o.nvy = 0; return; }
+  o.nvx = clamp((x - o.tx) / NET.snapDt, -900, 900); o.nvy = clamp((y - o.ty) / NET.snapDt, -900, 900);
+}
+// how far ahead to draw (seconds): the time since the last snapshot, up to one snapshot interval plus twice the
+// jitter, never more than 0.16 s, and nothing once the link has gone quiet for half a second
+function netLead() {
+  if (!NET.snapAt) return 0;
+  const age = (performance.now() - NET.snapAt) / 1000; if (age > 0.5) return 0;
+  return Math.min(0.16, age, ((NET.ivMs || 66) + 2 * (NET.jitMs || 0)) / 1000) * 0.85;
+}
+function netFollowK() { return clamp(14 - (NET.jitMs || 0) * 0.12, 9, 14); }
+coreMeta('NET', { ver: 2, adapts: 'how a teammate\'s screen follows the host, by the link', provides: ['coop'], feats: { want: ['websocket'], without: 'co-op runs through the app instead (the Android app brings its own)' },
+  learned: () => { const o = learnOwn('NET'); return o.iv ? ['On this network the host\'s snapshots arrive every ' + Math.round(o.iv) + ' ms with ' + Math.round(o.jit || 0) + ' ms of jitter' + (o.rtt ? ' and a ' + Math.round(o.rtt) + ' ms ping' : '') + '; a teammate\'s screen draws ' + Math.round(Math.min(160, (o.iv + 2 * (o.jit || 0))) * 0.85) + ' ms ahead to hide it.'] : ['Learns the link the first time this device joins a co-op game.']; },
+  check: () => NET.started && NET.role === 'client' && NET.snapAt && !(NET.ivMs >= 0) ? 'its snapshot clock went bad' : '',
+  repair: () => { NET.ivMs = 66; NET.jitMs = 0; NET.snapAt = 0; } });

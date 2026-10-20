@@ -553,3 +553,14 @@ function openBossDetail(d, seen) {
     t.append(h, pr); row.append(c, t); forms.appendChild(row);
   });
 }
+// CORE v3: the bosses rest until they are rebuilt for 2.0. The contract is ready for them: a self-test that every boss
+// and form has moves the boss engine knows, a check that a boss on the street keeps finite health and a place, a
+// repair that puts it back on its feet. Bosses will not learn anything that changes how they fight.
+coreMeta('BOSS', { ver: 2, provides: ['bosses'], noLearn: 'Learns nothing yet: the bosses rest until they are rebuilt for 2.0, and how a boss fights will never change with what a device learns.',
+  check: () => { const b = G.boss; if (!b || b.dead) return ''; return !(b.hp === b.hp && b.x === b.x && b.y === b.y) ? 'the boss lost its health or its place' : ''; },
+  repair: () => { const b = G.boss; if (!b || b.dead) return; if (!(b.hp === b.hp)) b.hp = (b.maxHp || 1000) * 0.5; if (!(b.x === b.x && b.y === b.y)) { const s = spawnPos(); b.x = s.x; b.y = s.y; b.vx = b.vy = 0; } },
+  selfTest: () => {
+    let n = 0, pass = 0, why = '';
+    for (const B of ZB.ROSTER.concat([ZB.OVERLORD])) for (const f of B.forms || []) { n++; if ((f.moves || []).length && f.moves.every(m => BOSS_MOVES[m])) pass++; else if (!why) why = (f.name || B.name) + ' has a move the boss engine does not know'; }
+    return { ok: n > 0 && pass === n, n: n, pass: pass, why: why };
+  } });

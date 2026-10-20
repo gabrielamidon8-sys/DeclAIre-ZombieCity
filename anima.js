@@ -1134,7 +1134,7 @@ function animaWatch(ms) {
   const now = performance.now(); if (now < ANIMA.watchT) return; ANIMA.watchT = now + 600;
   const budget = 1000 / targetFps() * 0.22, slow = PERF.fps && PERF.fps < targetFps() * 0.9;
   if (ANIMA.msAvg > budget && slow) { ANIMA.good = 0; if (ANIMA.adapt > -3) ANIMA.adapt--; }
-  else if (ANIMA.msAvg < budget * 0.5 && !slow) { if (++ANIMA.good >= 5) { ANIMA.good = 0; if (ANIMA.adapt < 0) ANIMA.adapt++; } }
+  else if (ANIMA.msAvg < budget * 0.5 && !slow) { if (++ANIMA.good >= 5 && coreRise('ANIMA')) { ANIMA.good = 0; if (ANIMA.adapt < 0) ANIMA.adapt++; } }
   else ANIMA.good = 0;
 }
 function animaReset() { ANIMA.corpses.length = 0; ANIMA.deadN = 0; }
@@ -1216,3 +1216,19 @@ coreAdd({
 });
 // what it does for the others: lets go of its frames when the crowd engine or the texture engine need memory back
 coreMeta('ANIMA', { helps: { SWARM: () => animaForget(), TEXEL: () => animaForget() } });
+// CORE v3: its cost by how many zombies it animates (live rigs and cached frames); a self-test that runs a handful of
+// zombies' clips through the rig and checks every joint comes out finite
+coreMeta('ANIMA', { ver: 2, lv: () => ANIMA.adapt + 3, adaptGet: () => ANIMA.adapt, load: () => (ANIMA.live | 0) + (ANIMA.cached | 0), loadName: 'zombies animated',
+  reset: () => { animaRepair(); animaForget(); ANIMA.good = 0; },
+  selfTest: () => {
+    const o = new Float32Array(AN), J = new Float32Array(NJ * 3); let n = 0, pass = 0, why = '';
+    for (let i = 0; i < ZR.length; i += Math.max(1, Math.floor(ZR.length / 6))) {
+      const m = ZR[i]; if (!m || !m.an) continue;
+      for (const ci of [0, 12, 24, 40]) {
+        n++;
+        try { animaEval(o, m, ci, 0.37, 1.3); animaFK(m.ad, o, J); let ok = true; for (let k = 0; k < J.length; k++) if (!(J[k] === J[k])) { ok = false; break; } if (ok) pass++; else if (!why) why = m.name + ' came out of clip ' + ci + ' broken'; }
+        catch (x) { if (!why) why = m.name + ': ' + String(x && x.message || x).slice(0, 60); }
+      }
+    }
+    return { ok: n > 0 && pass === n, n: n, pass: pass, why: n ? why : 'no zombies to test' };
+  } });

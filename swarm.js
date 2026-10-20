@@ -697,7 +697,7 @@ function swarmWatch() {
     if (SWARM.adapt > -3) SWARM.adapt--;
     else SWARM.capLive = Math.max(Math.round(SWARM.cap * 0.4), Math.round(SWARM.capLive * 0.92));
   } else if (cost < budget * 0.45 && !slow) {
-    if (++SWARM.good >= 6) { SWARM.good = 0; if (SWARM.capLive < SWARM.cap) SWARM.capLive = Math.min(SWARM.cap, Math.round(SWARM.capLive * 1.06) + 4); else if (SWARM.adapt < 0) SWARM.adapt++; }
+    if (++SWARM.good >= 6 && coreRise('SWARM')) { SWARM.good = 0; if (SWARM.capLive < SWARM.cap) SWARM.capLive = Math.min(SWARM.cap, Math.round(SWARM.capLive * 1.06) + 4); else if (SWARM.adapt < 0) SWARM.adapt++; }
   } else SWARM.good = 0;
 }
 
@@ -758,3 +758,7 @@ coreAdd({
 // draws only crowd pictures while the texture engine rests
 coreMeta('SWARM', { helps: { TEXEL: () => swarmForget() } });
 coreOn('engineDown', 'SWARM', d => { if (d && d.name === 'TEXEL') SWARM.partOff.full = performance.now() + 60000; });
+// CORE v3: the crowd's cost by how many are alive; CORE looks ahead when a horde sets off (zload: each zombie adds one)
+coreMeta('SWARM', { ver: 2, trimAny: true, lv: () => SWARM.adapt + 3, adaptGet: () => SWARM.adapt * 10000 + (SWARM.capLive | 0), load: () => G.zs.length, loadName: 'zombies', zload: 1,
+  alive: () => G.mode === 'play' && swarmUp() && G.zs.length > 0, stallS: 4,
+  reset: () => { swarmForget(); SWARM.good = 0; SWARM.adapt = clamp(SWARM.adapt | 0, -3, 0); swarmCaps(); } });

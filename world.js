@@ -733,6 +733,10 @@ function isoBox(f, L) {
 function strokeSegs(g, s) { g.beginPath(); for (let i = 0; i < s.length; i += 4) { g.moveTo(s[i], s[i + 1]); g.lineTo(s[i + 2], s[i + 3]); } g.stroke(); }
 function winterOn(c) { return WORLD.season === 3 && TEMPERATE[c.bio]; }
 function renderChunk(c) {
+  const tc = performance.now();
+  try { chunkPaint(c); } finally { const ms = performance.now() - tc; coreCost('WORLD', ms); WORLD.rfMs = (WORLD.rfMs || 0) + ms; worldLearn(ms); }
+}
+function chunkPaint(c) {
   // the picture is sharp at the scale it is shown at: SCL times the block's drawing units (kept under 2048 pixels)
   const sc = Q.chunkScale, px = Math.min(sc * c.k, 2048 / CH), can = document.createElement('canvas'); can.width = can.height = Math.round(CH * px);
   const g = can.getContext('2d'); g.scale(px, px); c.sc = sc; c.px = px;
@@ -787,12 +791,17 @@ const STREAM = { lx: 0, ly: 0, vx: 0, vy: 0 };
 function streamChunks(x0, y0, x1, y1) {
   STREAM.vx = STREAM.vx * 0.9 + (cam.x - STREAM.lx) * 0.1; STREAM.vy = STREAM.vy * 0.9 + (cam.y - STREAM.ly) * 0.1; STREAM.lx = cam.x; STREAM.ly = cam.y;
   if (PERF.workMs > 1000 / targetFps() * 0.7) return;
+  // (CORE v3: a block is only drawn ahead when what a block costs here fits the time the frame has left; with plenty
+  // to spare, two blocks)
+  const need = worldChunkMs(), free = learnFree(), many = free > need * 3 ? 2 : 1;
+  if (need && free < need * 1.1 && PERF.fps && PERF.fps < targetFps() * 0.97) return;
+  let built = 0;
   const pad = 200 + Math.min(400, Math.hypot(STREAM.vx, STREAM.vy) * 40);
   const ax = STREAM.vx >= 0 ? 1 : -1, ay = STREAM.vy >= 0 ? 1 : -1, ex = ax > 0 ? x1 + pad : x0 - pad, ey = ay > 0 ? y1 + pad : y0 - pad;
   const cand = [[ex, (y0 + y1) / 2], [(x0 + x1) / 2, ey], [ex, ey], [ex, ay > 0 ? y0 : y1], [ax > 0 ? x0 : x1, ey]];
   for (const [x, y] of cand) {
     const c = getChunk(Math.floor(x / CHS), Math.floor(y / CHS));
-    if (!c.can) { renderChunk(c); c.seen = frameNo; return; }
+    if (!c.can) { renderChunk(c); c.seen = frameNo; if (++built >= many) return; }
   }
 }
 // a soft-edged oval of colour (snow and sand drifts, shading): a radial gradient squeezed into shape
@@ -1874,3 +1883,23 @@ function waterLayer(c) {
   c.wcan = can; c.wsc = sc;
   return can;
 }
+/* CORE v3: what the city generator learns and checks. It times every block it draws, so streaming ahead only builds
+   a block when one fits in the frame (and two when there is plenty of room); it checks that its block cache stays
+   bounded and every block it drew has a picture; and at start it builds the same far-away block twice from the seed
+   and checks both come out the same (the city must be identical on every device and for everyone in co-op). */
+function worldLearn(ms) {
+  if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.WORLD) return;
+  const o = learnOwn('WORLD'), k = 'c' + Math.round((Q.chunkScale || 1) * 4);
+  o[k] = o[k] ? o[k] * 0.85 + ms * 0.15 : ms; o.n = (o.n | 0) + 1; if (o.n % 20 === 0) learnDirty();
+}
+function worldChunkMs() { if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.WORLD) return 0; const o = learnOwn('WORLD'); return o['c' + Math.round((Q.chunkScale || 1) * 4)] || 0; }
+function worldSig(c) { let h = c.rects.length * 31 + (c.bio ? c.bio.length : 0); for (const r of c.rects) h = (h * 33 + Math.round(r.x) * 7 + Math.round(r.y) * 13 + Math.round(r.w) + Math.round(r.h) * 3 + (r.k ? r.k.length : 0)) | 0; return h; }
+coreMeta('WORLD', { ver: 2, adapts: 'block sharpness by tier; streams ahead only what fits the frame', provides: ['city', 'water', 'districts'], lv: () => Math.round((Q.chunkScale || 1) * 4), load: () => WORLD.rf | 0, loadName: 'blocks drawn a frame',
+  check: () => chunks.size > 600 ? 'its block cache overflowed (' + chunks.size + ')' : '',
+  repair: () => { trimCaches(0); }, reset: () => { trimCaches(2); },
+  learned: () => { const ms = worldChunkMs(); return ms ? ['Drawing a block takes about ' + ms.toFixed(1) + ' ms here at this sharpness; it streams one ahead only when that fits the frame' + (learnFree() > ms * 3 ? ', and two at a time right now.' : '.')] : []; },
+  selfTest: () => {
+    const gw = GARAGE.wrecks, cx = 9001 + (WORLD.seed & 63), cy = -7003;
+    try { const a = worldSig(genChunk(cx, cy)), b = worldSig(genChunk(cx, cy)); GARAGE.wrecks = gw; return { ok: a === b, n: 1, pass: a === b ? 1 : 0, why: a === b ? '' : 'the same block came out two different ways from one seed' }; }
+    catch (x) { GARAGE.wrecks = gw; return { ok: false, n: 1, pass: 0, why: String(x && x.message || x).slice(0, 60) }; }
+  } });

@@ -343,7 +343,7 @@
     off.startRendering().then(function (buf) {
       if (RD.job === job) RD.job = null;
       if (tok !== RD.token || p.dead) return;
-      RD.renderMs = performance.now() - started; RD.chunks++;
+      RD.renderMs = performance.now() - started; RD.audioS = len; RD.chunks++;
       rPlace(p, buf, b0, b1, G.rec.ev);
       p.next = b1; rPump();
     }, function () { if (RD.job === job) RD.job = null; RD.errs++; });
@@ -431,6 +431,9 @@
   }
   var radioApi = {
     info: rInfo,
+    // CORE v3 learns how fast this device renders music and how much to keep ready ahead (24 s normally, up to 48)
+    renderStats: function () { return { chunks: RD.chunks, renderMs: RD.renderMs, audioS: RD.audioS || 0, late: RD.late, ahead: AHEAD }; },
+    ahead: function (v) { if (v > 0) AHEAD = Math.max(16, Math.min(48, v)); return AHEAD; },
     onChange: function (f) { RD.listeners.push(f); },
     mode: function (m) { if (m) rSetMode(m); return RD.mode; },
     channel: function (i) { if (i == null) return RD.ch; RD.ch = (i % 7 + 7) % 7; if (RD.mode !== 'radio') rSetMode('radio'); else rTune(); return RD.ch; },

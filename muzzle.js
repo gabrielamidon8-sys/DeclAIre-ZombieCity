@@ -9,7 +9,7 @@
    Modifications tint the fire with their colour. The flames are drawn once per gun (four variants each, so no two
    shots look the same) and kept as sprites; at night they are drawn again over the lit picture so they glow. Teammates'
    shots look the same as yours. */
-const MUZZLE = { spr: new Map(), smoke: [], brass: [], soft: null, made: 0, ms: 0, errT: [], offUntil: 0, shots: 0 };
+const MUZZLE = { spr: new Map(), smoke: [], brass: [], soft: null, made: 0, ms: 0, errT: [], offUntil: 0, shots: 0, adapt: 0 };
 // len/w: the flame's size (player units); prong: star points; cage: a flash hider's fan; round: a fireball; cone: a
 // shotgun's bloom; brake: side jets; gap: revolver cylinder jets; back: back-blast; light: [radius, strength, life]
 const MZ = {
@@ -110,7 +110,7 @@ function muzzleShot(o, w, a, x, y) {
   }
   if (P.dust && typeof ring === 'function') ring(x, y, 4 * PK, 34 * PK, 0.3, '196,186,166', 2);
   // smoke: a puff (or the launcher's back-blast cloud behind the shooter), drifting off on the wind
-  const mk = [0.45, 1, 1.5, 2][(TUNE.MUZZLE || 0) + 1], sm = MUZZLE.smoke, wx = (WX.wx || 0) * 22, wy = (WX.wy || 0) * 22, cap = Math.round((PERF.tier >= 2 ? 90 : 40) * mk);
+  const mk = [0.45, 1, 1.5, 2][(TUNE.MUZZLE || 0) + 1] * [0.4, 0.7, 1][clamp(MUZZLE.adapt | 0, -2, 0) + 2], sm = MUZZLE.smoke, wx = (WX.wx || 0) * 22, wy = (WX.wy || 0) * 22, cap = Math.round((PERF.tier >= 2 ? 90 : 40) * mk);
   const puffs = Math.round(P.smoke * (Q.lod >= 2 ? 0.5 : 1) * 1.6 * Math.min(1.4, mk) + Math.random() * 0.6);
   for (let i = 0; i < puffs && sm.length < cap; i++) {
     const back = P.back && i % 2 === 0, d = back ? -(26 + Math.random() * 18) * PK : (4 + Math.random() * 10) * PK, sp = (back ? -60 : 30) * (0.5 + Math.random());
@@ -231,3 +231,11 @@ coreAdd({
   repair: () => { MUZZLE.spr.clear(); MUZZLE.offUntil = 0; MUZZLE.errT.length = 0; muzzleReset(); },
   on: { run: () => muzzleReset(), lowMemory: () => MUZZLE.spr.clear() }
 });
+// CORE v3: a ladder of its own (full, about two thirds, under half the smoke and brass), stepped by CORE when the
+// frame runs late and climbed back when there is room; a check that keeps its lists finite and bounded
+coreMeta('MUZZLE', { ver: 2, climb: true, provides: ['muzzleFlash', 'smoke', 'brass'],
+  lv: () => MUZZLE.adapt + 2, adaptGet: () => MUZZLE.adapt, load: () => MUZZLE.smoke.length + MUZZLE.brass.length, loadName: 'puffs and casings',
+  canTrim: () => MUZZLE.adapt > -2, trim: () => { if (MUZZLE.adapt <= -2) return false; MUZZLE.adapt--; const cap = MUZZLE.adapt < -1 ? 30 : 60; if (MUZZLE.smoke.length > cap) MUZZLE.smoke.splice(0, MUZZLE.smoke.length - cap); return true; },
+  boost: () => { if (MUZZLE.adapt >= 0) return false; MUZZLE.adapt++; return true; },
+  check: () => MUZZLE.smoke.length > 400 || MUZZLE.brass.length > 400 ? 'its smoke or brass piled up' : MUZZLE.smoke.some(p => !(p.x === p.x && p.y === p.y)) ? 'a puff of smoke lost its place' : '',
+  reset: () => { muzzleReset(); MUZZLE.spr.clear(); MUZZLE.offUntil = 0; MUZZLE.errT.length = 0; } });

@@ -124,8 +124,32 @@ const ZCF = (function () {
     return REMARKS[i].replace('{n}', String(n));
   }
 
+  // the engine hub's self-test (CORE v3): the filter still catches what it should and lets ordinary names through.
+  // It reports only counts, never the words themselves.
+  function selfTest() {
+    const W = Array.from(WORD), pick = [], out = { n: 0, pass: 0, why: '' };
+    if (!W.length) return { ok: false, n: 1, pass: 0, why: 'no word list' };
+    for (let i = 0; i < W.length && pick.length < 8; i += Math.max(1, Math.floor(W.length / 8))) if (W[i].length >= 4) pick.push(W[i]);
+    const leet = w => w.replace(/a/g, '4').replace(/e/g, '3').replace(/o/g, '0').replace(/s/g, '5');
+    const dots = w => w.split('').join('.');
+    let caught = 0, leetN = 0, dotN = 0;
+    for (const w of pick) { if (isRude(w)) caught++; if (isRude(leet(w).toUpperCase())) leetN++; if (isRude(dots(w))) dotN++; }
+    const t = (ok, why) => { out.n++; if (ok) out.pass++; else if (!out.why) out.why = why; };
+    t(caught === pick.length, 'a listed word got through');
+    t(leetN >= Math.ceil(pick.length * 0.75), 'words hidden with numbers got through');
+    t(dotN >= Math.ceil(pick.length * 0.75), 'words split with dots got through');
+    t(['SURVIVOR', 'NIGHT OWL', 'Mail Carrier', 'Lucky 7', 'Bunker Rat'].every(n => !isRude(n) && !personal(n) && !reserved(n)), 'an ordinary name was refused');
+    t(personal('me@example.com') && personal('555 123 4567'), 'personal details got through');
+    t(reserved('ADMIN') && reserved('D3CLA1RE'), 'a studio name got through');
+    out.ok = out.pass === out.n; return out;
+  }
+  function reload() { if (D.word || D.sub) { SUB = unpack(D.sub); WORD = new Set(unpack(D.word)); MASK = unpack(D.mask).sort((a, b) => b.length - a.length); } }
+
   return {
     REMARKS: REMARKS,
+    selfTest: selfTest,
+    reload: reload,
+    size: () => ({ sub: SUB.length, word: WORD.size, mask: MASK.length }),
     setWords: setWords,
     unpack: unpack,
     get ready() { return SUB.length > 0 || WORD.size > 0; },

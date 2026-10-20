@@ -555,3 +555,12 @@ function buzz(ms) {
   if (!SET.vibrate) return;
   try { const n = window.ZCNative; if (n && n.vibrate) { n.vibrate(ms | 0); return; } if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { }
 }
+// CORE v3: the plants' cost by how many are moving, a ladder CORE can step (stiller plants, the same switch the
+// governor uses), a check that the moving plants and the birds stay finite and bounded
+coreMeta('LIFE', { ver: 2, provides: ['plants', 'birds', 'props'],
+  lv: () => vegLevel(), adaptGet: () => PERF.vegCut ? -1 : 0, load: () => WD.act.length, loadName: 'moving plants',
+  canTrim: () => SET.veg === 'auto' && !PERF.vegCut, trim: () => { if (SET.veg !== 'auto' || PERF.vegCut) return false; PERF.vegCut = true; return true; },
+  boost: () => { if (!PERF.vegCut) return false; PERF.vegCut = false; return true; },
+  check: () => WD.act.length > 4000 ? 'too many moving plants (' + WD.act.length + ')' : WD.birds.some(b => !(b.x === b.x && b.y === b.y)) ? 'a bird lost its place' : '',
+  repair: () => { for (let i = WD.birds.length - 1; i >= 0; i--) if (!(WD.birds[i].x === WD.birds[i].x && WD.birds[i].y === WD.birds[i].y)) WD.birds.splice(i, 1); if (WD.act.length > 4000) rebuildActive(); },
+  reset: () => rebuildActive() });

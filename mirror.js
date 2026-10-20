@@ -135,3 +135,9 @@ coreAdd({
   canTrim: () => mirrorLevel() > 0, trim: () => { if (MIRROR.adapt <= -2) return false; MIRROR.adapt--; return true; }, boost: () => { if (MIRROR.adapt >= 0) return false; MIRROR.adapt++; return true; },
   repair: () => { MIRROR.MA = null; MIRROR.offUntil = 0; MIRROR.errT.length = 0; }
 });
+// CORE v3: the reflection engine never stepped itself back up after a step down (only a new run did); now CORE climbs
+// it back when the frame has room and what it learned says the next level fits
+coreMeta('MIRROR', { ver: 2, provides: ['reflections', 'wetStreets'], feats: { want: ['webgl'], without: 'reflections are blended on the processor' }, climb: true,
+  lv: () => mirrorLevel(), adaptGet: () => MIRROR.adapt, load: () => Math.round((WX.wet || 0) * 10) + (MIRROR.on ? 1 : 0), loadName: 'wetness',
+  check: () => !(MIRROR.adapt <= 0 && MIRROR.adapt >= -2) ? 'its level went out of range' : MIRROR.on && MIRROR.MA && !(MIRROR.cw > 0) ? 'its reflection map lost its size' : '',
+  reset: () => { MIRROR.MA = null; MIRROR.offUntil = 0; MIRROR.errT.length = 0; MIRROR.adapt = clamp(MIRROR.adapt | 0, -2, 0); } });

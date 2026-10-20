@@ -389,7 +389,7 @@ function texelWatch() {
   const T = 1000 / targetFps();
   // a burst of new sprites is normal (a new wave, a new district); a steady cost of over a frame per second is not
   if (TEXEL.msAvg > T * 1.2 && PERF.fps && PERF.fps < targetFps() * 0.9) { if (++TEXEL.bad >= 3 && TEXEL.adapt > -2) { TEXEL.adapt--; TEXEL.bad = 0; } }
-  else if (TEXEL.msAvg < T * 0.2 && TEXEL.adapt < 0) { if (++TEXEL.good >= 20) { TEXEL.adapt++; TEXEL.good = 0; } }
+  else if (TEXEL.msAvg < T * 0.2 && TEXEL.adapt < 0) { if (++TEXEL.good >= 20 && coreRise('TEXEL')) { TEXEL.adapt++; TEXEL.good = 0; } }
   else { TEXEL.bad = Math.max(0, TEXEL.bad - 1); }
 }
 coreAdd({
@@ -398,3 +398,9 @@ coreAdd({
   level: () => ['plain', 'textured', 'textured, rim, 1.5x', 'full, 2x'][texelLevel()],
   sec: texelWatch, canTrim: () => texelLevel() > 0, trim: () => { if (TEXEL.adapt <= -3) return false; TEXEL.adapt--; return true; }, boost: () => { if (TEXEL.adapt >= 0) return false; TEXEL.adapt++; return true; }
 });
+// CORE v3: what a level costs it in sprite making, by how many sprites it had to make that second
+coreMeta('TEXEL', { ver: 3, provides: ['textures', 'sprites', 'ground'], feats: { want: ['offscreen'] },
+  lv: () => texelLevel(), adaptGet: () => TEXEL.adapt, load: () => { const m = TEXEL.made - (TEXEL._m || 0); TEXEL._m = TEXEL.made; return m; }, loadName: 'new sprites a second',
+  check: () => !(TEXEL.adapt <= 0 && TEXEL.adapt >= -3) ? 'its level went out of range' : sprites.size > Math.max(800, Q.sprCap * 3) ? 'its sprite cache overflowed (' + sprites.size + ')' : '',
+  repair: () => { if (sprites.size > Q.sprCap) trimCaches(0); TEXEL.adapt = clamp(TEXEL.adapt | 0, -3, 0); },
+  reset: () => { sprites.clear(); TEXEL.players.clear(); TEXEL.scratch.length = 0; TEXEL.offUntil = 0; TEXEL.errT.length = 0; } });

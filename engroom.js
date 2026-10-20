@@ -4,7 +4,10 @@
    parts and links to the other engines), and two controls: how hard it runs (Auto, Eco, Normal, Hard, Max) and what it
    runs on (CPU, GPU, Auto). When the ecosystem has locked a control it shows "Auto-lock" in purple, with the reason.
    It is behind a red warning: changes here override the automatic choices and can cost frame rate; the ecosystem
-   (CORE's watchdog and guard) puts anything that hurts the game back on Auto by itself. */
+   (CORE's watchdog and guard) puts anything that hurts the game back on Auto by itself.
+   1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
+   self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
+   whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
 /*__ENGSRC__*/
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
@@ -25,9 +28,9 @@ const viaPrism = what => () => {
 /* What each engine is made of, what "harder" and "lighter" mean for it, what it can run on, and its live numbers.
    files: its own source (for how intricate it is); parts: what it does, piece by piece. */
 const ENG_SPEC = {
-  CORE: { files: ['core'], parts: ['one shared frame', 'one time budget', 'message bus', 'watchdog', 'repair and cover', 'remembered levels', 'tuning and locks'], effort: false,
+  CORE: { files: ['core', 'learn'], parts: ['one shared frame', 'one time budget', 'message bus', 'capability registry', 'watchdog and heartbeats', 'learned repairs', 'cost models', 'ceilings', 'looking ahead', 'trust', 'self-tests', 'remembered levels', 'tuning and locks'], effort: false,
     effortWhy: 'CORE is the hub that runs this page and every repair: it costs almost nothing and must always run in full, so the ecosystem keeps it where it is.',
-    stats: () => [['Engines', CORE.list.length], ['Resting', CORE.list.filter(e => e.down).length], ['Locked', CORE.list.filter(e => e.lockUntil > performance.now()).length], ['Listeners', Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0)], ['Stepped down', CORE.trims.length], ['Log lines', CORE.log.length]] },
+    stats: () => [['Engines', CORE.list.length], ['Resting', CORE.list.filter(e => e.down).length], ['Locked', CORE.list.filter(e => e.lockUntil > performance.now()).length], ['Listeners', Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0)], ['Capabilities', Object.keys(coreCaps()).length], ['Sessions learned', LEARN.data ? LEARN.data.ses : 0]] },
   PERF: { files: ['perf'], parts: ['hardware check', 'quality tiers', 'resolution steps', 'frame cap', 'battery and heat care', 'cache trimming', 'loop watchdog'], effort: false,
     effortWhy: 'PERF is the governor that does the adapting for every other engine; how hard the game runs as a whole is Settings > Graphics > Graphics quality.',
     stats: () => [['Frame rate', PERF.fps ? Math.round(PERF.fps) + ' fps' : '…'], ['Target', Math.round(targetFps()) + ' fps'], ['Quality', TIER_NAMES[PERF.tier]], ['Resolution', Math.round((PERF.resLock || RES_STEPS[PERF.res]) * 100) + '%'], ['Battery saver', PERF.saver ? 'on' : 'off'], ['Self-repairs', PERF.repairs || 0]] },
@@ -36,11 +39,11 @@ const ENG_SPEC = {
     stats: () => [['Blocks built', chunks.size], ['Seed', WORLD.lastSeed || WORLD.seed || 0], ['District', WORLD.cur ? WORLD.cur.name : '—'], ['Season', ['Spring', 'Summer', 'Fall', 'Winter'][WORLD.season] || '—'], ['Scale', SCL > 1.2 ? 'real-world' : 'classic']] },
   FLOW: { files: ['game#flow'], parts: ['flow fields', 'wide paths for big zombies', 'push fields for hordes', 'reachability'],
     hard: 'refreshes the zombies\' paths more often (every 0.25 s on Hard, 0.18 s on Max instead of 0.35 s), so they turn the corner after you sooner', eco: 'refreshes the paths every 0.55 s, a little cheaper, a little slower to react',
-    stats: () => [['Grid', FF_N + ' × ' + FF_N], ['Field age', FF.ready ? Math.round((G.time - FF.t) * 1000) + ' ms' : '—'], ['Refresh', [0.55, 0.35, 0.25, 0.18][(TUNE.FLOW || 0) + 1] + ' s'], ['Wide fields', [G.needFB ? 'big' : '', G.needFS ? 'huge' : '', G.needFP ? 'push' : ''].filter(Boolean).join(', ') || 'none']] },
-  NET: { files: ['net'], parts: ['host and clients', 'snapshots', 'reconnects', 'shared clock', 'hits and kills', 'revives', 'markers'], effort: false,
+    stats: () => [['Grid', FF_N + ' × ' + FF_N], ['Field age', FF.ready ? Math.round((G.time - FF.t) * 1000) + ' ms' : '—'], ['Refresh', flowIv().toFixed(2) + ' s'], ['Wide fields', [G.needFB ? 'big' : '', G.needFS ? 'huge' : '', G.needFP ? 'push' : ''].filter(Boolean).join(', ') || 'none']] },
+  NET: { files: ['net'], parts: ['host and clients', 'snapshots', 'reconnects', 'shared clock', 'hits and kills', 'revives', 'markers', 'jitter-aware smoothing'], effort: false,
     effortWhy: 'Co-op has to run the same on every screen in the game (the same zombies, hits and clock at the same moment), so its timing is never turned up or down.',
-    stats: () => [['Role', NET.role || 'off'], ['Players', NET.started ? (NET.role === 'host' ? 1 + NET.peers.size : '2+') : 1], ['Ping', NET.started && NET.rtt ? Math.round(NET.rtt) + ' ms' : '—'], ['Zombies mirrored', NET.zmap ? NET.zmap.size : 0], ['Teammate rounds', NET.cosN || 0]] },
-  LOADER: { files: ['loader'], parts: ['loading screens', 'street warm-up', 'light warm-up', 'sprite and rig warm-up'], effort: false,
+    stats: () => [['Role', NET.role || 'off'], ['Players', NET.started ? (NET.role === 'host' ? 1 + NET.peers.size : '2+') : 1], ['Ping', NET.started && NET.rtt ? Math.round(NET.rtt) + ' ms' : '—'], ['Snapshots', NET.ivMs ? Math.round(NET.ivMs) + ' ms apart' : '—'], ['Jitter', NET.jitMs != null && NET.ivMs ? Math.round(NET.jitMs) + ' ms' : '—'], ['Zombies mirrored', NET.zmap ? NET.zmap.size : 0]] },
+  LOADER: { files: ['loader'], parts: ['loading screens', 'street warm-up', 'light warm-up', 'sprite and rig warm-up', 'time left', 'hang guard'], effort: false,
     effortWhy: 'LOADER only works behind the loading screens, never during play, so it has nothing to turn up or down.',
     stats: () => [['State', LOADING.on ? 'loading' : 'idle'], ['Progress', Math.round((LOADING.frac || 0) * 100) + '%']] },
   WX: { files: ['weather'], parts: ['rain and snow', 'storms and lightning', 'fog and sand', 'wind and gusts', 'seasons', 'puddles and breath'],
@@ -51,23 +54,23 @@ const ENG_SPEC = {
     stats: () => [['Plants moving', WD.act.length], ['Birds', WD.birds ? WD.birds.length : 0], ['Plant detail', ['still', 'light', 'full'][vegLevel()]]] },
   SFX: { files: ['sfx2', 'audio'], parts: ['synthesised guns', 'impacts and kills', 'ambience', 'district echoes', 'the clock\'s ticks'],
     hard: 'synthesises every sound at high quality', eco: 'synthesises sounds at low quality (less work for older phones)',
-    apply: k => { const q = k == null ? Q.audio : k < 0 ? 0 : k > 0 ? 2 : Q.audio; if (ENGR.sfxQ !== q) { ENGR.sfxQ = q; try { SFX.setQuality(SET.aq === 'auto' ? q : SET.aq === 'low' ? 0 : 2); } catch (x) { } } },
+    apply: k => { const q = k == null ? sfxAutoQ(Q.audio) : k < 0 ? 0 : k > 0 ? 2 : sfxAutoQ(Q.audio); if (ENGR.sfxQ !== q) { ENGR.sfxQ = q; try { SFX.setQuality(SET.aq === 'auto' ? q : SET.aq === 'low' ? 0 : 2); } catch (x) { } } },
     stats: () => { let h = {}; try { h = SFX.health(); } catch (x) { } return [['Audio', h.state || '—'], ['Quality', ['low', 'medium', 'high'][ENGR.sfxQ == null ? Q.audio : ENGR.sfxQ] || '—'], ['Late renders', h.late || 0]]; } },
-  RADIO: { files: ['radio'], parts: ['song writer', 'renderer on its own audio thread', '7 channels', 'your own music'], effort: false,
+  RADIO: { files: ['radio'], parts: ['song writer', 'renderer on its own audio thread', '7 channels', 'your own music', 'learned buffer'], effort: false,
     effortWhy: 'FM 66.6 writes and renders its songs ahead of time on its own audio thread, apart from the game, so it never competes with the frame.',
-    stats: () => { let n = ''; try { n = SFX.nowPlaying().name; } catch (x) { } return [['Now playing', n || '—']]; } },
-  MUTAGEN: { files: ['roster', 'mutations'], parts: ['the 2.0 roster', 'looks and builds', 'walks and abilities', 'the 1,000 old mutations (resting)'], effort: false,
+    stats: () => { let n = '', d = {}; try { n = SFX.nowPlaying().name; d = SFX.fm.renderStats(); } catch (x) { } return [['Now playing', n || '—'], ['Kept ready', (d.ahead || 24) + ' s'], ['Late chunks', d.late || 0]]; } },
+  MUTAGEN: { files: ['roster', 'mutations'], parts: ['the 2.0 roster', 'looks and builds', 'walks and abilities', 'integrity and rebuild', 'the 1,000 old mutations (resting)'], effort: false,
     effortWhy: 'MUTAGEN is data: it builds every zombie once at start, the same on every device.',
     stats: () => [['2.0 zombies', ZR.length], ['Identified', ZR.filter(m => found.has(m.id)).length], ['Resting', MUTS.length - ZR.length]] },
   BOSS: { files: ['bosses', 'bossai'], parts: ['50 bosses', 'mutating forms', 'the Snatcher', 'the Overlord'], effort: false,
     effortWhy: 'The bosses are switched off until they are rebuilt for 2.0, so there is nothing for this engine to do yet.',
     stats: () => [['Boss on the street', G.boss && !G.boss.dead ? 'yes' : 'none'], ['Status', typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF ? 'resting until rebuilt' : 'on']] },
-  ACCOUNT: { files: ['account', 'acct-core'], parts: ['accounts', 'AES-GCM saves', 'PBKDF2 keys', 'merging devices', 'maintenance status'], effort: false,
+  ACCOUNT: { files: ['account', 'acct-core'], parts: ['accounts', 'AES-GCM saves', 'PBKDF2 keys', 'merging devices', 'maintenance status', 'offline queue'], effort: false,
     effortWhy: 'Accounts and encryption are about keeping your progress safe, not about frame rate, so they always run in full.',
-    stats: () => [['Status', typeof ACCT !== 'undefined' ? ACCT.status : 'off']] },
+    stats: () => [['Status', typeof ACCT !== 'undefined' ? ACCT.status : 'off'], ['Save waiting', ACCT.pend ? 'yes' : 'no'], ['Score waiting', store.get('zc_pend_score', null) ? 'yes' : 'no']] },
   FILTER: { files: ['filter', 'filterdata'], parts: ['name checks', 'tricks with numbers and letters', 'personal details', 'studio names'], effort: false,
     effortWhy: 'The name filter keeps every name shown safe; it is never made lighter.',
-    stats: () => [['Status', 'on'], ['Checks', 'every name shown']] },
+    stats: () => { const z = ZCF.size(); return [['Status', 'on'], ['Checks', 'every name shown'], ['Lists', z.word + z.sub + z.mask + ' entries']]; } },
   LUX: { files: ['lux'], parts: ['lamp shadows', 'sun area light', 'light beams in fog', 'bounce light', 'bloom', 'pose shadows', 'self-repair'], procs: ['cpu', 'gpu'],
     hard: 'keeps one more level of shadows, light and bounce light than your quality sets, and stops it stepping itself down (Max keeps it at the top)', eco: 'draws one level less light and fewer shadows',
     gpuNo: viaPrism('Bounce light'), procWhat: 'bounce light (the path-traced light off walls and streets)',
@@ -93,10 +96,10 @@ const ENG_SPEC = {
     stats: () => [['Stains', G.splats.length], ['Level', goreLevel()], ['Bad stains thrown out', GORE.fixed || 0]] },
   MUZZLE: { files: ['muzzle'], parts: ['a fire for every gun', 'mod tints', 'sparks', 'smoke', 'brass and shells', 'flash light'],
     hard: 'keeps half as much smoke and brass again (Max: twice as much) on the street', eco: 'keeps less than half the smoke and brass',
-    stats: () => [['Flames', MUZZLE.spr ? MUZZLE.spr.size : 0], ['Smoke', MUZZLE.smoke ? MUZZLE.smoke.length : 0], ['Casings', MUZZLE.brass ? MUZZLE.brass.length : 0]] },
-  GARAGE: { files: ['garage'], parts: ['22 vehicles', 'liveries', 'wrecks', 'headlights and hazards', 'reflective glass', 'crashed aircraft'],
+    stats: () => [['Flames', MUZZLE.spr ? MUZZLE.spr.size : 0], ['Smoke', MUZZLE.smoke ? MUZZLE.smoke.length : 0], ['Casings', MUZZLE.brass ? MUZZLE.brass.length : 0], ['Ladder', ['under half', 'two thirds', 'full'][MUZZLE.adapt + 2]]] },
+  GARAGE: { files: ['garage'], parts: ['22 vehicles', 'liveries', 'wrecks', 'headlights and hazards', 'reflective glass', 'crashed aircraft', 'headlight ladder'],
     hard: 'gives both headlight beams of every lit car shadows', eco: 'drops the beams\' shadows and the tail lights\' glow',
-    stats: () => [['Vehicles moved', SWDYN.size]] },
+    stats: () => [['Vehicles moved', SWDYN.size], ['Lit cars', GARAGE.beams | 0], ['Headlights', GARAGE.adapt < 0 ? 'lighter' : 'full']] },
   SKYWAY: { files: ['skyway'], parts: ['elevated highways', 'interchanges', 'collapsed spans', 'deck shadows', 'fading underneath'], effort: false,
     effortWhy: 'The highways, their lamps and their shadows are built into each block\'s picture when the block is made, so there is nothing to run harder while you play (and almost no cost each frame).',
     stats: () => [['Highway lines known', SKY.rows.size + SKY.cols.size]] },
@@ -130,7 +133,7 @@ function engProcGet(name) { if (name === 'PRISM') return SET.prism === 'gpu' || 
 
 /* ---------- how intricate each engine is ---------- */
 function engIntricacy(name) {
-  const s = ENG_SPEC[name] || {}, e = CORE.by[name] || {}, src = typeof ENG_SRC !== 'undefined' ? ENG_SRC : {};
+  const e = CORE.by[name] || {}, s = ENG_SPEC[name] || e.spec || {}, src = typeof ENG_SRC !== 'undefined' ? ENG_SRC : {};
   let lines = 0, fns = 0, com = 0;
   for (const f of s.files || []) { const v = src[f]; if (v) { lines += v[0]; fns += v[1]; com += v[2]; } }
   const parts = (s.parts || []).length, links = (e.needs || []).length + (e.covers || []).length + (e.helps ? Object.keys(e.helps).length : 0);
@@ -179,7 +182,7 @@ function engBuild() {
   top.textContent = ''; tools.textContent = ''; grid.textContent = ''; ENGR.cards.clear();
   // the ecosystem at a glance
   const meters = el('div', 'eng-meters');
-  for (const [id, k] of [['emFps', 'Frame rate'], ['emMs', 'Frame time'], ['emBudget', 'Engines use'], ['emHealth', 'Ecosystem']]) { const m = el('div', 'eng-meter'); m.append(el('small', null, k), el('b', null, '…')); m.lastChild.id = id; meters.append(m); }
+  for (const [id, k] of [['emFps', 'Frame rate'], ['emMs', 'Frame time'], ['emBudget', 'Engines use'], ['emHealth', 'Ecosystem'], ['emLearn', 'Learned here']]) { const m = el('div', 'eng-meter'); m.append(el('small', null, k), el('b', null, '…')); m.lastChild.id = id; meters.append(m); }
   const bar = el('div', 'eng-budget'); bar.id = 'engBudget'; bar.setAttribute('aria-hidden', 'true');
   const legend = el('p', 'eng-legend'); legend.id = 'engLegend';
   top.append(meters, bar, legend);
@@ -197,7 +200,16 @@ function engBuild() {
     sort.append(b);
   }
   const reset = el('button', 'btn small eng-reset', 'Everything back to Auto'); reset.type = 'button'; reset.addEventListener('click', () => { SFX.click(); engResetAll(); });
-  tools.append(seg, sort, reset);
+  // forgetting what was learned takes two presses (it starts every engine learning this device again)
+  const forget = el('button', 'btn small eng-forget', 'Forget what they learned'); forget.type = 'button';
+  forget.addEventListener('click', () => {
+    SFX.click();
+    if (!forget.classList.contains('arm')) { forget.classList.add('arm'); forget.textContent = 'Press again to forget'; clearTimeout(ENGR.fgT); ENGR.fgT = setTimeout(() => { forget.classList.remove('arm'); forget.textContent = 'Forget what they learned'; }, 4000); return; }
+    clearTimeout(ENGR.fgT); forget.classList.remove('arm'); forget.textContent = 'Forget what they learned';
+    learnForget(); toast('Engine room', 'The engines forgot this device and start learning it again', '#c86bff');
+    for (const n of ENGR.cards.keys()) engCard(n, true); engLive();
+  });
+  tools.append(seg, sort, reset, forget);
   for (const e of CORE.list) { const c = el('article', 'eng-card'); c.dataset.name = e.name; grid.append(c); ENGR.cards.set(e.name, c); engCard(e.name, true); }
   engOrder();
 }
@@ -219,6 +231,9 @@ function engCard(name, full) {
     const spark = document.createElement('canvas'); spark.className = 'ec-spark'; spark.setAttribute('aria-hidden', 'true'); c.append(spark);
     c.append(el('p', 'ec-does', e.does || ''));
     const st = el('dl', 'ec-stats'); c.append(st);
+    c.append(engTraits(name));
+    const lb = el('div', 'ec-learn'); lb.append(el('h4', null, 'Learned on this device'), el('div', 'ec-lines')); c.append(lb);
+    c.append(el('p', 'ec-facts'));
     const I = engIntricacy(name), ib = el('div', 'ec-intri');
     const meter = el('div', 'ec-imeter'); const fill = el('i'); fill.style.width = (I.score * 10) + '%'; meter.append(fill);
     const il = el('div', 'ec-itext'); il.append(el('b', null, 'How intricate: ' + I.score.toFixed(1) + ' / 10 · ' + I.word), el('span', null, (I.lines ? I.lines.toLocaleString() + ' lines of code · ' + I.fns + ' functions · ' : '') + I.parts + ' parts · linked to ' + I.links + ' engine' + (I.links === 1 ? '' : 's')));
@@ -238,7 +253,8 @@ function engCard(name, full) {
     c.append(el('div', 'ec-msg'));
     // details: its parts and who it works with
     const det = document.createElement('details'); det.className = 'ec-det';
-    const sum = document.createElement('summary'); sum.textContent = 'Parts, links and history'; det.append(sum);
+    const sum = document.createElement('summary'); sum.textContent = 'About, parts, links and history'; det.append(sum);
+    det.append(engAbout(name));
     const pp = el('ul', 'ec-parts'); for (const p of s.parts || []) pp.append(el('li', null, p)); det.append(pp);
     const links = [];
     if (e.needs && e.needs.length) links.push('Needs ' + e.needs.join(', ') + ' (if one of them rests, ' + name + ' adapts).');
@@ -297,6 +313,11 @@ function engCardLive(name) {
   c.dataset.ctl = want;
   const msg = c.querySelector('.ec-msg');
   if (msg) { const lines = engMessage(name), key = lines.map(l => l[1]).join('|'); if (msg.dataset.k !== key) { msg.dataset.k = key; msg.textContent = ''; for (const [cls, t] of lines) msg.append(el('p', cls, t)); } }
+  // what it learned, its trust, its self-test and whether this device has what it needs (every other second)
+  if (full2(c)) {
+    const box = c.querySelector('.ec-lines'); if (box) { const L = learnSummary(name), k = L.join('|'); if (box.dataset.k !== k) { box.dataset.k = k; box.textContent = ''; for (const t of L.length ? L : ['Nothing yet: it learns from each second of play.']) box.append(el('p', null, t)); } }
+    const fx = c.querySelector('.ec-facts'); if (fx) { const tr = learnTrust(name), cm = coreCompat(e), t = e.test, txt = 'Trust ' + Math.round(tr * 100) + '% · ' + (t ? 'self-test ' + (t.ok ? 'passed ' + t.pass + '/' + t.n : 'failed: ' + t.why) : e.selfTest ? 'self-test pending' : 'no self-test') + ' · runs here ' + (cm.ok === 'full' ? 'fully' : cm.ok === 'part' ? 'partly: ' + cm.why : 'not at all: ' + cm.why) + (e.climbs ? ' · climbed back ' + e.climbs + '×' : ''); if (fx.textContent !== txt) fx.textContent = txt; fx.className = 'ec-facts' + (tr < 0.5 ? ' low' : ''); }
+  }
   const hist = c.querySelector('.ec-hist');
   if (hist) { const mine = CORE.log.filter(l => l.msg.indexOf(name) >= 0).slice(-3).reverse(); const t = mine.length ? 'Lately: ' + mine.map(l => new Date(l.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + l.msg).join(' · ') : 'Nothing has happened to ' + name + ' this session: no errors, no repairs, no locks.'; if (hist.textContent !== t) hist.textContent = t; }
 }
@@ -321,6 +342,7 @@ function engLive() {
   set('emBudget', tot.toFixed(1) + ' ms' + (fms ? ' · ' + Math.round(tot / fms * 100) + '%' : ''));
   const down = CORE.list.filter(e => e.down).length, locked = CORE.list.filter(e => e.lockUntil > performance.now()).length, mending = CORE.list.filter(e => e.health === 'mending').length;
   set('emHealth', down ? down + ' resting' : mending ? mending + ' mending' : locked ? locked + ' locked' : 'All ' + CORE.list.length + ' sound', down ? 'bad' : mending || locked ? 'warn' : 'ok');
+  { const d = LEARN.data || { e: {} }, n = Object.values(d.e).reduce((a, r) => a + Object.keys(r.c || {}).length + Object.keys(r.r || {}).length + Object.keys(r.o || {}).length, 0); set('emLearn', n + ' lessons', n ? 'ok' : ''); }
   // the budget bar: each engine's share of the frame, the costliest named
   const bar = $('engBudget');
   if (bar) {
@@ -345,3 +367,36 @@ function engLive() {
 }
 // a lock from the ecosystem while the room is shut still reaches the player
 coreOn('engineLocked', 'ENGINE ROOM', d => { if (!ENGR.open) toast('Engine room', d.name + ' was put back on Auto', '#c86bff'); });
+const full2 = c => { c._n = (c._n || 0) + 1; return c._n % 2 === 1; };
+/* ---------- CORE v3: the traits row and "About" ---------- */
+const TRAITS = [
+  ['adapts', 'Adapts', 'Steps itself up and down with the frame and the device'],
+  ['repairs', 'Self-repairs', 'Checks itself and has fixes CORE can use'],
+  ['learns', 'Learns', 'Learns something about this device and uses it'],
+  ['covers', 'Covers', 'Covers for another engine, or another covers for it'],
+  ['beats', 'Heartbeat', 'Restarted if it goes quiet while it should be working'],
+  ['tested', 'Self-test', 'Tests itself when the game starts'],
+  ['compat', 'Compatible', 'Says what it needs from the device and what it provides to the others']
+];
+function engTraits(name) {
+  const e = CORE.by[name], a = coreAudit(name), row = el('div', 'ec-traits'); row.setAttribute('aria-label', name + ': traits');
+  for (const [k, l, d] of TRAITS) {
+    const on = !!a[k], t = el('span', 'ec-trait' + (on ? ' on' : ''), l);
+    let why = d;
+    if (k === 'learns' && !on) why = e.noLearn || 'Nothing to learn yet';
+    if (k === 'covers') why = (e.covers && e.covers.length ? 'Covers for ' + e.covers.join(', ') + '. ' : '') + (a.coveredBy.length ? 'Covered by ' + a.coveredBy.join(', ') + '.' : '') || 'Works on its own';
+    if (k === 'beats' && on) why = e.heart || 'CORE restarts it if it reports no work for a few seconds while it should be running';
+    if (k === 'compat' && e.provides) why = 'Provides ' + e.provides.join(', ') + '. ' + coreCompat(e).why[0].toUpperCase() + coreCompat(e).why.slice(1) + '.';
+    t.title = why; row.append(t);
+  }
+  return row;
+}
+function engAbout(name) {
+  const D = (typeof ENG_DOCS !== 'undefined' && ENG_DOCS[name]) || null, box = el('div', 'ec-about');
+  if (!D) { box.append(el('p', null, CORE.by[name].does || '')); return box; }
+  if (D.title) box.append(el('b', 'ec-epithet', D.title));
+  if (D.character) box.append(el('p', 'ec-char', D.character));
+  for (const [k, l] of [['adapts', 'Adapts'], ['repairs', 'Repairs itself'], ['learns', 'Learns'], ['works', 'Works with'], ['runs', 'Runs on']]) if (D[k]) { const p = el('p', null); p.append(el('em', null, l + ': '), document.createTextNode(D[k])); box.append(p); }
+  return box;
+}
+

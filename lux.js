@@ -521,7 +521,7 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
     if (lq.bloom && (WX.rain > 0.08 || WX.snow > 0.08) && wxLevel() > 0 && night > 0.15) { luxGlints(lq); ctx.globalAlpha = 0.85 * night; ctx.drawImage(LUX.G1, 0, 0, cv.width, cv.height); }
   }
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  LUX.live = true;
+  LUX.live = true; coreBeat('LUX');
 }
 function luxGlints(lq) {
   const g = LUX.g1, w = LUX.G1.width, h = LUX.G1.height, k = DPR * lq.res * w / LUX.cw, sc = Math.min(W, H) / 480;
@@ -557,7 +557,7 @@ function luxWatch(ms) {
   const T = 1000 / targetFps(), budget = T * (0.2 + 0.05 * Math.min(2, LUX.level));
   LUX.budget = budget;
   if (LUX.msAvg > budget && PERF.fps && PERF.fps < targetFps() * 0.95) { if (++LUX.bad >= 2 && LUX.adapt > -3) { LUX.adapt--; LUX.bad = 0; } }
-  else if (LUX.msAvg < budget * 0.45 && LUX.adapt < 0) { if (++LUX.bad >= 12) { LUX.adapt++; LUX.bad = 0; } }
+  else if (LUX.msAvg < budget * 0.45 && LUX.adapt < 0) { if (++LUX.bad >= 12 && coreRise('LUX')) { LUX.adapt++; LUX.bad = 0; } }
   else LUX.bad = Math.max(0, LUX.bad - 1);
   if (LUX.offUntil && now >= LUX.offUntil) { LUX.offUntil = 0; LUX.adapt = Math.min(LUX.adapt, -1); }
 }
@@ -873,3 +873,11 @@ coreAdd({
   canTrim: () => LUX.level > 0, trim: () => { if (LUX.adapt <= -3) return false; LUX.adapt--; LUX.A = null; return true; }, boost: () => { if (LUX.adapt >= 0) return false; LUX.adapt++; LUX.A = null; return true; },
   repair: () => { LUX.A = null; LUX.offUntil = 0; LUX.errT.length = 0; }
 });
+// CORE v3: how the hub reads, steps, checks and teaches the lighting engine
+coreMeta('LUX', { ver: 4, provides: ['light', 'shadows', 'bloom', 'sun'], feats: { want: ['offscreen'] },
+  lv: () => LUX.level | 0, adaptGet: () => LUX.adapt, load: () => (CORE.frame.lights || []).length, loadName: 'lights',
+  alive: () => G.mode === 'play' && SET.lux !== 'off' && !(LUX.offUntil > performance.now()), beatOwn: true,
+  check: () => !(LUX.adapt <= 0 && LUX.adapt >= -3) ? 'its level went out of range' : LUX.live && LUX.A && !(LUX.cw > 0) ? 'its light map lost its size' : '',
+  reset: () => { LUX.adapt = clamp(LUX.adapt | 0, -3, 0); LUX.A = null; LUX.offUntil = 0; LUX.errT.length = 0; LUX.fx.length = 0; LUX.bad = 0; try { luxWarm(); } catch (x) { } },
+  selfTest: () => { const n = 2, a = LUXQ.length === 5 && LUXQ.every(q => q.res > 0 && q.lights >= 0), b = typeof luxLevelNow('auto') === 'number'; return { ok: a && b, n: n, pass: (a ? 1 : 0) + (b ? 1 : 0), why: a ? (b ? '' : 'it could not pick a level') : 'its quality table is broken' }; } });
+

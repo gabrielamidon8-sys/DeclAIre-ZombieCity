@@ -19,6 +19,8 @@
    - Updates: the level each engine settled at on this device is remembered with the game's and the engine's
      version. Next time it starts where it was steady; after an update (a new version of the game or of that engine)
      it starts fresh and finds its level again.
+   - Learning (CORE v3, learn.js): what each engine costs here at each level and load, ceilings it could not hold,
+     which repair works for which problem, trust, heartbeats, self-tests and what each engine needs from the device.
    Nothing here may stop the game: every hook and listener call is guarded. */
 const CORE = {
   list: [], by: {}, sec: 0, lastSec: 0, trims: [], bus: new Map(), log: [], watchT: 0, saveT: 0, verified: false, saved: null,
@@ -30,7 +32,8 @@ const CORE = {
 //      problem, notes() -> '', repair(), isolate(), restore(), save() -> value, load(value), on: { event: fn } }
 function coreAdd(e) {
   if (CORE.by[e.name]) return CORE.by[e.name];
-  e.ms = 0; e.msAvg = 0; e.errs = 0; e.repairs = e.repairs || 0; e.lastErr = ''; e.health = 'ok'; e.ver = e.ver || 1; e.bad = 0; e.down = false; e.downs = 0;
+  e.ms = 0; e.msAvg = 0; e.msSec = 0; e.errs = 0; e.repairs = e.repairs || 0; e.lastErr = ''; e.health = 'ok'; e.ver = e.ver || 1; e.bad = 0; e.down = false; e.downs = 0;
+  e.still = 0; e._clean = 0; e.beatSec = false; e.inc = null; e.holdRise = 0; e.riseWhy = ''; e.stalled = ''; e.testBad = '';
   CORE.list.push(e); CORE.by[e.name] = e;
   if (e.on) for (const k in e.on) coreOn(k, e.name, e.on[k]);
   return e;
@@ -65,48 +68,63 @@ function coreTick(now) {
   if (now - CORE.lastSec < 1000) return; CORE.lastSec = now;
   const n = Math.max(1, CORE.fc); CORE.fc = 0;
   for (const e of CORE.list) {
-    const ms = e.ms / n; e.msAvg = e.msAvg ? e.msAvg * 0.6 + ms * 0.4 : ms; e.ms = 0; if (e.sec) coreCall(e, 'sec');
+    const ms = e.ms / n; e.msSec = ms; e.beatSec = e.beatOwn ? !!e._beat : e.ms > 0 || !!e._beat; e._beat = false;
+    e.msAvg = e.msAvg ? e.msAvg * 0.6 + ms * 0.4 : ms; e.ms = 0; if (e.sec) coreCall(e, 'sec');
     // the last minute of what it cost, for the engine room's graphs
     (e.hist || (e.hist = [])).push(Math.round(e.msAvg * 100) / 100); if (e.hist.length > 60) e.hist.shift();
   }
   CORE.fps = typeof PERF !== 'undefined' ? PERF.fps : 0;
   try { coreTuneTick(now); } catch (x) { }
   if (!CORE.verified) coreVerify();
+  // CORE v3 (learn.js): costs, ceilings, heartbeats and trust, every second; the sound and the radio every 5 seconds
+  try { learnTick(now); } catch (x) { coreHurt('CORE', x); }
+  if ((CORE.sec = (CORE.sec || 0) + 1) % 5 === 0) { try { learnSfx(); learnRadio(); } catch (x) { } }
   if (now - CORE.watchT >= 2000) { CORE.watchT = now; try { coreWatch(now); } catch (x) { } }
   if (now - CORE.saveT >= 30000) { CORE.saveT = now; coreSave(); }
 }
 /* ---------- the watchdog ---------- */
+// Every two seconds. A problem (a run of errors, the engine's own check, a heartbeat gone quiet, a failed self-test)
+// opens an incident; CORE then tries the fixes it has learned work best for that kind of problem on this device
+// (its own repair, help from the others, a step down, a fresh start; at most three), then rests it. The fix that
+// was tried last when the problem cleared gets the credit, so the next incident starts with what works.
 function coreWatch(now) {
   for (const e of CORE.list) {
     if (e.down) {
       if (now >= e.downUntil) {
-        coreCall(e, 'restore'); e.down = false; e.health = 'back'; e.bad = 0; e.errsSeen = e.errs;
+        coreCall(e, 'restore'); e.down = false; e.health = 'back'; e.bad = 0; e.errsSeen = e.errs; e.still = 0;
         coreLog(e.name + ' is back after resting'); coreEmit('engineUp', { name: e.name });
       }
       continue;
     }
-    // a run of errors since the last look, or the engine's own check finding something wrong
+    // a run of errors since the last look, the engine's own check, a heartbeat gone quiet, a self-test still failing
     let problem = '';
     if (e.errs - (e.errsSeen || 0) >= 3) problem = (e.errs - (e.errsSeen || 0)) + ' errors (' + e.lastErr + ')';
     e.errsSeen = e.errs;
     if (!problem && e.check) problem = String(coreCall(e, 'check', '') || '');
-    if (!problem) { if (e.bad) coreLog(e.name + ' is sound again'); e.bad = 0; if (e.health !== 'degraded' && e.health !== 'adapting') e.health = e.health === 'back' || e.repairs ? 'mended' : 'ok'; continue; }
+    if (!problem && e.stalled) { problem = e.stalled; e.stalled = ''; }
+    if (!problem && e.testBad) { const t = learnTestOne(e); if (t && !t.ok) problem = 'its self-test failed (' + t.why + ')'; }
+    if (!problem) {
+      if (e.inc) learnCredit(e);
+      if (e.bad) coreLog(e.name + ' is sound again'); e.bad = 0;
+      if (e.health !== 'degraded' && e.health !== 'adapting') e.health = e.health === 'back' || e.repairs ? 'mended' : 'ok';
+      continue;
+    }
     e.bad++; e.health = 'mending';
-    if (e.bad === 1) { coreLog('CORE: ' + e.name + ': ' + problem + ' - repairing'); if (e.repair) { coreCall(e, 'repair'); e.repairs++; } }
-    else if (e.bad === 2) {
-      // its own repair did not hold: the engines that can help, help
-      let helped = 0;
-      for (const h of CORE.list) if (h !== e && !h.down && h.helps && typeof h.helps[e.name] === 'function') { try { h.helps[e.name](); helped++; coreLog(h.name + ' helped ' + e.name + ' (' + problem + ')'); } catch (x) { coreHurt(h.name, x); } }
-      if (!helped && e.repair) { coreCall(e, 'repair'); e.repairs++; }
-    } else if (e.isolate) {
-      // still failing: rest it (a minute, longer each time), let the others cover for it and adapt
+    if (!e.inc) learnIncident(e, problem, now);
+    const s = learnPick(e);
+    if (s === 'rest') {
+      // its best fixes did not hold: rest it (a minute, longer each time), let the others cover for it and adapt
+      learnTried(e, 'rest'); learnRested(e); e.inc = null;
       e.downs++; e.down = true; e.downUntil = now + 60000 * Math.min(5, e.downs); e.health = 'resting'; e.bad = 0;
       coreCall(e, 'isolate');
       const cov = CORE.list.filter(c => c.covers && c.covers.indexOf(e.name) >= 0 && !c.down).map(c => c.name);
       coreLog(e.name + ' is resting (' + problem + ')' + (cov.length ? '; ' + cov.join(', ') + ' cover' + (cov.length > 1 ? '' : 's') + ' for it' : ''));
       if (typeof noteRepair === 'function') noteRepair(e.name + ' is resting for a moment');
       coreEmit('engineDown', { name: e.name, why: problem });
-    }
+    } else if (s) {
+      learnTried(e, s);
+      if (!learnApply(e, s, problem, now)) coreLog('CORE: ' + e.name + ': ' + problem + ' (' + LEARN_WORDS[s] + ' had nothing to do)');
+    } else if (e.bad >= 6) { e.inc.tried.length = 0; e.bad = 0; }   // nothing left to try and it cannot rest: start over
   }
 }
 // is this engine up? (engines ask before leaning on another one)
@@ -120,10 +138,10 @@ function coreLinks() {
   // the governor frees memory for anyone short of it; the loader warms the lighting and the sprites again
   coreMeta('PERF', { helps: { TEXEL: mem, GORE: mem, MUZZLE: mem, TRACER: mem, AURA: mem, MIRROR: mem, SKYWAY: mem, GARAGE: mem, LUX: mem, SWARM: () => { mem(); if (typeof swarmForget === 'function') swarmForget(); } } });
   coreMeta('LOADER', { helps: { LUX: () => { LUX.A = null; LUX.offUntil = 0; if (typeof luxWarm === 'function') luxWarm(); }, TEXEL: () => { if (typeof sprites !== 'undefined') sprites.clear(); } } });
-  if (typeof LUX !== 'undefined') coreMeta('LUX', Object.assign({ ver: 3, needs: ['WORLD'], covers: ['PRISM', 'AURA'], save: () => LUX.adapt, load: lvl(LUX, 'adapt') }, rest(LUX), { restore: () => { LUX.offUntil = 0; LUX.A = null; } }));
-  if (typeof PRISM !== 'undefined') coreMeta('PRISM', Object.assign({ ver: 3, needs: ['LUX'], save: () => PRISM.adapt, load: lvl(PRISM, 'adapt') }, rest(PRISM)));
-  if (typeof MIRROR !== 'undefined') coreMeta('MIRROR', Object.assign({ ver: 1, needs: ['LUX', 'PRISM', 'WORLD'], save: () => MIRROR.adapt, load: lvl(MIRROR, 'adapt') }, rest(MIRROR)));
-  if (typeof TEXEL !== 'undefined') coreMeta('TEXEL', Object.assign({ ver: 2, needs: ['MUTAGEN'], save: () => TEXEL.adapt, load: lvl(TEXEL, 'adapt') }, rest(TEXEL)));
+  if (typeof LUX !== 'undefined') coreMeta('LUX', Object.assign({ needs: ['WORLD'], covers: ['PRISM', 'AURA'], save: () => LUX.adapt, load: lvl(LUX, 'adapt') }, rest(LUX), { restore: () => { LUX.offUntil = 0; LUX.A = null; } }));
+  if (typeof PRISM !== 'undefined') coreMeta('PRISM', Object.assign({ needs: ['LUX'], save: () => PRISM.adapt, load: lvl(PRISM, 'adapt') }, rest(PRISM)));
+  if (typeof MIRROR !== 'undefined') coreMeta('MIRROR', Object.assign({ needs: ['LUX', 'PRISM', 'WORLD'], save: () => MIRROR.adapt, load: lvl(MIRROR, 'adapt') }, rest(MIRROR)));
+  if (typeof TEXEL !== 'undefined') coreMeta('TEXEL', Object.assign({ needs: ['MUTAGEN'], save: () => TEXEL.adapt, load: lvl(TEXEL, 'adapt') }, rest(TEXEL)));
   if (typeof MUZZLE !== 'undefined') coreMeta('MUZZLE', Object.assign({ needs: ['LUX'] }, rest(MUZZLE)));
   coreMeta('WORLD', { covers: ['GORE'] }); coreMeta('GARAGE', { needs: ['WORLD', 'LUX'] }); coreMeta('SKYWAY', { needs: ['WORLD', 'LUX'] });
   coreMeta('NET', { needs: ['WORLD'] }); coreMeta('FLOW', { needs: ['WORLD'], covers: ['SWARM'] });
@@ -134,6 +152,11 @@ function coreLinks() {
 function coreVerify() {
   CORE.verified = true;
   try { coreLinks(); } catch (x) { coreLog('CORE could not link every engine: ' + (x && x.message)); }
+  try { learnInit(); learnContracts(); for (const e of CORE.list) learnRec(e); } catch (x) { coreLog('CORE could not start learning: ' + (x && x.message)); }
+  LEARN.testsAt = performance.now() + 4000;   // the self-tests, once the title has settled
+  coreOn('run', 'CORE', () => learnCautious());
+  coreOn('horde', 'CORE', d => learnAhead(d && d.n, 'a horde'));
+  coreOn('wave', 'CORE', d => learnAhead(d && d.n, 'wave ' + (d && d.wave)));
   for (const e of CORE.list) {
     const missing = (e.needs || []).filter(n => !CORE.by[n]);
     if (missing.length) { e.health = 'degraded'; coreLog(e.name + ' is missing ' + missing.join(', ') + ' and runs without it'); }
@@ -155,6 +178,7 @@ function coreSave() {
   const out = { game: typeof ZC_VERSION !== 'undefined' ? ZC_VERSION : '', engines: {} };
   for (const e of CORE.list) if (e.save) { try { out.engines[e.name] = { ver: e.ver, v: e.save(), downs: e.downs || 0 }; } catch (x) { } }
   try { store.set('zc_core', out); } catch (x) { }
+  learnSave();
 }
 /* ---------- tuning (Settings > Accessibility > Ultra advanced, the engine room) ----------
    Every engine can be told to run harder or lighter (its effort: Auto, Eco, Normal, Hard, Max) and, where it has both,
@@ -228,25 +252,32 @@ function coreLock(e, now, why) {
   coreLog(why); if (typeof noteRepair === 'function') noteRepair(e.name + ' was put back on Auto');
   coreEmit('engineLocked', { name: e.name, why: why });
 }
-// the frame is running late: step down the render engine taking the biggest share (above a floor), true if one did;
-// an engine set to Eco goes first, one set to Hard last, one set to Max never (the ecosystem's guard watches that)
+// the frame is running late: step down the engine whose step down saves the most, as learned on this device (or,
+// while it is still learning, the render engine taking the biggest share above a floor); true if one did. An engine
+// set to Eco goes first, one set to Hard last, one set to Max never (the ecosystem's guard watches that).
 function coreTrim(frameMs) {
-  let best = null, bestMs = Math.max(0.6, frameMs * 0.12), bestW = 0;
+  let best = null, bestW = 0; const floor = Math.max(0.6, frameMs * 0.12);
   for (const e of CORE.list) {
-    if (e.kind !== 'render' || !e.trim || !coreCall(e, 'canTrim', true)) continue;
-    const w = e.msAvg * (EFFORT_W[e.effort || 'auto'] == null ? 1 : EFFORT_W[e.effort || 'auto']);
-    if (e.msAvg > bestMs * 0.5 && w > Math.max(bestW, bestMs)) { best = e; bestW = w; }
+    if ((e.kind !== 'render' && !e.trimAny) || !e.trim || e.down || !coreCall(e, 'canTrim', true)) continue;
+    const ew = EFFORT_W[e.effort || 'auto'] == null ? 1 : EFFORT_W[e.effort || 'auto']; if (!ew) continue;
+    const save = learnSaving(e), w = (save != null ? save * 2.5 : e.msAvg) * ew;
+    if ((save != null ? save > floor * 0.4 : e.msAvg > floor * 0.5) && w > Math.max(bestW, floor)) { best = e; bestW = w; }
   }
   if (!best) return false;
-  if (coreCall(best, 'trim', false)) { CORE.trims.push(best.name); if (CORE.trims.length > 12) CORE.trims.shift(); if (typeof logTrim === 'function') logTrim(best.name.toLowerCase()); return true; }
+  if (coreCall(best, 'trim', false)) {
+    best.holdRise = performance.now() + 20000; best.holdWhy = 'stepped down for the frame rate';   // (it does not climb straight back into the same slow frame)
+    CORE.trims.push(best.name); if (CORE.trims.length > 12) CORE.trims.shift(); if (typeof logTrim === 'function') logTrim(best.name.toLowerCase());
+    const sv = learnSaving(best); coreLog('CORE stepped ' + best.name + ' down for the frame rate: ' + (sv != null ? 'on this device that saves about ' + sv.toFixed(1) + ' ms here' : 'it was taking ' + best.msAvg.toFixed(1) + ' ms of every frame'));
+    return true;
+  }
   return false;
 }
-// there is room again: give the last trimmed engine a level back (one set to Hard or Max first)
+// there is room again: give the last trimmed engine a level back (one set to Hard or Max first), if it fits
 function coreBoost() {
-  for (const e of CORE.list) if ((e.effort === 'hard' || e.effort === 'max') && CORE.trims.indexOf(e.name) >= 0 && coreCall(e, 'boost', false)) return true;
+  for (const e of CORE.list) if ((e.effort === 'hard' || e.effort === 'max') && CORE.trims.indexOf(e.name) >= 0 && coreRise(e.name) && coreCall(e, 'boost', false)) return true;
   while (CORE.trims.length) {
     const e = CORE.by[CORE.trims[CORE.trims.length - 1]];
-    if (e && coreCall(e, 'boost', false)) return true;
+    if (e && coreRise(e.name) && coreCall(e, 'boost', false)) return true;
     CORE.trims.pop();
   }
   return false;
@@ -255,7 +286,8 @@ function coreBoost() {
 function coreStatus() {
   return CORE.list.map(e => ({ name: e.name, does: e.does, kind: e.kind, state: e.down ? 'resting' : coreCall(e, 'state', 'on'), level: coreCall(e, 'level', ''), ms: Math.round(e.msAvg * 100) / 100, errs: e.errs, repairs: e.repairs,
     health: e.health, ver: e.ver, needs: e.needs || [], covers: e.covers || [], helps: e.helps ? Object.keys(e.helps) : [], notes: String(coreCall(e, 'notes', '') || ''),
-    effort: e.effort || 'auto', proc: e.procNow || 'auto', locked: !!(e.lockUntil > performance.now()), downs: e.downs || 0 }));
+    effort: e.effort || 'auto', proc: e.procNow || 'auto', locked: !!(e.lockUntil > performance.now()), downs: e.downs || 0,
+    trust: Math.round(learnTrust(e.name) * 100) / 100, test: e.test || null, stalls: e.stalls || 0, provides: e.provides || [], audit: coreAudit(e.name), compat: coreCompat(e) }));
 }
 // the renderer fills the shared frame once, before the engines that read it
 function coreFrame(x0, y0, x1, y1, dt) {
@@ -268,7 +300,7 @@ function coreToScreen(x, y, out) {
   const F = CORE.frame, s = F.zoom * F.dpr; out[0] = (x - F.cx) * s + cv.width / 2; out[1] = (y - F.cy) * s + cv.height / 2; return out;
 }
 
-coreAdd({ name: 'CORE', kind: 'sim', ver: 2, covers: ['TRACER', 'MUZZLE'], does: 'Engine hub: connects every engine through one shared frame, one time budget, a message bus and a watchdog; engines check themselves, repair themselves, help repair each other and cover for one another, and the hub remembers the level each one settled at and recalibrates after updates; it also runs the engine room\'s tuning (how hard each engine runs and on the CPU or GPU), locks what an engine cannot do and puts any choice that hurts the game back on Auto.', state: () => 'on', level: () => CORE.list.length + ' engines, ' + CORE.list.filter(e => e.down).length + ' resting, ' + Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0) + ' listeners' });
+coreAdd({ name: 'CORE', kind: 'sim', ver: 3, covers: ['TRACER', 'MUZZLE'], does: 'Engine hub and learning ecosystem: connects every engine through one shared frame, one time budget, a message bus, a capability registry and a watchdog with heartbeats and self-tests; it learns on each device what every engine costs at each level and load, steps engines down before a horde arrives, remembers which repair fixed which problem and tries that first, builds trust in engines that run clean, remembers levels across updates, and runs the engine room\'s tuning and locks.', state: () => 'on', level: () => CORE.list.length + ' engines, ' + CORE.list.filter(e => e.down).length + ' resting, ' + Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0) + ' listeners' });
 // the engines that were here before the hub: registered so the whole set shows in one place and shares one budget
 coreAdd({ name: 'PERF', kind: 'sim', does: 'Performance governor: detects the hardware, sets resolution, quality tier and frame cap, trims caches and restarts a stalled game loop.', state: () => PERF.mode === 'auto' ? 'on' : 'manual', level: () => (typeof TIER_NAMES !== 'undefined' ? TIER_NAMES[PERF.tier] : PERF.tier) + ' ' + Math.round((PERF.resLock || RES_STEPS[PERF.res]) * 100) + '%' });
 coreAdd({ name: 'WORLD', kind: 'world', does: 'City generator: builds the endless city from a seed, district by district (blocks, rivers, bridges, props, seasons) at real-world scale.', state: () => 'on', level: () => (SCL > 1.2 ? 'real scale' : 'classic') + ', ' + chunks.size + ' blocks' });

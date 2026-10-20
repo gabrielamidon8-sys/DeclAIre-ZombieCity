@@ -40,7 +40,7 @@ function applyAll() {
 function applySound() {
   SFX.setVolumes({ master: SET.volMaster / 100, music: SET.volMusic / 100, sfx: SET.volSfx / 100, gun: SET.volGun / 100, amb: SET.volAmb / 100, ui: SET.volUi / 100 });
   SFX.setMix({ night: SET.night, mono: SET.mono });
-  SFX.setQuality(SET.aq === 'auto' ? Q.audio : SET.aq === 'low' ? 0 : 2);
+  SFX.setQuality(SET.aq === 'auto' ? sfxAutoQ(Q.audio) : SET.aq === 'low' ? 0 : 2);
 }
 function applyLook() {
   const app = $('app');

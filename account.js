@@ -134,6 +134,7 @@ async function acctSync(why) {
   if (ACCT.status !== 'in' || !ACCT.member || !ACCT.dk) return false;
   if (acctSyncing) return acctSyncing;
   acctSyncing = (async () => {
+    const t0 = performance.now();
     try {
       const rec = await AcctCore.myRecord();
       const cloud = rec ? await AcctCore.decryptSave(ACCT.dk, rec.data.save, ACCT.member.id) : null;
@@ -153,8 +154,11 @@ async function acctSync(why) {
       store.set('zc_owner', ACCT.member.id); store.set('zc_away_' + ACCT.member.id, null);
       if (ACCT.msg && ACCT.msg.sync) ACCT.msg = null;
       if (changed && G.mode === 'title') refreshTitle();
+      acctLearnRtt(performance.now() - t0); if (ACCT.pend) { ACCT.pend = false; coreLog('ACCOUNT: the cloud save that was waiting went up'); }
       return true;
     } catch (e) {
+      // offline: keep it waiting and try again on its own (30 s, then longer), and the moment the device is back online
+      if (e.status === 0 || !e.status) { if (!ACCT.pend) { ACCT.pend = true; ACCT.pendSince = Date.now(); } acctRetrySoon(); }
       if (why !== 'auto' || !ACCT.msg) ACCT.msg = { t: e.status === 0 || !e.status ? 'Could not reach the cloud save. Your progress is safe on this device and saves next time.' : 'Cloud save failed: ' + e.message, bad: true, sync: true };
       return false;
     } finally { acctSyncing = null; if (ACCT.status === 'in' || ACCT.status === 'locked') renderAcct(); else acctMsgShow(); updAcctUi(); }
@@ -479,3 +483,46 @@ $('maintUpdate').addEventListener('click', () => {
 // first check soon after starting, then every few minutes (every minute while the game is shut)
 setTimeout(statusCheck, 2500);
 setInterval(() => { if (Date.now() - STATUS.t > (statusBlocked() ? 60000 : 180000)) statusCheck(); else if (STATUS.ok) statusApply(); }, 5000);
+/* ---------- CORE v3: saves and scores that wait for the internet ----------
+   A cloud save or a board score that could not reach the cloud is kept and sent by itself: again after 30 seconds,
+   then 1, 2 and 5 minutes, and straight away when the device comes back online. A score waiting from last month is
+   dropped (that season's board is closed). ACCOUNT also learns how long the cloud takes to answer from here. */
+const ACQ = { tries: 0, timer: 0, next: 0 };
+function acctRetrySoon() {
+  clearTimeout(ACQ.timer); const wait = Math.min(300000, 30000 * Math.pow(2, ACQ.tries)); ACQ.tries = Math.min(6, ACQ.tries + 1);
+  ACQ.next = Date.now() + wait; ACQ.timer = setTimeout(acctRetryNow, wait);
+}
+async function acctRetryNow() {
+  clearTimeout(ACQ.timer); ACQ.next = 0;
+  if (navigator.onLine === false) { acctRetrySoon(); return; }
+  let ok = true;
+  if (ACCT.pend && ACCT.status === 'in') ok = (await acctSync('retry')) && ok;
+  if (store.get('zc_pend_score', null)) ok = (await acctFlushScore()) && ok;
+  if (ok) ACQ.tries = 0; else if (ACCT.pend || store.get('zc_pend_score', null)) acctRetrySoon();
+}
+function acctQueueScore(entry) {
+  const cur = store.get('zc_pend_score', null);
+  if (!cur || cur.season !== SEASON || (entry.score | 0) > (cur.entry.score | 0)) store.set('zc_pend_score', { season: SEASON, entry: entry, at: Date.now() });
+  coreLog('ACCOUNT kept a score for the global board until the cloud can be reached'); acctRetrySoon();
+}
+async function acctFlushScore() {
+  const p = store.get('zc_pend_score', null); if (!p) return true;
+  if (p.season !== SEASON) { store.set('zc_pend_score', null); return true; }
+  if (ACCT.status !== 'in' || !ACCT.member) return false;
+  try { await AcctCore.postScore(SEASON, ACCT.member.id, Object.assign({}, p.entry, { tag: cleanTag(ACCT.member.username, ACCT.member.id) })); store.set('zc_pend_score', null); coreLog('ACCOUNT: the waiting score went up on the global board'); try { lbRefresh(true); } catch (x) { } return true; }
+  catch (e) { return false; }
+}
+function acctLearnRtt(ms) { if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.ACCOUNT) return; const o = learnOwn('ACCOUNT'); o.rtt = o.rtt ? o.rtt * 0.7 + ms * 0.3 : ms; learnDirty(); }
+window.addEventListener('online', () => { if (ACCT.pend || store.get('zc_pend_score', null)) { ACQ.tries = 0; acctRetryNow(); } });
+// anything left waiting from last time goes up once the game has started
+setTimeout(() => { if (store.get('zc_pend_score', null)) acctRetryNow(); }, 8000);
+coreMeta('ACCOUNT', { ver: 2, provides: ['accounts', 'cloudSave'], feats: { need: ['crypto', 'fetch'], without: 'cloud saves are off on this device (progress stays on the device)' },
+  repair: () => acctRetryNow(),
+  learned: () => { const o = learnOwn('ACCOUNT'), pend = store.get('zc_pend_score', null), out = []; if (o.rtt) out.push('The cloud answers a save in about ' + (o.rtt / 1000).toFixed(1) + ' s from here.'); if (ACCT.pend) out.push('A cloud save is waiting for the internet' + (ACQ.next ? ' (next try in ' + Math.max(1, Math.round((ACQ.next - Date.now()) / 1000)) + ' s)' : '') + '.'); if (pend) out.push('A score is waiting to go up on the global board.'); return out; },
+  selfTest: async () => {
+    if (!(window.crypto && crypto.subtle)) return { ok: true, n: 0, pass: 0, why: '' };
+    const raw = crypto.getRandomValues(new Uint8Array(32)); let b = ''; for (const x of raw) b += String.fromCharCode(x); const k = btoa(b);
+    const blob = await AcctCore.encryptSave(k, { t: 'self-test', n: 42 }, 'selftest'), back = await AcctCore.decryptSave(k, blob, 'selftest'), wrong = await AcctCore.decryptSave(k, blob, 'someone-else');
+    const a = !!back && back.n === 42, c = wrong === undefined;
+    return { ok: a && c, n: 2, pass: (a ? 1 : 0) + (c ? 1 : 0), why: a ? (c ? '' : 'a save opened for the wrong owner') : 'a save did not come back the same' };
+  } });

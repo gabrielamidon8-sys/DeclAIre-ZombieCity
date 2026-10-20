@@ -226,7 +226,7 @@ function tracerWatch(ms) {
   const now = performance.now(); if (now - TRACER.msT < 1000) return; TRACER.msT = now;
   const budget = 1000 / targetFps() * 0.05;
   if (TRACER.msAvg > budget && PERF.fps && PERF.fps < targetFps() * 0.95) { if (TRACER.perf > -3) { TRACER.perf--; TRACER.good = 0; } }
-  else if (TRACER.msAvg < budget * 0.4) { if (++TRACER.good >= 6 && TRACER.perf < 0) { TRACER.perf++; TRACER.good = 0; } }
+  else if (TRACER.msAvg < budget * 0.4) { if (++TRACER.good >= 6 && TRACER.perf < 0 && coreRise('TRACER')) { TRACER.perf++; TRACER.good = 0; } }
   else TRACER.good = 0;
 }
 function tracerCheck() {
@@ -255,3 +255,5 @@ coreAdd({
   save: () => TRACER.perf, load: v => { TRACER.perf = clamp(v | 0, -2, 0); },
   on: { run: () => tracerReset(), quality: () => { TRACER.perf = 0; TRACER.good = 0; }, lowMemory: () => { trSoftT.clear(); TRACER.soft = null; } }
 });
+coreMeta('TRACER', { ver: 2, lv: () => TRACER.perf + 3, adaptGet: () => TRACER.perf, load: () => TRACER.drawn | 0, loadName: 'rounds in flight',
+  reset: () => { tracerReset(); tracerRepair(); TRACER.perf = 0; TRACER.good = 0; } });

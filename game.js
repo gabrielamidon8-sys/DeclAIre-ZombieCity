@@ -216,6 +216,10 @@ function cellBlockedF(F, cx, cy) {
 function cellBlocked(cx, cy) { return cellBlockedF(FF, cx, cy); }
 function buildField(F) {
   F = F || FF;
+  const tb = performance.now();
+  try { fieldBuild(F); } finally { const ms = performance.now() - tb; if (typeof coreCost === 'function') { coreCost('FLOW', ms); flowLearn(ms); } }
+}
+function fieldBuild(F) {
   let p = G.p; const n = FF_N; F.n = n; F.cs = FF_CS;
   // co-op: the field is centred between the players and flows to whichever is nearest
   const srcs = NET.role === 'host' && NET.started ? netAlive() : null;
@@ -407,6 +411,7 @@ function bolt(x1, y1, x2, y2, c) {
 /* ================= zombies ================= */
 function spawnZombie(m, x, y, o) {
   o = o || {}; const w = G.wave || 1;
+  if (m && m.v2) mutaSeen(m);
   const sc = o.boss ? BOSSK : o.child ? 0.66 : o.minion ? 0.58 : 1;
   let hp = 30 * m.hp * (1 + 0.15 * (w - 1));
   if (o.boss) hp *= (9 + w * 0.7) * (1 + (G.bossHpMul || 0)); if (o.child) hp *= 0.4; if (o.minion) hp *= 0.3;
@@ -1147,6 +1152,7 @@ function startWave(n, carry) {
   G.bossPending = !bossOff && n % 5 === 0;
   G.breakT = 0;
   if (typeof swarmWave === 'function') swarmWave(n);   // the hordes that come on top of the trickle
+  coreEmit('wave', { wave: n, n: Math.round((G.spawnQ | 0) * 0.5) });   // (CORE looks ahead: about half a wave is on the street at once)
   SFX.waveStart(G.bossPending);
   const unk = feat.filter(m => !found.has(m.id)).length;
   const still = carry ? G.zs.filter(z => !z.dead && !z.illusion).length : 0;
@@ -1471,7 +1477,7 @@ async function postGlobal(entry) {
   if (LB.src === 'wix') {
     if (ACCT.status !== 'in') return 'needacct';
     try { const r = await AcctCore.postScore(SEASON, ACCT.member.id, Object.assign({}, entry, { tag: cleanTag(ACCT.member.username, ACCT.member.id) })); lbRefresh(true); return r; }
-    catch (e) { return 'failed'; }
+    catch (e) { if (e && (e.status === 0 || !e.status)) { acctQueueScore(entry); return 'queued'; } return 'failed'; }
   }
   if (!LB.db || !LB.uid) return 'local';
   if (LB.ro) return 'readonly';
@@ -1498,7 +1504,8 @@ $('postForm').addEventListener('submit', async e => {
     local: PLATFORM !== 'web' ? 'Saved on this device.' : 'Saved on this device. The global board is not available on this page.',
     needacct: 'Saved on this device. Log in to your free DeclAIre account (main menu) to post to the global board.',
     readonly: 'Saved on this device. You can view the global board but not post to it.',
-    failed: 'Could not reach the global board. Your score is saved on this device.'
+    failed: 'Could not reach the global board. Your score is saved on this device.',
+    queued: 'Saved. No connection right now: it goes up on the global board by itself as soon as the cloud can be reached.'
   }[res];
   $('postStatus').textContent = msg;
   $('postBtn').textContent = res === 'posted' || res === 'kept' ? 'Posted' : 'Saved';
@@ -1758,7 +1765,7 @@ function render() {
   const hw = W / 2 / ZOOM, hh = H / 2 / ZOOM, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake;
   coreFrame(x0, y0, x1, y1, G.rdt || 0.016);   // the shared frame every engine reads from
   // the city tiles cover every pixel, so the frame is never cleared first (one less full-screen fill per frame)
-  let rebuild = 1; WORLD.rf = 0;
+  let rebuild = 1; WORLD.rf = 0; const twb = performance.now();
   for (let cx = Math.floor((x0 - pad) / CHS); cx <= Math.floor((x1 + pad) / CHS); cx++) for (let cy = Math.floor((y0 - pad) / CHS); cy <= Math.floor((y1 + pad) / CHS); cy++) {
     const c = getChunk(cx, cy);
     if (!c.can || ((c.sc !== Q.chunkScale || c.stale) && rebuild-- > 0)) { renderChunk(c); c.stale = 0; }
@@ -1766,6 +1773,7 @@ function render() {
     ctx.drawImage(c.can, c.sx, c.sy, CHS + 0.6, CHS + 0.6);
   }
   if (!WORLD.rf) streamChunks(x0, y0, x1, y1);
+  coreCost('WORLD', performance.now() - twb - (WORLD.rfMs || 0)); WORLD.rfMs = 0;
   const vis = (x, y, r) => x > x0 - r && x < x1 + r && y > y0 - r && y < y1 + r;
   let tw = performance.now();
   drawWeatherGround(x0 - pad, y0 - pad, x1 + pad, y1 + pad);
@@ -2383,7 +2391,7 @@ function update(dt) {
   buildGrid();
   if (typeof swarmTick === 'function') swarmTick(dt);   // hordes coming in, the crowd moving as one, who thinks how often
   { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS), stale = F => !F.ready || F.n !== FF_N || Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2;
-    if (stale(FF) || G.time - FF.t > [0.55, 0.35, 0.25, 0.18][(TUNE.FLOW || 0) + 1]) buildField(FF);   // (engine room: Eco refreshes the paths less often, Hard and Max more)
+    if (stale(FF) || G.time - FF.t > flowIv()) buildField(FF);   // (on Auto it follows what a field costs here; the engine room's Eco refreshes less often, Hard and Max more)
     // the wide fields only while something that big is chasing, and never both in the same frame
     else if (G.needFS && (stale(FFS) || G.time - FFS.t > 0.6)) buildField(FFS);
     else if (G.needFB && (stale(FFB) || G.time - FFB.t > 0.6)) buildField(FFB);

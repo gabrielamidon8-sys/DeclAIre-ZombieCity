@@ -113,10 +113,10 @@ function auraWatch(ms) {
   const now = performance.now(); if (now - AURA.msT < 1000) return; AURA.msT = now;
   const budget = 1000 / targetFps() * 0.03;
   if (AURA.msAvg > budget && PERF.fps && PERF.fps < targetFps() * 0.95) { if (AURA.perf > -3) { AURA.perf--; AURA.good = 0; } }
-  else if (AURA.msAvg < budget * 0.4) { if (++AURA.good >= 6 && AURA.perf < 0) { AURA.perf++; AURA.good = 0; } }
+  else if (AURA.msAvg < budget * 0.4) { if (++AURA.good >= 6 && AURA.perf < 0 && coreRise('AURA')) { AURA.perf++; AURA.good = 0; } }
   else AURA.good = 0;
 }
-function auraCheck() { return ''; }
+function auraCheck() { return !(AURA.perf <= 0 && AURA.perf >= -3) ? 'its detail went out of range' : !(AURA.n >= 0) ? 'its count of glowing zombies went bad' : ''; }
 function auraNotes() { const off = Object.keys(AURA.partOff).filter(p => AURA.partOff[p] > performance.now()); return off.length ? 'resting: ' + off.join(', ') : ''; }
 // a glowing zombie dies: its light goes out in a last flash (heard over the engine hub's message bus)
 function auraDeath(z) {
@@ -140,3 +140,5 @@ coreAdd({
   save: () => AURA.perf, load: v => { AURA.perf = clamp(v | 0, -2, 0); },
   on: { kill: d => auraDeath(d && d.z), quality: () => { AURA.perf = 0; AURA.good = 0; }, lowMemory: () => auraT.clear() }
 });
+coreMeta('AURA', { ver: 2, lv: () => AURA.perf + 3, adaptGet: () => AURA.perf, load: () => AURA.n | 0, loadName: 'glowing zombies', zload: 0.08,
+  reset: () => { auraRepair(); AURA.perf = 0; AURA.good = 0; } });

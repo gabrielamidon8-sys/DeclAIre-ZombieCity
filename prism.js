@@ -38,7 +38,7 @@ function prismWanted() {
   if (PRISM.offUntil && performance.now() < PRISM.offUntil) return 'cpu';
   if (w === 'cpu') return 'cpu';
   if (w === 'gpu') return 'gpu';
-  return PRISM.soft ? 'cpu' : 'gpu';
+  return PRISM.soft || prismGpuShy() ? 'cpu' : 'gpu';
 }
 
 /* ---------- GPU setup ---------- */
@@ -156,7 +156,7 @@ function prismInit() {
   // a software renderer draws shaders on the CPU, slower than the CPU path itself
   PRISM.soft = /swiftshader|llvmpipe|softpipe|software|basic render|mesa offscreen/i.test(PRISM.renderer);
   if (PRISM.soft) PRISM.reason = 'software graphics (' + PRISM.renderer.slice(0, 40) + ')';
-  c.addEventListener('webglcontextlost', e => { e.preventDefault(); PRISM.lost = true; PRISM.ok = false; prismShow(false); coreHurt('PRISM', 'GPU context lost'); coreRepaired('PRISM', 'Shaders: the GPU reset, using the CPU path until it is back'); }, false);
+  c.addEventListener('webglcontextlost', e => { e.preventDefault(); PRISM.lost = true; prismLost(); PRISM.ok = false; prismShow(false); coreHurt('PRISM', 'GPU context lost'); coreRepaired('PRISM', 'Shaders: the GPU reset, using the CPU path until it is back'); }, false);
   c.addEventListener('webglcontextrestored', () => { PRISM.lost = false; prismBuild(); coreRepaired('PRISM', 'Shaders rebuilt after the GPU came back'); }, false);
   prismBuild();
 }
@@ -361,7 +361,7 @@ function prismFrame() {
   if (mode !== PRISM.mode) { PRISM.mode = mode; prismShow(mode === 'gpu'); if (mode !== 'gpu') { PRISM.giGpu = PRISM.bloomGpu = false; } }
   PRISM.vigGpu = mode === 'gpu';
   try {
-    if (mode === 'gpu') prismGpu();
+    if (mode === 'gpu') { prismGpu(); coreBeat('PRISM'); }
     else if (mode === 'cpu') prismCpu();
   } catch (e) { prismHurt(e); if (PRISM.mode === 'gpu') { PRISM.mode = 'cpu'; prismShow(false); PRISM.giGpu = PRISM.bloomGpu = PRISM.vigGpu = false; } }
   const ms = performance.now() - t0; PRISM.ms = ms; PRISM.msAvg += (ms - PRISM.msAvg) * 0.05; coreCost('PRISM', ms);
@@ -372,7 +372,7 @@ function prismWatch() {
   if (PRISM.mode !== 'gpu' || document.hidden) return;
   const T = 1000 / targetFps(), now = performance.now();
   if (PERF.fps && PERF.fps < targetFps() * 0.85 && PERF.workMs < T * 0.5) { if (++PRISM.slow >= 2 && PRISM.adapt > -3) { PRISM.adapt--; PRISM.slow = 0; } }
-  else if (PERF.fps >= targetFps() * 0.97) { PRISM.slow = 0; if (++PRISM.fast >= 15 && PRISM.adapt < 0) { PRISM.adapt++; PRISM.fast = 0; } }
+  else if (PERF.fps >= targetFps() * 0.97) { PRISM.slow = 0; if (++PRISM.fast >= 15 && PRISM.adapt < 0 && coreRise('PRISM')) { PRISM.adapt++; PRISM.fast = 0; } }
   if (PRISM.msAvg > T * 0.35 && prismLevel() === 0) { if (++PRISM.slowCopy >= 3) { PRISM.offUntil = now + 300000; PRISM.slowCopy = 0; PRISM.reason = 'the GPU copy is slow on this device'; coreRepaired('PRISM', 'Shaders moved to the CPU: the GPU copy was too slow'); } }
   else PRISM.slowCopy = 0;
 }
@@ -391,3 +391,25 @@ coreAdd({
   trim: () => { if (PRISM.adapt <= -3) return false; PRISM.adapt--; return true; }, boost: () => { if (PRISM.adapt >= 0) return false; PRISM.adapt++; return true; },
   repair: () => { PRISM.offUntil = 0; PRISM.errT.length = 0; if (PRISM.gl && !PRISM.gl.isContextLost()) prismBuild(); }
 });
+/* CORE v3: what the shader engine learns. A graphics chip that keeps losing its context on this device (it happens on
+   some phones and drivers) is remembered: after 3 losses in recent sessions, Auto runs the shaders on the processor
+   for a while instead of stuttering through rebuilds, and tries the GPU again after a few calm sessions. */
+function prismLost() {
+  if (typeof LEARN === 'undefined' || !LEARN.ready) return;
+  const o = learnOwn('PRISM'); o.loss = (o.loss | 0) + 1; o.at = Date.now(); o.ses = LEARN.data.ses; learnDirty();
+  if (o.loss === 3) coreLog('PRISM learned: the graphics chip lost its context 3 times on this device lately; Auto runs the shaders on the processor for a while');
+}
+function prismGpuShy() {
+  if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.PRISM) return false;
+  const o = learnOwn('PRISM');
+  // calm sessions forgive one loss each
+  if (o.loss && o.ses != null && LEARN.data.ses - o.ses >= 2) { o.loss--; o.ses = LEARN.data.ses; learnDirty(); }
+  return (o.loss | 0) >= 3;
+}
+coreMeta('PRISM', { ver: 4, provides: ['shaders', 'grading', 'gpuBloom', 'gpuBounce'], feats: { want: ['webgl', 'webgl2'], without: 'every shader runs on the processor (slower, same look)' },
+  lv: () => PRISM.mode === 'gpu' ? prismLevel() : -1, adaptGet: () => PRISM.adapt, load: () => Math.round(cv.width * cv.height / 100000), loadName: 'hundred-thousand pixels',
+  alive: () => G.mode === 'play' && PRISM.mode === 'gpu' && !PRISM.lost, stallS: 5, beatOwn: true,
+  check: () => PRISM.mode === 'gpu' && PRISM.gl && !PRISM.lost && PRISM.gl.isContextLost() ? 'its graphics context is gone' : '',
+  reset: () => { PRISM.offUntil = 0; PRISM.errT.length = 0; PRISM.adapt = clamp(PRISM.adapt | 0, -3, 0); if (PRISM.gl && !PRISM.gl.isContextLost()) prismBuild(); },
+  learned: () => { const o = learnOwn('PRISM'); return o.loss ? ['The graphics chip lost its context ' + o.loss + ' time' + (o.loss === 1 ? '' : 's') + ' here lately' + (o.loss >= 3 ? ', so Auto keeps the shaders on the processor for now.' : '.')] : ['Its GPU path has been steady on this device.']; } });
+

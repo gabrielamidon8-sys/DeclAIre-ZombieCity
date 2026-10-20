@@ -54,7 +54,7 @@ const VMIX = {
   drive: { hatch: 12, sedan: 18, suv: 14, minivan: 10, coupe: 4, wagon: 6 },
   highway: { sedan: 18, hatch: 10, suv: 14, pickup: 9, van: 7, minivan: 6, box: 6, semi: 7, bus: 3, camper: 3, moto: 2, police: 1.5, ambulance: 1 }
 };
-const GARAGE = { lit: 0, drawn: 0, wrecks: 0 };
+const GARAGE = { lit: 0, drawn: 0, wrecks: 0, adapt: 0, beams: 0, _beams: 0, fn: -1 };
 function vehPick(R, mix, maxL, maxW) {
   const M = VMIX[mix] || VMIX.city; let tot = 0;
   for (const k in M) { const v = VEH[k]; if ((maxL && v.L > maxL) || (maxW && v.W > maxW)) continue; tot += M[k]; }
@@ -263,6 +263,11 @@ function vehPt(r, lx, ly, out) { const a = vehAng(r), c = Math.cos(a), s = Math.
 const VP = [0, 0];
 // what the vehicles in a block add to the lighting engine this frame (called from LUX's gather, in simulation units)
 function garageLights(c, x0, y0, x1, y1, m, t, night, uk) {
+  const t0 = performance.now();
+  if (GARAGE.fn !== frameNo) { GARAGE.fn = frameNo; GARAGE.beams = GARAGE._beams; GARAGE._beams = 0; }
+  try { garageLit(c, x0, y0, x1, y1, m, t, night, uk); } finally { coreCost('GARAGE', performance.now() - t0); }
+}
+function garageLit(c, x0, y0, x1, y1, m, t, night, uk) {
   if (!c.vlit) c.vlit = c.rects.filter(r => r.k === 'car' && r.lit);
   for (const r of c.vlit) {
     if (r.x > x1 + m || r.x + r.w < x0 - m || r.y > y1 + m || r.y + r.h < y0 - m) continue;
@@ -270,7 +275,7 @@ function garageLights(c, x0, y0, x1, y1, m, t, night, uk) {
     if (r.lit === 'head' && night > 0.08) {
       // two beams from the front corners (each a cone that casts shadows), and the red glow at the back
       // (engine room: Eco drops the beams' shadows and the tail glow, Hard and Max give both beams shadows)
-      const gk = TUNE.GARAGE || 0;
+      const gk = clamp((TUNE.GARAGE || 0) + (GARAGE.adapt | 0), -1, 2); GARAGE._beams++;
       for (const sd of [-1, 1]) { vehPt(r, L / 2, sd * W * 0.3, VP); luxPush(VP[0], VP[1], 300 * uk, 255, 240, 215, 0.62 * night, gk < 0 ? false : gk > 0 ? true : sd > 0, 0, { a: a, h: 0.34 }, 0.8); }
       if (gk >= 0) { vehPt(r, -L / 2, 0, VP); luxPush(VP[0], VP[1], 70 * uk, 255, 40, 30, 0.42 * night, false, 0, null, 0.8); }
     } else if (r.lit === 'hazard') {
@@ -496,3 +501,11 @@ coreAdd({
   name: 'GARAGE', kind: 'world', does: 'Vehicle engine: 22 kinds of vehicle with liveries, burned and rolled wrecks, working headlights, hazards and light bars, reflective glass, and rare crashed airliners, light planes and helicopters.',
   state: () => 'on', level: () => GARAGE.wrecks + ' wrecks in the city'
 });
+// CORE v3: a ladder for the headlights (both beams' shadows off and the tail glow dropped when the frame runs late at
+// night with many lit cars in view), climbed back when there is room; its cost by how many lit cars it lights
+coreMeta('GARAGE', { ver: 2, trimAny: true, climb: true, provides: ['vehicles', 'headlights'],
+  lv: () => GARAGE.adapt + 1, adaptGet: () => GARAGE.adapt, load: () => GARAGE.beams | 0, loadName: 'lit cars',
+  canTrim: () => GARAGE.adapt > -1 && GARAGE.beams > 0, trim: () => { if (GARAGE.adapt <= -1) return false; GARAGE.adapt--; return true; },
+  boost: () => { if (GARAGE.adapt >= 0) return false; GARAGE.adapt++; return true; },
+  check: () => { for (const r of SWDYN.values()) if (!(r.x === r.x && r.y === r.y)) return 'a vehicle the crowd moved lost its place'; return ''; },
+  repair: () => { for (const r of SWDYN.values()) if (!(r.x === r.x && r.y === r.y)) { r.x = r.ox0 || 0; r.y = r.oy0 || 0; r.vx = r.vy = 0; } } });

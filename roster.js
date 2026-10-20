@@ -87,16 +87,18 @@ const ZR_AB_DESC = {
 // read the same fields as the old ones), plus its rig, look and animation set from the animation engine
 function zrBuild() {
   if (ZR.length) return;
-  ZR_DEFS.forEach((d, i) => {
-    const base = STRAINS.find(s => s.key === d.blood) || STRAINS[0];
-    const S = Object.assign({}, base, { key: d.blood, name: d.name, trait: d.line, p: Object.assign({}, d.p), skin: zrHsl(d.skin), cloth: zrHsl(d.cloth), eye: d.eye, clothed: d.top !== 'none' });
-    S.gore = base.gore || '#5a0d0d';
-    const A = { key: d.ab, name: d.ab === 'none' ? 'No mutation' : d.ab[0].toUpperCase() + d.ab.slice(1), desc: ZR_AB_DESC[d.ab] || '', threat: 0 };
-    const id = ZR_BASE + i;
-    const m = { id: id, num: i + 1, s: -1, a: -1, S: S, A: A, name: d.name, threat: d.t, rarity: Z.rarityOf(d.t + 1), wave: zrWave(d.t), hp: d.hp, spd: d.spd, dmg: d.dmg, size: d.size, hue: 0, seed: Z.hash32(id * 31 + 7), v2: true, def: d, T: d.T || {}, idx: i };
-    MUTS[id] = m; ZR.push(m); ZR_BY.set(d.key, m);
-  });
+  ZR_DEFS.forEach((d, i) => { const m = zrMake(d, i); MUTS[m.id] = m; ZR.push(m); ZR_BY.set(d.key, m); });
   if (typeof animaBuildAll === 'function') animaBuildAll(ZR);
+}
+// one definition becomes one zombie (also how CORE rebuilds a broken entry from its definition)
+function zrMake(d, i) {
+  const base = STRAINS.find(s => s.key === d.blood) || STRAINS[0];
+  const S = Object.assign({}, base, { key: d.blood, name: d.name, trait: d.line, p: Object.assign({}, d.p), skin: zrHsl(d.skin), cloth: zrHsl(d.cloth), eye: d.eye, clothed: d.top !== 'none' });
+  S.gore = base.gore || '#5a0d0d';
+  const A = { key: d.ab, name: d.ab === 'none' ? 'No mutation' : d.ab[0].toUpperCase() + d.ab.slice(1), desc: ZR_AB_DESC[d.ab] || '', threat: 0 };
+  const id = ZR_BASE + i;
+  const m = { id: id, num: i + 1, s: -1, a: -1, S: S, A: A, name: d.name, threat: d.t, rarity: Z.rarityOf(d.t + 1), wave: zrWave(d.t), hp: d.hp, spd: d.spd, dmg: d.dmg, size: d.size, hue: 0, seed: Z.hash32(id * 31 + 7), v2: true, def: d, T: d.T || {}, idx: i };
+  return m;
 }
 // the first wave a threat level can turn up in (threat 1-2 from the start, the worst from about wave 12)
 function zrWave(t) { return t <= 2 ? 1 : t === 3 ? 2 : Math.round(1 + (t - 2) * 1.6); }
@@ -154,3 +156,31 @@ ABIL.carrier = function (z, dt, dx, dy, d) {
     burst(z.x, z.y, 10, '#8a6a5a', 120, 4, 0.5);
   }
 };
+/* CORE v3: MUTAGEN checks the roster (every zombie whole: its numbers, its place in the lists, its rig) and rebuilds a
+   broken entry from its definition; it learns which zombies this device meets most, so the loading screen warms their
+   animation frames first. What a zombie is and does never changes with what is learned. */
+function zrWhole(m, i) {
+  return !!m && m.id === ZR_BASE + i && MUTS[m.id] === m && ZR_BY.get(m.def.key) === m && [m.hp, m.spd, m.dmg, m.size].every(v => v > 0 && v < 20) && !!m.S && !!m.A && (typeof animaBuildAll !== 'function' || !!m.an);
+}
+function mutaSeen(m) {
+  if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.MUTAGEN) return;
+  const o = learnOwn('MUTAGEN'), s = o.seen || (o.seen = {}), k = m.def.key; s[k] = (s[k] | 0) + 1; if (((o.n = (o.n | 0) + 1) % 40) === 0) learnDirty();
+}
+// the zombies the loading screen warms: the first waves' pool, the ones met most on this device first
+function mutaWarmList(wave) {
+  const pool = zrPool(wave), o = typeof LEARN !== 'undefined' && LEARN.ready && CORE.by.MUTAGEN ? learnOwn('MUTAGEN') : {}, s = o.seen || {};
+  const extra = ZR.filter(m => !pool.includes(m) && (s[m.def.key] | 0) > 20).sort((a, b) => (s[b.def.key] | 0) - (s[a.def.key] | 0)).slice(0, 4);
+  return pool.concat(extra).sort((a, b) => (s[b.def.key] | 0) - (s[a.def.key] | 0)).slice(0, 18);
+}
+coreMeta('MUTAGEN', { ver: 2, provides: ['roster'],
+  check: () => { if (ZR.length !== ZR_DEFS.length) return 'the roster is missing ' + (ZR_DEFS.length - ZR.length) + ' zombies'; for (let i = 0; i < ZR.length; i++) if (!zrWhole(ZR[i], i)) return ZR[i] && ZR[i].name ? ZR[i].name + ' is broken' : 'an entry is broken'; return ''; },
+  repair: () => {
+    for (let i = 0; i < ZR_DEFS.length; i++) {
+      if (zrWhole(ZR[i], i)) continue;
+      const m = zrMake(ZR_DEFS[i], i); ZR[i] = m; MUTS[m.id] = m; ZR_BY.set(m.def.key, m);
+      if (typeof animaBuildAll === 'function') animaBuildAll([m]);
+      coreLog('MUTAGEN rebuilt ' + m.name + ' from its definition');
+    }
+  },
+  selfTest: () => { let pass = 0; for (let i = 0; i < ZR.length; i++) if (zrWhole(ZR[i], i)) pass++; return { ok: ZR.length === ZR_DEFS.length && pass === ZR.length, n: ZR_DEFS.length, pass: pass, why: pass === ZR.length ? (ZR.length === ZR_DEFS.length ? '' : 'zombies are missing') : (ZR_DEFS.length - pass) + ' zombies are broken' }; },
+  learned: () => { const s = learnOwn('MUTAGEN').seen; if (!s) return []; const top = Object.entries(s).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => (ZR_BY.get(k) || { name: k }).name + ' (' + n + ')'); return ['Met most on this device: ' + top.join(', ') + '; the loading screen warms these first.']; } });
