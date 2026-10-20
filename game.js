@@ -191,7 +191,7 @@ function near(x, y, rad, fn) {
 let FF_CS = 32, FF_N = 84;
 const FF_MAXN = 112, FF_MAXLEN = FF_MAXN * FF_MAXN;
 // what a boss cannot walk through: buildings, landmarks, rubble heaps, statues, tanks, big rocks
-const SOLID = { b: 1, lm: 1, rub: 1, statue: 1, tank: 1, windmill: 1, rock: 1, pool: 1 };
+const SOLID = { b: 1, lm: 1, rub: 1, statue: 1, tank: 1, windmill: 1, rock: 1, pool: 1, pillar: 1, wreck: 1 };
 function newField(rad, big, name) { return { name: name, rad: rad, big: big, ox: 0, oy: 0, pcx: 1e9, pcy: 1e9, t: -9, ready: false, cache: new Map(), dist: new Float32Array(FF_MAXLEN), cost: new Float32Array(FF_MAXLEN), open: new Uint8Array(FF_MAXLEN), n: FF_N, cs: FF_CS }; }
 const FF = newField(15, false, 'small'), FFB = newField(30, false, 'big'), FFS = newField(56, true, 'boss');
 const HI = new Int32Array(FF_MAXLEN * 8), HK = new Float32Array(FF_MAXLEN * 8), FD = [0, 0];
@@ -383,7 +383,8 @@ function burst(x, y, n, col, spd, size, life) {
   }
 }
 function ring(x, y, r0, r1, life, c, w) { G.rings.push({ x: x, y: y, r0: r0, r1: r1, t: 0, life: life, c: c, w: w || 2 }); }
-function splat(x, y, r, c) { if (G.splats.length >= Q.splats) G.splats.shift(); G.splats.push({ x: x, y: y, r: r, c: c, rot: rand(TAU), sq: rand(0.5, 0.9) }); }
+// a mark on the ground (explosions, dust): the blood engine draws it as a scorch and dries it into the street
+function splat(x, y, r, c) { if (typeof goreScorch === 'function') { goreScorch(x, y, r, c); return; } if (G.splats.length >= Q.splats) G.splats.shift(); G.splats.push({ k: 'old', x: x, y: y, r: r, c: c, rot: rand(TAU), sq: rand(0.5, 0.9) }); }
 function shakeIt(v) { if (!RM && SET.shake) G.shake = Math.max(G.shake, v * SET.shake / 100); }
 function bolt(x1, y1, x2, y2, c) {
   const pts = [x1, y1], n = 7;
@@ -753,7 +754,7 @@ function killZombie(z) {
     if (op.enrage) o.buffT = 4;
   });
   burst(z.x, z.y, z.boss ? 40 : z.fly ? 3 : 10, gore, z.boss ? 260 : 150, z.fly ? 2 : 5, 0.6);
-  if (!z.fly) splat(z.x, z.y, z.r * rand(0.9, 1.4), gore);
+  if (!z.fly) { if (typeof goreKill === 'function') goreKill(z); else splat(z.x, z.y, z.r * rand(0.9, 1.4), gore); }
   if (!z.fly && G.chain >= 25 && G.mode === 'play') burst(z.x, z.y, 6 + Math.min(14, Math.floor(G.chain / 25) * 3), chainColor(G.chain), 260, 3, 0.45);
   const dp = m.S.p.death;
   if (!z.fly && !z.minion) {
@@ -1029,7 +1030,9 @@ function updPicks(dt) {
   G.picks = G.picks.filter(k => !k.dead);
 }
 function updFx(dt) {
-  for (const q of G.parts) { q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; const dr = Math.exp(-4 * dt); q.vx *= dr; q.vy *= dr; }
+  for (const q of G.parts) { q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; const dr = Math.exp(-4 * dt); q.vx *= dr; q.vy *= dr; if (q.bl && q.life <= 0) goreLand(q); }
+  if (typeof goreTick === 'function') goreTick(dt);
+  if (typeof muzzleTick === 'function') muzzleTick(dt);
   G.parts = G.parts.filter(q => q.life > 0);
   for (const r of G.rings) r.t += dt; G.rings = G.rings.filter(r => r.t < r.life);
   for (const t of G.texts) { t.t += dt; t.y -= 26 * dt; } G.texts = G.texts.filter(t => t.t < t.life);
@@ -1120,6 +1123,7 @@ function showOv(id) { OVS.forEach(o => { $(o).hidden = o !== id; }); $('hud').hi
 function newRun(o) {
   o = o && !(o instanceof Event) ? o : {};
   if (typeof luxNewRun === 'function') luxNewRun();
+  if (typeof muzzleReset === 'function') muzzleReset();
   // shut for maintenance (or this version is too old): the maintenance screen instead of a run
   if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
@@ -1472,7 +1476,9 @@ function render() {
   PERF.sec.wx += performance.now() - tw;
   const vz = vzNow; if (vz) drawVizGround(vz, x0, y0, x1, y1);
   // floor stains
-  for (const p of G.splats) {
+  if (typeof goreDraw === 'function') goreDraw(vis);
+  if (typeof muzzleWorld === 'function') muzzleWorld(vis, 'brass');
+  else for (const p of G.splats) {
     if (!vis(p.x, p.y, p.r * 2)) continue;
     ctx.globalAlpha = 0.42; ctx.fillStyle = p.c; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, p.r * p.sq, p.rot, 0, TAU); ctx.fill();
   }
@@ -1518,6 +1524,7 @@ function render() {
   LODQ.length = Math.min(LODQ.length, 256);
   for (const z of G.zs) if (!z.dead && z.boss) drawZ(z);
   if (G.p && G.mode !== 'title') { drawDashActors(G.p); if (!G.p.down) drawPlayer(G.p); if (NET.started) netDrawPlayers(); }
+  if (typeof muzzleWorld === 'function') muzzleWorld(vis, 'smoke');
   // bullets
   ctx.lineCap = 'round';
   ctx.globalCompositeOperation = 'lighter';
@@ -1559,6 +1566,8 @@ function render() {
   drawCloudShadows(x0, y0, x1, y1);
   luxRun(x0, y0, x1, y1, shx, shy, Math.min(0.05, G.rdt || 0.016));
   drawEmissive(vis);
+  mirrorRun(x0, y0, x1, y1);   // reflections (on the GPU the shader engine draws them from the map made here)
+  try { skyDraw(x0, y0, x1, y1, Math.min(0.05, G.rdt || 0.016)); } catch (e) { coreHurt('SKYWAY', e); }   // the highways, over the street
   drawWeatherWorld();
   drawAtmosLit(vis);
   for (const b of G.bolts) { ctx.strokeStyle = b.c; ctx.globalAlpha = clamp(b.life / 0.18, 0, 1); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(b.pts[0], b.pts[1]); for (let i = 2; i < b.pts.length; i += 2) ctx.lineTo(b.pts[i], b.pts[i + 1]); ctx.stroke(); }
@@ -1582,6 +1591,8 @@ function render() {
 function drawEmissive(vis) {
   if (!LUX.live) return;
   const a = 1 - (LUX.amb[0] + LUX.amb[1] + LUX.amb[2]) / 3; if (a < 0.08) return;
+  if (typeof garageEmissive === 'function') garageEmissive(vis, a);
+  if (typeof muzzleEmissive === 'function') muzzleEmissive(a);
   ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
   for (const b of G.bullets) {
     if (!vis(b.x, b.y, 30)) continue;
@@ -1711,6 +1722,7 @@ function drawZ(z, lod, far) {
   ctx.rotate(z.ang + Math.sin(G.time * 7 + z.bob) * 0.06);
   ctx.globalAlpha = a;
   ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2);
+  if (z.wnd && lod < 2) goreWounds(ctx, z, z.r);
   if (z.flash > 0 && lod < 3) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * a; ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); ctx.globalCompositeOperation = 'source-over'; }
   ctx.restore(); ctx.globalAlpha = 1;
   if (lod >= 3) { if (z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0)) lod = 2; else return; }
@@ -1751,7 +1763,8 @@ function drawPlayer(p) {
   // the survivor is one textured sprite per weapon and walking pose (made once by the texture engine), turned to the aim
   const fk = (p.weapon && p.weapon.F && p.weapon.F.key) || 'pistol', gl = GUN_LEN[fk] || 20, PS = texelPlayer(p);
   ctx.drawImage(PS.c, -PS.half, -PS.half, PS.half * 2, PS.half * 2);
-  if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M && p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
+  if (typeof muzzleDraw === 'function') { try { muzzleDraw(ctx, p, fk, gl, 1); } catch (e) { muzzleHurt(e); } }
+  else if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M && p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
   if (p.frozenT > 0) { ctx.fillStyle = 'rgba(200,240,255,0.55)'; ctx.fillRect(-15, -15, 30, 30); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(-15, -15, 30, 30); }
   if (p.rootT > 0) { ctx.strokeStyle = '#4d5e22'; ctx.lineWidth = 3; for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + 0.4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 18, Math.sin(a) * 18); ctx.quadraticCurveTo(Math.cos(a + 0.6) * 8, Math.sin(a + 0.6) * 8, Math.cos(a + 1.2) * 14, Math.sin(a + 1.2) * 14); ctx.stroke(); } }
   if (p.jamT > 0) { ctx.rotate(-p.aim); ctx.fillStyle = '#fff36b'; ctx.font = "bold 12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('JAM', 0, -24); }

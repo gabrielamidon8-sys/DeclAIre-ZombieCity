@@ -59,7 +59,9 @@ function volley(a, mul) {
   // (if the barrel is poking into a wall, the shot starts from the player so a zombie pinned against the wall still gets hit)
   let md = (10 + (GUN_LEN[w.F.key] || 20)) * PK, mx = p.x + Math.cos(p.aim) * md, my = p.y + Math.sin(p.aim) * md;
   if (pointInRect(mx, my)) { mx = p.x; my = p.y; }
-  luxFlash(p.x + Math.cos(p.aim) * md * 0.8, p.y + Math.sin(p.aim) * md * 0.8, (kind === 'flame' ? 150 : cone ? 330 : 260) * (0.55 + 0.45 * SCL), kind === 'flame' ? '255,150,60' : '255,214,140', 1, 0.09, { shade: true });
+  // the flash, its light, sparks, smoke and brass: each gun its own (the muzzle flash engine)
+  if (typeof muzzleShot === 'function') muzzleShot(p, w, a, p.x + Math.cos(p.aim) * md * 0.9, p.y + Math.sin(p.aim) * md * 0.9);
+  else luxFlash(p.x + Math.cos(p.aim) * md * 0.8, p.y + Math.sin(p.aim) * md * 0.8, (kind === 'flame' ? 150 : cone ? 330 : 260) * (0.55 + 0.45 * SCL), kind === 'flame' ? '255,150,60' : '255,214,140', 1, 0.09, { shade: true });
   const gap = 0.11 * Math.min(1, 6 / Math.max(1, n));
   for (let i = 0; i < n; i++) {
     let ang = a;
@@ -128,7 +130,7 @@ function updBullets(dt) {
       const res = hurtZombie(z, dmg, { src: 'bullet', crit: b.crit, kx: b.vx / sp * S.knock, ky: b.vy / sp * S.knock });
       if (res === 'pass' || !res) return;
       if (res === 'reflect') { b.dead = true; return false; }
-      if (b.kind !== 'flame') burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25);
+      if (b.kind !== 'flame') { burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25); if (typeof goreHit === 'function') goreHit(z, b.vx, b.vy, dmg); }
       onHitFx(z, b, dmg);
       (b.hit || (b.hit = [])).push(z);
       if (b.split > 0 && !b.shard) splitBullet(b, z);

@@ -641,7 +641,7 @@ function netKillFx(z, by) {
   const m = z.m, gore = m.S.gore;
   if (z.illusion) { burst(z.x, z.y, 10, '#efe9dc', 120, 4, 0.4); return; }
   burst(z.x, z.y, z.boss ? 40 : z.fly ? 3 : 10, gore, z.boss ? 260 : 150, z.fly ? 2 : 5, 0.6);
-  if (!z.fly) { splat(z.x, z.y, z.r * rand(0.9, 1.4), gore); netChainFx(); }
+  if (!z.fly) { if (typeof goreKill === 'function') goreKill(z); else splat(z.x, z.y, z.r * rand(0.9, 1.4), gore); netChainFx(); }
   if (!z.fly && !z.minion && !m.unique) discover(m);
   if (by === NET.me && !z.fly) dashOnKill();
   if (z.boss) {
@@ -763,6 +763,8 @@ function netCosShot(pid, x, y, a, wid, n, spd, rng, spr) {
     const sp = spd * (w.kind === 'flame' ? rand(0.75, 1.15) : 1), life = rng / sp;
     G.bullets.push({ cos: true, x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: life, max: life, kind: w.kind, col: w.color, dmg: 0, pierce: 0, bounce: 0, split: 0, hit: null });
   }
+  // the teammate's muzzle flash, its light, smoke and brass, from the end of their gun
+  if (typeof muzzleShot === 'function') { const o = NET.role === 'host' ? (NET.peers.get(pid) || {}).p : NET.others.get(pid); muzzleShot(o || null, w, a, x, y); }
   const now = performance.now(), last = NET.shotSfx.get(pid) || 0;
   if (now - last > 110 && G.p && Math.hypot(x - G.p.x, y - G.p.y) < 700) { NET.shotSfx.set(pid, now); SFX.shot(w.F.key, w.M.key); }
 }

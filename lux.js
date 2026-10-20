@@ -24,7 +24,8 @@ const LUX = {
   live: false, lvl: 2, adapt: 0, day: 1, hour: 12, h0: 11, amb: [1, 1, 1], mul: false,
   ms: 0, msAvg: 0, msT: 0, budget: 3, errT: [], bad: 0, offUntil: 0, level: 0, repairs: 0, fails: 0, lastErr: '',
   A: null, ag: null, M: null, mg: null, B1: null, b1: null, B2: null, b2: null, cw: 0, ch: 0, res: 0, fx: [], lights: [], n: 0, shaded: 0, rays: 0,
-  occ: new Float32Array(4 * 160), occE: new Uint8Array(160), nocc: 0, view: [0, 0, 0, 0], cand: [], G1: null, g1: null, ang: new Float32Array(1600), pts: new Float32Array(3300), spr: new Map(), probe: 0
+  occ: new Float32Array(4 * 160), occE: new Uint8Array(160), nocc: 0, view: [0, 0, 0, 0], cand: [], G1: null, g1: null, ang: new Float32Array(1600), pts: new Float32Array(3300), spr: new Map(), probe: 0,
+  S: null, sg: null, fin: [], fz: [], ff: [], hp: [], hh: [], tr: null, beams: []
 };
 const LUX_RISE = [6, 5.5, 6.5, 7.5], LUX_SET = [19, 20.5, 18, 16.5];   // sunrise and sunset by season
 const LUX_NIGHT = [[0.27, 0.37, 0.62], [0.2, 0.29, 0.54]];            // how dark the night is: gentle, deeper
@@ -62,7 +63,7 @@ function luxAmbient(out) {
 function luxFlash(x, y, r, col, i, life, o) {
   if (SET.lux === 'off') return;
   const a = LUX.fx; if (a.length > 28) a.shift();
-  a.push({ x: x, y: y, r: r, col: col, i: i, life: life, max: life, shade: !!(o && o.shade), cone: o && o.cone });
+  a.push({ x: x, y: y, r: r, col: col, i: i, life: life, max: life, shade: !!(o && o.shade), cone: o && o.cone, hgt: o && o.hgt });
 }
 
 /* ---------- canvases ---------- */
@@ -72,8 +73,11 @@ function luxBuild() {
   LUX.A = luxCanvas(cw, ch); LUX.ag = LUX.A.getContext('2d'); LUX.M = luxCanvas(cw, ch); LUX.mg = LUX.M.getContext('2d');
   LUX.B1 = luxCanvas(Math.ceil(cw / 3), Math.ceil(ch / 3)); LUX.b1 = LUX.B1.getContext('2d');
   LUX.B2 = luxCanvas(Math.ceil(cw / 9), Math.ceil(ch / 9)); LUX.b2 = LUX.B2.getContext('2d');
-  LUX.G1 = luxCanvas(cw, ch); LUX.g1 = LUX.G1.getContext('2d');
-  if (!LUX.ag || !LUX.mg || !LUX.b1 || !LUX.b2 || !LUX.g1) throw new Error('lux: no canvas context');
+  // rain and snow glints: thin streaks need less than the light map's resolution
+  const gk = Math.min(lq.res, 0.4) / lq.res;
+  LUX.G1 = luxCanvas(Math.max(2, Math.round(cw * gk)), Math.max(2, Math.round(ch * gk))); LUX.g1 = LUX.G1.getContext('2d');
+  LUX.S = luxCanvas(cw, ch); LUX.sg = LUX.S.getContext('2d');   // scratch: one light at a time, before its short shadows are cut out
+  if (!LUX.ag || !LUX.mg || !LUX.b1 || !LUX.b2 || !LUX.g1 || !LUX.sg) throw new Error('lux: no canvas context');
   LUX.cw = cw; LUX.ch = ch; LUX.res = lq.res; LUX.cvw = cv.width; LUX.cvh = cv.height;
 }
 // can this device multiply one picture by another? (every current browser can; this is the check)
@@ -87,13 +91,16 @@ function luxProbe() {
 }
 
 /* ---------- gathering the lights ---------- */
-const LAMP = [255, 190, 112], LAMPC = [160, 200, 255];
-function luxPush(x, y, r, c0, c1, c2, i, shade, pr, cone) {
+// the colour of each kind of street lamp: high-pressure sodium (orange), LED (cool white), metal halide (warm white)
+const LAMP = [255, 172, 88], LAMPC = [222, 233, 255], LAMP_T = { sodium: [255, 172, 88], led: [222, 233, 255], halide: [255, 242, 220] };
+// hgt: how high the light hangs (metres). Anything taller than the light blocks it outright (walls, buildings); anything
+// shorter throws a shadow of its own height (a car under a street lamp, a zombie in front of a fire)
+function luxPush(x, y, r, c0, c1, c2, i, shade, pr, cone, hgt) {
   if (!(r > 1) || !(i > 0.004) || !isFinite(x + y + r + i)) return;
   const V = LUX.view; if (x + r < V[0] || x - r > V[2] || y + r < V[1] || y - r > V[3]) return;   // its light never reaches the screen
   const a = LUX.lights, n = LUX.n++;
-  const L = a[n] || (a[n] = { x: 0, y: 0, r: 0, c0: 0, c1: 0, c2: 0, i: 0, shade: false, pr: 0, cone: null, d: 0 });
-  L.x = x; L.y = y; L.r = r; L.c0 = c0; L.c1 = c1; L.c2 = c2; L.i = i; L.shade = shade; L.pr = pr; L.cone = cone || null;
+  const L = a[n] || (a[n] = { x: 0, y: 0, r: 0, c0: 0, c1: 0, c2: 0, i: 0, shade: false, pr: 0, cone: null, d: 0, hgt: 2 });
+  L.x = x; L.y = y; L.r = r; L.c0 = c0; L.c1 = c1; L.c2 = c2; L.i = i; L.shade = shade; L.pr = pr; L.cone = cone || null; L.hgt = hgt || 2;
   const dx = x - cam.x, dy = y - cam.y; L.d = dx * dx + dy * dy - pr * 1e6;
 }
 // the lit windows of a block, worked out once per block: a few points on the sidewalk in front of buildings that still
@@ -133,12 +140,15 @@ function luxGather(x0, y0, x1, y1, dt) {
       const L = c.lights[j]; if (L.x < x0 - m || L.x > x1 + m || L.y < y0 - m || L.y > y1 + m) continue;
       let k = 1;
       if (L.broken) { const f = Math.sin(t * 13 + L.x) + Math.sin(t * 7.3 + L.y * 0.01); k = f > 1.2 ? 0.8 : 0; if (!k) continue; }
-      const col = L.cold ? LAMPC : LAMP;
+      const col = LAMP_T[L.type] || (L.cold ? LAMPC : LAMP);
       // the lamps come on at dusk (a cloudy, stormy day turns them on early) and are off in daylight
       const on = clamp((night + WX.dark * 0.5 - 0.12) / 0.3, 0, 1); if (on <= 0) continue;
-      luxPush(L.x, L.y, 140 * SCL, col[0], col[1], col[2], (0.55 + 0.45 * night) * k * on, true, 0);
+      // the light hangs from the head at the end of the arm, out over the road; highway lamps stand higher and reach further
+      if (L.hw) luxPush(L.x, L.y, 210 * SCL, col[0], col[1], col[2], (0.5 + 0.4 * night) * on, true, 0, null, 12);
+      else luxPush(L.hx == null ? L.x : L.hx, L.hy == null ? L.y : L.hy, 150 * SCL, col[0], col[1], col[2], (0.55 + 0.45 * night) * k * on, true, 0, null, 7);
     }
-    if (!c.luxR) c.luxR = c.rects.filter(r => r.burn || r.police);
+    if (!c.luxR) c.luxR = c.rects.filter(r => r.burn);
+    if (typeof garageLights === 'function') garageLights(c, x0, y0, x1, y1, m, t, night, uk);
     // windows and shop fronts: the city still has power in places, and its light spills onto the sidewalk at night
     if (night > 0.05) {
       if (!c.spill) c.spill = luxSpill(c);
@@ -146,17 +156,13 @@ function luxGather(x0, y0, x1, y1, dt) {
         const L = c.spill[j]; if (L.x < x0 - m || L.x > x1 + m || L.y < y0 - m || L.y > y1 + m) continue;
         let k = night;
         if (L.fl) { const f = Math.sin(t * 9 + L.x) + Math.sin(t * 23.7 + L.y * 0.03); if (f > 1.4) k *= 0.15; }
-        luxPush(L.x, L.y, L.r, L.c0, L.c1, L.c2, L.i * k, false, -1);
+        luxPush(L.x, L.y, L.r, L.c0, L.c1, L.c2, L.i * k, false, -1, null, 2.5);
       }
     }
     for (const r of c.luxR) {
       if (r.burn && r.x < x1 + m && r.x + r.w > x0 - m && r.y < y1 + m && r.y + r.h > y0 - m) {
         const fl = 0.75 + 0.25 * Math.sin(t * 11 + r.x * 0.01) + 0.1 * Math.sin(t * 23 + r.y);
-        luxPush(r.x + r.w / 2, r.y + r.h / 2, Math.min(r.w, r.h) * 0.55 + 200, 255, 120, 44, 0.8 * fl, false, 0);
-      }
-      if (r.police && r.x < x1 + m && r.x + r.w > x0 - m && r.y < y1 + m && r.y + r.h > y0 - m) {
-        const ph = Math.floor(t * 6) % 2;
-        luxPush(r.x + r.w / 2 + (ph ? -14 : 14), r.y + r.h / 2, 230 * uk, ph ? 255 : 70, ph ? 60 : 120, ph ? 60 : 255, 0.8, true, 1);
+        luxPush(r.x + r.w / 2, r.y + r.h / 2, Math.min(r.w, r.h) * 0.55 + 200, 255, 120, 44, 0.8 * fl, false, 0, null, 12);
       }
     }
   }
@@ -164,66 +170,79 @@ function luxGather(x0, y0, x1, y1, dt) {
   for (const f of WD.fires) {
     if (f.x < x0 - m || f.x > x1 + m || f.y < y0 - m || f.y > y1 + m || f.lit === 0) continue;
     const fl = 0.78 + 0.22 * Math.sin(t * 12 + f.ph * 5) + 0.1 * Math.sin(t * 29 + f.ph);
-    luxPush(f.x, f.y, f.r * 3.3 + 150, 255, 128, 48, 0.95 * fl, true, 0);
+    luxPush(f.x, f.y, f.r * 3.3 + 150, 255, 128 + 16 * Math.sin(t * 7 + f.ph), 48, 0.95 * fl, true, 0, null, 1.3);
   }
   for (const a of (G.alarms || [])) {
     if (!a.r || a.r.x < x0 - m || a.r.x > x1 + m) continue;
-    const ph = Math.floor(t * 5) % 2; luxPush(a.r.x + a.r.w / 2, a.r.y + a.r.h / 2, 190 * uk, 255, ph ? 230 : 150, ph ? 120 : 60, 0.7, false, 0);
+    const ph = Math.floor(t * 5) % 2; luxPush(a.r.x + a.r.w / 2, a.r.y + a.r.h / 2, 190 * uk, 255, ph ? 230 : 150, ph ? 120 : 60, 0.7, false, 0, null, 1);
   }
   // hazards that glow
   for (const h of G.haz) {
     if (h.x < x0 - m || h.x > x1 + m || h.y < y0 - m || h.y > y1 + m) continue;
     const f = clamp(h.life / h.max * 2, 0, 1);
-    if (h.k === 'fire') luxPush(h.x, h.y, h.r * 2.8 + 90, 255, 128, 44, 0.8 * f * (0.8 + 0.2 * Math.sin(t * 17 + h.x)), false, 0);
-    else if (h.k === 'acid') luxPush(h.x, h.y, h.r * 2.2 + 60, 150, 255, 70, 0.55 * f, false, 0);
-    else if (h.k === 'ice') luxPush(h.x, h.y, h.r * 2.2 + 60, 150, 220, 255, 0.55 * f, false, 0);
-    else if (h.k === 'spore') luxPush(h.x, h.y, h.r * 2 + 60, 190, 215, 100, 0.35 * f, false, 0);
-    else if (h.k === 'vortex') luxPush(h.x, h.y, h.r * 1.6, 150, 90, 255, 0.5 * f, false, 0);
+    if (h.k === 'fire') luxPush(h.x, h.y, h.r * 2.8 + 90, 255, 128, 44, 0.8 * f * (0.8 + 0.2 * Math.sin(t * 17 + h.x)), false, 0, null, 1);
+    else if (h.k === 'acid') luxPush(h.x, h.y, h.r * 2.2 + 60, 150, 255, 70, 0.55 * f, false, 0, null, 0.3);
+    else if (h.k === 'ice') luxPush(h.x, h.y, h.r * 2.2 + 60, 150, 220, 255, 0.55 * f, false, 0, null, 0.3);
+    else if (h.k === 'spore') luxPush(h.x, h.y, h.r * 2 + 60, 190, 215, 100, 0.35 * f, false, 0, null, 0.5);
+    else if (h.k === 'vortex') luxPush(h.x, h.y, h.r * 1.6, 150, 90, 255, 0.5 * f, false, 0, null, 1);
   }
   // flames from a flamethrower
   let nf = 0;
-  for (let i = 0; i < G.bullets.length && nf < 4; i += 3) { const b = G.bullets[i]; if (b.kind === 'flame') { nf++; luxPush(b.x, b.y, 230 * uk, 255, 140, 56, 0.7, false, 0); } }
+  for (let i = 0; i < G.bullets.length && nf < 4; i += 3) { const b = G.bullets[i]; if (b.kind === 'flame') { nf++; luxPush(b.x, b.y, 230 * uk, 255, 140, 56, 0.7, false, 0, null, 1); } }
   // flashes
   const a = LUX.fx;
   for (let i = a.length - 1; i >= 0; i--) {
     const e = a[i]; e.life -= dt; if (e.life <= 0) { a.splice(i, 1); continue; }
     if (e.x < x0 - m || e.x > x1 + m || e.y < y0 - m || e.y > y1 + m) continue;
     const f = e.life / e.max, k = f * f * (3 - 2 * f), cc = e.col.split(',');
-    luxPush(e.x, e.y, e.r * (0.7 + 0.3 * k), +cc[0], +cc[1], +cc[2], e.i * k, e.shade, 2, e.cone);
+    luxPush(e.x, e.y, e.r * (0.7 + 0.3 * k), +cc[0], +cc[1], +cc[2], e.i * k, e.shade, 2, e.cone, e.hgt || 1.4);
   }
   // bosses and strong things glow a little
   for (const z of G.zs) {
     if (z.dead || !z.boss || z.x < x0 - m || z.x > x1 + m || z.y < y0 - m || z.y > y1 + m) continue;
     const el = z.rb && z.rb.def && z.rb.def.el, col = el === 'fire' ? [255, 110, 40] : el === 'ice' ? [140, 210, 255] : el === 'toxic' || el === 'poison' ? [150, 240, 70] : el === 'shock' || el === 'volt' ? [255, 240, 110] : el === 'void' ? [160, 90, 255] : [255, 90, 70];
-    luxPush(z.x, z.y, z.r * 5 + 120, col[0], col[1], col[2], 0.55, false, 0);
+    luxPush(z.x, z.y, z.r * 5 + 120, col[0], col[1], col[2], 0.55, false, 0, null, 2);
   }
   // you: a flashlight and a small glow, so you are never lost in the dark
   const p = G.p;
   if (p && G.mode !== 'title' && !p.down && night > 0.04) {
     const aim = p.aim, rr = 6 * PK;
-    luxPush(p.x, p.y, 120 * PK + 30, 255, 232, 190, 0.5 * night, false, 3);
-    luxPush(p.x + Math.cos(aim) * rr, p.y + Math.sin(aim) * rr, 300 * (0.55 + 0.45 * SCL), 255, 238, 200, 0.95 * night, true, 3, { a: aim, h: 0.42 });
+    luxPush(p.x, p.y, 120 * PK + 30, 255, 232, 190, 0.5 * night, false, 3, null, 1.5);
+    luxPush(p.x + Math.cos(aim) * rr, p.y + Math.sin(aim) * rr, 330 * (0.55 + 0.45 * SCL), 255, 242, 222, 0.95 * night, true, 3, { a: aim, h: 0.46, beam: 1 }, 1.2);
   }
   if (NET.started) {
     const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values());
     for (const q of each) if (q && !q.down && night > 0.04 && q.x > x0 - m && q.x < x1 + m && q.y > y0 - m && q.y < y1 + m) {
-      luxPush(q.x, q.y, 110, 255, 232, 190, 0.45 * night, false, 1);
-      if (q.aim != null) luxPush(q.x + Math.cos(q.aim) * 6, q.y + Math.sin(q.aim) * 6, 420, 255, 238, 200, 0.7 * night, false, 1, { a: q.aim, h: 0.4 });
+      luxPush(q.x, q.y, 110, 255, 232, 190, 0.45 * night, false, 1, null, 1.5);
+      if (q.aim != null) luxPush(q.x + Math.cos(q.aim) * 6, q.y + Math.sin(q.aim) * 6, 420, 255, 242, 222, 0.7 * night, true, 1, { a: q.aim, h: 0.44, beam: 1 }, 1.2);
     }
   }
 }
 
 /* ---------- rays ---------- */
-// the walls near a light, as boxes, from the same lists the game collides with
-// ents: the zombies near the light block it too (your flashlight and your own gunfire throw their shadows)
-function luxOcc(lx, ly, R, ents) {
-  const rs = rectsNear(lx, ly, R), o = LUX.occ, cand = LUX.cand; let n = 0;
-  cand.length = 0;
+// the walls near a light, as boxes, from the same lists the game collides with. H: the light's height. What stands taller
+// than the light blocks it outright (its shadow runs on to the edge of the light's reach); what is shorter goes on a
+// second list (LUX.fin) and throws a shadow as long as its height allows (luxFinite).
+// ents: bodies count too: zombies taller than the light block it, the rest (and players, props, trees and bushes) throw
+// short shadows of their own
+const LUX_PH = { barrel: 0.9, cone: 0.7, can: 1, tire: 0.3, crate: 0.8 };
+const LUXOC = [0, 0, 0, 0, 0, 0, -1];
+function luxOcc(lx, ly, R, ents, H) {
+  H = H || 99;
+  // the same light asking again this frame (the check before drawing, then the trace itself): nothing to redo
+  const C = LUXOC; if (C[0] === lx && C[1] === ly && C[2] === R && C[3] === ents && C[4] === H && C[5] === LUX.noFin && C[6] === LUX.fn) return LUX.nocc;
+  C[0] = lx; C[1] = ly; C[2] = R; C[3] = ents; C[4] = H; C[5] = LUX.noFin; C[6] = LUX.fn;
+  // a light with no budget left for short shadows treats everything as a wall, as the engine always did
+  if (LUX.noFin) H = 0.01;
+  const rs = rectsNear(lx, ly, R), o = LUX.occ, cand = LUX.cand, fin = LUX.fin; let n = 0;
+  cand.length = 0; fin.length = 0;
   for (let i = 0; i < rs.length; i++) {
-    const r = rs[i]; if (r.low || r.k === 'rail' || r.k === 'bridge' || r.k === 'deck') continue;
-    if (r.w < 8 && r.h < 8) continue;
+    const r = rs[i]; if (r.k === 'rail' || r.k === 'bridge' || r.k === 'deck') continue;
     if (lx > r.x && lx < r.x + r.w && ly > r.y && ly < r.y + r.h) continue;      // a light inside a box is not blocked by it
-    cand.push(r);
+    let h = r.k === 'trunk' ? 4 : luxHeight(r);
+    if (!h) { if (r.low) continue; h = 2.5; }
+    if (h >= H * 0.98) { if (r.w < 8 && r.h < 8) continue; cand.push(r); }
+    else if (fin.length < 70) fin.push(r);
   }
   // too many walls in reach (a big flash in a dense block): keep the nearest, they hide the rest anyway
   if (cand.length > 160) {
@@ -232,15 +251,27 @@ function luxOcc(lx, ly, R, ents) {
   }
   const E = LUX.occE;
   for (const r of cand) { const k = n * 4; o[k] = r.x; o[k + 1] = r.y; o[k + 2] = r.x + r.w; o[k + 3] = r.y + r.h; E[n] = 0; n++; }
-  // a zombie is lit on the side facing the light and throws its shadow behind (rays stop where they leave its body)
-  if (ents && n < 150) {
+  const fz = LUX.fz, ff = LUX.ff; fz.length = 0; ff.length = 0;
+  if (ents && n < 150 && !LUX.noFin) {
+    // a zombie taller than the light is lit on the side facing it and blocks it (rays stop where they leave its body)
     const R2 = R * R; let ne = 0;
-    for (const z of G.zs) {
-      if (z.dead || z.fly || (z.st && z.st.under) || z.illusion) continue;
+    near(lx, ly, R, z => {
+      if (z.dead || z.fly || (z.st && z.st.under) || z.illusion) return;
       const dx = z.x - lx, dy = z.y - ly, d2 = dx * dx + dy * dy, h = z.r * 0.7;
-      if (d2 > R2 || d2 < (h + 2) * (h + 2)) continue;
-      const k = n * 4; o[k] = z.x - h; o[k + 1] = z.y - h; o[k + 2] = z.x + h; o[k + 3] = z.y + h; E[n] = 1; n++;
-      if (++ne >= 28 || n >= 160) break;
+      if (d2 > R2 || d2 < (h + 2) * (h + 2)) return;
+      const zh = 1.7 * clamp(z.r / (14 * ZK), 0.75, 3.2);
+      if (zh >= H * 0.98) { if (ne < 28 && n < 160) { const k = n * 4; o[k] = z.x - h; o[k + 1] = z.y - h; o[k + 2] = z.x + h; o[k + 3] = z.y + h; E[n] = 1; n++; ne++; } }
+      else if (fz.length < 40) fz.push({ x: z.x, y: z.y, rho: h, h: zh });
+    });
+    const body = (q, own) => { if (!q || q.down || own) return; const dx = q.x - lx, dy = q.y - ly; if (dx * dx + dy * dy > R2 || dx * dx + dy * dy < 100) return; fz.push({ x: q.x, y: q.y, rho: (q.r || 9 * PK) * 0.75, h: 1.75 }); };
+    if (G.p && G.mode !== 'title') body(G.p, LUX.ownLight);
+    if (NET.started) { const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p) : Array.from(NET.others.values()); for (const q of each) body(q, false); }
+    for (const pr of WD.props) { if (pr.dead) continue; const dx = pr.x - lx, dy = pr.y - ly; if (dx * dx + dy * dy > R2) continue; fz.push({ x: pr.x, y: pr.y, rho: pr.r, h: LUX_PH[pr.k] || 0.8 }); }
+    // trees and bushes: leaves let some light through
+    for (const d of WD.act) {
+      if (d.k === 'grass') continue; const dx = d.x - lx, dy = d.y - ly; if (dx * dx + dy * dy > R2) continue;
+      if (d.k === 'tree') { if (H > 4.2) ff.push({ x: d.x, y: d.y, rho: d.r * 0.82, h: 3.6, a: 0.42 }); }
+      else ff.push({ x: d.x, y: d.y, rho: d.r * 0.9, h: 1.1, a: 0.62 });
     }
   }
   LUX.nocc = n; return n;
@@ -260,9 +291,9 @@ function luxCast(lx, ly, R, dx, dy) {
 }
 // the shape a light can see: rays toward the corners of every wall (so the edges of shadows are sharp) plus an even
 // fan around. Returns the number of points written to LUX.pts (x, y pairs).
-function luxPoly(lx, ly, R, rays, a0, a1, ents) {
+function luxPoly(lx, ly, R, rays, a0, a1, ents, H) {
   if (!isFinite(a0) || !isFinite(a1)) { a0 = 0; a1 = 6.2832; }
-  const n = luxOcc(lx, ly, R, ents), A = LUX.ang; let na = 0, full = a1 - a0 >= 6.28;
+  const n = luxOcc(lx, ly, R, ents, H), A = LUX.ang; let na = 0, full = a1 - a0 >= 6.28;
   for (let i = 0; i < rays && na < 1500; i++) A[na++] = a0 + (a1 - a0) * (i / (rays - (full ? 0 : 1)));
   const o = LUX.occ, R2 = R * R * 1.3;
   for (let i = 0; i < n && na < 1590; i++) {
@@ -292,31 +323,87 @@ function luxPoly(lx, ly, R, rays, a0, a1, ents) {
 
 /* ---------- painting the light map ---------- */
 function luxPath(g, np) { const P = LUX.pts; g.beginPath(); g.moveTo(P[0], P[1]); for (let i = 2; i < np; i += 2) g.lineTo(P[i], P[i + 1]); g.closePath(); }
-function luxGrad(g, L, k) {
-  const r = L.r, gr = g.createRadialGradient(L.x, L.y, 0, L.x, L.y, r), i = L.i * k, c = 'rgba(' + L.c0 + ',' + L.c1 + ',' + L.c2 + ',';
+function luxGrad(g, L, k, rk) {
+  const r = L.r * (rk || 1), gr = g.createRadialGradient(L.x, L.y, 0, L.x, L.y, r), i = L.i * k, c = 'rgba(' + L.c0 + ',' + L.c1 + ',' + L.c2 + ',';
+  if (L.hgt >= 4 && !L.cone) {
+    // a lamp up on a pole: the pool under it falls off as cos cubed over the lamp's height (bright under it, a long soft
+    // spread across the street), then fades out at the edge of its reach
+    const upm = 32 * SCL / SCALE_REAL, Rm = r / upm;
+    for (const f of [0, 0.1, 0.22, 0.36, 0.52, 0.7, 0.86, 1]) { const d = f * Rm / L.hgt, e = Math.pow(1 + d * d, -1.5) * (1 - f * f) * (1 - f * f); gr.addColorStop(f, c + Math.min(1, i * e).toFixed(3) + ')'); }
+    return gr;
+  }
   gr.addColorStop(0, c + Math.min(1, i) + ')'); gr.addColorStop(0.1, c + Math.min(1, i * 0.72) + ')'); gr.addColorStop(0.3, c + Math.min(1, i * 0.34) + ')');
   gr.addColorStop(0.6, c + (i * 0.1).toFixed(3) + ')'); gr.addColorStop(1, c + '0)');
   return gr;
 }
-function luxDraw(g, L, lq, shadowed) {
+function luxDrawLight(g, L, lq, shadowed) {
   if (L.cone) {
-    // a beam: a wide dim cone and a narrow bright one
-    for (const [k, w] of [[0.55, 1], [0.5, 0.62]]) {
-      const half = L.cone.h * w;
-      if (shadowed && lq.rays) { const np = luxPoly(L.x, L.y, L.r, Math.max(10, lq.rays >> 1), L.cone.a - half, L.cone.a + half, lq.rays >= 72); if (np < 6) continue; luxPath(g, np); }
-      else { g.beginPath(); g.moveTo(L.x, L.y); g.arc(L.x, L.y, L.r, L.cone.a - half, L.cone.a + half); g.closePath(); }
-      g.fillStyle = luxGrad(g, L, k); g.fill();
+    // a beam. A flashlight is three layers (the wide dim spill, the main beam, the bright hot spot in the middle), all
+    // inside one traced shape, so its edge is soft and the walls and bodies in it throw shadows
+    const beam = !!L.cone.beam, wide = L.cone.h * (beam ? 1.38 : 1); let clip = false;
+    if (shadowed && lq.rays) {
+      const np = luxPoly(L.x, L.y, L.r, Math.max(12, lq.rays >> 1), L.cone.a - wide, L.cone.a + wide, lq.rays >= 44, L.hgt); if (np < 6) return;
+      g.save(); luxPath(g, np); g.clip(); clip = true;
+      if (beam) { const B = L.poly && L.poly.length >= np ? L.poly : (L.poly = new Float32Array(Math.max(np, 64))); B.set(LUX.pts.subarray(0, np)); L.np = np; LUX.beams.push(L); }
     }
+    const layers = beam ? [[0.3, 1.38, 1], [0.55, 1, 1], [0.42, 0.42, 0.82]] : [[0.55, 1, 1], [0.5, 0.62, 1]];
+    for (const [k, w, rk] of layers) { const half = L.cone.h * w; g.beginPath(); g.moveTo(L.x, L.y); g.arc(L.x, L.y, L.r * rk, L.cone.a - half, L.cone.a + half); g.closePath(); g.fillStyle = luxGrad(g, L, k, rk); g.fill(); }
+    if (clip) g.restore();
     return;
   }
   if (shadowed && lq.rays) {
     const soft = lq.soft && L.pr >= 2 && L.r < 520 ? lq.soft + 1 : 1, off = Math.min(26, L.r * 0.07);
     for (let s = 0; s < soft; s++) {
       const a = s * 2.4 + 0.5, ox = soft > 1 ? Math.cos(a) * off : 0, oy = soft > 1 ? Math.sin(a) * off : 0;
-      const np = luxPoly(L.x + ox, L.y + oy, L.r + off, lq.rays, 0, 6.2832, L.pr >= 2 && lq.rays >= 72 && L.r < 700); if (np < 6) continue;
+      const np = luxPoly(L.x + ox, L.y + oy, L.r + off, lq.rays, 0, 6.2832, lq.rays >= 44, L.hgt); if (np < 6) continue;
       luxPath(g, np); g.fillStyle = luxGrad(g, L, 1 / soft); g.fill();
     }
   } else { g.fillStyle = luxGrad(g, L, 1); g.fillRect(L.x - L.r, L.y - L.r, L.r * 2, L.r * 2); }
+}
+// the short shadows of one light, cut out of its own light in the scratch canvas: boxes (cars, benches, barriers, piers
+// shorter than the light), bodies (zombies, players, props) and leaves (tree crowns and bushes, partly see-through).
+// Each is the shape and its copy pushed away from the light by height / (light height - height), wrapped in one outline.
+function luxHull(s, P) { const H = LUX.hh; if (hull8(P, H) < 3) return 0; s.moveTo(H[0], H[1]); for (let i = 2; i < H.length; i += 2) s.lineTo(H[i], H[i + 1]); s.closePath(); return 1; }
+function luxFinite(s, L) {
+  const H = L.hgt || 2, P = LUX.hp, lx = L.x, ly = L.y;
+  const kOf = h => Math.min(9, H / Math.max(0.12, H - h));
+  s.fillStyle = '#000'; s.globalAlpha = 0.84; s.beginPath(); let n = 0;
+  for (const r of LUX.fin) {
+    const k = kOf(r.k === 'trunk' ? 4 : luxHeight(r) || 2.5); P.length = 0;
+    for (const x of [r.x, r.x + r.w]) for (const y of [r.y, r.y + r.h]) P.push(x, y, lx + (x - lx) * k, ly + (y - ly) * k);
+    n += luxHull(s, P);
+  }
+  if (n) s.fill();
+  const circ = (e) => { const k = kOf(e.h), cx = lx + (e.x - lx) * k, cy = ly + (e.y - ly) * k, rr = e.rho * k; P.length = 0; for (let i = 0; i < 8; i++) { const a = i * 0.7854, ca = Math.cos(a), sa = Math.sin(a); P.push(e.x + ca * e.rho, e.y + sa * e.rho, cx + ca * rr, cy + sa * rr); } return luxHull(s, P); };
+  s.globalAlpha = 0.8; s.beginPath(); n = 0; for (const e of LUX.fz) n += circ(e); if (n) s.fill();
+  for (const e of LUX.ff) { s.globalAlpha = e.a; s.beginPath(); if (circ(e)) s.fill(); }
+  s.globalAlpha = 1;
+}
+function luxDrawFin(g, L, lq) {
+  const S = LUX.S, s = LUX.sg, tr = LUX.tr, res = LUX.res;
+  const sx = (tr.a * L.x + tr.e) * res, sy = (tr.d * L.y + tr.f) * res, sr = Math.abs(L.r * tr.a * res) + 3;
+  const bx = Math.max(0, Math.floor(sx - sr)), by = Math.max(0, Math.floor(sy - sr)), bx2 = Math.min(LUX.cw, Math.ceil(sx + sr)), by2 = Math.min(LUX.ch, Math.ceil(sy + sr));
+  if (bx2 <= bx || by2 <= by) return;
+  s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = 'source-over'; s.globalAlpha = 1; s.clearRect(bx, by, bx2 - bx, by2 - by);
+  s.setTransform(tr.a * res, tr.b * res, tr.c * res, tr.d * res, tr.e * res, tr.f * res);
+  s.globalCompositeOperation = 'lighter';
+  LUX.ownLight = L.pr === 3;
+  luxDrawLight(s, L, lq, true);
+  LUX.ownLight = false;
+  s.globalCompositeOperation = 'destination-out'; luxFinite(s, L);
+  s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = 'source-over';
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter'; g.drawImage(S, bx, by, bx2 - bx, by2 - by, bx, by, bx2 - bx, by2 - by); g.restore();
+}
+// the nearest few shadowed lights get short shadows (how many depends on the level); the rest are traced the old way,
+// where everything blocks. A light with nothing short near it skips the scratch canvas.
+function luxDraw(g, L, lq, shadowed) {
+  if (shadowed && lq.rays && LUX.finLeft > 0 && LUX.S && LUX.tr) {
+    LUX.ownLight = L.pr === 3;
+    luxOcc(L.x, L.y, L.r, lq.rays >= 44, L.hgt);
+    if (LUX.fin.length || LUX.fz.length || LUX.ff.length) { LUX.finLeft--; luxDrawFin(g, L, lq); return; }
+    luxDrawLight(g, L, lq, shadowed); LUX.ownLight = false; return;
+  }
+  LUX.ownLight = L.pr === 3; LUX.noFin = shadowed && lq.rays > 0; luxDrawLight(g, L, lq, shadowed); LUX.noFin = false; LUX.ownLight = false;
 }
 
 /* ---------- one frame: called by render() after the world is drawn ---------- */
@@ -346,6 +433,7 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
   const use = Math.min(n, lq.lights);
   // paint
   const g = LUX.ag, tr = ctx.getTransform(), s = lq.res;
+  LUX.tr = tr; LUX.beams.length = 0; LUX.fn = (LUX.fn || 0) + 1; LUX.finLeft = [0, 0, 2, 4, 6][LUX.level];
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.fillRect(0, 0, LUX.cw, LUX.ch);
   g.setTransform(tr.a * s, tr.b * s, tr.c * s, tr.d * s, tr.e * s, tr.f * s);
   g.globalCompositeOperation = 'lighter';
@@ -391,6 +479,21 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
   }
   else if (dark) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1 - (amb[0] + amb[1] + amb[2]) / 3; ctx.fillStyle = '#080c16'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }   // no multiply on this device: a plain dark veil
   LUX.lit = lit && LUX.mul;
+  // light in the air: a flashlight (or headlight) beam shows as a shaft through fog, rain, dust and smoke, inside its
+  // traced shape, brightest near the lens
+  const airK = clamp(0.04 + (WX.fog || 0) * 0.6 + (WX.rain || 0) * 0.32 + (WX.sand || 0) * 0.4 + (WX.ash || 0) * 0.3 + (1 - LUX.day) * 0.1, 0, 1);
+  if (LUX.beams.length && dark && lq.rays) {
+    ctx.save(); ctx.setTransform(tr); ctx.globalCompositeOperation = 'lighter';
+    for (const B of LUX.beams) {
+      const P = B.poly, np = B.np; if (!P || np < 6) continue;
+      ctx.save(); ctx.beginPath(); ctx.moveTo(P[0], P[1]); for (let i = 2; i < np; i += 2) ctx.lineTo(P[i], P[i + 1]); ctx.closePath(); ctx.clip();
+      const gr = ctx.createRadialGradient(B.x, B.y, 0, B.x, B.y, B.r * 0.9), a = (0.05 + 0.2 * airK) * Math.min(1, B.i);
+      gr.addColorStop(0, 'rgba(' + B.c0 + ',' + B.c1 + ',' + B.c2 + ',' + a.toFixed(3) + ')'); gr.addColorStop(0.35, 'rgba(' + B.c0 + ',' + B.c1 + ',' + B.c2 + ',' + (a * 0.4).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(' + B.c0 + ',' + B.c1 + ',' + B.c2 + ',0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(B.x, B.y); ctx.arc(B.x, B.y, B.r * 0.9, B.cone.a - B.cone.h * 0.9, B.cone.a + B.cone.h * 0.9); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
   // glow and bloom: the light itself, added on top
   ctx.globalCompositeOperation = 'lighter';
   const night = 1 - LUX.day, wet = clamp(WX.rain * 1.2 + (WX.storm || 0) * 0.4, 0, 1), fogk = clamp(WX.fog, 0, 1);
@@ -399,12 +502,17 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
     // wet streets shine and fog glows around every lamp
     ctx.globalAlpha = Math.min(1, (0.1 + 0.12 * night) * (1 + 0.6 * wet + 0.8 * fogk)); ctx.drawImage(LUX.A, 0, 0, cv.width, cv.height);
     if (lq.bloom && SET.bloom !== false) {
-      LUX.b1.clearRect(0, 0, LUX.B1.width, LUX.B1.height); LUX.b1.drawImage(LUX.A, 0, 0, LUX.B1.width, LUX.B1.height);
-      ctx.globalAlpha = Math.min(1, (0.16 + 0.12 * night) * (1 + 0.4 * wet + 1.2 * fogk)); ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height);
-      if (lq.bloom > 1) {
+      // two blurs (a third and a ninth of the light map), summed small and laid over the picture in one pass
+      const b1 = LUX.b1, B1w = LUX.B1.width, B1h = LUX.B1.height;
+      const a1 = Math.min(1, (0.16 + 0.12 * night) * (1 + 0.4 * wet + 1.2 * fogk)), a2 = lq.bloom > 1 ? Math.min(1, (0.2 + 0.14 * night) * (1 + 0.4 * wet + 1.2 * fogk)) : 0, top = Math.max(a1, a2);
+      b1.globalCompositeOperation = 'source-over'; b1.globalAlpha = 1; b1.clearRect(0, 0, B1w, B1h); b1.drawImage(LUX.A, 0, 0, B1w, B1h);
+      if (a2 > 0) {
         LUX.b2.clearRect(0, 0, LUX.B2.width, LUX.B2.height); LUX.b2.drawImage(LUX.B1, 0, 0, LUX.B2.width, LUX.B2.height);
-        ctx.globalAlpha = Math.min(1, (0.2 + 0.14 * night) * (1 + 0.4 * wet + 1.2 * fogk)); ctx.drawImage(LUX.B2, 0, 0, cv.width, cv.height);
+        if (a1 < top) { b1.clearRect(0, 0, B1w, B1h); b1.globalAlpha = a1 / top; b1.drawImage(LUX.A, 0, 0, B1w, B1h); }
+        b1.globalCompositeOperation = 'lighter'; b1.globalAlpha = a2 / top; b1.drawImage(LUX.B2, 0, 0, B1w, B1h);
+        b1.globalCompositeOperation = 'source-over'; b1.globalAlpha = 1;
       }
+      ctx.globalAlpha = top; ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height);
     }
   }
   if (use) {
@@ -415,7 +523,7 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
   LUX.live = true;
 }
 function luxGlints(lq) {
-  const g = LUX.g1, w = LUX.cw, h = LUX.ch, k = DPR * lq.res, sc = Math.min(W, H) / 480;
+  const g = LUX.g1, w = LUX.G1.width, h = LUX.G1.height, k = DPR * lq.res * w / LUX.cw, sc = Math.min(W, H) / 480;
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
   if (WX.rain > 0.08) {
     const n = Math.floor(320 * WX.rain), lx = -6.2 * WX.wx * k, ly = -21.6 * sc * k;
@@ -428,7 +536,7 @@ function luxGlints(lq) {
     for (let i = 0; i < n; i++) { const s = (1 + Math.random() * 2) * k * sc; g.rect(Math.random() * w, Math.random() * h, s, s); }
     g.fill();
   }
-  g.globalCompositeOperation = 'multiply'; g.drawImage(LUX.A, 0, 0); g.globalCompositeOperation = 'source-over';
+  g.globalCompositeOperation = 'multiply'; g.drawImage(LUX.A, 0, 0, w, h); g.globalCompositeOperation = 'source-over';
 }
 function noteLux() { if (LUX.repairs++ > 0) noteRepair('Rebuilt the lighting canvases'); }
 // something went wrong inside the engine: remember it, and back off if it keeps going wrong
@@ -515,6 +623,9 @@ function luxHeight(r) {
     const st = r.st || 'block', u = ((((r.s || (r.x * 31 + r.y * 17) | 0) * 2654435761) >>> 0) % 10000) / 10000;
     h = st === 'block' ? 10 + u * u * 26 + Math.min(8, Math.sqrt(r.w * r.h) / (SCL * 60)) : st === 'ruin' ? 5 + u * 8 : st === 'house' ? 7 : st === 'adobe' ? 4.5 : st === 'cabin' || st === 'lodge' ? 7 : st === 'barn' ? 9 : 3.4;
   } else if (r.k === 'lm') h = r.lm === 'statue' ? 7 : r.lm === 'plane' ? 4 : r.lm === 'fountain' ? 1.6 : 3;
+  else if (r.k === 'car') h = ((typeof VEH !== 'undefined' && VEH[r.vt]) || { h: 1.5 }).h * (r.flip ? 0.75 : r.burnt ? 0.85 : 1);
+  else if (r.k === 'wreck') h = r.ht || 3;
+  else if (r.k === 'pillar') h = typeof SKY_H !== 'undefined' ? SKY_H : 7.5;
   else h = LUX_HT[r.k] || 0;
   return r._ht = h;
 }
@@ -528,39 +639,97 @@ function luxShadowPath(m, x, y, w, h, ox, oy) {
   else { m.moveTo(X(10), Y(10)); for (let i = 8; i >= 0; i -= 2) m.lineTo(X(i), Y(i)); }
   m.closePath();
 }
+// The sun is not a point: it is sampled over its disc (and the bright sky round it) a few times, each sample a slightly
+// different direction and length, and the shadows of all samples are laid on top of each other. Near whatever casts it a
+// shadow is dark and sharp; further out the samples spread, so its edges soften and it fades towards the tip, the way a
+// real shadow does (and the way a ray tracer with an area light draws it). More samples at higher levels.
+const LUX_SS = [[0, 1], [0.045, 0.86], [-0.045, 0.74], [0.09, 0.62], [-0.08, 0.5]];
+// how strong each sample is, by the number of samples: the longest (first) alone reaches the tip, so the tip is faint and
+// the shadow deepens towards its foot where all of them overlap
+const LUX_SA = { 2: [0.45, 0.75], 3: [0.4, 0.5, 0.6], 4: [0.32, 0.42, 0.5, 0.55], 5: [0.3, 0.36, 0.42, 0.48, 0.5] };
 function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
-  const UPM = 32 * SCL / SCALE_REAL, ux = sun.dx * UPM, uy = sun.dy * UPM, maxL = 900 * Math.max(0.5, SCL / SCALE_REAL), mg = maxL;
-  m.fillStyle = col || sun.css; m.beginPath();
+  const UPM = 32 * SCL / SCALE_REAL, maxL = 900 * Math.max(0.5, SCL / SCALE_REAL), mg = maxL, lite = !!col || m === ctx;
+  const K = lite ? 2 : LUX.level >= 4 ? 5 : LUX.level >= 3 ? 4 : 3, SA = LUX_SA[K];
+  m.fillStyle = col || sun.css; m.strokeStyle = col || sun.css; m.lineCap = 'round';
   const cx0 = Math.floor((x0 - mg) / CHS), cx1 = Math.floor((x1 + mg) / CHS), cy0 = Math.floor((y0 - mg) / CHS), cy1 = Math.floor((y1 + mg) / CHS);
-  let n = 0;
+  // what casts, gathered once (the samples only move the shadows)
+  const rects = [], poles = [];
   for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
     const c = chunks.get(cx + ',' + cy); if (!c) continue;
-    for (const r of c.rects) {
-      const h = luxHeight(r); if (!h) continue;
+    for (const r of c.rects) { if (r.k === 'wreck') continue; const h = luxHeight(r); if (h && r.x < x1 + mg && r.x + r.w > x0 - mg && r.y < y1 + mg && r.y + r.h > y0 - mg) rects.push(r); }
+    if (!c.lights) c.lights = lightsOf(cx, cy);
+    for (const L of c.lights) if (!L.hw && L.x > x0 - mg && L.x < x1 + 200 && L.y > y0 - mg && L.y < y1 + 200) poles.push(L);
+  }
+  const bodies = [];
+  for (const z of G.zs) { if (z.dead || z.fly || (z.st && z.st.under)) continue; if (z.x < x0 - 400 || z.x > x1 + 400 || z.y < y0 - 400 || z.y > y1 + 400) continue; bodies.push(z.x, z.y, z.r, clamp(z.r * 0.17, 1.2, 6)); if (bodies.length > 320) break; }
+  if (G.p && G.mode !== 'title' && !G.p.down) bodies.push(G.p.x, G.p.y, G.p.r, 1.75);
+  if (NET.started) { const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values()); for (const q of each) if (q && !q.down) bodies.push(q.x, q.y, 9 * PK, 1.75); }
+  for (const pr of WD.props) if (!pr.dead) bodies.push(pr.x, pr.y, pr.r, LUX_PH[pr.k] || 0.8);
+  const sa = Math.atan2(sun.dy, sun.dx), sl = Math.hypot(sun.dx, sun.dy);
+  // small and soft casters (trees, bushes, bodies, poles) take only the first two samples, each strong enough that where
+  // both overlap the shade is as deep as under all of them
+  let keep = 1; for (let i = 0; i < K; i++) keep *= 1 - SA[i];
+  const aSmall = 1 - Math.sqrt(keep);
+  for (let si = 0; si < K; si++) {
+    const S = LUX_SS[si], an = sa + S[0], ln = sl * S[1], ux = Math.cos(an) * ln * UPM, uy = Math.sin(an) * ln * UPM;
+    m.globalAlpha = SA[si];
+    // buildings, walls, cars, piers: each box and the L-shaped shadow it throws, all as one shape
+    m.beginPath(); let n = 0;
+    for (const r of rects) {
+      const h = luxHeight(r);
       let ox = ux * h, oy = uy * h; const L = Math.hypot(ox, oy); if (L > maxL) { ox *= maxL / L; oy *= maxL / L; }
       if (Math.min(r.x, r.x + ox) > x1 || Math.max(r.x + r.w, r.x + r.w + ox) < x0 || Math.min(r.y, r.y + oy) > y1 || Math.max(r.y + r.h, r.y + r.h + oy) < y0) continue;
       luxShadowPath(m, r.x, r.y, r.w, r.h, ox, oy); n++;
     }
+    // highway decks and wrecked aircraft
+    if (typeof skySun === 'function') n += skySun(m, ux, uy, x0, y0, x1, y1);
+    if (typeof garageSun === 'function') n += garageSun(m, ux, uy, x0, y0, x1, y1);
+    if (n) m.fill();
+    if (typeof skyRampSun === 'function') skyRampSun(m, ux, uy, x0, y0, x1, y1);
+    if (si >= 2) continue;
+    m.globalAlpha = K > 2 ? aSmall : SA[si];
+    // tree crowns as clusters of leaves (each tree its own), trunks, bushes, and everyone standing in the street
+    m.beginPath(); n = 0;
+    for (const d of WD.act) {
+      if (d.k === 'grass') continue;
+      if (d.k === 'tree') {
+        const hc = 6, cxw = d.x + ux * hc, cyw = d.y + uy * hc, rr = d.r * 0.82;
+        if (cxw + rr * 1.3 < x0 || cxw - rr * 1.3 > x1 || cyw + rr * 1.3 < y0 || cyw - rr * 1.3 > y1) continue;
+        const nl = 4 + (d.s & 3), ph = (d.s >>> 3) % 628 / 100;
+        m.moveTo(cxw + rr * 0.72, cyw); m.arc(cxw, cyw, rr * 0.72, 0, TAU);
+        for (let i = 0; i < nl; i++) { const a = ph + i / nl * TAU, lx = cxw + Math.cos(a) * rr * 0.42, ly = cyw + Math.sin(a) * rr * 0.42, lr = rr * (0.42 + ((d.s >>> (i + 5)) & 7) / 40); m.moveTo(lx + lr, ly); m.arc(lx, ly, lr, 0, TAU); }
+        n++;
+      } else {
+        const hb = 1.1, cxw = d.x + ux * hb * 0.55, cyw = d.y + uy * hb * 0.55, rr = d.r * 0.9;
+        if (cxw + rr < x0 || cxw - rr > x1 || cyw + rr < y0 || cyw - rr > y1) continue;
+        m.moveTo(cxw + rr, cyw); m.ellipse(cxw, cyw, rr * (1 + Math.hypot(ux, uy) * 0.02), rr * 0.9, Math.atan2(uy, ux), 0, TAU); n++;
+      }
+    }
+    for (let i = 0; i < bodies.length; i += 4) {
+      const x = bodies[i], y = bodies[i + 1], r = bodies[i + 2], hm = bodies[i + 3];
+      const ox = ux * hm, oy = uy * hm, L = Math.hypot(ox, oy); if (x + L + r < x0 || x - L - r > x1 || y + L + r < y0 || y - L - r > y1) continue;
+      const rx = L / 2 + r * 0.6, ry = r * 0.62, a = Math.atan2(oy, ox), ex = x + ox * 0.5, ey = y + oy * 0.5;
+      m.moveTo(ex + Math.cos(a) * rx, ey + Math.sin(a) * rx); m.ellipse(ex, ey, rx, ry, a, 0, TAU); n++;
+    }
+    if (n) m.fill();
+    // trunks and lamp posts: thin shadows from the foot of the pole, the lamp head's at the end
+    m.lineWidth = 0.32 * UPM; m.beginPath(); n = 0;
+    for (const d of WD.act) { if (d.k !== 'tree') continue; const ex = d.x + ux * 4, ey = d.y + uy * 4; if (Math.max(d.x, ex) < x0 || Math.min(d.x, ex) > x1 || Math.max(d.y, ey) < y0 || Math.min(d.y, ey) > y1) continue; m.moveTo(d.x, d.y); m.lineTo(ex, ey); n++; }
+    for (const L of poles) { const hx = (L.hx == null ? L.x : L.hx), hy = (L.hy == null ? L.y : L.hy), ex = L.x + ux * 7, ey = L.y + uy * 7; m.moveTo(L.x, L.y); m.lineTo(ex, ey); m.lineTo(hx + ux * 7.2, hy + uy * 7.2); n++; }
+    if (n) m.stroke();
   }
-  if (n) m.fill();
-  // tree crowns, and everyone standing in the street
-  m.beginPath(); n = 0;
-  for (const d of WD.act) {
-    if (d.k !== 'tree') continue;
-    const cxw = d.x + ux * 6, cyw = d.y + uy * 6, rr = d.r * 0.82;
-    if (cxw + rr < x0 || cxw - rr > x1 || cyw + rr < y0 || cyw - rr > y1) continue;
-    m.moveTo(cxw + rr, cyw); m.arc(cxw, cyw, rr, 0, TAU); n++;
+  m.globalAlpha = 1;
+  // dappled light under the trees: a few sunflecks through the gaps in the leaves (the light map only)
+  if (!lite && LUX.level >= 3 && sun.k > 0.3) {
+    const ux = sun.dx * UPM, uy = sun.dy * UPM; m.fillStyle = 'rgba(' + Math.round(sun.col[0] * 255) + ',' + Math.round(sun.col[1] * 255) + ',' + Math.round(sun.col[2] * 255) + ',0.55)'; m.beginPath(); let n = 0;
+    for (const d of WD.act) {
+      if (d.k !== 'tree' || d.v === 'pine') continue; const cxw = d.x + ux * 6, cyw = d.y + uy * 6, rr = d.r * 0.7;
+      if (cxw + rr < x0 || cxw - rr > x1 || cyw + rr < y0 || cyw - rr > y1) continue;
+      const R = Z.mulberry32(d.s ^ 0x5f1ec);
+      for (let i = 0; i < 7; i++) { const a = R() * TAU, q = Math.sqrt(R()) * rr, fr = (1.5 + R() * 3) * SCL; m.moveTo(cxw + Math.cos(a) * q + fr, cyw + Math.sin(a) * q); m.arc(cxw + Math.cos(a) * q, cyw + Math.sin(a) * q, fr, 0, TAU); n++; }
+    }
+    if (n) m.fill();
   }
-  const body = (x, y, r, hm) => {
-    const ox = ux * hm, oy = uy * hm, L = Math.hypot(ox, oy); if (x + L + r < x0 || x - L - r > x1 || y + L + r < y0 || y - L - r > y1) return;
-    const rx = L / 2 + r * 0.6, ry = r * 0.62, a = Math.atan2(oy, ox), ex = x + ox * 0.5, ey = y + oy * 0.5;
-    m.moveTo(ex + Math.cos(a) * rx, ey + Math.sin(a) * rx); m.ellipse(ex, ey, rx, ry, a, 0, TAU); n++;
-  };
-  let nz = 0;
-  for (const z of G.zs) { if (z.dead || z.fly || (z.st && z.st.under)) continue; body(z.x, z.y, z.r, clamp(z.r * 0.17, 1.2, 6)); if (++nz > 80) break; }
-  if (G.p && G.mode !== 'title' && !G.p.down) body(G.p.x, G.p.y, G.p.r, 1.75);
-  if (NET.started) { const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values()); for (const q of each) if (q && !q.down) body(q.x, q.y, 9 * PK, 1.75); }
-  if (n) m.fill();
 }
 
 /* ---------- bounce light: path traced ----------
@@ -611,17 +780,27 @@ function luxGIgrid(x0, y0, x1, y1, lq) {
 }
 function luxGI(m, tr, s, lq) {
   const t0 = performance.now(), gw = GI.gw, gh = GI.gh, N = gw * gh, cell = GI.cell;
-  // the light on the ground, read back small from the light map (every other frame is plenty)
+  // the light on the ground, read back small from the light map (every 4th frame is plenty: the bounce settles slower)
   if (!GI.gs || GI.gs.width !== gw || GI.gs.height !== gh) { GI.gs = luxCanvas(gw, gh); GI.gsg = GI.gs.getContext('2d', { willReadFrequently: true }); GI.f = 0; }
-  if ((GI.f & 1) === 0) {
+  if ((GI.f & 3) === 0) {
     const wx = GI.gx * cell, wy = GI.gy * cell, sx = (tr.a * wx + tr.e) * s, sy = (tr.d * wy + tr.f) * s, sw = tr.a * gw * cell * s, sh = tr.d * gh * cell * s;
     GI.gsg.setTransform(1, 0, 0, 1, 0, 0); GI.gsg.globalCompositeOperation = 'source-over'; GI.gsg.fillStyle = '#000'; GI.gsg.fillRect(0, 0, gw, gh);
     GI.gsg.drawImage(LUX.M, sx, sy, sw, sh, 0, 0, gw, gh);
     const d = GI.gsg.getImageData(0, 0, gw, gh).data, src = GI.src;
     for (let i = 0; i < N; i++) { src[i * 3] = d[i * 4] / 255; src[i * 3 + 1] = d[i * 4 + 1] / 255; src[i * 3 + 2] = d[i * 4 + 2] / 255; }
   }
-  // trace: half the cells this frame, the other half next frame
-  const occ = GI.occ, src = GI.src, acc = GI.acc, vis = GI.vis, alb = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city;
+  // the colour of what the light bounces off, read small from the picture before the lighting goes on (every 16th frame)
+  if ((GI.f & 15) === 0) {
+    if (!GI.ac || GI.ac.width !== gw || GI.ac.height !== gh) { GI.ac = luxCanvas(gw, gh); GI.acg = GI.ac.getContext('2d', { willReadFrequently: true }); }
+    const wx = GI.gx * cell, wy = GI.gy * cell, sx = tr.a * wx + tr.e, sy = tr.d * wy + tr.f, sw = tr.a * gw * cell, sh = tr.d * gh * cell;
+    GI.acg.setTransform(1, 0, 0, 1, 0, 0); GI.acg.fillStyle = '#555'; GI.acg.fillRect(0, 0, gw, gh); GI.acg.drawImage(cv, sx, sy, sw, sh, 0, 0, gw, gh);
+    const d = GI.acg.getImageData(0, 0, gw, gh).data; if (!GI.alb || GI.alb.length !== N * 3) GI.alb = new Float32Array(N * 3);
+    const A = GI.alb, base = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city;
+    for (let i = 0; i < N; i++) { const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], m = Math.max(r, g, b) + 20; A[i * 3] = base[0] * 0.4 + r / m * 0.24; A[i * 3 + 1] = base[1] * 0.4 + g / m * 0.24; A[i * 3 + 2] = base[2] * 0.4 + b / m * 0.24; }
+  }
+  // trace: half the cells this frame, the other half next frame. What a ray finds is the light there plus the bounce
+  // already gathered there (so light keeps bouncing, a little less each time), coloured by the surface
+  const occ = GI.occ, src = GI.src, acc = GI.acc, vis = GI.vis, alb = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city, AL = GI.alb && GI.alb.length === N * 3 ? GI.alb : null;
   const R = LUX.level >= 3 ? 3 : 2, S = 10, blend = 0.22, WALL = 0.5;
   let seed = GI.seed = (GI.seed * 1664525 + 1013904223) >>> 0, rays = 0;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -637,8 +816,8 @@ function luxGI(m, tr, s, lq) {
         if (occ[iy * gw + ix]) { hit = true; break; }
         lx = ix; ly = iy;
       }
-      const j = (ly * gw + lx) * 3, w = hit ? WALL : 1;
-      r += src[j] * alb[0] * w; g += src[j + 1] * alb[1] * w; b += src[j + 2] * alb[2] * w; if (!hit) open++;
+      const j = (ly * gw + lx) * 3, w = hit ? WALL : 1, a0 = AL ? AL[j] : alb[0], a1 = AL ? AL[j + 1] : alb[1], a2 = AL ? AL[j + 2] : alb[2];
+      r += (src[j] + acc[j] * 0.5) * a0 * w; g += (src[j + 1] + acc[j + 1] * 0.5) * a1 * w; b += (src[j + 2] + acc[j + 2] * 0.5) * a2 * w; if (!hit) open++;
     }
     rays += R;
     acc[c * 3] += (r / R - acc[c * 3]) * blend; acc[c * 3 + 1] += (g / R - acc[c * 3 + 1]) * blend; acc[c * 3 + 2] += (b / R - acc[c * 3 + 2]) * blend;

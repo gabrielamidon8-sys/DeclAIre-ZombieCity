@@ -53,7 +53,7 @@ function dHash(i, j) { return Z.hash32((i * 73856093) ^ (j * 19349663) ^ WORLD.s
 function worldSeed(s) {
   WORLD.seed = s | 0; citySeed = s | 0; noiseSeed(s);
   WORLD.dist.clear(); WORLD.dc.clear(); WORLD.cur = null; WORLD.seen.clear();
-  chunks.clear(); fieldsReset();
+  chunks.clear(); fieldsReset(); if (typeof skyReset === 'function') skyReset();
   if (typeof WCACHE !== 'undefined') WCACHE.clear();
 }
 function realSeason(d) { const m = (d || new Date()).getMonth(); return m >= 2 && m <= 4 ? 0 : m <= 7 ? 1 : m <= 10 ? 2 : 3; }
@@ -62,7 +62,7 @@ function setSeason(i, quiet) {
   i = ((i | 0) % 4 + 4) % 4; if (i === WORLD.season) return;
   WORLD.season = i;
   // the city's art is redrawn for the new season, one block per frame so nothing stutters
-  for (const c of chunks.values()) { c.stale = 1; c.wcan = null; }
+  for (const c of chunks.values()) { c.stale = 1; c.wcan = null; c.skyStale = true; }
   if (typeof WSPR !== 'undefined') WSPR.clear();
   if (!quiet && G.mode !== 'title') toast('The season turns', SEASONS[i], ['#ffa8e0', '#7dff4a', '#ff9a3a', '#bfe6ff'][i]);
 }
@@ -216,9 +216,15 @@ function genChunk(cx, cy) {
     deco: [], props: [], fires: [], birds: [], puddles: [], decals: [], lights: null, lm: cx === D.lx && cy === D.ly };
   waterField(c);
   const B = BIO[bio], k = BIOGEN[bio] || BIOGEN.city;
-  k(c, R, B);
+  // a highway overhead keeps its strip of the block clear (SKYWAY); now and then the block is where an airliner came down
+  if (typeof skyKeep === 'function') skyKeep(c);
+  const Rw = chunkRng(cx, cy, 0x3ec4), crashP = { desert: 0.03, snow: 0.025, ruins: 0.03, ash: 0.02, burning: 0.012, chaos: 0.012, suburb: 0.008, city: 0.006 }[bio] || 0.01;
+  if (!c.lm && !c.wm && Rw() < crashP) crashSite(c, R); else k(c, R, B);
+  if (typeof skyPillars === 'function') skyPillars(c, R);
   roadside(c, R);
   railings(c);
+  const heliP = bio === 'chaos' ? 0.05 : bio === 'city' || bio === 'burning' ? 0.02 : 0.014, planeP = bio === 'desert' ? 0.03 : bio === 'snow' ? 0.02 : bio === 'suburb' ? 0.012 : 0.006;
+  if (c.type !== 'crash') { if (Rw() < heliP) smallWreck(c, Rw, 'heli'); else if (Rw() < planeP) smallWreck(c, Rw, 'cessna'); }
   // cosmetic details use their own random stream, so a device drawing more or fewer of them never changes the map
   decorate(c, chunkRng(cx, cy, 0x77d1));
   scaleChunk(c);
@@ -284,7 +290,7 @@ function addB(c, R, B, x, y, w, h, st) {
 }
 function addCar(c, R, x, y, w, h, o) {
   if (!freeAt(c, x, y, w, h, 2)) return null;
-  const r = Object.assign({ x: x, y: y, w: w, h: h, k: 'car', col: CARS[Math.floor(R() * CARS.length)], burnt: R() < 0.22 }, o || {});
+  const r = Object.assign({ x: x, y: y, w: w, h: h, k: 'car', vt: 'sedan', fd: 1, col: CARS[Math.floor(R() * CARS.length)], burnt: R() < 0.22, s: (R() * 1e9) | 0 }, o || {});
   c.rects.push(r); return r;
 }
 function addRock(c, R, x, y, w, h, k) { if (!freeAt(c, x, y, w, h, 3)) return null; const r = { x: x, y: y, w: w, h: h, k: k || 'rock', s: (R() * 1e9) | 0 }; c.rects.push(r); return r; }
@@ -318,7 +324,7 @@ function urbanBlock(c, R, B, opts) {
     for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) if (R() < 0.88) addB(c, R, B, xs[i], ys[j], ws[i], hs[j]);
     if (R() < 0.7) alleyProps(c, R, bx + M + s1, by + M, al, IN, true, opts); else alleyProps(c, R, bx + M, by + M + s2, IN, al, false, opts);
   } else if (type === 'lot') {
-    for (let row = 0; row < 3; row++) for (let i = 0; i < 7; i++) if (R() < 0.5) addCar(c, R, bx + 44 + i * 64, by + 60 + row * 150, 30, 52, opts.burnt ? { burnt: R() < opts.burnt } : null);
+    for (let row = 0; row < 3; row++) for (let i = 0; i < 7; i++) if (R() < 0.5) { const vt = vehPick(R, 'lot', 54, 30), V = VEH[vt]; placeVeh(c, R, 'lot', bx + 44 + i * 64 + (30 - V.W) / 2, by + 60 + row * 150 + (54 - V.L) / 2, false, R() < 0.5 ? 1 : -1, { vt: vt, burnt: opts.burnt ? R() < opts.burnt : R() < 0.15 }); }
     addB(c, R, B, bx + BS - 96, by + BS - 92, 54, 50);
   } else if (type === 'plaza') {
     const q = [[0.22, 0.22], [0.78, 0.22], [0.22, 0.78], [0.78, 0.78]], cxp = bx + BS / 2, cyp = by + BS / 2;
@@ -397,9 +403,9 @@ const BIOGEN = {
         else { const x = ox + 6 + k * 36; if (waterAtC(c, x, at) !== 3) c.rects.push({ x: x, y: at, w: 30, h: 14, k: 'barrier' }); }
       }
     }
-    if (R() < 0.6) { const x = ox + ROAD + 40 + R() * (BS - 140), y = oy + 30 + R() * 30; addCar(c, R, x, y, 58, 28, { police: true, col: '#1b2a4a', burnt: false }); }
+    if (R() < 0.6) { const x = ox + ROAD + 40 + R() * (BS - 140), y = oy + 30 + R() * 30; placeVeh(c, R, 'chaos', x, y, true, R() < 0.5 ? 1 : -1, { vt: R() < 0.75 ? 'police' : R() < 0.5 ? 'humvee' : 'ambulance', burnt: false }); }
     // cars flipped over and left across the road
-    if (R() < 0.6) { const horiz = R() < 0.5, x = horiz ? ox + ROAD + 30 + R() * (BS - 120) : ox + 30 + R() * 30, y = horiz ? oy + 30 + R() * 30 : oy + ROAD + 30 + R() * (BS - 120); addCar(c, R, x, y, horiz ? 58 : 28, horiz ? 28 : 58, { flip: true, burnt: R() < 0.4 }); }
+    if (R() < 0.6) { const horiz = R() < 0.5, x = horiz ? ox + ROAD + 30 + R() * (BS - 120) : ox + 30 + R() * 30, y = horiz ? oy + 30 + R() * 30 : oy + ROAD + 30 + R() * (BS - 120); placeVeh(c, R, 'chaos', x, y, horiz, R() < 0.5 ? 1 : -1, { flip: true, burnt: R() < 0.4, maxL: 70, maxW: 31 }); }
     // a burning trash barrel on a corner
     if (R() < 0.55) { const x = ox + ROAD + 6 + R() * 10, y = oy + ROAD + 6 + R() * 10; addFire(c, x, y, 9, false); const p = addProp(c, 'can', x, y, R); if (p) p.fire = 1; }
     const nc = 4 + Math.floor(R() * 5);
@@ -463,7 +469,7 @@ const BIOGEN = {
       if (dx > lx + 4 && dx + 36 < lx + half - 4 && freeAt(c, dx, d0, 36, d1 - d0, 0)) {
         c.decals.push({ k: 'drive', x: dx, y: d0, w: 36, h: d1 - d0, top: !qy, s: (R() * 1e9) | 0 });
         keepClear(c, dx, d0, 36, d1 - d0);
-        if (R() < 0.55) { c.nb.pop(); addCar(c, R, dx + 4, qy ? by + BS - 70 : by + 16, 28, 52); keepClear(c, dx, d0, 36, d1 - d0); }
+        if (R() < 0.55) { c.nb.pop(); const vt = vehPick(R, 'drive', 56, 30), V = VEH[vt]; placeVeh(c, R, 'drive', dx + (36 - V.W) / 2, qy ? by + BS - 18 - V.L : by + 16, false, qy ? 1 : -1, { vt: vt, burnt: false }); keepClear(c, dx, d0, 36, d1 - d0); }
       }
       const back = qy ? -1 : 1;   // the side of the house away from the street
       if (R() < 0.24) { const pw = 58 + R() * 20, ph = 34 + R() * 10, px = hs.x + (hs.w - pw) * R(), py = back > 0 ? hs.y + hs.h + 18 : hs.y - ph - 18; addThing(c, 'pool', px, py, pw, ph, { low: true, s: (R() * 1e9) | 0 }, 6); }
@@ -498,7 +504,7 @@ const BIOGEN = {
         // tin shacks, a junked car and some barrels
         const n = 1 + (R() < 0.6 ? 1 : 0);
         for (let i = 0; i < n; i++) { const w = 54 + R() * 30, h = 44 + R() * 20; addB(c, R, B, bx + 40 + R() * (BS - w - 80), by + 40 + R() * (BS - h - 80), w, h, 'shack'); }
-        addCar(c, R, bx + 60 + R() * (BS - 180), by + 60 + R() * (BS - 140), 58, 28, { burnt: true, rust: true });
+        placeVeh(c, R, 'desert', bx + 60 + R() * (BS - 180), by + 60 + R() * (BS - 140), R() < 0.5, 1, { burnt: true, rust: true, maxL: 70 });
         for (let i = 0; i < 3; i++) addProp(c, 'barrel', bx + 40 + R() * (BS - 80), by + 40 + R() * (BS - 80), R);
       } else if (t < 0.59) {
         // a trailer home with an awning and a couple of chairs out front
@@ -547,7 +553,7 @@ const BIOGEN = {
       // a ski lodge: one big timber building, cars out front under the snow
       c.type = 'lodge';
       const lx = bx + 60 + R() * (BS - 300), ly = by + 70 + R() * (BS - 280), lg = addB(c, R, B, lx, ly, 170 + R() * 40, 104 + R() * 20, 'lodge');
-      if (lg) { for (let i = 0; i < 3; i++) if (R() < 0.7) addCar(c, R, lg.x + 10 + i * 46, lg.y + lg.h + 26, 28, 52, { burnt: false }); addThing(c, 'wood', lg.x + lg.w + 10, lg.y + 20, 14, 40, { low: true }); }
+      if (lg) { for (let i = 0; i < 3; i++) if (R() < 0.7) placeVeh(c, R, 'snow', lg.x + 10 + i * 46, lg.y + lg.h + 26, false, -1, { burnt: false, maxL: 66, maxW: 31 }); addThing(c, 'wood', lg.x + lg.w + 10, lg.y + 20, 14, 40, { low: true }); }
       np = 4 + Math.floor(R() * 4);
     } else {
       // the woods: pines, a cabin or two, fallen logs
@@ -567,14 +573,22 @@ const BIOGEN = {
     if (R() < 0.4) addProp(c, R() < 0.5 ? 'crate' : 'barrel', bx + 20 + R() * (BS - 40), by + 20 + R() * (BS - 40), R);
   }
 };
-// cars along the streets
+// vehicles along the streets: up to two on each road of the block, at the curbs, facing the way traffic went
 function roadside(c, R) {
   const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, bio = c.bio;
   const p = bio === 'desert' ? 0.22 : bio === 'snow' ? 0.3 : bio === 'suburb' ? 0.35 : bio === 'chaos' ? 0.75 : 0.5;
-  const burnt = bio === 'burning' ? 0.7 : bio === 'ash' ? 0.85 : bio === 'ruins' ? 0.5 : 0.22;
+  const burnt = bio === 'burning' ? 0.7 : bio === 'ash' ? 0.85 : bio === 'ruins' ? 0.5 : 0.22, mix = VMIX[bio] ? bio : 'city';
   const deck = (x, y, w, h) => c.wm && (waterAtC(c, x, y) === 3 || waterAtC(c, x + w, y + h) === 3 || waterAtC(c, x + w / 2, y + h / 2) === 3);
-  if (R() < p) { const x = bx + 30 + R() * (BS - 130), y = R() < 0.5 ? oy + 18 : oy + ROAD - 46; if (!deck(x, y, 58, 28)) addCar(c, R, x, y, 58, 28, { burnt: R() < burnt }); }
-  if (R() < p) { const y = by + 30 + R() * (BS - 130), x = R() < 0.5 ? ox + 18 : ox + ROAD - 46; if (!deck(x, y, 28, 58)) addCar(c, R, x, y, 28, 58, { burnt: R() < burnt }); }
+  for (let k = 0; k < 2; k++) {
+    if (R() < p * (k ? 0.5 : 1)) {
+      const top = R() < 0.5, vt = vehPick(R, mix, BS - 90), V = VEH[vt], x = bx + 30 + R() * Math.max(1, BS - 60 - V.L), y = top ? oy + 16 : oy + ROAD - 16 - V.W;
+      if (!deck(x, y, V.L, V.W)) placeVeh(c, R, mix, x, y, true, top ? -1 : 1, { vt: vt, burnt: R() < burnt });
+    }
+    if (R() < p * (k ? 0.5 : 1)) {
+      const left = R() < 0.5, vt = vehPick(R, mix, BS - 90), V = VEH[vt], y = by + 30 + R() * Math.max(1, BS - 60 - V.L), x = left ? ox + 16 : ox + ROAD - 16 - V.W;
+      if (!deck(x, y, V.W, V.L)) placeVeh(c, R, mix, x, y, false, left ? 1 : -1, { vt: vt, burnt: R() < burnt });
+    }
+  }
 }
 // railings along the sides of a bridge, where the water below is deep enough to matter. Bullets fly over them.
 function railings(c) {
@@ -675,7 +689,7 @@ function speckle(g, R, x, y, w, h, n, a, b) {
 // fills the region of the field below level L (marching squares on the 8px grid); returns the edge segments too.
 // Only the box of cells that has any water in it is visited, and nothing is allocated per cell.
 const ISO = { cx: new Float32Array(4), cy: new Float32Array(4), cv: new Float32Array(4), ci: new Uint8Array(4), P: new Float32Array(8) };
-function isoFill(g, f, ox, oy, L, segs, box) {
+function isoFill(g, f, ox, oy, L, segs, box, noFill) {
   g.beginPath();
   const S = WC, cx = ISO.cx, cy = ISO.cy, cv = ISO.cv, ci = ISO.ci, P = ISO.P;
   const i0 = box ? box[0] : 0, i1 = box ? box[1] : WM - 1, j0 = box ? box[2] : 0, j1 = box ? box[3] : WM - 1;
@@ -707,7 +721,7 @@ function isoFill(g, f, ox, oy, L, segs, box) {
     }
    }
   }
-  g.fill();
+  if (!noFill) g.fill();
 }
 // the box of cells (within the block) where the field dips below level L
 function isoBox(f, L) {
@@ -738,6 +752,8 @@ function renderChunk(c) {
   drawBlock(g, c, B, R, win, sea);
   walkDetail(g, c, B, win, sea);
   drawStreetFurniture(g, c, B, Z.mulberry32(Z.hash32(c.cx * 7919 + c.cy * 104729 + 0x5f)), win);
+  // the surface of the street (the texture engine): aggregate in the asphalt, concrete, grass, sand, snow, wear
+  if (typeof texelGround === 'function') texelGround(g, c, win);
   t1 = performance.now(); RT.block += t1 - t0; t0 = t1;
   // rivers, ponds and bridges
   if (c.fv) drawWaterArt(g, c, B);
@@ -745,9 +761,13 @@ function renderChunk(c) {
   drawDecals(g, c, B, R, win, sea);
   // the city's bloodstains: a splash with droplets thrown off one side
   for (let i = 0; i < 3; i++) bloodSplat(g, ox + R() * CH, oy + R() * CH, 6 + R() * 10, R, c.bio === 'snow' || win ? 'rgba(120,14,14,0.42)' : 'rgba(46,10,10,0.42)');
+  // and the blood of this run, dried in (the blood engine keeps a list per block)
+  if (typeof goreRebake === 'function') goreRebake(g, c);
   t1 = performance.now(); RT.decal += t1 - t0; t0 = t1;
+  drawWrecks(g, c);
   for (const r of c.rects) drawRectArt(g, r, c, B, win);
   if (win || c.bio === 'snow') snowCaps(g, c);
+  if (typeof skyUnder === 'function') skyUnder(g, c);
   t1 = performance.now(); RT.rects += t1 - t0; t0 = t1;
   if (c.fires.length) {
     g.globalCompositeOperation = 'lighter';
@@ -1231,7 +1251,24 @@ function drawWaterBody(g, c, B, f, ox, oy, bio, win) {
     const shore = [];
     g.fillStyle = ice ? '#98bdd0' : B.water[0]; isoFill(g, f, ox, oy, 0, shore, bx);
     g.fillStyle = ice ? '#86afc4' : B.water[1]; isoFill(g, f, ox, oy, -1.15, null, bx);
+    if (!ice) {
+      // deeper towards the middle: two more steps, darker and bluer, each softened into the last
+      g.globalAlpha = 0.45; g.fillStyle = B.water[1]; isoFill(g, f, ox, oy, -1.8, null, bx);
+      g.globalAlpha = 0.35; g.fillStyle = '#0c1a26'; isoFill(g, f, ox, oy, -2.5, null, bx); isoFill(g, f, ox, oy, -3.2, null, bx);
+      g.globalAlpha = 1;
+      // light dancing on the bottom of the shallows (caustics), fading out with depth
+      if (typeof texelGroundPat === 'function' && texelLevel() >= 1) {
+        const pat = texelGroundPat(g, 'caustic', 0.22);
+        if (pat) { g.globalCompositeOperation = 'lighter'; g.fillStyle = pat; g.globalAlpha = 0.07; isoFill(g, f, ox, oy, -0.1, null, bx); g.globalAlpha = 0.05; isoFill(g, f, ox, oy, -0.8, null, bx); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
+      }
+    }
     g.strokeStyle = ice ? 'rgba(255,255,255,0.55)' : B.water[2]; g.lineWidth = 2.5; strokeSegs(g, shore);
+    if (!ice) {
+      // foam lapping at the bank: broken white lines just off the shore
+      g.strokeStyle = 'rgba(236,246,250,0.22)'; g.lineWidth = 0.9; g.setLineDash([3, 5, 1, 7, 6, 4, 2, 9]); g.lineCap = 'round';
+      const off = []; isoFill(g, f, ox, oy, -0.14, off, bx, true); if (off.length) strokeSegs(g, off);
+      g.setLineDash([]); g.lineCap = 'butt';
+    }
     if (ice) {
       // cracks across the ice
       const R = chunkRng(c.cx, c.cy, 0x1ce); g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1;
@@ -1363,7 +1400,7 @@ function drawRectArt(g, r, c, B, win) {
   switch (r.k) {
     case 'b': drawBuilding(g, r, c, B, win, Rb); break;
     case 'car': {
-      if (r.flip) drawFlipped(g, r); else drawCar(g, r);
+      vehDraw(g, r);
       // snow piled on the roof and bonnet (the paint still shows round the edges), or a film of dust or ash
       const horiz = r.w > r.h, L = Math.max(r.w, r.h);
       if (win || c.bio === 'snow') {
@@ -1430,7 +1467,7 @@ function drawRectArt(g, r, c, B, win) {
     case 'pump':
       g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(r.x + 3, r.y + 4, r.w, r.h); g.fillStyle = '#b03a2e'; g.fillRect(r.x, r.y, r.w, r.h); g.fillStyle = '#e8e2d4'; g.fillRect(r.x + 3, r.y + 3, r.w - 6, 5);
       break;
-    case 'trunk': break;   // trees are drawn live, on top
+    case 'trunk': case 'wreck': break;   // trees are drawn live, on top; wrecks are drawn whole by the vehicle engine
     case 'lm': drawLandmark(g, r, c, B, win, Rb); break;
     default: drawThing(g, r, c, B, win, Rb);
   }
@@ -1590,6 +1627,14 @@ function drawThing(g, r, c, B, win, Rb) {
   const cx = r.x + r.w / 2, cy = r.y + r.h / 2, snowy = win || c.bio === 'snow', ash = c.bio === 'ash';
   const shadow = (dx, dy, a) => { g.fillStyle = 'rgba(0,0,0,' + (a || 0.4) + ')'; g.fillRect(r.x + (dx || 3), r.y + (dy || 4), r.w, r.h); };
   switch (r.k) {
+    case 'pillar': {
+      // a concrete pier holding up the highway: a square column with its cap, stained at the foot
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(r.x + 2, r.y + 3, r.w, r.h);
+      g.fillStyle = '#7d8086'; g.fillRect(r.x, r.y, r.w, r.h); g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(r.x, r.y, r.w, r.h * 0.3); g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(r.x, r.y + r.h * 0.7, r.w, r.h * 0.3);
+      g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 1; g.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+      if (c.bio === 'chaos' || c.bio === 'ruins') { g.fillStyle = ['rgba(255,61,242,0.45)', 'rgba(125,255,74,0.4)', 'rgba(41,230,255,0.4)'][Math.floor(Rb() * 3)]; g.fillRect(r.x + 2, r.y + r.h * 0.4, r.w - 4, 3); }
+      break;
+    }
     case 'bench': {
       shadow(2, 3, 0.35); const horiz = r.w > r.h;
       g.fillStyle = ash ? '#4a4a4c' : '#6b4a2e'; g.fillRect(r.x, r.y, r.w, r.h);
@@ -1776,15 +1821,18 @@ function lightsOf0(cx, cy) {
   if (R() < p) L.push({ x: ox + ROAD + 10, y: oy + ROAD + 10, cold: R() < cold, broken: (b === 'ruins' || b === 'chaos') && R() < 0.45 });
   if (R() < p * 0.6) L.push({ x: ox + ROAD + BS * 0.5, y: oy + ROAD + 9, cold: false, broken: b === 'ruins' && R() < 0.4 });
   if (R() < p * 0.6) L.push({ x: ox + ROAD + 9, y: oy + ROAD + BS * 0.5, cold: false, broken: b === 'ruins' && R() < 0.4 });
+  // each lamp's type (the colour of its light) and where its head hangs: the arm reaches out over the road
+  for (const l of L) { const t = R(); l.type = l.cold ? 'led' : b === 'city' ? (t < 0.45 ? 'led' : t < 0.65 ? 'halide' : 'sodium') : b === 'suburb' ? (t < 0.35 ? 'led' : 'sodium') : b === 'chaos' ? (t < 0.2 ? 'halide' : 'sodium') : 'sodium'; l.hx = l.x - (l.x === ox + ROAD + 9 || l.x === ox + ROAD + 10 ? 24 : 0); l.hy = l.y - (l.y === oy + ROAD + 9 || l.y === oy + ROAD + 10 ? 24 : 0); }
+  if (typeof skyLamps === 'function') skyLamps(cx, cy, L);
   return L;
 }
 // the street lamps of a block, in simulation units (the pole is a pole: only its position scales)
-function lightsOf(cx, cy) { const L = lightsOf0(cx, cy); for (const l of L) { l.x *= SCL; l.y *= SCL; } return L; }
+function lightsOf(cx, cy) { const L = lightsOf0(cx, cy); for (const l of L) { l.x *= SCL; l.y *= SCL; l.hx = (l.hx == null ? l.x / SCL : l.hx) * SCL; l.hy = (l.hy == null ? l.y / SCL : l.hy) * SCL; } return L; }
 function bakeLights(g, c) {
   const ox = c.ox, oy = c.oy;
   g.globalCompositeOperation = 'lighter';
   // with the lighting engine on, the lamps light the street for real (and only after dark): no painted-on pools
-  if (SET.lux !== 'off') { g.globalCompositeOperation = 'source-over'; for (const L of lightsOf0(c.cx, c.cy)) { g.fillStyle = '#111'; g.beginPath(); g.arc(L.x, L.y, 4, 0, TAU); g.fill(); g.fillStyle = L.broken ? '#444' : L.cold ? '#d6e6ff' : '#ffe2a6'; g.beginPath(); g.arc(L.x, L.y, 2.5, 0, TAU); g.fill(); } return; }
+  if (SET.lux !== 'off') { g.globalCompositeOperation = 'source-over'; for (const L of lightsOf0(c.cx, c.cy)) lampPost(g, L); return; }
   for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
     for (const L of lightsOf0(c.cx + dx, c.cy + dy)) {
       if (L.broken || L.x < ox - 190 || L.x > ox + CH + 190 || L.y < oy - 190 || L.y > oy + CH + 190) continue;
@@ -1795,7 +1843,17 @@ function bakeLights(g, c) {
     }
   }
   g.globalCompositeOperation = 'source-over';
-  for (const L of lightsOf0(c.cx, c.cy)) { g.fillStyle = '#111'; g.beginPath(); g.arc(L.x, L.y, 4, 0, TAU); g.fill(); g.fillStyle = L.broken ? '#444' : L.cold ? '#d6e6ff' : '#ffe2a6'; g.beginPath(); g.arc(L.x, L.y, 2.5, 0, TAU); g.fill(); }
+  for (const L of lightsOf0(c.cx, c.cy)) lampPost(g, L);
+}
+// a street lamp from above: the pole's foot, the arm out over the road, and the head with its lens
+function lampPost(g, L) {
+  if (L.hw) return;
+  const hx = L.hx == null ? L.x : L.hx, hy = L.hy == null ? L.y : L.hy;
+  g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 2.6; g.beginPath(); g.moveTo(L.x + 1.5, L.y + 2); g.lineTo(hx + 1.5, hy + 2); g.stroke();
+  g.strokeStyle = '#3a3d42'; g.lineWidth = 2; g.beginPath(); g.moveTo(L.x, L.y); g.lineTo(hx, hy); g.stroke();
+  g.fillStyle = '#1a1b1d'; g.beginPath(); g.arc(L.x, L.y, 3.6, 0, TAU); g.fill();
+  g.fillStyle = '#2a2c30'; g.save(); g.translate(hx, hy); g.rotate(Math.atan2(hy - L.y, hx - L.x) || 0); g.fillRect(-4, -3, 8, 6); g.restore();
+  g.fillStyle = L.broken ? '#444' : L.type === 'led' ? '#e6eeff' : L.type === 'halide' ? '#fff4e0' : '#ffd38a'; g.beginPath(); g.arc(hx, hy, 2.2, 0, TAU); g.fill();
 }
 // the moving glints on a river, drawn once per chunk and slid back and forth while you play
 function waterLayer(c) {
@@ -1805,13 +1863,15 @@ function waterLayer(c) {
   const g = can.getContext('2d'); g.scale(sc, sc); g.translate(-c.ox, -c.oy);
   g.beginPath(); g.rect(c.ox + ROAD, c.oy + ROAD, BS, BS); g.clip();
   const bx = c.wbox || (c.wbox = isoBox(c.fv, 0.9)); if (!bx) { c.wcan = false; return false; }
-  g.fillStyle = '#000'; isoFill(g, c.fv, c.ox, c.oy, -0.15, null, bx);
-  g.globalCompositeOperation = 'source-in';
   const R = chunkRng(c.cx, c.cy, 0x9a7e);
+  // a moving web of light (caustics) and glints on the surface, then cut to the water
+  const cp = typeof texelGroundPat === 'function' && texelLevel() >= 1 ? texelGroundPat(g, 'caustic', 0.3) : null;
+  if (cp) { g.globalAlpha = 0.22; g.fillStyle = cp; g.fillRect(c.ox, c.oy, CH, CH); g.globalAlpha = 1; }
   g.strokeStyle = 'rgba(190,230,240,0.5)'; g.lineWidth = 1.6; g.lineCap = 'round';
   g.beginPath();
   for (let i = 0; i < 160; i++) { const x = c.ox + R() * CH, y = c.oy + R() * CH, l = 6 + R() * 16; g.moveTo(x, y); g.lineTo(x + l, y + l * 0.2); }
   g.stroke();
+  g.globalCompositeOperation = 'destination-in'; g.fillStyle = '#000'; isoFill(g, c.fv, c.ox, c.oy, -0.15, null, bx);
   c.wcan = can; c.wsc = sc;
   return can;
 }

@@ -67,22 +67,26 @@ const PR_FS = {
     '  acc += s * uC[i] * fall * fall; }\n' +
     ' gl_FragColor = vec4(acc * uD / 16.0, 1.0); }',
   // bounce light: a Monte Carlo path tracer over the grid of solid cells, blended over the frames
-  gi: 'uniform sampler2D uOcc, uM, uPrev; uniform vec2 uG, uOrg, uCv, uShift; uniform float uCell, uFrame, uBlend; uniform vec4 uTr; uniform vec3 uAlb;\n' +
+  gi: 'uniform sampler2D uOcc, uM, uPrev, uS; uniform vec2 uG, uOrg, uCv, uShift; uniform float uCell, uFrame, uBlend; uniform vec4 uTr; uniform vec3 uAlb;\n' +
     'float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }\n' +
     'float occ(vec2 c) { vec2 uv = vec2((c.x + 0.5) / uG.x, 1.0 - (c.y + 0.5) / uG.y); if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return -1.0; return texture2D(uOcc, uv).a; }\n' +
-    'vec3 lightAt(vec2 c) { vec2 w = uOrg + (c + 0.5) * uCell; vec2 px = vec2(uTr.x * w.x + uTr.y, uTr.z * w.y + uTr.w); return texture2D(uM, vec2(px.x / uCv.x, 1.0 - px.y / uCv.y)).rgb; }\n' +
+    'vec2 scr(vec2 c) { vec2 w = uOrg + (c + 0.5) * uCell; vec2 px = vec2(uTr.x * w.x + uTr.y, uTr.z * w.y + uTr.w); return vec2(px.x / uCv.x, 1.0 - px.y / uCv.y); }\n' +
+    'vec3 lightAt(vec2 c) { return texture2D(uM, scr(c)).rgb; }\n' +
+    'vec3 albAt(vec2 c) { vec3 s = texture2D(uS, scr(c)).rgb; return mix(uAlb, s / (max(s.r, max(s.g, s.b)) + 0.08) * 0.38, 0.6); }\n' +
+    'vec3 prevAt(vec2 c) { return texture2D(uPrev, vec2((c.x + 0.5) / uG.x, 1.0 - (c.y + 0.5) / uG.y) + uShift).rgb; }\n' +
     'void main() { vec2 cf = vec2(floor(v.x * uG.x), floor((1.0 - v.y) * uG.y));\n' +
     ' if (occ(cf) > 0.5) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }\n' +
     ' vec3 sum = vec3(0.0); float open = 0.0;\n' +
     ' for (int k = 0; k < RAYS; k++) { float fk = float(k); float an = (fk + hash(cf + vec2(uFrame * 0.131, fk * 7.13))) / float(RAYS) * 6.28318; vec2 d = vec2(cos(an), sin(an));\n' +
     '  float len = 1.0 + hash(cf * 1.71 + vec2(fk * 3.37, uFrame * 0.719)) * float(STEPS) * 0.75; vec2 last = cf; float hit = 0.0;\n' +
     '  for (int s = 1; s <= STEPS; s++) { float t = float(s) * 0.75; if (t > len) break; vec2 c = floor(cf + 0.5 + d * t); float o = occ(c); if (o < 0.0) break; if (o > 0.5) { hit = 1.0; break; } last = c; }\n' +
-    '  sum += lightAt(last) * uAlb * (hit > 0.5 ? 0.5 : 1.0); open += 1.0 - hit; }\n' +
+    '  sum += (lightAt(last) + prevAt(last) * 0.5) * albAt(last) * (hit > 0.5 ? 0.5 : 1.0); open += 1.0 - hit; }\n' +
     ' vec4 cur = vec4(sum / float(RAYS), open / float(RAYS)); vec4 prev = texture2D(uPrev, v + uShift);\n' +
     ' gl_FragColor = mix(prev, cur, uBlend); }',
   // the final pass: everything together, then the grade
-  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM; uniform vec2 uIn, uCv, uOrg, uG, uRes; uniform vec4 uTr; uniform vec4 uHot[8];\n' +
-    'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub; uniform vec3 uWB, uTS, uTH;\n' +
+  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir; uniform vec4 uTr; uniform vec4 uHot[8];\n' +
+    'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub, uRefK, uRbK, uSunK, uRain, uWind, uRelief, uClar, uGlare, uPurk; uniform vec3 uWB, uTS, uTH, uSky, uSun;\n' +
+    'const vec3 W3 = vec3(0.2126, 0.7152, 0.0722);\n' +
     'vec3 tap(vec2 p) { return texture2D(uS, p).rgb; }\n' +
     'vec3 cubic(vec2 uv) { vec2 sz = 1.0 / uIn; vec2 sp = uv * sz; vec2 tp = floor(sp - 0.5) + 0.5; vec2 f = sp - tp;\n' +
     ' vec2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f)); vec2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f); vec2 w2 = f * (0.5 + f * (2.0 - 1.5 * f)); vec2 w3 = f * f * (-0.5 + 0.5 * f);\n' +
@@ -98,12 +102,30 @@ const PR_FS = {
     '  vec3 mn = min(c, min(min(n, s), min(e, w))), mx = max(c, max(max(n, s), max(e, w))); vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, vec3(0.001)), 0.0, 1.0));\n' +
     '  vec3 wg = -amp * uSharp * 0.2; c = max((c + (n + s + e + w) * wg) / (1.0 + 4.0 * wg), vec3(0.0)); }\n' +
     ' if (uCA > 0.0) { vec2 dc = uv - 0.5; float e2 = dot(dc, dc); c.r = mix(c.r, tap(uv - dc * uCA * e2).r, 0.85); c.b = mix(c.b, tap(uv + dc * uCA * e2).b, 0.85); }\n' +
+    // relief: the picture's own detail (asphalt grain, roof gravel, cracks, skin) lit from the sun's side
+    ' if (uRelief > 0.0) { float ln = dot(tap(uv + vec2(0.0, uIn.y)), W3), ls = dot(tap(uv - vec2(0.0, uIn.y)), W3), le = dot(tap(uv + vec2(uIn.x, 0.0)), W3), lw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
+    '  c *= 1.0 - clamp(dot(vec2(le - lw, ln - ls), uSunDir) * uRelief * 6.0, -0.22, 0.22); }\n' +
+    // clarity: local contrast against a wider ring, so textures read without oversharpening edges
+    ' if (uClar > 0.0) { vec2 o1 = uIn * 5.0, o2 = vec2(uIn.x, -uIn.y) * 5.0; vec3 m = (tap(uv + vec2(o1.x, 0.0)) + tap(uv - vec2(o1.x, 0.0)) + tap(uv + vec2(0.0, o1.y)) + tap(uv - vec2(0.0, o1.y)) + tap(uv + o1 * 0.7) + tap(uv - o1 * 0.7) + tap(uv + o2 * 0.7) + tap(uv - o2 * 0.7)) * 0.125;\n' +
+    '  c = max(c + (c - m) * uClar, vec3(0.0)); }\n' +
     ' if (uGIK > 0.0) { vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 w = vec2((px.x - uTr.y) / uTr.x, (px.y - uTr.w) / uTr.z);\n' +
     '  vec4 gi = texture2D(uGI, vec2((w.x - uOrg.x) / (uG.x * uCell), 1.0 - (w.y - uOrg.y) / (uG.y * uCell))); vec3 m = max(texture2D(uM, uv).rgb, vec3(0.07));\n' +
     '  c = c * (1.0 - uAOK * (1.0 - gi.a)) + c * min(gi.rgb * uGIK / m, vec3(1.6)); }\n' +
+    // reflections: the sky, the street's lights (mirrored outward, the image sits under the surface) and sun glitter, rippled
+    ' if (uRefK > 0.0) { float rf = texture2D(uRf, uv).a * uRefK;\n' +
+    '  if (rf > 0.004) { float rw = texture2D(uRw, uv).a; vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 q = vec2((px.x - uTr.y) / uTr.x, (px.y - uTr.w) / uTr.z) * 0.03;\n' +
+    '   vec2 n = vec2(sin(q.x * 1.3 + uTime * 1.4 + sin(q.y * 0.9 + uTime * 0.7) * 1.7), cos(q.y * 1.1 - uTime * 1.2 + sin(q.x * 0.8) * 1.9)) * (0.25 + 0.75 * rw) * (0.5 + uWind);\n' +
+    '   n += vec2(sin(q.x * 9.0 + uTime * 9.0 + q.y * 3.0), cos(q.y * 9.0 + uTime * 8.0 - q.x * 2.0)) * uRain * (0.3 + rw) * 0.5;\n' +
+    '   vec2 ru = uv + (uv - 0.5) * 0.05 + n * 0.006; vec3 sky = uSky * (0.9 + 0.1 * sin(q.x * 0.21 + q.y * 0.17 + uTime * 0.2));\n' +
+    '   vec3 lit = texture2D(uRb, ru).rgb * uRbK; float gl = pow(max(0.0, sin(q.x * 6.1 + n.x * 5.0 + uTime * 2.6) * sin(q.y * 5.3 + n.y * 5.0 - uTime * 2.1)), 28.0) * rw * uSunK;\n' +
+    '   c = mix(c, c * 0.7 + sky * (0.18 + 0.32 * rf) + lit, rf) + uSun * gl * 1.6; } }\n' +
     ' c += texture2D(uBl, uv).rgb * uBlK + texture2D(uSh, uv).rgb * uShK;\n' +
+    // glare: bright lights at night streak sideways a little, as they do through a lens and through the eye
+    ' if (uGlare > 0.0) { vec3 gs = vec3(0.0); for (int i = 1; i <= 6; i++) { float o = float(i) * 0.011, w = 1.0 - float(i) / 7.0; gs += (texture2D(uBl, uv + vec2(o, 0.0)).rgb + texture2D(uBl, uv - vec2(o, 0.0)).rgb) * w; } c += gs * uGlare * vec3(0.7, 0.85, 1.2); }\n' +
     ' c *= uExp; c = c / (1.0 + max(c - 0.85, 0.0));\n' +
-    ' c *= uWB; float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); c = mix(vec3(l), c, uSat); c = (c - 0.5) * uCon + 0.5; c += uTS * (1.0 - l) * (1.0 - l) + uTH * l * l;\n' +
+    ' c *= uWB; float l = dot(c, W3); c = mix(vec3(l), c, uSat); c = (c - 0.5) * uCon + 0.5; c += uTS * (1.0 - l) * (1.0 - l) + uTH * l * l;\n' +
+    // the night shift: in the dark the eye sees in blue-grey, not in colour
+    ' if (uPurk > 0.0) { float pl = dot(max(c, vec3(0.0)), W3); c = mix(c, vec3(pl) * vec3(0.62, 0.82, 1.18), uPurk * (1.0 - smoothstep(0.02, 0.32, pl))); }\n' +
     ' vec2 q = v - 0.5; c *= 1.0 - uVig * smoothstep(0.18, 0.75, dot(q, q) * 2.0);\n' +
     ' c += (fract(sin(dot(v * uRes + vec2(uTime * 61.0, uTime * 37.0), vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * uGrain;\n' +
     ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'
@@ -172,7 +194,7 @@ function prismBuild() {
   for (const k of ['bright', 'down', 'up', 'shafts', 'final']) PRISM.P[k] = prismProgram(k, PR_FS[k]);
   PRISM.P.gi1 = prismProgram('gi', PR_FS.gi, '#define RAYS 6\n#define STEPS 12\n');
   PRISM.P.gi2 = prismProgram('gi', PR_FS.gi, '#define RAYS 12\n#define STEPS 16\n');
-  for (const k of ['scene', 'light', 'amb', 'occ']) PRISM.T[k] = prismTex();
+  for (const k of ['scene', 'light', 'amb', 'occ', 'rfa', 'rfw']) PRISM.T[k] = prismTex();
   PRISM.T.black = prismTex();
   PRISM.ok = !!PRISM.P.final;
   if (!PRISM.ok) PRISM.reason = 'the final shader did not compile';
@@ -242,7 +264,7 @@ function prismGpu() {
     gl.useProgram(giP.p); const u = giP.u, t = PRISM.tr, alb = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city;
     gl.uniform2f(u.uG, gw, gh); gl.uniform2f(u.uOrg, G2.gx * G2.cell, G2.gy * G2.cell); gl.uniform2f(u.uCv, cw, ch); gl.uniform2f(u.uShift, sx, sy);
     gl.uniform1f(u.uCell, G2.cell); gl.uniform1f(u.uFrame, PRISM.frames % 997); gl.uniform1f(u.uBlend, resize ? 1 : 0.18); gl.uniform4f(u.uTr, t.a, t.e, t.d, t.f); gl.uniform3f(u.uAlb, alb[0], alb[1], alb[2]);
-    prismBind(giP, 'uOcc', 0, T.occ); prismBind(giP, 'uM', 1, T.amb); prismBind(giP, 'uPrev', 2, g.a.t);
+    prismBind(giP, 'uOcc', 0, T.occ); prismBind(giP, 'uM', 1, T.amb); prismBind(giP, 'uPrev', 2, g.a.t); prismBind(giP, 'uS', 3, T.scene);
     prismDraw(giP, g.b, gw, gh);
     const sw = g.a; g.a = g.b; g.b = sw; g.w = gw; g.h = gh; g.cell = G2.cell; g.gx = G2.gx; g.gy = G2.gy;
     PRISM.giGpu = true;
@@ -288,7 +310,18 @@ function prismGpu() {
   const hot = q.haze && !RM ? F.hot : null, hv = new Float32Array(32);
   if (hot) hot.forEach((h, i) => { if (i < 8) { hv[i * 4] = h.sx / cw; hv[i * 4 + 1] = 1 - h.sy / ch; hv[i * 4 + 2] = Math.max(0.01, h.r / ch); hv[i * 4 + 3] = h.k; } });
   gl.uniform4fv(u.uHot, hv); gl.uniform1f(u.uNH, hot ? Math.min(8, hot.length) : 0); gl.uniform1f(u.uHaze, hot && hot.length ? 1 : 0);
+  // reflections: the maps the reflection engine painted this frame
+  const refl = typeof MIRROR !== 'undefined' && MIRROR.on && MIRROR.gpu && MIRROR.MA;
+  if (refl) { prismUpload(T.rfa, MIRROR.MA); prismUpload(T.rfw, MIRROR.MW); }
+  gl.uniform1f(u.uRefK, refl ? 1 : 0); gl.uniform1f(u.uRbK, 1.1 + 1.6 * night); gl.uniform1f(u.uRain, WX.rain || 0); gl.uniform1f(u.uWind, Math.min(1.2, WX.wind || 0));
+  if (refl) { const S = MIRROR.sky, Sn = MIRROR.sun; gl.uniform3f(u.uSky, S[0], S[1], S[2]); gl.uniform3f(u.uSun, Sn[0], Sn[1], Sn[2]); gl.uniform1f(u.uSunK, MIRROR.lvl >= 2 ? MIRROR.sunK * (F.day || 0) : 0); }
+  // relief and clarity by day (from the sun's side), glare and the blue shift of the eye at night
+  const sun = F.sun, sl = sun && sun.on ? Math.hypot(sun.dx, sun.dy) || 1 : 1;
+  gl.uniform1f(u.uRelief, q.sharp && sun && sun.on && prismLevel() >= 2 ? 0.22 * sun.k : 0); gl.uniform2f(u.uSunDir, sun && sun.on ? -sun.dx / sl : 0, sun && sun.on ? sun.dy / sl : 0);
+  gl.uniform1f(u.uClar, prismLevel() >= 2 ? 0.16 + 0.06 * night : 0);
+  gl.uniform1f(u.uGlare, PRISM.bloomGpu && prismLevel() >= 2 ? 0.05 * night : 0); gl.uniform1f(u.uPurk, LUX.live ? 0.42 * night : 0);
   prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
+  prismBind(fp, 'uRf', 5, refl ? T.rfa : T.black); prismBind(fp, 'uRw', 6, refl ? T.rfw : T.black); prismBind(fp, 'uRb', 7, PRISM.bloomGpu ? PRISM.F.b0.t : T.black);
   prismDraw(fp, null, ow, oh);
   if (++PRISM.frames % 120 === 0) { const e = gl.getError(); if (e !== gl.NO_ERROR && e !== gl.CONTEXT_LOST_WEBGL) throw new Error('GL error ' + e); }
 }

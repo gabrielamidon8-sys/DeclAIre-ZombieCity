@@ -4,7 +4,7 @@
    Every change applies at once and is saved on the device. Graphics options default to "Auto", which follows the
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
-  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: true, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
+  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: true, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
   decals: 'normal', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
@@ -111,6 +111,7 @@ const SET_ROWS = [
   { id: 'lux', tab: 'graphics', basic: true, type: 'seg', label: 'Ray-traced lighting', desc: 'Real shadows from buildings, cars and zombies, with bloom, lit gunfire and lit windows. Auto adapts to your device and repairs itself.', opts: [['auto', 'Auto'], ['off', 'Off'], ['basic', 'Basic'], ['full', 'Full'], ['ultra', 'Ultra']] },
   { id: 'sun', tab: 'graphics', type: 'seg', label: 'Sun shadows', desc: 'Buildings, cars, trees and people throw shadows that move with the sun.', opts: ON_OFF },
   { id: 'gi', tab: 'graphics', type: 'seg', label: 'Bounce light', desc: 'Path-traced light bouncing off walls and streets, into the shade and round corners.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
+  { id: 'refl', tab: 'graphics', type: 'seg', label: 'Reflections', desc: 'Rivers, puddles, rain-soaked streets, car glass and fresh blood reflect the sky and the lights.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { id: 'bloom', tab: 'graphics', type: 'seg', label: 'Bloom', desc: 'A soft glow around lamps, fires, gunfire and explosions.', opts: ON_OFF },
   { id: 'tod', tab: 'graphics', type: 'seg', label: 'Time of day', desc: 'A run starts in the morning; Cycle moves through dusk and night.', opts: [['cycle', 'Cycle'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['real', 'Clock']] },
   { id: 'nightDark', tab: 'graphics', type: 'seg', label: 'Night darkness', desc: 'How dark the night gets.', opts: [['gentle', 'Gentle'], ['deep', 'Deep']] },

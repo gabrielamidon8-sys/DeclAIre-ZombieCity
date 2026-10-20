@@ -66,6 +66,9 @@ function texelCanvas(kind) {
     // patchy dirt: dark blotches with soft edges, mostly transparent
     const a = texelNoise(n, 22, 51), b = texelNoise(n, 7, 67);
     for (let i = 0; i < n * n; i++) { const v = a[i] * 0.7 + b[i] * 0.3, k = i * 4; d[k] = 40; d[k + 1] = 30; d[k + 2] = 22; d[k + 3] = v > 0.55 ? Math.min(200, (v - 0.55) * 900) : 0; }
+  } else if (kind === 'glitter') {
+    // sun glitter: sparse bright specks, a few with a cross of light, on nothing
+    for (let i = 0; i < 70; i++) { const x = Math.floor(R() * n), y = Math.floor(R() * n), v = 150 + R() * 105, k = (y * n + x) * 4; d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = v; if (R() < 0.3) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const q = (((y + dy + n) % n) * n + ((x + dx + n) % n)) * 4; d[q] = d[q + 1] = d[q + 2] = 255; d[q + 3] = v * 0.4; } }
   } else if (kind === 'concrete') {
     const a = texelNoise(n, 32, 79), b = texelNoise(n, 4, 83);
     for (let i = 0; i < n * n; i++) { const v = 128 + (a[i] - 0.5) * 50 + (b[i] - 0.5) * 40, k = i * 4; d[k] = d[k + 1] = d[k + 2] = clamp(v, 0, 255); d[k + 3] = 255; }
@@ -73,6 +76,105 @@ function texelCanvas(kind) {
     for (let i = 0; i < n * n; i++) { const v = R() * 255, k = i * 4; d[k] = d[k + 1] = d[k + 2] = v; d[k + 3] = 255; }
   }
   g.putImageData(im, 0, 0); TEXEL.lib.set(kind, c); return c;
+}
+/* ---------- the city's ground ----------
+   Bigger tiles (256 pixels) for the street: grey maps around middle grey, laid over the painted blocks with an 'overlay'
+   blend, so they add surface without changing the colours the city generator chose (lighter than grey lightens, darker
+   darkens). Anchored to the world, so they run on across block edges without a seam. */
+function texelGroundTex(kind) {
+  const key = 'g:' + kind; let c = TEXEL.lib.get(key); if (c) return c;
+  const n = kind === 'caustic' ? 128 : 256; c = texelMk(n, n); const g = c.getContext('2d'); if (!g) return null;
+  const im = g.createImageData(n, n), d = im.data, R = Z.mulberry32(0x51ed27 ^ (kind.charCodeAt(0) * 131 + kind.length * 7));
+  const put = (i, v, a) => { const k = i * 4; d[k] = d[k + 1] = d[k + 2] = clamp(v, 0, 255); d[k + 3] = a == null ? 255 : a; };
+  if (kind === 'asphalt') {
+    // aggregate in tar: light and dark stones of a few sizes over a softly mottled binder
+    const a = texelNoise(n, 32, 101), b = texelNoise(n, 8, 103);
+    for (let i = 0; i < n * n; i++) put(i, 128 + (a[i] - 0.5) * 26 + (b[i] - 0.5) * 22);
+    for (let s = 0; s < 2600; s++) {
+      const x = (R() * n) | 0, y = (R() * n) | 0, r = R() < 0.85 ? 1 : 2, v = R() < 0.55 ? 128 + 40 + R() * 50 : 128 - 30 - R() * 40;
+      for (let dy = -r + 1; dy < r; dy++) for (let dx = -r + 1; dx < r; dx++) put((((y + dy + n) % n) * n + ((x + dx + n) % n)), v);
+    }
+  } else if (kind === 'concrete') {
+    // poured concrete: fine pitting, trowel swirls, water stains
+    const a = texelNoise(n, 64, 107), b = texelNoise(n, 16, 109), e = texelNoise(n, 4, 113);
+    for (let i = 0; i < n * n; i++) { const st = a[i] > 0.62 ? -(a[i] - 0.62) * 70 : 0; put(i, 128 + (b[i] - 0.5) * 22 + (e[i] - 0.5) * 18 + st + (R() < 0.03 ? -34 : 0)); }
+  } else if (kind === 'turf') {
+    // grass: short blades every way, light tips and dark roots
+    const a = texelNoise(n, 40, 127);
+    for (let i = 0; i < n * n; i++) put(i, 128 + (a[i] - 0.5) * 34);
+    g.putImageData(im, 0, 0); g.lineCap = 'round';
+    for (let s = 0; s < 2200; s++) {
+      const x = R() * n, y = R() * n, an = -Math.PI / 2 + (R() - 0.5) * 1.6, l = 2 + R() * 4, v = R() < 0.5 ? 170 + R() * 60 : 60 + R() * 40;
+      g.strokeStyle = 'rgba(' + (v | 0) + ',' + (v | 0) + ',' + (v | 0) + ',0.55)'; g.lineWidth = 0.8;
+      for (const ox of [0, -n, n]) for (const oy of [0, -n, n]) { const X = x + ox, Y = y + oy; if (X < -8 || X > n + 8 || Y < -8 || Y > n + 8) continue; g.beginPath(); g.moveTo(X, Y); g.lineTo(X + Math.cos(an) * l, Y + Math.sin(an) * l); g.stroke(); }
+    }
+    TEXEL.lib.set(key, c); return c;
+  } else if (kind === 'sand') {
+    // wind ripples (wavy bands) and grains
+    const a = texelNoise(n, 32, 131);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = y * n + x, w = Math.sin((y + a[i] * 18) / n * TAU * 9); put(i, 128 + w * 14 + (a[i] - 0.5) * 20 + (R() - 0.5) * 26); }
+  } else if (kind === 'snow') {
+    // soft drifted snow with sparkle
+    const a = texelNoise(n, 48, 137), b = texelNoise(n, 12, 139);
+    for (let i = 0; i < n * n; i++) put(i, 128 + (a[i] - 0.5) * 24 + (b[i] - 0.5) * 14 + (R() < 0.012 ? 70 : 0));
+  } else if (kind === 'gravel') {
+    // rubble and gravel: chunky stones with shading
+    const a = texelNoise(n, 24, 149);
+    for (let i = 0; i < n * n; i++) put(i, 128 + (a[i] - 0.5) * 30);
+    for (let s = 0; s < 700; s++) {
+      const x = (R() * n) | 0, y = (R() * n) | 0, r = 1 + R() * 2.6, v = 128 + (R() - 0.5) * 90;
+      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const q = dx * dx + dy * dy; if (q > r * r) continue; put((((y + dy + n) % n) * n + ((x + dx + n) % n)), v + (dy < 0 ? 18 : -14)); }
+    }
+  } else if (kind === 'macro') {
+    // big soft patches of dirt and wear (a multiply map: white leaves the picture alone)
+    const a = texelNoise(n, 64, 151), b = texelNoise(n, 22, 157);
+    for (let i = 0; i < n * n; i++) { const v = a[i] * 0.7 + b[i] * 0.3; put(i, 255 - Math.max(0, v - 0.45) * 150); }
+  } else if (kind === 'caustic') {
+    // light through moving water: a bright web of cells, on nothing (added with 'lighter')
+    const P = []; for (let i = 0; i < 26; i++) P.push([R() * n, R() * n]);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      let d1 = 1e9, d2 = 1e9;
+      for (const p of P) for (const ox of [0, -n, n]) for (const oy of [0, -n, n]) { const dx = x - p[0] - ox, dy = y - p[1] - oy, q = dx * dx + dy * dy; if (q < d1) { d2 = d1; d1 = q; } else if (q < d2) d2 = q; }
+      const e = Math.sqrt(d2) - Math.sqrt(d1), v = Math.max(0, 1 - e / 3.2), k = (y * n + x) * 4;
+      d[k] = 200; d[k + 1] = 236; d[k + 2] = 255; d[k + 3] = v * v * 200;
+    }
+  }
+  g.putImageData(im, 0, 0); TEXEL.lib.set(key, c); return c;
+}
+function texelGroundPat(g, kind, scale) {
+  const t = texelGroundTex(kind); if (!t) return null;
+  const pat = g.createPattern(t, 'repeat'); if (!pat) return null;
+  if (pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix([scale, 0, 0, scale, 0, 0]));
+  return pat;
+}
+// renderChunk calls this after the road and the block are painted (before the marks and the buildings go on): the
+// street's surface, by district. g draws in the block's art units.
+function texelGround(g, c, win) {
+  if (texelLevel() < 1 || (Q.deco || 1) < 0.6) return;
+  const t0 = performance.now(), ox = c.ox, oy = c.oy, bio = c.bio, bx = ox + ROAD, by = oy + ROAD, snow = bio === 'snow' || win;
+  try {
+    g.save();
+    const fill = (kind, scale, op, a, rects) => {
+      const pat = texelGroundPat(g, kind, scale); if (!pat) return;
+      g.globalCompositeOperation = op; g.globalAlpha = a; g.fillStyle = pat;
+      for (const r of rects) g.fillRect(r[0], r[1], r[2], r[3]);
+    };
+    const road = [[ox, oy, CH, ROAD], [ox, by, ROAD, BS]], block = [[bx, by, BS, BS]], all = [[ox, oy, CH, CH]];
+    // the road: aggregate in the asphalt (sand and snow lie on it in those districts)
+    if (bio === 'desert') fill('sand', 0.5, 'overlay', 0.5, all);
+    else if (snow) { fill('asphalt', 0.25, 'overlay', 0.35, road); fill('snow', 0.5, 'overlay', 0.45, all); }
+    else fill('asphalt', 0.25, 'overlay', 0.6, road);
+    // the block: concrete, grass, rubble
+    if (!snow && bio !== 'desert') {
+      if (bio === 'suburb') fill('turf', 0.3, 'overlay', 0.55, block);
+      else if (bio === 'ruins' || bio === 'ash' || bio === 'burning') { fill('concrete', 0.35, 'overlay', 0.4, block); fill('gravel', 0.3, 'overlay', bio === 'ruins' ? 0.4 : 0.25, block); }
+      else fill('concrete', 0.35, 'overlay', 0.45, block);
+    }
+    // wear and dirt over everything, big and soft
+    fill('macro', 1.6, 'multiply', bio === 'snow' ? 0.18 : 0.32, all);
+    g.restore();
+  } catch (e) { g.restore(); texelHurt(e); }
+  TEXEL.groundMs = (TEXEL.groundMs || 0) * 0.8 + (performance.now() - t0) * 0.2;
 }
 // a pattern of a library texture, drawn at `scale` (pattern pixels per unit of the context it paints)
 function texelPattern(g, kind, scale) {

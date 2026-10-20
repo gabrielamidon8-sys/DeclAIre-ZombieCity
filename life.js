@@ -217,14 +217,18 @@ function updSteps(dt) {
   WD.stepD = 0; WD.side = -WD.side;
   let s = surfaceAt(p.x, p.y);
   if (WD.wetT > 0 && (s === 'road' || s === 'grass')) s = 'wet';
-  const col = PRINT_COL[s];
+  let col = PRINT_COL[s];
+  // through a fresh pool of blood: red footprints for the next steps, fading
+  const bl = typeof goreUnder === 'function' ? goreUnder(p.x, p.y) : null;
+  if (bl) { WD.bloodN = 9; WD.bloodC = bl; }
+  if (WD.bloodN > 0 && s !== 'water') { const k = WD.bloodN / 9; col = 'rgba(' + WD.bloodC[0] + ',' + WD.bloodC[1] + ',' + WD.bloodC[2] + ',' + (0.2 + 0.5 * k).toFixed(2) + ')'; WD.bloodN--; s = 'blood'; }
   if (col && Q.prints > 0 && SET.decals !== 'low') {
     const a = Math.atan2(p.iy, p.ix), nx = -Math.sin(a) * 4 * WD.side, ny = Math.cos(a) * 4 * WD.side;
-    G.prints.push({ x: p.x + nx, y: p.y + ny, a: a, t: 0, life: s === 'snow' ? 22 : s === 'wet' ? 6 : 15, c: col });
+    G.prints.push({ x: p.x + nx, y: p.y + ny, a: a, t: 0, life: s === 'snow' ? 22 : s === 'wet' ? 6 : s === 'blood' ? 24 : 15, c: col });
     const cap = Q.prints * (SET.decals === 'high' ? 1.6 : 1);
     if (G.prints.length > cap) G.prints.splice(0, G.prints.length - cap);
   }
-  if (SET.steps) SFX.step(s);
+  if (SET.steps) SFX.step(s === 'blood' ? 'wet' : s);
 }
 function updZombieWater() {
   // ripples around zombies wading through water (a few each frame)
@@ -524,15 +528,9 @@ function drawWorldOver(vis) {
   if (lightLevel() >= 1) {
     ctx.globalCompositeOperation = 'lighter';
     for (const a of (G.alarms || [])) { if (!vis(a.x, a.y, 40)) continue; const on = Math.floor(t * 5) % 2; ctx.globalAlpha = 0.9; ctx.fillStyle = on ? '#fff2b0' : '#ff9a3a'; const r = a.r; if (r.w > r.h) { ctx.fillRect(r.x + r.w - 4, r.y + 3, 4, 5); ctx.fillRect(r.x + r.w - 4, r.y + r.h - 8, 4, 5); } else { ctx.fillRect(r.x + 3, r.y + r.h - 4, 5, 4); ctx.fillRect(r.x + r.w - 8, r.y + r.h - 4, 5, 4); } }
-    for (const cx of [Math.floor(cam.x / CHS) - 1, Math.floor(cam.x / CHS), Math.floor(cam.x / CHS) + 1]) for (const cy of [Math.floor(cam.y / CHS) - 1, Math.floor(cam.y / CHS), Math.floor(cam.y / CHS) + 1]) {
-      const c = chunks.get(cx + ',' + cy); if (!c || c.bio !== 'chaos') continue;
-      for (const r of c.rects) {
-        if (!r.police || !vis(r.x + r.w / 2, r.y + r.h / 2, 60)) continue;
-        const ph = Math.floor(t * 6) % 2, x = r.x + r.w / 2, y = r.y + r.h / 2, rr = 46;
-        ctx.globalAlpha = 0.45; ctx.drawImage(glowSprite(ph ? '#ff3b3b' : '#3b7bff'), x - rr - (ph ? 10 : -10), y - rr, rr * 2, rr * 2);
-        ctx.globalAlpha = 1; ctx.fillStyle = ph ? '#ff6a6a' : '#7aa8ff'; ctx.fillRect(x - 6, y - 2, 5, 4); ctx.fillStyle = ph ? '#5a6aff' : '#ff4a4a'; ctx.fillRect(x + 1, y - 2, 5, 4);
-      }
-    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    // light bars, hazards and headlights of vehicles with a live battery (by day; at night they are drawn after the lighting)
+    if (typeof garageEmissive === 'function' && !(LUX.live && LUX.day < 0.9)) garageEmissive(vis, 0);
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   }
 }
