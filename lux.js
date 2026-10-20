@@ -409,7 +409,7 @@ function luxDraw(g, L, lq, shadowed) {
 /* ---------- one frame: called by render() after the world is drawn ---------- */
 function luxLevelNow(want) {
   const base = want === 'auto' ? [1, 2, 3, 4][clamp(PERF.tier | 0, 0, 3)] : want === 'basic' ? 1 : want === 'full' ? 3 : want === 'ultra' ? 4 : (+want || 2);
-  return clamp(base + LUX.adapt, 0, 4);
+  return clamp(base + LUX.adapt + (base ? TUNE.LUX || 0 : 0), 0, 4);   // (TUNE: Hard or Max in the engine room add a level, Eco takes one)
 }
 function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
   const now = performance.now();

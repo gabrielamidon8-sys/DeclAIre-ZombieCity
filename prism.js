@@ -30,9 +30,10 @@ const PRISM = {
   adapt: 0, lvl: 2, slow: 0, fast: 0, slowCopy: 0, errT: [], offUntil: 0, ms: 0, msAvg: 0, frames: 0, P: {}, T: {}, F: {}, quad: null, giGpu: false, bloomGpu: false, vigGpu: false,
   gi: { a: null, b: null, w: 0, h: 0, gx: 0, gy: 0, cell: 0, rays: 0 }, wb: [1, 1, 1], temp: 6500, cpuG: null
 };
-function prismLevel() { return PRISM.lvl = clamp(([1, 2, 2, 3][clamp(PERF.tier | 0, 0, 3)]) + PRISM.adapt, 0, 3); }
+function prismLevel() { return PRISM.lvl = clamp(([1, 2, 2, 3][clamp(PERF.tier | 0, 0, 3)]) + PRISM.adapt + (TUNE.PRISM || 0), 0, 3); }
 function prismWanted() {
-  const w = SET.prism || 'auto';
+  // (procOverride: what the engine room's CORE says applies right now; the ecosystem can lock it back to Auto)
+  const o = PRISM.procOverride, w = SET.prism === 'off' ? 'off' : o === 'auto' || o === 'cpu' || o === 'gpu' ? o : SET.prism || 'auto';
   if (w === 'off') return 'off';
   if (PRISM.offUntil && performance.now() < PRISM.offUntil) return 'cpu';
   if (w === 'cpu') return 'cpu';
@@ -258,7 +259,7 @@ function prismGpu() {
   // bounce light on the GPU
   PRISM.giGpu = false;
   const giP = q.gi >= 2 ? P.gi2 : P.gi1;
-  if (q.gi && giP && lux && LUX.giOn && F.gi && F.gi.occ && PRISM.tr) {
+  if (q.gi && giP && lux && LUX.giOn && F.gi && F.gi.occ && PRISM.tr && !LUX.giCpuOnly) {   // (giCpuOnly: bounce light set to CPU in the engine room)
     const G2 = F.gi, g = PRISM.gi, gw = G2.gw, gh = G2.gh;
     gl.bindTexture(gl.TEXTURE_2D, T.occ); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     if (!G2.occ255 || G2.occ255.length !== gw * gh) G2.occ255 = new Uint8Array(gw * gh);

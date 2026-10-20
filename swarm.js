@@ -625,7 +625,7 @@ function swarmDraw(vis, hw, hh) {
   for (const z of G.zs) { if (z.dead || z.boss || !vis(z.x, z.y, z.r * 2.6)) continue; z.swD = (z.x - fx) * (z.x - fx) + (z.y - fy) * (z.y - fy); V.push(z); }
   V.sort((a, b) => a.swD - b.swD); SWARM.visF = frameNo;
   const nv = V.length, nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, ln = PERF.lodN; ln[0] = ln[1] = ln[2] = ln[3] = 0;
-  const crowd = nv > 70 ? 1 : 0, mob = nv > 220 ? 1 : 0, strain = -SWARM.adapt, hi = SET.crowd === 'high', low = SET.crowd === 'low';
+  const crowd = nv > 70 ? 1 : 0, mob = nv > 220 ? 1 : 0, strain = -SWARM.adapt, hi = SET.crowd === 'high' || TUNE.SWARM > 0, low = SET.crowd === 'low' || TUNE.SWARM < 0;
   const tier = clamp(PERF.tier | 0, 0, 3); SWARM.budF = [2, 3, 5, 8][tier] + (strain ? 0 : 1); SWARM.budL = [6, 10, 16, 24][tier]; SWARM.keys.clear();
   const T = ctx.getTransform(), s = T.a, e = T.e, f = T.f, setT = () => ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f), FL = SWARM.fl, FS = SWARM.flS, OV = SWARM.ov, OL = SWARM.ovL; FL.length = 0; FS.length = 0; OV.length = 0; OL.length = 0;
   for (let i = 0; i < nv; i++) {

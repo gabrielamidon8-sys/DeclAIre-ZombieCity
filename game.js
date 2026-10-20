@@ -318,6 +318,8 @@ const joy = { id: null, ox: 0, oy: 0, dx: 0, dy: 0, active: false, kx: 0, ky: 0 
 // App bridge: the Android app calls these for its back button and when it goes to the background.
 window.zcBack = function () {
   if (typeof INTRO !== 'undefined' && INTRO.on) return introSkip();
+  if (!$('engWarn').hidden) { closeEngineWarn(); return true; }
+  if (!$('engRoom').hidden) { closeEngineRoom(); return true; }
   if (!$('settings').hidden) { closeSettings(); return true; }
   if (!$('radioPanel').hidden) { closeRadio(); return true; }
   if (!$('hudRadio').hidden) { toggleHudRadio(false); return true; }
@@ -1095,7 +1097,35 @@ function updFx(dt) {
 }
 
 /* ================= waves ================= */
-function startWave(n) {
+/* Wave timers: every wave runs against a preset clock. When it runs out the next wave starts on the spot: whatever is
+   left of this one stays on the street, and up to half a wave of the zombies that had not come in yet join the next.
+   Clear the street before then and there are seven seconds to walk around (with a bonus for the time left) before the
+   next wave starts on its own; no screen in between. The last five seconds of either clock glow red and count down
+   out loud. A boss holds the clock while it lives. Settings > Gameplay > Wave timer sets the length (or turns it off). */
+const WT_K = { short: 0.7, normal: 1, long: 1.5, off: 0 };
+function waveTime(n) { const k = WT_K[SET.waveTimer] != null ? WT_K[SET.waveTimer] : 1; return k ? Math.round(Math.min(150, 40 + n * 4) * k) : 0; }
+// how many zombies this wave still has: on the street, still to come, and in hordes on their way
+function zLeft() {
+  let n = 0; for (const z of G.zs) if (!z.dead && !z.illusion && !z.fly) n++;
+  n += Math.max(0, G.spawnQ | 0);
+  if (typeof SWARM !== 'undefined') { for (const p of SWARM.plan) n += p.n | 0; for (const H of SWARM.hordes) n += Math.max(0, H.queue | 0); }
+  return n;
+}
+// the clock's last five seconds: a tick each second (the HUD glows red at the same time)
+function waveCount(t0, t1) { const a = Math.ceil(t0), b = Math.ceil(t1); if (b < a && t1 > 0 && b >= 1 && b <= 5 && SFX.countTick) SFX.countTick(b); }
+function waveTick(dt) {
+  if (G.breakT > 0 || !(G.waveMax > 0) || !(G.waveT > 0)) return false;
+  if (G.boss && !G.boss.dead) return false;   // a boss holds the clock
+  const t0 = G.waveT; G.waveT = Math.max(0, G.waveT - dt); waveCount(t0, G.waveT);
+  if (G.waveT > 0) return false;
+  // time is up: the next wave, now, on top of whatever is still here
+  if (SFX.timeUp) SFX.timeUp();
+  startWave(G.wave + 1, true);
+  if (NET.role === 'host' && NET.started) hostSend('*', { t: 'go', w: G.wave, r: 0, up: 1 });
+  coreEmit('waveTimeUp', { wave: G.wave });
+  return true;
+}
+function startWave(n, carry) {
   G.wave = n; const cap = Z.threatCap(n);
   if (SET.season === 'cycle' && n > 1 && (n - 1) % 5 === 0) setSeason(WORLD.season + 1);
   // while 2.0 is built only the new roster comes (the old mutations are switched off until all 1,000 are rebuilt)
@@ -1108,7 +1138,9 @@ function startWave(n) {
     feat.push(cand[idx]); cand.splice(idx, 1);
   }
   G.feat = feat;
-  G.spawnTotal = G.spawnQ = Math.round((10 + n * 5) * (G.hordeMul || 1)); G.spawnT = 1.4;
+  { const base = Math.round((10 + n * 5) * (G.hordeMul || 1)), left = carry ? Math.min(Math.max(0, G.spawnQ | 0), Math.round(base * 0.5)) : 0;
+    G.spawnTotal = G.spawnQ = base + left; G.spawnT = carry ? 0.6 : 1.4; }
+  G.waveMax = G.waveT = waveTime(n); G.timeUp = !!carry; G.waveAt = G.time;
   // the bosses (the roster, the Snatcher, the Alphas, the roaming ones) are switched off until they are rebuilt too
   const bossOff = typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF;
   G.roamAt = !bossOff && n >= 3 && n % 5 !== 0 && Math.random() < Math.min(0.6, 0.22 + n * 0.025) ? Math.round(G.spawnTotal * rand(0.3, 0.7)) : -1;
@@ -1117,7 +1149,8 @@ function startWave(n) {
   if (typeof swarmWave === 'function') swarmWave(n);   // the hordes that come on top of the trickle
   SFX.waveStart(G.bossPending);
   const unk = feat.filter(m => !found.has(m.id)).length;
-  banner('Wave ' + n, G.bossPending ? (n % 10 === 5 ? 'The Snatcher is coming' : 'An Alpha is coming') : unk ? unk + ' unidentified zombie' + (unk > 1 ? 's' : '') + ' sighted' : 'Hold the line');
+  const still = carry ? G.zs.filter(z => !z.dead && !z.illusion).length : 0;
+  banner('Wave ' + n, carry ? 'Time is up' + (still ? ' · ' + still + ' still on the street' : '') : G.bossPending ? (n % 10 === 5 ? 'The Snatcher is coming' : 'An Alpha is coming') : unk ? unk + ' unidentified zombie' + (unk > 1 ? 's' : '') + ' sighted' : 'Hold the line');
   G.mode = 'play';
   if (G.p) { const nc = NEON[(n - 1) % NEON.length]; ring(G.p.x, G.p.y, 20, 520, 0.9, rgbOf(nc), 5); ring(G.p.x, G.p.y, 10, 300, 0.7, rgbOf(nc), 3); }
 }
@@ -1148,7 +1181,9 @@ function spawnBoss() {
 // the card rounds between waves are switched off while 2.0 is built: a short breather instead, then the next wave
 const CARDS_OFF = true, BREAK_SECS = 7;
 function waveCleared() {
-  G.score += G.wave * 100; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
+  // a bonus for every second left on the clock
+  G.clearBonus = G.waveMax > 0 && G.waveT > 0 ? Math.ceil(G.waveT) * 10 : 0; G.clearLeft = G.waveT || 0;
+  G.score += G.wave * 100 + G.clearBonus; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
   SFX.waveClear();
   if (CARDS_OFF) { waveBreak(); return; }
   if (NET.role === 'host') netCardsOpen();
@@ -1160,15 +1195,16 @@ function waveBreak() {
   if (NET.role === 'host' && NET.started) {
     for (const peer of NET.peers.values()) if (peer.p && peer.p.down) netRevive(peer.p, 0.5);
     if (G.p.down) netRevive(G.p, 0.5);
-    hostSend('*', { t: 'brk', w: G.wave, s: BREAK_SECS });
+    hostSend('*', { t: 'brk', w: G.wave, s: BREAK_SECS, b: G.clearBonus || 0, l: Math.ceil(G.clearLeft || 0) });
   }
-  banner('Wave ' + G.wave + ' cleared', '+' + (G.wave * 100) + ' · next wave in ' + BREAK_SECS + ' seconds');
+  // no screen in between: the HUD's clock turns into the breather, and a short line says what the wave was worth
+  clearPop(G.wave, G.wave * 100, G.clearBonus || 0, G.clearLeft || 0);
   coreEmit('waveBreak', { wave: G.wave });
 }
 // the breather counts down; then the next wave (a teammate's game hears 'go' as it did after the cards)
 function breakTick(dt) {
   if (!(G.breakT > 0)) return false;
-  G.breakT -= dt;
+  const t0 = G.breakT; G.breakT -= dt; waveCount(t0, G.breakT);
   if (G.breakT <= 0) {
     G.breakT = 0; startWave(G.wave + 1);
     if (NET.role === 'host' && NET.started) hostSend('*', { t: 'go', w: G.wave, r: 0 });
@@ -1192,13 +1228,27 @@ function toast(small, big, color) {
   setTimeout(() => el.classList.add('out'), 2600); setTimeout(() => el.remove(), 3100);
 }
 let bannerTimer = 0;
-function banner(a, b) {
+function banner(a, b, kind) {
   const el = $('banner'); el.textContent = '';
+  // wave banners get the tape edges; "Time is up" is red
+  kind = kind || (/^Wave \d+$/.test(a) ? (b && /^Time is up/.test(b) ? 'up' : 'wave') : '');
+  el.className = kind ? 'bn-' + kind : '';
   const t = document.createElement('b'); t.textContent = a; el.appendChild(t);
   if (b) { const s = document.createElement('span'); s.textContent = b; el.appendChild(s); }
   el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   clearTimeout(bannerTimer); bannerTimer = setTimeout(() => { el.hidden = true; }, 2600);
 }
+
+// a wave cleared: a short line under the clock (what it was worth), no screen in between
+let clearTimer = 0;
+function clearPop(w, pts, bonus, left) {
+  const el = $('clearPop'); if (!el) return; el.textContent = '';
+  const a = document.createElement('b'); a.textContent = 'Wave ' + w + ' cleared'; el.appendChild(a);
+  const s = document.createElement('span'); s.textContent = '+' + Number(pts || 0).toLocaleString() + (bonus ? ' · +' + bonus + ' for ' + fmtClock(left) + ' left' : ''); el.appendChild(s);
+  el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(clearTimer); clearTimer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+function fmtClock(t) { t = Math.max(0, Math.ceil(t || 0)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
 
 /* ================= screens ================= */
 const OVS = ['title', 'upgrade', 'pause', 'over'];
@@ -1211,7 +1261,7 @@ function newRun(o) {
   if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
   $('skull').hidden = true;
-  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
+  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, waveT: 0, waveMax: 0, timeUp: false, clearBonus: 0, heads: 0, hits: 0, rounds: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
   DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
@@ -1240,12 +1290,82 @@ function newRun(o) {
 }
 function pauseGame() {
   if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · ' + (NET.role === 'client' ? 'co-op: the game keeps going while you are here' : NET.role === 'host' ? 'co-op: paused for everyone' : 'run in progress');
-  const st = $('pauseStats'); st.textContent = '';
-  const tm = Math.floor(G.time || 0);
-  [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', Math.floor(tm / 60) + ':' + String(tm % 60).padStart(2, '0')]].forEach(([k, v]) => {
-    const d = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; d.append(dt, dd); st.append(d);
-  });
-  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio(); netPingBtn();
+  renderPauseStats(true);
+  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio(); netPingBtn(); pzTab(PZ.tab);
+  // in co-op the game keeps going behind the pause screen: its numbers, the clock and the map stay live
+  clearInterval(PZ.iv); PZ.iv = setInterval(() => { if (G.mode !== 'pause') { clearInterval(PZ.iv); return; } renderPauseStats(); if (PZ.tab === 'map') drawPzMap(); }, 1000);
+}
+/* ---------- the pause screen: the run so far, the clock, and three tabs (your build, this wave's threats, a map) ---------- */
+const PZ = { tab: 'build', iv: 0 };
+function renderPauseStats(fresh) {
+  const st = $('pauseStats'); if (!st) return;
+  const tm = Math.floor(G.time || 0), acc = G.rounds ? Math.min(100, Math.round((G.hits || 0) / G.rounds * 100)) + '%' : '—';
+  const left = NET.role === 'client' ? (G.zLeftN | 0) : zLeft();
+  const rows = [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', fmtClock(tm)],
+   ['Best chain', G.bestChain ? 'x' + G.bestChain : '—'], ['Accuracy', acc], ['Head shots', (G.heads || 0).toLocaleString()], ['Zombies left', left.toLocaleString()]];
+  // built once when the screen opens (the cells rise in), then only the numbers change
+  if (fresh || st.children.length !== rows.length) {
+    st.textContent = '';
+    for (const [k, v] of rows) { const d = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; d.append(dt, dd); st.append(d); }
+  } else rows.forEach(([k, v], i) => { const dd = st.children[i].lastChild; if (dd.textContent !== String(v)) dd.textContent = v; });
+  const ck = $('pzClock'); if (!ck) return;
+  const brk = G.breakT > 0, hold = NET.role === 'client' ? !!G.clockHold : !!(G.boss && !G.boss.dead), off = !brk && !(G.waveMax > 0), tl = brk ? G.breakT : G.waveT;
+  ck.className = 'pz-clock ' + (brk ? 'brk' : off ? 'off' : hold ? 'hold' : tl <= 5 ? 'red' : 'run');
+  ck.textContent = brk ? 'Breather · wave ' + (G.wave + 1) + ' starts in ' + fmtClock(tl) : off ? 'No wave timer · the wave lasts until the street is clear' : hold ? 'The boss holds the clock at ' + fmtClock(tl) : 'Wave ' + (G.wave + 1) + ' starts in ' + fmtClock(tl) + (NET.role === 'client' ? ' (co-op: the clock keeps running)' : ' · the clock is stopped while you are paused');
+}
+function pzTab(t) {
+  PZ.tab = t;
+  document.querySelectorAll('#pzTabs button').forEach(b => { const on = b.dataset.t === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  document.querySelectorAll('#pause .pz-pane').forEach(p => { p.hidden = p.dataset.p !== t; });
+  if (t === 'threats') renderThreats(); else if (t === 'map') drawPzMap();
+}
+document.querySelectorAll('#pzTabs button').forEach(b => b.addEventListener('click', () => { SFX.click(); pzTab(b.dataset.t); }));
+// this wave's zombies: who they are (if you have met them), how many are on the street, how dangerous
+function renderThreats() {
+  const box = $('pzThreats'); box.textContent = '';
+  const pool = (G.feat && G.feat.length ? G.feat : G.pool || []).slice(0, 9), live = new Map();
+  for (const z of G.zs) if (!z.dead && !z.illusion) live.set(z.m.id, (live.get(z.m.id) || 0) + 1);
+  const head = el('p', 'pz-note', 'Wave ' + G.wave + ': ' + pool.length + ' kinds leading the horde' + (G.pool && G.pool.length > pool.length ? ', ' + G.pool.length + ' kinds in all' : '') + '. Kill one to identify it.');
+  box.append(head);
+  const grid = el('div', 'pz-th-grid');
+  for (const m of pool) {
+    const known = found.has(m.id), r = RARITY[m.rarity] || RARITY[0], card = el('div', 'pz-th' + (known ? '' : ' unknown')); card.style.setProperty('--rc', r.color);
+    const c = document.createElement('canvas'); c.setAttribute('aria-hidden', 'true');
+    const t = el('div', 'pz-th-t'); t.append(el('b', null, known ? m.name : 'Unidentified'), el('small', null, known ? r.name + ' · threat ' + m.threat : 'Seen from wave ' + (m.wave || G.wave)));
+    const n = live.get(m.id) || 0; t.append(el('span', null, n ? n + ' on the street' : 'none on the street'));
+    if (known && m.def && m.def.line) t.append(el('p', null, m.def.line));
+    card.append(c, t); grid.append(card);
+    try { if (typeof thumb2 === 'function' && m.v2) thumb2(c, m, 54, !known); else { c.width = c.height = 54; } } catch (e) { }
+  }
+  box.append(grid);
+}
+// a map of the streets around you: buildings and vehicles, water, every zombie, your team and you
+function drawPzMap() {
+  const cv2 = $('pzMap'); if (!cv2 || !G.p) return;
+  const box = cv2.parentNode, w = Math.max(220, Math.min(460, box.clientWidth || 300)), h = Math.round(w * 0.72), dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv2.width = Math.round(w * dpr); cv2.height = Math.round(h * dpr); cv2.style.width = w + 'px'; cv2.style.height = h + 'px';
+  const g = cv2.getContext('2d'), R = 34 * 32 * SCL / 2.4, sc = Math.min(w, h) / 2 / R, cx = G.p.x, cy = G.p.y;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#0b0e12'; g.fillRect(0, 0, w, h);
+  const X = x => w / 2 + (x - cx) * sc, Y = y => h / 2 + (y - cy) * sc;
+  // water
+  const step = 9; g.fillStyle = 'rgba(40,90,140,0.55)';
+  for (let py = 0; py < h; py += step) for (let px = 0; px < w; px += step) { const wx = cx + (px - w / 2) / sc, wy = cy + (py - h / 2) / sc; try { if (waterAt(wx, wy)) g.fillRect(px, py, step, step); } catch (e) { } }
+  // buildings and vehicles
+  try {
+    const rs = rectsNear(cx, cy, Math.hypot(w, h) / 2 / sc).slice();
+    for (const r of rs) { const veh = !!(r.vid || r.vt); g.fillStyle = veh ? 'rgba(160,170,185,0.55)' : 'rgba(235,229,214,0.13)'; g.fillRect(X(r.x), Y(r.y), Math.max(1, r.w * sc), Math.max(1, r.h * sc)); }
+  } catch (e) { }
+  // rings every 10 m
+  g.strokeStyle = 'rgba(242,204,58,0.12)'; g.lineWidth = 1;
+  for (let m = 10; m <= 40; m += 10) { g.beginPath(); g.arc(w / 2, h / 2, m * 32 * SCL / 2.4 * sc, 0, TAU); g.stroke(); }
+  // zombies
+  let n = 0;
+  for (const z of G.zs) { if (z.dead || z.illusion) continue; const x = X(z.x), y = Y(z.y); if (x < -4 || y < -4 || x > w + 4 || y > h + 4) continue; n++; g.fillStyle = z.boss ? '#c86bff' : '#ff4a55'; g.beginPath(); g.arc(x, y, z.boss ? 4 : Math.max(1.6, Math.min(3.2, z.r * sc * 1.2)), 0, TAU); g.fill(); }
+  // teammates and you
+  if (typeof netPlayers === 'function' && NET.started) for (const q of netPlayers()) { if (q === G.p) continue; g.fillStyle = '#29e6ff'; g.beginPath(); g.arc(X(q.x), Y(q.y), 4, 0, TAU); g.fill(); }
+  g.save(); g.translate(w / 2, h / 2); g.rotate(G.p.aim || 0); g.fillStyle = '#f2cc3a'; g.shadowColor = '#f2cc3a'; g.shadowBlur = 8;
+  g.beginPath(); g.moveTo(8, 0); g.lineTo(-5, -5); g.lineTo(-2, 0); g.lineTo(-5, 5); g.closePath(); g.fill(); g.restore();
+  const lg = $('pzLegend'); if (lg) lg.textContent = n + ' zombie' + (n === 1 ? '' : 's') + ' within about 34 m · rings every 10 m · north is up';
 }
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
 function toTitle() {
@@ -2144,28 +2264,74 @@ function drawScreenFx() {
       ctx.save(); ctx.translate(ex, ey); ctx.rotate(a); ctx.fillStyle = '#e5484d'; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.restore();
     }
   }
-  if (G.mode === 'play' && joy.active) {
-    const R = JR(), k = SET.joySize / 100;
-    ctx.strokeStyle = 'rgba(235,229,214,0.28)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(joy.ox, joy.oy, R, 0, TAU); ctx.stroke();
-    ctx.fillStyle = 'rgba(242,204,58,0.42)'; ctx.beginPath(); ctx.arc(joy.ox + joy.kx, joy.oy + joy.ky, 22 * k, 0, TAU); ctx.fill();
-  } else if (G.mode === 'play' && DEV.kind === 'touch' && SET.joy === 'fixed') {
-    const h = joyHome(); ctx.strokeStyle = 'rgba(235,229,214,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(h[0], h[1], JR(), 0, TAU); ctx.stroke();
-  } else if (G.mode === 'play' && DEV.kind === 'touch' && G.hintT > 0 && SET.hints) {
-    const a = clamp(G.hintT, 0, 1) * 0.35, hx = SET.lefty ? W - 96 : 96; ctx.strokeStyle = 'rgba(235,229,214,' + a + ')'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(hx, H - 120, 56, 0, TAU); ctx.stroke();
-    ctx.fillStyle = 'rgba(235,229,214,' + a + ')'; ctx.font = "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 120);
+  if (G.mode === 'play' && joy.active) drawJoy(joy.ox, joy.oy, JR(), joy.kx, joy.ky, 1);
+  else if (G.mode === 'play' && DEV.kind === 'touch' && SET.joy === 'fixed') { const h = joyHome(); drawJoy(h[0], h[1], JR(), 0, 0, 0.45); }
+  else if (G.mode === 'play' && DEV.kind === 'touch' && G.hintT > 0 && SET.hints) {
+    const a = clamp(G.hintT, 0, 1), hx = SET.lefty ? W - 96 : 96;
+    drawJoy(hx, H - 130, 56, Math.cos(G.time * 2.4) * 22, Math.sin(G.time * 2.4) * 22, a * 0.7);
+    ctx.globalAlpha = a * 0.85; ctx.fillStyle = '#ebe5d6'; ctx.font = "11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 130 + 56 + 18); ctx.globalAlpha = 1;
   }
+}
+// the touch joystick: a glass disc with a ticked rim, the push direction lit on the rim, and a glowing thumb knob
+function drawJoy(ox, oy, R, kx, ky, a) {
+  const k = SET.joySize / 100, m = Math.min(1, Math.hypot(kx, ky) / Math.max(1, R)), ang = Math.atan2(ky, kx);
+  ctx.save(); ctx.globalAlpha = a;
+  const g = ctx.createRadialGradient(ox, oy, R * 0.2, ox, oy, R);
+  g.addColorStop(0, 'rgba(9,12,16,0.05)'); g.addColorStop(0.75, 'rgba(9,12,16,0.32)'); g.addColorStop(1, 'rgba(9,12,16,0.5)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ox, oy, R, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(235,229,214,0.26)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(ox, oy, R, 0, TAU); ctx.stroke();
+  // ticks round the rim, longer at the four main directions
+  ctx.strokeStyle = 'rgba(235,229,214,0.32)';
+  for (let i = 0; i < 24; i++) { const t = i / 24 * TAU, main = i % 6 === 0, r0 = R - (main ? 10 : 5); ctx.lineWidth = main ? 2 : 1; ctx.beginPath(); ctx.moveTo(ox + Math.cos(t) * r0, oy + Math.sin(t) * r0); ctx.lineTo(ox + Math.cos(t) * (R - 1), oy + Math.sin(t) * (R - 1)); ctx.stroke(); }
+  // the way you are pushing, lit on the rim
+  if (m > 0.08) {
+    ctx.strokeStyle = 'rgba(242,204,58,' + (0.35 + m * 0.6).toFixed(2) + ')'; ctx.lineWidth = 4; ctx.shadowColor = 'rgba(242,204,58,0.8)'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(ox, oy, R + 1, ang - 0.45 - m * 0.25, ang + 0.45 + m * 0.25); ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(242,204,58,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox + kx, oy + ky); ctx.stroke();
+  }
+  // the knob
+  const kr = 22 * k, x = ox + kx, y = oy + ky, kg = ctx.createRadialGradient(x - kr * 0.3, y - kr * 0.35, 1, x, y, kr);
+  kg.addColorStop(0, 'rgba(255,240,170,0.95)'); kg.addColorStop(0.45, 'rgba(242,204,58,0.75)'); kg.addColorStop(1, 'rgba(150,110,20,0.55)');
+  ctx.shadowColor = 'rgba(242,204,58,0.6)'; ctx.shadowBlur = 16 * (0.4 + m);
+  ctx.fillStyle = kg; ctx.beginPath(); ctx.arc(x, y, kr, 0, TAU); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(23,20,11,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, kr - 5, 0, TAU); ctx.stroke();
+  ctx.restore();
 }
 
 /* ================= HUD ================= */
 const hc = {};
+// the wave clock at the top: wave number, time to the next wave, zombies left; red for the last five seconds
+function updClock() {
+  const brk = G.breakT > 0, hold = NET.role === 'client' ? !!G.clockHold : !!(G.boss && !G.boss.dead);
+  const tm = brk ? BREAK_SECS : G.waveMax, tl = brk ? G.breakT : G.waveT, off = !brk && !(tm > 0);
+  const red = !off && !hold && tl > 0 && tl <= 5, st = brk ? 'brk' : off ? 'off' : hold ? 'hold' : 'run';
+  const box = $('waveBox');
+  if (hc.cst !== st) { hc.cst = st; box.dataset.st = st; setTxt('waveCap', brk ? 'Cleared · next wave in' : off ? 'Clear the street' : hold ? 'The boss holds the clock' : 'Next wave in'); }
+  if (hc.cred !== red) { hc.cred = red; box.classList.toggle('red', red); $('hud').classList.toggle('clock-red', red); }
+  const sec = off ? -1 : Math.ceil(tl);
+  if (hc.csec !== sec) {
+    hc.csec = sec; setTxt('waveTime', off ? '--:--' : fmtClock(tl));
+    if (red) { box.classList.remove('beat'); void box.offsetWidth; box.classList.add('beat'); }
+  }
+  const fw = off ? 1 : clamp(tl / Math.max(1, tm), 0, 1), fwk = Math.round(fw * 500);
+  if (hc.cfw !== fwk) { hc.cfw = fwk; $('waveFill').style.width = (fw * 100).toFixed(1) + '%'; }
+  const left = NET.role === 'client' ? (G.zLeftN | 0) : zLeft();
+  setTxt('waveLeft', brk ? 'Street clear' : left === 1 ? '1 zombie left' : left + ' zombies left');
+}
 function setTxt(id, v) { if (hc[id] !== v) { hc[id] = v; $(id).textContent = v; } }
 function updHud() {
   const p = G.p; if (!p) return;
   const f = clamp(p.hp / p.maxHp, 0, 1), fk = Math.round(f * 300);
-  if (hc.hpw !== fk) { hc.hpw = fk; $('hpFill').style.width = (f * 100).toFixed(1) + '%'; }
+  if (hc.hpw !== fk) { hc.hpw = fk; $('hpFill').style.width = (f * 100).toFixed(1) + '%'; $('hpBox').style.setProperty('--hp', f.toFixed(3)); }
+  // the ghost: the health just lost hangs behind the bar for a moment, then drains away
+  { const now = performance.now(), gdt = Math.min(0.1, (now - (hc.gt || now)) / 1000); hc.gt = now;
+    if (hc.ghost == null || f >= hc.ghost) { hc.ghost = f; hc.gHold = 0; } else if (fk !== hc.gk) { hc.gHold = 0.45; }
+    hc.gk = fk; if (hc.gHold > 0) hc.gHold -= gdt; else hc.ghost = Math.max(f, hc.ghost - gdt * 0.5);
+    const gw = Math.round(hc.ghost * 400); if (hc.gw !== gw) { hc.gw = gw; $('hpGhost').style.width = (hc.ghost * 100).toFixed(1) + '%'; } }
+  { const lv = f < 0.15 ? 2 : f < 0.3 ? 1 : 0; if (hc.lv !== lv) { hc.lv = lv; const hd = $('hud'); hd.classList.toggle('low', lv >= 1); hd.classList.toggle('crit', lv >= 2); } }
+  updClock();
   setTxt('hpText', Math.ceil(Math.max(0, p.hp)) + ' / ' + Math.round(p.maxHp));
-  setTxt('waveNum', String(G.wave)); setTxt('scoreNum', G.score.toLocaleString()); setTxt('killNum', G.kills + ' kills');
+  setTxt('waveNum', String(G.wave)); setTxt('scoreNum', G.score.toLocaleString()); setTxt('killNum', G.kills === 1 ? '1 kill' : G.kills.toLocaleString() + ' kills');
   const fx = (p.poisonT > 0 ? 'P' : '') + (p.burnT > 0 ? 'B' : '') + (p.slowT > 0 ? 'C' : '') + (p.jamT > 0 ? 'J' : '') + (p.weakT > 0 ? 'W' : '') + (p.frozenT > 0 ? 'F' : '') + (p.rootT > 0 ? 'R' : '') + (p.blindT > 0 ? 'X' : '') + (p.bleedT > 0 ? 'L' : '');
   if (hc.fx !== fx) {
     hc.fx = fx; const box = $('fxChips'); box.textContent = '';
@@ -2196,6 +2362,12 @@ function updHud() {
   if (hc.cd !== ck) { hc.cd = ck; const db = $('dashBtn'); db.style.setProperty('--cd', cd.toFixed(3)); db.classList.toggle('cool', cd < 1); }
 }
 
+// the height of the top bar, for what hangs under it (the radio, the boss bar, the song ticker)
+try {
+  const hxTop = document.querySelector('.hx-top');
+  if (hxTop && window.ResizeObserver) new ResizeObserver(() => { const h = hxTop.getBoundingClientRect().height; if (h > 0) $('app').style.setProperty('--hx-top-h', Math.round(h + 8) + 'px'); }).observe(hxTop);
+} catch (e) { /* older browsers keep the default */ }
+
 /* ================= loop ================= */
 function update(dt) {
   if (NET.role === 'client') { netClientUpdate(dt); return; }
@@ -2209,7 +2381,7 @@ function update(dt) {
   buildGrid();
   if (typeof swarmTick === 'function') swarmTick(dt);   // hordes coming in, the crowd moving as one, who thinks how often
   { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS), stale = F => !F.ready || F.n !== FF_N || Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2;
-    if (stale(FF) || G.time - FF.t > 0.35) buildField(FF);
+    if (stale(FF) || G.time - FF.t > [0.55, 0.35, 0.25, 0.18][(TUNE.FLOW || 0) + 1]) buildField(FF);   // (engine room: Eco refreshes the paths less often, Hard and Max more)
     // the wide fields only while something that big is chasing, and never both in the same frame
     else if (G.needFS && (stale(FFS) || G.time - FFS.t > 0.6)) buildField(FFS);
     else if (G.needFB && (stale(FFB) || G.time - FFB.t > 0.6)) buildField(FFB);
@@ -2247,6 +2419,7 @@ function update(dt) {
   const k = Math.min(1, dt * 7); cam.x += (ct.x - cam.x) * k; cam.y += (ct.y - cam.y) * k;
   if (G.skullPending && G.mode === 'play') { openSkull(); return; }
   if (G.mode === 'play' && breakTick(dt)) return;
+  if (G.mode === 'play' && waveTick(dt)) return;
   if (G.mode === 'play' && G.spawnQ <= 0 && !G.bossPending && (typeof swarmDone !== 'function' || swarmDone()) && !G.zs.some(z => !z.illusion)) waveCleared();
 }
 // The city is big enough to explore now, so zombies left far behind (stuck around a block, or outrun) come back

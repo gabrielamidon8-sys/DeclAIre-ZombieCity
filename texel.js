@@ -24,7 +24,7 @@ const TEXEL = { adapt: 0, lib: new Map(), scratch: [], ms: 0, made: 0, errT: [],
 function texelLevel() {
   if (TEXEL.offUntil && performance.now() < TEXEL.offUntil) return 0;
   const want = SET.texel || 'auto', base = want === 'auto' ? [1, 2, 2, 3][clamp(PERF.tier | 0, 0, 3)] : want === 'low' ? 1 : want === 'high' ? 2 : want === 'ultra' ? 3 : want === 'off' ? 0 : 2;
-  return TEXEL.lvl = clamp(base + TEXEL.adapt, 0, 3);
+  return TEXEL.lvl = base ? clamp(base + TEXEL.adapt + (TUNE.TEXEL || 0), 0, 3) : 0;
 }
 function texelMk(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, w | 0); c.height = Math.max(1, h | 0); return c; }
 // a scratch canvas big enough for one sprite (reused, so making sprites does not churn memory)

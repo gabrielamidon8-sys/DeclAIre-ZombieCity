@@ -64,7 +64,13 @@ function coreTick(now) {
   CORE.fc = (CORE.fc || 0) + 1;
   if (now - CORE.lastSec < 1000) return; CORE.lastSec = now;
   const n = Math.max(1, CORE.fc); CORE.fc = 0;
-  for (const e of CORE.list) { const ms = e.ms / n; e.msAvg = e.msAvg ? e.msAvg * 0.6 + ms * 0.4 : ms; e.ms = 0; if (e.sec) coreCall(e, 'sec'); }
+  for (const e of CORE.list) {
+    const ms = e.ms / n; e.msAvg = e.msAvg ? e.msAvg * 0.6 + ms * 0.4 : ms; e.ms = 0; if (e.sec) coreCall(e, 'sec');
+    // the last minute of what it cost, for the engine room's graphs
+    (e.hist || (e.hist = [])).push(Math.round(e.msAvg * 100) / 100); if (e.hist.length > 60) e.hist.shift();
+  }
+  CORE.fps = typeof PERF !== 'undefined' ? PERF.fps : 0;
+  try { coreTuneTick(now); } catch (x) { }
   if (!CORE.verified) coreVerify();
   if (now - CORE.watchT >= 2000) { CORE.watchT = now; try { coreWatch(now); } catch (x) { } }
   if (now - CORE.saveT >= 30000) { CORE.saveT = now; coreSave(); }
@@ -150,16 +156,94 @@ function coreSave() {
   for (const e of CORE.list) if (e.save) { try { out.engines[e.name] = { ver: e.ver, v: e.save(), downs: e.downs || 0 }; } catch (x) { } }
   try { store.set('zc_core', out); } catch (x) { }
 }
-// the frame is running late: step down the render engine taking the biggest share (above a floor), true if one did
+/* ---------- tuning (Settings > Accessibility > Ultra advanced, the engine room) ----------
+   Every engine can be told to run harder or lighter (its effort: Auto, Eco, Normal, Hard, Max) and, where it has both,
+   to run on the processor or the graphics chip (CPU, GPU, Auto). The player chooses, the ecosystem has the last word:
+   - what an engine cannot do is locked to what it can ("Auto-lock", purple), with the reason written down: an engine
+     that only exists on the processor, a GPU path on a device without a usable graphics chip, a path that needs
+     another engine on the GPU first, an engine resting after errors, an engine whose job must be the same everywhere;
+   - when a choice starts to hurt the game (the frame rate well under its target for 8 seconds while that engine is
+     among the costliest, or the engine failing again and again), it is locked back to Auto for 5 minutes, and the
+     engine room says what happened, with the numbers.
+   Effort reaches each engine through TUNE[name] (-1 Eco, 0 Normal or Auto, 1 Hard, 2 Max) and its tune.apply hook. */
+const TUNE = {};
+const EFFORTS = ['auto', 'eco', 'normal', 'hard', 'max'], EFFORT_K = { auto: 0, eco: -1, normal: 0, hard: 1, max: 2 }, EFFORT_W = { auto: 1, eco: 1.9, normal: 1, hard: 0.4, max: 0 };
+function coreTune(name) {
+  const T = (typeof SET !== 'undefined' && SET.eng && SET.eng[name]) || {};
+  // (PRISM's processor is the same choice as Settings > Graphics > Shader engine)
+  const proc = name === 'PRISM' && typeof SET !== 'undefined' ? (SET.prism === 'gpu' || SET.prism === 'cpu' ? SET.prism : 'auto') : T.proc === 'cpu' || T.proc === 'gpu' ? T.proc : 'auto';
+  return { effort: EFFORTS.indexOf(T.effort) >= 0 ? T.effort : 'auto', proc: proc };
+}
+// what locks an engine's choices right now, and why (an empty reason: free to choose)
+function coreLocks(e, now) {
+  const t = e.tune || {}, L = { effort: '', proc: '', procTo: '' }, at = d => { const m = Math.max(0, Math.ceil((d - now) / 60000)); return m <= 1 ? 'in about a minute' : 'in about ' + m + ' minutes'; };
+  if (e.down) { const w = e.name + ' is resting after repeated errors and comes back ' + at(e.downUntil) + '; until then the ecosystem runs it for you.'; L.effort = w; L.proc = w; L.procTo = 'auto'; return L; }
+  if (e.lockUntil > now) { L.effort = e.lockWhy + ' Unlocks ' + at(e.lockUntil) + '.'; L.proc = L.effort; L.procTo = 'auto'; return L; }
+  if (t.effort === false) L.effort = t.effortWhy || 'The ecosystem keeps this engine where it is.';
+  const procs = t.procs || ['cpu'];
+  if (procs.length < 2) { L.proc = t.procWhy || (e.name + ' only runs on the processor.'); L.procTo = procs[0] || 'cpu'; }
+  else if (typeof t.gpuNo === 'function') { const why = coreCall({ f: t.gpuNo }, 'f', ''); if (why) { L.proc = why; L.procTo = 'cpu'; } }
+  return L;
+}
+// what applies right now, after the locks
+function coreEff(name) {
+  const e = CORE.by[name]; if (!e) return { effort: 'auto', proc: 'auto', locks: { effort: '', proc: '' } };
+  const t = coreTune(name), L = coreLocks(e, performance.now());
+  return { effort: L.effort ? 'auto' : t.effort, proc: L.proc ? (L.procTo || 'auto') : t.proc, locks: L, want: t };
+}
+// once a second: hand every engine its effort, then let the ecosystem check that no choice is hurting the game
+function coreTuneTick(now) {
+  for (const e of CORE.list) {
+    const f = coreEff(e.name), k = EFFORT_K[f.effort] || 0;
+    TUNE[e.name] = f.effort === 'auto' ? 0 : k; e.effort = f.effort; e.procNow = f.proc;
+    if (e.tune && e.tune.apply) { try { e.tune.apply(f.effort === 'auto' ? null : k, f.proc); } catch (x) { coreHurt(e.name, x); } }
+  }
+  coreGuard(now);
+}
+function coreGuard(now) {
+  const fps = typeof PERF !== 'undefined' ? PERF.fps : 0, tgt = typeof targetFps === 'function' ? targetFps() : 60;
+  // a choice that keeps failing goes back to Auto
+  for (const e of CORE.list) {
+    const t = coreTune(e.name), mine = t.effort !== 'auto' || t.proc !== 'auto';
+    if (!mine || e.lockUntil > now) { e.tuneErrs = e.errs; continue; }
+    if (e.errs - (e.tuneErrs == null ? e.errs : e.tuneErrs) >= 3) coreLock(e, now, 'Locked by the ecosystem: ' + e.name + ' failed ' + (e.errs - e.tuneErrs) + ' times since you set it to ' + coreTuneWords(t) + ' (' + (e.lastErr || 'an error') + '), so it was put back on Auto.');
+    e.tuneErrs = e.errs;
+  }
+  // the frame rate well under target for 8 seconds: the costliest engine running on your choice goes back to Auto
+  if (fps && fps < tgt * 0.7) CORE.slowS = (CORE.slowS || 0) + 1; else CORE.slowS = 0;
+  if (CORE.slowS >= 8) {
+    let worst = null;
+    for (const e of CORE.list) { const t = coreTune(e.name); if ((t.effort === 'hard' || t.effort === 'max' || t.proc !== 'auto') && !(e.lockUntil > now) && !e.down && (!worst || e.msAvg > worst.msAvg)) worst = e; }
+    // (it has to matter: at least 0.4 ms and 5% of the frame)
+    if (worst && worst.msAvg > 0.4 && (!fps || worst.msAvg / (1000 / fps) > 0.05)) {
+      const t = coreTune(worst.name), frame = fps ? 1000 / fps : 0;
+      coreLock(worst, now, 'Locked by the ecosystem: the game ran at ' + Math.round(fps) + ' fps for 8 seconds against a target of ' + Math.round(tgt) + ', and ' + worst.name + ' on ' + coreTuneWords(t) + ' was taking ' + worst.msAvg.toFixed(1) + ' ms of every ' + frame.toFixed(0) + ' ms frame, the most of any engine you had tuned, so it went back to Auto.');
+      CORE.slowS = 0;
+    }
+  }
+}
+function coreTuneWords(t) { const E = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' }; return (t.effort !== 'auto' ? E[t.effort] : '') + (t.effort !== 'auto' && t.proc !== 'auto' ? ', ' : '') + (t.proc !== 'auto' ? t.proc.toUpperCase() : '') || 'Auto'; }
+function coreLock(e, now, why) {
+  e.lockUntil = now + 300000; e.lockWhy = why; e.locks = (e.locks || 0) + 1;
+  coreLog(why); if (typeof noteRepair === 'function') noteRepair(e.name + ' was put back on Auto');
+  coreEmit('engineLocked', { name: e.name, why: why });
+}
+// the frame is running late: step down the render engine taking the biggest share (above a floor), true if one did;
+// an engine set to Eco goes first, one set to Hard last, one set to Max never (the ecosystem's guard watches that)
 function coreTrim(frameMs) {
-  let best = null, bestMs = Math.max(0.6, frameMs * 0.12);
-  for (const e of CORE.list) if (e.kind === 'render' && e.trim && e.msAvg > bestMs && coreCall(e, 'canTrim', true)) { best = e; bestMs = e.msAvg; }
+  let best = null, bestMs = Math.max(0.6, frameMs * 0.12), bestW = 0;
+  for (const e of CORE.list) {
+    if (e.kind !== 'render' || !e.trim || !coreCall(e, 'canTrim', true)) continue;
+    const w = e.msAvg * (EFFORT_W[e.effort || 'auto'] == null ? 1 : EFFORT_W[e.effort || 'auto']);
+    if (e.msAvg > bestMs * 0.5 && w > Math.max(bestW, bestMs)) { best = e; bestW = w; }
+  }
   if (!best) return false;
   if (coreCall(best, 'trim', false)) { CORE.trims.push(best.name); if (CORE.trims.length > 12) CORE.trims.shift(); if (typeof logTrim === 'function') logTrim(best.name.toLowerCase()); return true; }
   return false;
 }
-// there is room again: give the last trimmed engine a level back
+// there is room again: give the last trimmed engine a level back (one set to Hard or Max first)
 function coreBoost() {
+  for (const e of CORE.list) if ((e.effort === 'hard' || e.effort === 'max') && CORE.trims.indexOf(e.name) >= 0 && coreCall(e, 'boost', false)) return true;
   while (CORE.trims.length) {
     const e = CORE.by[CORE.trims[CORE.trims.length - 1]];
     if (e && coreCall(e, 'boost', false)) return true;
@@ -170,7 +254,8 @@ function coreBoost() {
 // for Settings > System: one line per engine
 function coreStatus() {
   return CORE.list.map(e => ({ name: e.name, does: e.does, kind: e.kind, state: e.down ? 'resting' : coreCall(e, 'state', 'on'), level: coreCall(e, 'level', ''), ms: Math.round(e.msAvg * 100) / 100, errs: e.errs, repairs: e.repairs,
-    health: e.health, ver: e.ver, needs: e.needs || [], covers: e.covers || [], helps: e.helps ? Object.keys(e.helps) : [], notes: String(coreCall(e, 'notes', '') || '') }));
+    health: e.health, ver: e.ver, needs: e.needs || [], covers: e.covers || [], helps: e.helps ? Object.keys(e.helps) : [], notes: String(coreCall(e, 'notes', '') || ''),
+    effort: e.effort || 'auto', proc: e.procNow || 'auto', locked: !!(e.lockUntil > performance.now()), downs: e.downs || 0 }));
 }
 // the renderer fills the shared frame once, before the engines that read it
 function coreFrame(x0, y0, x1, y1, dt) {

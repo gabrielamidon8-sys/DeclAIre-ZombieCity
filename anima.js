@@ -1119,7 +1119,7 @@ function animaFrame(dt) {
   const t0 = performance.now();
   try {
     const tier = clamp(PERF.tier | 0, 0, 3);
-    ANIMA.liveCap = Math.max(2, [5, 10, 16, 24][tier] + ANIMA.adapt * 2 + (SET.crowd === 'high' ? 6 : SET.crowd === 'low' ? -3 : 0));
+    ANIMA.liveCap = Math.max(2, [5, 10, 16, 24][tier] + ANIMA.adapt * 2 + (SET.crowd === 'high' ? 6 : SET.crowd === 'low' ? -3 : 0) + (TUNE.ANIMA || 0) * 5);
     ANIMA.bud = [3, 4, 6, 9][tier] + (ANIMA.adapt < 0 ? ANIMA.adapt : 0);
     ANIMA.cacheCap = [500, 700, 1000, 1400][tier];
     ANIMA.corpseCap = Math.max(16, [36, 56, 90, 130][tier] + ANIMA.adapt * 12);

@@ -510,7 +510,7 @@ function netSnapshot() {
   }
   const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000]);
   const s = {
-    t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
+    t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, wt: [Math.round((G.waveT || 0) * 10), G.waveMax | 0, Math.round((G.breakT || 0) * 10), zLeft(), G.boss && !G.boss.dead ? 1 : 0], sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
     wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zd, zs: zst, zg: zg, zk: key ? 1 : 0, ax: ax, ay: ay, B: B, pl: pl,
     e: G.eshots.filter(q => !q.dead).slice(0, 160).map(q => [r1(q.x), r1(q.y), r1(q.vx), r1(q.vy), NET_SK.indexOf(q.k), q.r]),
     hz: G.haz.slice(0, 60).map(h => [NET_HK.indexOf(h.k), r1(h.x), r1(h.y), r1(h.r), Math.round(h.life * 10) / 10, h.max]),
@@ -554,12 +554,12 @@ function netClientRecv(m) {
       if (G.mode === 'upgrade' && NET.myPicked !== NET.myRound) netAutoPick();
       $('upGrid').classList.remove('waiting'); if (G.mode === 'upgrade') showOv(null);
       G.wave = m.w; G.mode = 'play'; NET.myRound = 0; netUpWait();
-      { const bw = m.w % 5 === 0 && !(typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF); SFX.waveStart(bw); banner('Wave ' + m.w, bw ? 'A boss is coming' : 'Hold the line'); }
+      { const bw = m.w % 5 === 0 && !(typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF); if (m.up && SFX.timeUp) SFX.timeUp(); SFX.waveStart(bw); banner('Wave ' + m.w, m.up ? 'Time is up' : bw ? 'A boss is coming' : 'Hold the line'); G.breakT = 0; }
       break;
     // the wave is cleared and the next one is a few seconds off (the card rounds are switched off for now)
     case 'brk':
       if (!NET.started || !G.p || G.mode === 'over' || G.mode === 'title') break;
-      G.eshots = []; SFX.waveClear(); banner('Wave ' + (m.w | 0) + ' cleared', 'next wave in ' + ((m.s | 0) || 7) + ' seconds');
+      G.eshots = []; SFX.waveClear(); G.breakT = (m.s | 0) || 7; clearPop(m.w | 0, (m.w | 0) * 100, m.b | 0, m.l | 0);
       break;
     case 'over': if (NET.started) netFinish(m); break;
   }
@@ -607,6 +607,8 @@ const ZSTAT = ['burnT', 'poisonT', 'slowT', 'stun'];
 function netApply(s) {
   NET.md = s.md; NET.hold = s.md === 2 || s.md === 3 || s.md === 4 ? s.md : 0;
   G.wave = s.w; G.score = s.sc; G.kills = s.k; G.bestChain = Math.max(G.bestChain, s.bc || 0);
+  // the host's wave clock (a teammate's game counts it down between snapshots)
+  if (Array.isArray(s.wt)) { G.waveT = (+s.wt[0] || 0) / 10; G.waveMax = +s.wt[1] || 0; G.breakT = (+s.wt[2] || 0) / 10; G.zLeftN = +s.wt[3] || 0; G.clockHold = !!s.wt[4]; }
   if (s.ch > G.chain || (s.ch && s.ch < G.chain)) G.lastKill = G.time;
   G.chain = s.ch; G.air = s.air; G.warpT = s.warp ? 0.2 : 0;
   if (s.wx && WX.kind !== s.wx) WX.kind = s.wx; WX.t = 999;
@@ -710,6 +712,10 @@ function netYouRevive(hp) { const p = G.p; if (!p || !p.down) return; p.down = f
 // a teammate's game each frame: your own player moves and shoots; zombies follow the host
 function netClientUpdate(dt) {
   G.time += dt; if (G.hintT > 0) G.hintT -= dt; if (G.cineT > 0) G.cineT -= dt; DEV.useT[DEV.kind] += dt;
+  if (G.mode === 'play' || G.mode === 'pause') {
+    if (G.breakT > 0) { const t0 = G.breakT; G.breakT = Math.max(0, G.breakT - dt); waveCount(t0, G.breakT); }
+    else if (G.waveT > 0 && !G.clockHold) { const t0 = G.waveT; G.waveT = Math.max(0, G.waveT - dt); waveCount(t0, G.waveT); }
+  }
   const p = G.p;
   if (!NET.hold) updPlayer(dt);
   else if (p) { p.fireCd -= dt; }

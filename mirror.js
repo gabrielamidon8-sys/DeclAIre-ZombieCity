@@ -14,7 +14,7 @@ const MIRROR = { MA: null, ma: null, MW: null, mw: null, RF: null, rf: null, cw:
 function mirrorLevel() {
   if (MIRROR.offUntil && performance.now() < MIRROR.offUntil) return 0;
   const w = SET.refl || 'auto', base = w === 'off' ? 0 : w === 'on' ? 2 : [1, 2, 2, 2][clamp(PERF.tier | 0, 0, 3)];
-  return clamp(base + MIRROR.adapt, 0, 2);
+  return base ? clamp(base + MIRROR.adapt + (TUNE.MIRROR || 0), 0, 2) : 0;
 }
 function mirrorCanvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(2, w); c.height = Math.max(2, h); return c; }
 // a block's water as a small mask (alpha = how reflective; open water ripples, ice does not), made once
@@ -117,7 +117,7 @@ function mirrorRun(x0, y0, x1, y1) {
     mirrorSky();
     if (!mirrorMask(x0, y0, x1, y1, lvl)) return;
     MIRROR.on = true; MIRROR.lvl = lvl;
-    if (typeof PRISM !== 'undefined' && PRISM.mode === 'gpu' && PRISM.ok) MIRROR.gpu = true;
+    if (typeof PRISM !== 'undefined' && PRISM.mode === 'gpu' && PRISM.ok && !MIRROR.cpuOnly) MIRROR.gpu = true;   // (cpuOnly: set to CPU in the engine room)
     else mirrorCpu(x0, y0, x1, y1, lvl);
   } catch (e) { mirrorHurt(e); MIRROR.on = false; }
   finally { ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }

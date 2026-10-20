@@ -1108,6 +1108,7 @@ button.lcd{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.mskull,.mskull.talk .mk-jaw,.mskull.hint .mk-eye,.mk-eye,.mskull.done,.mskull.done .mk-hat,.mbubble.pop,.mskull.laugh,.mskull.laugh .mk-jaw,.mskull.laugh .mk-eye{animation:none}.mprog i{transition:none}}
 .maint-admin{top:12px;background:rgba(20,24,30,.92);color:#ffb38a;border:1px solid rgba(255,138,26,.5)}
 .test-badge{position:fixed;right:14px;bottom:12px;z-index:58;padding:5px 10px;border:1px dashed rgba(41,230,255,.6);border-radius:2px;background:rgba(8,10,13,.8);color:#29e6ff;font-family:var(--f-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+/*__UI2CSS__*/
 </style>
 
 <div id="app">
@@ -1124,29 +1125,47 @@ button.lcd{cursor:pointer}
   <canvas id="cv" aria-label="Zombie City game view"></canvas>
 
   <div id="hud" hidden>
-    <div class="hud-top">
-      <div class="vitals">
+    <div class="hx-edge" aria-hidden="true"></div>
+    <div class="hx-top">
+      <div class="hx-vitals">
         <div class="hud-name" id="hudName" hidden><span id="hudDev" aria-hidden="true"></span><b id="hudNameTxt"></b></div>
-        <div class="hp"><i id="hpFill"></i></div>
-        <div class="hp-row"><b id="hpText">100</b><span id="fxChips"></span></div>
+        <div class="hx-hp" id="hpBox">
+          <div class="hx-hpbar"><i class="hx-ghost" id="hpGhost"></i><i class="hx-fill" id="hpFill"></i><i class="hx-segs" aria-hidden="true"></i></div>
+          <div class="hx-hprow"><span class="hx-tag">HP</span><b id="hpText">100</b><span class="hx-fx" id="fxChips"></span></div>
+        </div>
         <div class="where" id="whereChip" aria-live="polite"></div>
         <div class="hud-team" id="hudTeam" hidden></div>
+        <div id="toasts" aria-live="polite"></div>
       </div>
-      <div class="wave"><span>Wave</span><b id="waveNum">1</b></div>
-      <div class="score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
-      <button id="radioBtn" class="icon-btn radio-btn" type="button" aria-label="Radio" aria-expanded="false" aria-controls="hudRadio"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="rb-ant" d="M5 9 L18 3.5"/><rect x="2.5" y="9" width="19" height="12" rx="2"/><circle cx="8.5" cy="15" r="3.2"/><path d="M14.5 13 H19 M14.5 16 H19"/></svg><i class="rb-dot" aria-hidden="true"></i></button>
-      <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span><i class="glyph" id="pauseKey" aria-hidden="true"></i></button>
+      <div class="hx-wave" id="waveBox">
+        <div class="hx-wn"><span>Wave</span><b id="waveNum">1</b></div>
+        <div class="hx-clock">
+          <span class="hx-cap" id="waveCap">Next wave in</span>
+          <b class="hx-time" id="waveTime" role="timer">0:00</b>
+          <span class="hx-left" id="waveLeft"></span>
+        </div>
+        <div class="hx-tbar" aria-hidden="true"><i id="waveFill"></i></div>
+        <div class="hx-clear" id="clearPop" role="status" hidden></div>
+      </div>
+      <div class="hx-right">
+        <div class="hx-btns">
+          <button id="radioBtn" class="icon-btn radio-btn" type="button" aria-label="Radio" aria-expanded="false" aria-controls="hudRadio"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="rb-ant" d="M5 9 L18 3.5"/><rect x="2.5" y="9" width="19" height="12" rx="2"/><circle cx="8.5" cy="15" r="3.2"/><path d="M14.5 13 H19 M14.5 16 H19"/></svg><i class="rb-dot" aria-hidden="true"></i></button>
+          <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span><i class="glyph" id="pauseKey" aria-hidden="true"></i></button>
+        </div>
+        <div class="hx-score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
+        <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
+      </div>
     </div>
     <div id="hudRadio" class="radio-drop" hidden></div>
     <div id="bossBar" hidden><span id="bossName"></span><div class="bar bar1"><i id="bossFill"></i></div><div class="bar bar2"><i id="bossFill2"></i></div><span id="bossInfo"></span></div>
-    <div id="toasts" aria-live="polite"></div>
     <div id="banner" hidden></div>
-    <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
     <div id="chainPop" hidden></div>
-    <button id="dashBtn" aria-label="Dash"><b>Dash</b><span class="dname">Sprint</span><i class="glyph" id="dashKey" aria-hidden="true"></i></button>
+    <div class="hx-abil" id="abilBox">
       <button id="markBtn" class="mark-btn" type="button" aria-label="Mark a spot for your team"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
-    <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em><i class="glyph" id="airKey" aria-hidden="true"></i></button>
-    <div class="wchip" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><span id="wName">Standard Pistol</span></div>
+      <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em><i class="glyph" id="airKey" aria-hidden="true"></i></button>
+      <button id="dashBtn" aria-label="Dash"><i class="hx-ring" aria-hidden="true"></i><b>Dash</b><span class="dname">Sprint</span><i class="glyph" id="dashKey" aria-hidden="true"></i></button>
+    </div>
+    <div class="hx-weapon" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><div class="hx-wtxt"><small id="wRar">Common</small><span id="wName">Standard Pistol</span></div></div>
     <div id="qte" hidden>
       <div class="qte-head"><b>Break free</b><span id="qtePips" aria-label="Escape progress"></span><div class="qte-time"><i id="qteTime"></i></div></div>
       <button id="qteBtn" type="button" aria-label="Tap to break free"></button>
@@ -1154,6 +1173,8 @@ button.lcd{cursor:pointer}
   </div>
 
   <section id="title" class="ov ov-title" aria-label="Main menu">
+    <div class="mx-bar" id="mxBar" aria-label="Status"></div>
+    <div class="mx-scan" aria-hidden="true"></div>
     <div class="tape" aria-hidden="true"><span>Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183;</span></div>
     <div class="title-body">
       <p class="season-chip"><span id="seasonName">Season</span> season &#183; resets in <b id="seasonLeft">--</b></p>
@@ -1166,14 +1187,14 @@ button.lcd{cursor:pointer}
           <p class="dev-badge" id="devBadge" aria-live="polite"></p>
           <p class="name-err" id="nameErr" role="alert" hidden></p>
         </form>
-        <div class="btns">
-          <button class="btn primary" id="playBtn">Enter the city</button>
-          <button class="btn" id="armoryBtn">Armory <em id="gunCount">1/250</em></button>
-          <button class="btn" id="codexBtn">Specimen log <em id="foundCount">0/1000</em></button>
-          <button class="btn" id="bossLogBtn">Boss log <em id="bossCount">0/50</em></button>
-          <button class="btn" id="lbBtn">Leaderboard</button>
-          <button class="btn" id="coopBtn">Wi-Fi co-op <em>2-4</em></button>
-          <button class="btn" id="acctBtn">Account <em id="acctBtnEm">Log in</em></button>
+        <div class="btns mx-deck">
+          <button class="btn primary mx-play" id="playBtn"><span class="mx-play-t">Enter the city</span><span class="mx-play-s" id="playSub">Wave 1 · the first 50 of 2.0</span><i class="mx-chev" aria-hidden="true"></i></button>
+          <button class="btn mx-tile" id="armoryBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15h11l2-3h5v3h-3l-1 2H8l-1 3H4l1-3H3z"/><path d="M9 12V9h6"/></svg><span class="mx-t">Armory</span><em id="gunCount">1/250</em><small>Weapons and dashes</small></button>
+          <button class="btn mx-tile" id="codexBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span class="mx-t">Specimen log</span><em id="foundCount">0/50</em><small>Every zombie you have met</small></button>
+          <button class="btn mx-tile" id="bossLogBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c-5 0-8 3.4-8 8 0 2.6 1.2 4.4 2.6 5.4V20h10.8v-3.6C18.8 15.4 20 13.6 20 11c0-4.6-3-8-8-8z"/><path d="M9 11.5h.01M15 11.5h.01M10 17v3M14 17v3"/></svg><span class="mx-t">Boss log</span><em id="bossCount">0/50</em><small>Resting until rebuilt</small></button>
+          <button class="btn mx-tile" id="lbBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V12h4v9M10 21V5h4v16M16 21v-6h4v6"/></svg><span class="mx-t">Leaderboard</span><em id="lbEm"></em><small>One board, every device</small></button>
+          <button class="btn mx-tile" id="coopBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10a10 10 0 0 1 14 0M8 13.5a5.5 5.5 0 0 1 8 0"/><circle cx="12" cy="17.5" r="1.5"/></svg><span class="mx-t">Wi-Fi co-op</span><em>2-4</em><small>One city, same Wi-Fi</small></button>
+          <button class="btn mx-tile" id="acctBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.2-6 8-6s6.8 2 8 6"/></svg><span class="mx-t">Account</span><em id="acctBtnEm">Log in</em><small>Cloud saves, every device</small></button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
         <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="toLauncher" hidden>Launcher</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
@@ -1319,6 +1340,7 @@ button.lcd{cursor:pointer}
       <div class="pause-grid">
         <div class="pause-main">
           <div class="pause-title"><p class="eyebrow" id="pauseInfo">Wave 1</p><h2>Paused</h2></div>
+          <div class="pz-clock" id="pzClock"></div>
           <dl class="pause-stats" id="pauseStats"></dl>
           <div class="pause-btns">
             <button class="btn primary pause-resume" id="resumeBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 L20 12 L7 20 Z"/></svg>Resume</button>
@@ -1330,12 +1352,20 @@ button.lcd{cursor:pointer}
           </div>
           <div class="pause-radio" id="pauseAudio"></div>
         </div>
-        <div class="build pause-side">
-          <p class="sub-eyebrow">Your build</p>
-          <div class="build-w"><canvas id="bwIcon" aria-hidden="true"></canvas><div><b id="bwName"></b><span id="bwRar"></span><p id="bwDesc"></p></div></div>
-          <div class="build-dash" id="bDash"></div>
-          <dl class="build-stats" id="bStats"></dl>
-          <div class="build-cards" id="bCards"></div>
+        <div class="pause-side">
+          <div class="pz-tabs" id="pzTabs" role="tablist" aria-label="Run details">
+            <button type="button" role="tab" class="on" data-t="build" aria-selected="true">Build</button>
+            <button type="button" role="tab" data-t="threats" aria-selected="false">Threats</button>
+            <button type="button" role="tab" data-t="map" aria-selected="false">Map</button>
+          </div>
+          <div class="build pz-pane" data-p="build" role="tabpanel">
+            <div class="build-w"><canvas id="bwIcon" aria-hidden="true"></canvas><div><b id="bwName"></b><span id="bwRar"></span><p id="bwDesc"></p></div></div>
+            <div class="build-dash" id="bDash"></div>
+            <dl class="build-stats" id="bStats"></dl>
+            <div class="build-cards" id="bCards"></div>
+          </div>
+          <div class="pz-pane pz-threats" data-p="threats" id="pzThreats" role="tabpanel" hidden></div>
+          <div class="pz-pane pz-map" data-p="map" role="tabpanel" hidden><canvas id="pzMap" aria-label="Map of the streets around you"></canvas><p class="pz-legend" id="pzLegend"></p></div>
         </div>
       </div>
     </div>
@@ -1474,6 +1504,35 @@ button.lcd{cursor:pointer}
       <div class="set-layout">
         <nav class="tabs set-tabs" id="setTabs" aria-label="Settings sections" hidden></nav>
         <div class="set-body" id="setBody"></div>
+      </div>
+    </div>
+  </section>
+  <section id="engRoom" class="ov sheet eng-sheet" hidden aria-label="Engine room">
+    <div class="sheet-inner eng-in">
+      <div class="sheet-head eng-head">
+        <div><p class="eyebrow eng-eye">Ultra advanced &#183; Accessibility</p><h2>Engine room</h2><p class="eng-sub">Every engine in the game, live. What each one costs, what it is doing, how intricate it is, and how hard it runs.</p></div>
+        <button type="button" class="icon-btn" id="engClose" aria-label="Close the engine room">&#215;</button>
+      </div>
+      <div class="eng-top" id="engTop"></div>
+      <div class="eng-tools" id="engTools"></div>
+      <div class="eng-grid" id="engGrid"></div>
+      <div class="eng-log" id="engLog" aria-live="polite"></div>
+    </div>
+  </section>
+  <section id="engWarn" class="eng-warn" hidden role="alertdialog" aria-modal="true" aria-labelledby="engWarnT" aria-describedby="engWarnD">
+    <div class="ew-card">
+      <div class="ew-stripe" aria-hidden="true"></div>
+      <div class="ew-body">
+        <p class="ew-eye">Ultra advanced</p>
+        <h2 id="engWarnT"><span class="ew-ico" aria-hidden="true">!</span>Warning</h2>
+        <p id="engWarnD" class="ew-lead">This will affect performance and cause other issues. The self-adaptive system and repairable ecosystem these engines have will fix itself for your convenience.</p>
+        <ul class="ew-list">
+          <li><b>What you can change.</b> How hard each engine runs (Auto, Eco, Normal, Hard, Max) and what it runs on (CPU, GPU or Auto). Your choice overrides what the game would pick for your device.</li>
+          <li><b>What can go wrong.</b> A lower frame rate, a hotter device and a faster-draining battery, stutter in big fights, and on some devices an engine that fails and has to rest.</li>
+          <li><b>How it fixes itself.</b> If a choice keeps the game well under its frame-rate target for 8 seconds, or the engine keeps failing, the ecosystem puts it back on Auto for 5 minutes and shows <span class="ew-purple">Auto-lock</span> in purple with the reason. Engines that cannot do something are locked the same way.</li>
+          <li><b>Going back.</b> "Everything back to Auto" in the engine room undoes it all at once.</li>
+        </ul>
+        <div class="ew-btns"><button type="button" class="btn" id="engWarnBack">Go back</button><button type="button" class="btn ew-go" id="engWarnGo">I understand, open the engine room</button></div>
       </div>
     </div>
   </section>

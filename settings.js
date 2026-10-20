@@ -7,11 +7,12 @@ const SET_DEF = {
   quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: 100, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
   decals: 'normal', bloodTime: '60', bodies: 'normal', crowd: 'auto', swarm: 'auto', swarmPush: true, life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
-  wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
+  waveTimer: 'normal', wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
   aimKbm: 'manual', fireKbm: 'hold', aimPad: 'assist', firePad: 'stick', padDead: 18, padSwap: false, padRumble: true, xhair: 'cross', xhairSize: 100, xhairColor: 'yellow',
   motion: 'auto', flash: false, hudScale: 100, contrast: false,
-  saver: 'auto', netPing: true, netArrows: true
+  saver: 'auto', netPing: true, netArrows: true,
+  eng: {}   // the engine room's choices: { NAME: { effort, proc } }
 };
 const SYS_RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const SET = Object.assign({}, SET_DEF, { flash: SYS_RM }, (function () {
@@ -46,6 +47,7 @@ function applyLook() {
   app.style.setProperty('--hud-scale', (SET.hudScale / 100).toFixed(2));
   app.classList.toggle('hi-contrast', !!SET.contrast);
   app.classList.toggle('lefty', !!SET.lefty);
+  app.classList.toggle('rm', !!RM);
   $('fpsBox').hidden = !SET.fpsShow;
   const h = $('ctrlHint'); if (h) h.hidden = !SET.hints;
 }
@@ -69,7 +71,7 @@ function setSetting(k, v) {
     case 'zoom': resize(); break;
     case 'vis': AUD.vis = v; store.set('zc_audio', AUD); break;
     case 'sfxOn': AUD.sfx = v; store.set('zc_audio', AUD); SFX.setSfx(v); break;
-    case 'motion': RM = v === 'on' || (v === 'auto' && SYS_RM); break;
+    case 'motion': RM = v === 'on' || (v === 'auto' && SYS_RM); applyLook(); break;
     case 'season': if (G.mode !== 'title' && v !== 'cycle') setSeason(seasonFromSetting()); else if (G.mode === 'title') { WORLD.season = seasonFromSetting(); for (const c of chunks.values()) c.stale = 1; WSPR.clear(); } break;
     case 'wxMode': if (v !== 'dynamic') { WX.kind = v; WX.t = 60; } else WX.t = Math.min(WX.t, 20); break;
     case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
@@ -146,6 +148,8 @@ const SET_ROWS = [
   { id: 'aq', tab: 'sound', type: 'seg', label: 'Audio quality', desc: 'Low uses less processing on older phones.', opts: [['auto', 'Auto'], ['low', 'Low'], ['high', 'High']] },
   { tab: 'sound', action: 'radio', label: 'Radio', desc: 'Channels, songs and Bluetooth music.', btn: 'Open the radio' },
   // gameplay
+  { tab: 'gameplay', group: 'Waves' },
+  { id: 'waveTimer', tab: 'gameplay', basic: true, type: 'seg', label: 'Wave timer', desc: 'Every wave runs against a clock (about 44 seconds for wave 1, more for each wave after, up to 2½ minutes). When it runs out the next wave starts on top of what is left; clear the street first and you get 7 seconds to walk around and a bonus for the time left. The last 5 seconds glow red. Off: a wave lasts until it is cleared. In co-op the host\'s setting counts.', opts: [['short', 'Short'], ['normal', 'Normal'], ['long', 'Long'], ['off', 'Off']] },
   { tab: 'gameplay', group: 'World' },
   { id: 'wxMode', tab: 'gameplay', type: 'seg', label: 'Weather', desc: 'Changing weather, or keep one kind all the time.', opts: [['dynamic', 'Changing'], ['clear', 'Clear'], ['rain', 'Rain'], ['storm', 'Storms'], ['snow', 'Snow'], ['fog', 'Fog'], ['sand', 'Sand']] },
   { id: 'wxPlay', tab: 'gameplay', type: 'seg', label: 'Weather affects play', desc: 'Fog and sand cut how far you see, blizzards slow everyone, lightning strikes.', opts: ON_OFF },
@@ -195,13 +199,13 @@ const SET_ROWS = [
   { tab: 'access', group: 'Display' },
   { id: 'hudScale', tab: 'access', type: 'slider', label: 'HUD size', desc: 'Health, wave, score and the buttons.', min: 80, max: 140, step: 10, fmt: v => v + '%' },
   { id: 'contrast', tab: 'access', type: 'seg', label: 'High-contrast HUD', desc: 'Solid backgrounds behind the HUD text.', opts: ON_OFF },
+  { tab: 'access', group: 'Ultra advanced' },
+  { tab: 'access', action: 'engines', ultra: true, label: 'Ultra advanced: the engine room', desc: 'All 27 engines with their live performance, values and stats, how intricate each one is, and which ones run harder: on the processor, the graphics chip or Auto. Changes here can cost frame rate; the engines\' ecosystem puts back anything that hurts the game.', btn: 'Ultra advanced' },
   // system
   { tab: 'system', group: 'This device' },
   { tab: 'system', info: 'device' },
   { id: 'saver', tab: 'system', basic: true, type: 'seg', label: 'Battery saver', desc: 'Caps the game at 30 fps and Medium quality. Auto turns on when the battery is low.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { tab: 'system', action: 'fullscreen', desk: true, basic: 'kbm', label: 'Full screen', desc: 'Fill the whole screen, or play in a window. F11 or Alt+Enter also switch.', btn: 'Switch' },
-  { tab: 'system', group: 'Engines' },
-  { tab: 'system', info: 'engines' },
   { tab: 'system', group: 'Tools' },
   { tab: 'system', action: 'tester', tester: true, label: 'Tester mode', desc: 'This device got past maintenance with the tester code. Leave to follow maintenance again.', btn: 'Leave' },
   { tab: 'system', action: 'cache', label: 'Refresh cache', desc: 'Frees the graphics the game has stored. They rebuild as needed.', btn: 'Refresh' },
@@ -305,7 +309,8 @@ function settingRow(r) {
 function actionRow(r) {
   const row = el('div', 'set-row'), txt = el('div', 'set-txt');
   txt.append(el('b', null, r.label), el('p', null, r.desc)); row.append(txt);
-  const b = el('button', 'btn small' + (r.danger ? ' danger' : ''), r.btn); b.type = 'button';
+  const b = el('button', 'btn small' + (r.danger ? ' danger' : '') + (r.ultra ? ' ultra' : ''), r.btn); b.type = 'button';
+  if (r.ultra) row.classList.add('set-ultra');
   b.addEventListener('click', () => settingsAction(r.action, b));
   const ctl = el('div', 'set-ctl'); ctl.append(b); row.append(ctl);
   return row;
@@ -313,6 +318,7 @@ function actionRow(r) {
 function settingsAction(a, b) {
   SFX.click();
   if (a === 'radio') { openRadio(); return; }
+  if (a === 'engines') { openEngineWarn(); return; }
   if (a === 'tester') { testerLeave(); renderSettings(); return; }
   if (a === 'fullscreen') { if (window.ZCDesktop) window.ZCDesktop.fullscreen(); return; }
   if (a === 'cache') { const before = cacheBytes().total; trimCaches(2); WSPR.clear(); toast('Cache refreshed', 'Freed ' + fmtMB(Math.max(0, before - cacheBytes().total)), '#7dff4a'); renderSettings(); return; }

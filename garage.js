@@ -269,8 +269,10 @@ function garageLights(c, x0, y0, x1, y1, m, t, night, uk) {
     const horiz = r.w >= r.h, L = horiz ? r.w : r.h, W = horiz ? r.h : r.w, a = vehAng(r);
     if (r.lit === 'head' && night > 0.08) {
       // two beams from the front corners (each a cone that casts shadows), and the red glow at the back
-      for (const sd of [-1, 1]) { vehPt(r, L / 2, sd * W * 0.3, VP); luxPush(VP[0], VP[1], 300 * uk, 255, 240, 215, 0.62 * night, sd > 0, 0, { a: a, h: 0.34 }, 0.8); }
-      vehPt(r, -L / 2, 0, VP); luxPush(VP[0], VP[1], 70 * uk, 255, 40, 30, 0.42 * night, false, 0, null, 0.8);
+      // (engine room: Eco drops the beams' shadows and the tail glow, Hard and Max give both beams shadows)
+      const gk = TUNE.GARAGE || 0;
+      for (const sd of [-1, 1]) { vehPt(r, L / 2, sd * W * 0.3, VP); luxPush(VP[0], VP[1], 300 * uk, 255, 240, 215, 0.62 * night, gk < 0 ? false : gk > 0 ? true : sd > 0, 0, { a: a, h: 0.34 }, 0.8); }
+      if (gk >= 0) { vehPt(r, -L / 2, 0, VP); luxPush(VP[0], VP[1], 70 * uk, 255, 40, 30, 0.42 * night, false, 0, null, 0.8); }
     } else if (r.lit === 'hazard') {
       if (Math.floor(t * 1.6 + (r.s & 7) * 0.1) % 2 === 0) for (const sx of [-1, 1]) { vehPt(r, sx * L * 0.48, 0, VP); luxPush(VP[0], VP[1], 95 * uk, 255, 170, 40, (0.35 + 0.4 * night), false, 0, null, 0.9); }
     } else if (r.lit === 'bar') {

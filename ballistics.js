@@ -35,7 +35,7 @@ function balArm(b, p, w, S) {
   const sp = B.v * u, a = Math.atan2(b.vy, b.vx);
   b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
   b.bal = 1; b.E = e0 * k; b.E0 = b.E; b.cd = B.cd; b.trav = 0; b.maxD = BAL.maxD * u; b.life = b.maxD / sp + 0.05; b.max = b.life; b.ric = 0;
-  BAL.shots++;
+  BAL.shots++; G.rounds = (G.rounds || 0) + 1;   // (per run, for the pause screen's accuracy)
   return true;
 }
 // recoil: where the next round goes (the base spread, the kick of the shots before it, wider on the move)
@@ -170,7 +170,7 @@ function balStep(b, dt) {
       const O = balResolve(z, b, e, side, front);
       dmg = bonusDmg(z, O.dmg); absorb = O.absorb;
       res = hurtZombie(z, dmg, { src: 'bullet', crit: O.reg === 'head' && !O.deflect, kx: ux * S.knock * 0.18, ky: uy * S.knock * 0.18, reg: O.reg, kill: O.kill, cripple: O.cripple, deflect: O.deflect, P: O.P });
-      if (O.kill && res === true) { BAL.kills++; if (O.reg === 'head') { BAL.heads++; if (SFX.headshot) SFX.headshot(clamp((z.x - cam.x) / (W / ZOOM / 2), -1, 1)); } }
+      if (O.kill && res === true) { BAL.kills++; if (O.reg === 'head') { BAL.heads++; G.heads = (G.heads || 0) + 1; if (SFX.headshot) SFX.headshot(clamp((z.x - cam.x) / (W / ZOOM / 2), -1, 1)); } }
       if (O.deflect) { (b.hit || (b.hit = [])).push(z); b.E -= absorb; if (b.E < 60) { b.dead = true; break; } continue; }
     } else {
       dmg = bonusDmg(z, b.dmg * Math.sqrt(Math.max(0.1, b.E / Math.max(1, b.E0))));
@@ -178,7 +178,7 @@ function balStep(b, dt) {
     }
     if (res === 'pass' || !res) continue;
     if (res === 'reflect') { b.dead = true; break; }
-    BAL.hits++;
+    BAL.hits++; if (!b.hc) { b.hc = 1; G.hits = (G.hits || 0) + 1; }   // (a round that hits counts once for accuracy, however many it goes through)
     burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25);
     if (typeof goreHit === 'function') goreHit(z, b.vx, b.vy, dmg, b);
     onHitFx(z, b, dmg);

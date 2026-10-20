@@ -23,7 +23,7 @@ const WX_SEASON = [
   [['clear', 2.5], ['overcast', 2.5], ['rain', 3], ['storm', 1.4], ['fog', 2.2]],
   [['clear', 2.5], ['overcast', 2], ['snow', 3.5], ['blizzard', 1.5], ['fog', 1.3]]
 ];
-function wxLevel() { return SET.weather === 'off' ? 0 : SET.weather === 'low' ? 0.45 : SET.weather === 'full' ? 1 : Q.wx * PERF.wxScale; }
+function wxLevel() { const k = TUNE.WX || 0, sc = k >= 2 ? 1 : k >= 1 ? Math.max(PERF.wxScale, 0.75) : k < 0 ? Math.min(PERF.wxScale, 0.55) : PERF.wxScale; return SET.weather === 'off' ? 0 : SET.weather === 'low' ? 0.45 : SET.weather === 'full' ? 1 : Math.min(1, Q.wx * sc * (k >= 2 ? 1.15 : 1)); }
 function wxReset() {
   WX.kind = 'clear'; WX.t = 25 + Math.random() * 20; WX.strikes = []; WX.bolts = []; WX.flash = 0; WX.next = 5; WX.cover = 0; WX.splash = [];
   WX.rain = WX.snow = WX.sand = WX.ash = WX.fog = WX.storm = WX.leaves = WX.embers = WX.petals = WX.dark = WX.wet = 0;

@@ -512,7 +512,9 @@ function equipWeapon(w) {
 function updWeaponChip() {
   const p = G.p; if (!p) return;
   paintWeapon($('wIcon'), p.weapon, 48, 22, false);
-  const n = $('wName'); n.textContent = p.weapon.name; n.style.color = WRAR[p.weapon.rarity].color;
+  const n = $('wName'), R = WRAR[p.weapon.rarity]; n.textContent = p.weapon.name; n.style.color = R.color;
+  const r = $('wRar'); if (r) r.textContent = (R.name || p.weapon.rarity) + ' · ' + (p.weapon.F && p.weapon.F.name ? p.weapon.F.name : '');
+  $('wChip').style.setProperty('--wr', R.color);
 }
 
 /* ---------- build summary (pause screen) ---------- */

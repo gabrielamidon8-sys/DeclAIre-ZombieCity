@@ -357,7 +357,7 @@ function shade(hex, k) {
 
 /* ---------- drawing ---------- */
 const GRASS_COL = { lawn: ['#4f8a38', '#3f7a2c', '#9a7a34', '#c9d3da'], reed: ['#6a8a3a', '#5a7a30', '#9a8a40', '#aab4ba'], dry: ['#9a8050', '#a08654', '#8a6a40', '#a08a6a'], weed: ['#5a7a30', '#4a6a2a', '#8a7a3a', '#b9c3ca'] };
-function vegLevel() { return SET.veg === 'auto' ? (PERF.vegCut ? Math.min(1, Q.veg) : Q.veg) : SET.veg === 'off' ? 0 : SET.veg === 'low' ? 1 : 2; }
+function vegLevel() { const v = SET.veg === 'auto' ? (PERF.vegCut && !(TUNE.LIFE > 0) ? Math.min(1, Q.veg) : Q.veg) : SET.veg === 'off' ? 0 : SET.veg === 'low' ? 1 : 2; return v ? clamp(v + (TUNE.LIFE || 0), 0, 2) : 0; }
 // under the zombies: puddles, glints on the water, footprints, grass, tree trunks, props and birds on the ground
 function drawWorldUnder(vis) {
   const wet = WX.wet || 0, t = G.time;

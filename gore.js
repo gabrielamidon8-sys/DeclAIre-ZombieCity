@@ -98,7 +98,7 @@ const GORE_MOD = {
 function goreLevel() {
   if (GORE.offUntil && performance.now() < GORE.offUntil) return 0;
   const d = SET.decals === 'low' ? 1 : SET.decals === 'high' ? 3 : 2;
-  return clamp(d + GORE.adapt, 0, 3);
+  return clamp(d + GORE.adapt + (TUNE.GORE || 0), 0, 3);
 }
 function goreOk() { return goreLevel() > 0; }
 function goreOn(f) { const t = GORE.featOff[f]; return !(t && performance.now() < t); }

@@ -128,8 +128,30 @@ function ctrlRows() {
   rows.push([[keyLabel(firstBind('kb', 'dash'))], 'Dash'], [[keyLabel(firstBind('kb', 'air'))], 'A-10'], [[keyLabel(firstBind('kb', 'aim'))], 'Auto-aim'], [['Esc'], 'Pause']);
   return rows;
 }
+/* ---------- the main menu's status bar: the studio, the version, the engines, the wave timer, the clock ---------- */
+const WT_NAMES = { short: 'Short', normal: 'Normal', long: 'Long', off: 'Off' };
+function renderTitleBar() { try { titleBar(); } catch (e) { /* (at start-up some of what it reads is not there yet; the next second fills it) */ } }
+const statusTest = () => { try { return STATUS.test === ZC_VERSION && STATUS.stable !== ZC_VERSION; } catch (e) { return false; } };
+function titleBar() {
+  const B = $('mxBar'); if (!B) return;
+  const st = typeof coreStatus === 'function' ? coreStatus() : [], down = st.filter(e => e.state === 'resting').length, now = new Date();
+  const locked = typeof CORE !== 'undefined' ? CORE.list.filter(e => e.lockUntil > performance.now()).length : 0;
+  B.textContent = '';
+  const brand = el('div', 'mx-brand'); brand.append(el('b', null, 'DeclAIre Studios'), el('span', null, 'Zombie City 2.0')); B.append(brand);
+  const chips = el('div', 'mx-chips');
+  const chip = (k, v, cls) => { const c = el('span', 'mx-chip' + (cls ? ' ' + cls : '')); c.append(el('small', null, k), el('b', null, v)); chips.append(c); };
+  chip('Version', ZC_VERSION + (statusTest() ? ' · test' : ''));
+  chip('Engines', st.length + (down ? ' · ' + down + ' resting' : locked ? ' · ' + locked + ' locked' : ' · all sound'), down ? 'warn' : '');
+  chip('Wave timer', WT_NAMES[SET.waveTimer] || 'Normal');
+  chip('Network', navigator.onLine === false ? 'Offline' : 'Online', navigator.onLine === false ? 'warn' : 'ok');
+  B.append(chips);
+  const clk = el('div', 'mx-clock'); clk.append(el('b', null, String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')), el('span', null, now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))); B.append(clk);
+  const ps = $('playSub'); if (ps) { const t = typeof waveTime === 'function' ? waveTime(1) : 0; ps.textContent = 'Wave 1 · ' + (t ? fmtClock(t) + ' on the clock' : 'no wave timer') + ' · the first ' + (typeof ZR !== 'undefined' ? ZR.length : 50) + ' of 2.0'; }
+}
+setInterval(() => { if (G.mode === 'title' && !$('title').hidden) renderTitleBar(); }, 1000);
 function renderTitlePanel() {
   const P = $('titlePanel'); if (!P) return;
+  renderTitleBar();
   P.textContent = '';
   if (!P.dataset.once && G.mode === 'title' && $('intro').hidden) { P.dataset.once = '1'; P.classList.add('fresh'); setTimeout(() => P.classList.remove('fresh'), 1200); }   // the cards rise in once, not on every update
   const card = (cls, title, sub) => { const c = el('section', 'tp-card ' + cls), h = el('div', 'tp-head'); h.append(el('span', null, title)); if (sub) h.append(el('em', null, sub)); c.append(h); P.append(c); return c; };
@@ -158,9 +180,9 @@ function renderTitlePanel() {
   rows.forEach((r, i) => { const li = el('li', live && r.id === LB.uid ? 'me' : ''); li.append(el('span', 'rk', '#' + (i + 1)), nameEl(cleanTag(r.tag, r.id), r.id, 'span', 'tg'), el('span', 'sc', Number(r.score || 0).toLocaleString())); if (r.dev) li.append(devIcon(r.dev)); ol.append(li); });
   bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : LB.status === 'loading' ? 'Connecting to the global board.' : LB.src === 'wix' ? 'No connection to the global board right now.' : 'The global board is not available on this page.'));
   // what's new
-  const n = card('tp-new', 'New in 1.9.82');
+  const n = card('tp-new', 'New in ' + ZC_VERSION, 'Zombie City 2.0');
   const nl = el('ul');
-  ['DeclAIre accounts: your progress saved to the cloud, on every device', 'One global board for the website, Android and Windows', 'A name filter that keeps the board clean (and has opinions)', 'Wi-Fi co-op for 2 to 4 players'].forEach(t => nl.append(el('li', null, t)));
+  ['Wave timers: beat the clock, or the next wave lands on top of you', 'A new HUD, menus and pause screen on every device', 'The engine room: every engine\'s live numbers, and which runs harder (Settings > Accessibility)', 'The first 50 rebuilt zombies, real guns and bullets'].forEach(t => nl.append(el('li', null, t)));
   n.append(nl);
 }
 

@@ -467,6 +467,23 @@
       osc('sine', 110, 42, t, 0.11, 0.3, out); osc('triangle', 3200, 2400, t, 0.03, 0.05, out);
       setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 500);
     },
+    // the wave clock's last five seconds: a hard steel tick, higher and with a low thud on the last one
+    countTick: function (n) {
+      if (!ok() || !throttle('ctick', 400)) return;
+      var t = ac.currentTime, out = ac.createGain(), last = n <= 1; out.gain.value = last ? 0.42 : 0.3; out.connect(sfxBus);
+      noise(t, 0.025, 0.6, 'bandpass', last ? 3600 : 2800, 6, last ? 3000 : 2400, out);
+      osc('square', last ? 1320 : 990, last ? 1320 : 990, t, 0.06, 0.05, out);
+      osc('sine', last ? 88 : 70, 40, t, last ? 0.32 : 0.16, last ? 0.5 : 0.25, out);
+      setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 600);
+    },
+    // the clock ran out with zombies still on the street: a rising siren under the next wave's drums
+    timeUp: function () {
+      if (!ok() || !throttle('tup', 1500)) return;
+      var t = ac.currentTime, out = ac.createGain(); out.gain.value = 0.3; out.connect(sfxBus);
+      osc('sawtooth', 220, 660, t, 0.9, 0.11, out); osc('sawtooth', 223, 664, t + 0.02, 0.9, 0.09, out);
+      osc('sine', 55, 44, t, 1.1, 0.4, out); noise(t, 0.6, 0.12, 'bandpass', 700, 2, 1600, out);
+      setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 1500);
+    },
     // a round skipping off a wall or a helmet: the classic falling whine with a sharp crack at its start
     ricochet: function () {
       if (!ok() || !throttle('ric', 120)) return;

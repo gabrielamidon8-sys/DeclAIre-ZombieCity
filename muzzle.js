@@ -110,8 +110,8 @@ function muzzleShot(o, w, a, x, y) {
   }
   if (P.dust && typeof ring === 'function') ring(x, y, 4 * PK, 34 * PK, 0.3, '196,186,166', 2);
   // smoke: a puff (or the launcher's back-blast cloud behind the shooter), drifting off on the wind
-  const sm = MUZZLE.smoke, wx = (WX.wx || 0) * 22, wy = (WX.wy || 0) * 22, cap = PERF.tier >= 2 ? 90 : 40;
-  const puffs = Math.round(P.smoke * (Q.lod >= 2 ? 0.5 : 1) * 1.6 + Math.random() * 0.6);
+  const mk = [0.45, 1, 1.5, 2][(TUNE.MUZZLE || 0) + 1], sm = MUZZLE.smoke, wx = (WX.wx || 0) * 22, wy = (WX.wy || 0) * 22, cap = Math.round((PERF.tier >= 2 ? 90 : 40) * mk);
+  const puffs = Math.round(P.smoke * (Q.lod >= 2 ? 0.5 : 1) * 1.6 * Math.min(1.4, mk) + Math.random() * 0.6);
   for (let i = 0; i < puffs && sm.length < cap; i++) {
     const back = P.back && i % 2 === 0, d = back ? -(26 + Math.random() * 18) * PK : (4 + Math.random() * 10) * PK, sp = (back ? -60 : 30) * (0.5 + Math.random());
     sm.push({ x: x + ca * d, y: y + sa * d, vx: ca * sp + (Math.random() - 0.5) * 20 + wx, vy: sa * sp + (Math.random() - 0.5) * 20 + wy, r: (4 + Math.random() * 4) * PK * (P.smoke > 1 ? 1.5 : 1), g: (5 + Math.random() * 6) * PK, life: 0.8 + Math.random() * 0.9 * P.smoke, max: 0, a: 0.16 + 0.1 * Math.min(1, P.smoke), back: back });
@@ -120,7 +120,7 @@ function muzzleShot(o, w, a, x, y) {
   if (P.back) luxFlash(x - ca * 34 * PK, y - sa * 34 * PK, 200 * (0.55 + 0.45 * SCL), '255,170,80', 0.9, 0.12, { shade: true });
   // brass, out to the right of the gun, spinning; it bounces and lies in the street
   if (P.brass && Q.lod < 3) {
-    const B = MUZZLE.brass, bcap = PERF.tier >= 2 ? 70 : 30, ra = a + Math.PI / 2 + (Math.random() - 0.5) * 0.5 - 0.25, sp = (110 + Math.random() * 90) * PK;
+    const B = MUZZLE.brass, bcap = Math.round((PERF.tier >= 2 ? 70 : 30) * mk), ra = a + Math.PI / 2 + (Math.random() - 0.5) * 0.5 - 0.25, sp = (110 + Math.random() * 90) * PK;
     const back = 12 * PK; if (B.length >= bcap) B.shift();
     B.push({ x: x - ca * back * 1.6, y: y - sa * back * 1.6, vx: Math.cos(ra) * sp, vy: Math.sin(ra) * sp, h: 6 * PK, vh: 70 * PK, rot: a, vr: (Math.random() - 0.5) * 40, k: P.brass, t: 0, bounced: 0 });
   }
