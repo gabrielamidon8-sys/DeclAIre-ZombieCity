@@ -387,6 +387,17 @@ p{margin:0}
 .detail-in{width:min(760px, 100%);margin:0 auto;display:grid;grid-template-columns:180px minmax(0, 1fr);gap:18px;align-items:start}
 @media (max-width:560px){.detail-in{grid-template-columns:minmax(0, 1fr)}.detail-art{justify-self:center}}
 .detail-art{width:180px;height:180px;background:radial-gradient(circle at 50% 50%, #232831 0%, #12151a 70%);border:1px solid var(--line);border-radius:2px}
+.detail-in.v2{grid-template-columns:260px minmax(0, 1fr)}
+@media (max-width:640px){.detail-in.v2{grid-template-columns:minmax(0, 1fr)}}
+.detail-art.v2{width:260px;height:260px;max-width:100%;position:sticky;top:0}
+.cx-anims{display:flex;flex-direction:column;gap:8px}
+.cx-anims .ag{display:flex;flex-direction:column;gap:4px}
+.cx-anims .ag b{font-family:var(--f-num);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.cx-anims .ab{display:flex;flex-wrap:wrap;gap:4px}
+.cx-anims button{font-size:11px;padding:4px 7px;border:1px solid var(--line);border-radius:2px;background:var(--bg2, #14171c);color:var(--ink, #e8e2d4);line-height:1.2}
+.cx-anims button.on{border-color:var(--rc, var(--tape));color:var(--rc, var(--tape))}
+.cx-anims .an-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.cx-v2note{font-size:13px;color:var(--muted);margin:2px 0 10px;line-height:1.45}
 .detail-text{display:flex;flex-direction:column;gap:10px;min-width:0}
 .detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 /* studio intro */
@@ -1147,7 +1158,7 @@ button.lcd{cursor:pointer}
     <div class="title-body">
       <p class="season-chip"><span id="seasonName">Season</span> season &#183; resets in <b id="seasonLeft">--</b></p>
       <h1>Zombie<br><span>City</span></h1>
-      <p class="lede">An endless quarantine zone: burning streets, ruins, ash towns, suburbs, deserts and the frozen north, with rivers, storms and seasons. Every zombie carries one of 1,000 mutations. Survive the waves, collect 250 weapons and hunt 50 bosses. Tune the radio to FM 66.6: seven channels, 245 songs, or your own music.</p>
+      <p class="lede">An endless quarantine zone: burning streets, ruins, ash towns, suburbs, deserts and the frozen north, with rivers, storms and seasons. Zombie City 2.0 is rebuilding its 1,000 zombies: the first 50 are here, each with its own look, behaviour and 50 animations, and guns that hit like real ones. Survive the waves and collect 250 weapons. Tune the radio to FM 66.6: seven channels, 245 songs, or your own music.</p>
       <div class="title-side">
         <form class="profile unnamed" id="nameForm" autocomplete="off">
           <label for="nameInput">Your name</label>
@@ -1372,6 +1383,7 @@ button.lcd{cursor:pointer}
       </div>
       <div class="chips" id="cxStrains" role="tablist" aria-label="Strains"></div>
       <p class="strain-note" id="cxStrainNote"></p>
+      <p class="cx-v2note" id="cxV2Note" hidden></p>
       <div class="cx-grid" id="cxGrid"></div>
     </div>
   </section>
@@ -1387,6 +1399,8 @@ button.lcd{cursor:pointer}
           <p class="trait" id="dtStrain"></p>
           <p class="trait" id="dtAbility"></p>
           <div class="bars" id="dtBars"></div>
+          <p class="trait" id="dtBal" hidden></p>
+          <div class="cx-anims" id="dtAnims" hidden></div>
           <p class="trait" id="dtWave"></p>
         </div>
       </div>

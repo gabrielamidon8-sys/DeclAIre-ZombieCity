@@ -420,6 +420,8 @@ function spawnZombie(m, x, y, o) {
     slowT: 0, buffT: 0, stuckT: 0, detT: 0, detSide: 1, stun: 0, growth: 1, shield: 0, shieldMax: 0, shieldCd: 0, mulB: 1, dead: false
   };
   z.baseR = z.r;
+  // the 2.0 zombies: how bullets treat them (helmets, armour, a shield, a low body) and limbs that can be crippled
+  if (m.v2) { z.T = m.T; z.legK = 0; z.armK = 0; z.abMul = 1; if (o.emerge) z.emT = G.time; }
   if (!o.minion && !o.fly && !o.illusion) z.abs.push(m.A.key);
   if (o.second) z.abs.push(o.second);
   if (z.abs.indexOf('juggernaut') >= 0) { z.dr = 1 - (1 - z.dr) * 0.6; z.kb = 0; }
@@ -611,8 +613,11 @@ function updZ(z, dt) {
   }
   if (z.snatch) snatcherTick(z, dt, dx, dy, d, c);
   if (z.rb && !z.rb.ill) bossTick(z, dt, dx, dy, d, c);
+  z.abMul = 1;
   for (let i = 0; i < z.abs.length; i++) { const f = ABIL[z.abs[i]]; if (f) f(z, dt, dx, dy, d, c); if (z.dead) return; }
-  let mul = 1; if (z.abs.indexOf('berserker') >= 0) mul = 1 + (1 - z.hp / z.maxHp) * 1.1;
+  let mul = z.abMul || 1; if (z.abs.indexOf('berserker') >= 0) mul *= 1 + (1 - z.hp / z.maxHp) * 1.1;
+  // a shot leg slows it to a limp, two to a crawl
+  if (z.legK) mul *= z.legK >= 2 ? 0.32 : 0.58;
   if (sp.stutter && z.st.su < 0) mul *= 2.6;
   if (z.st.surgeT > 0) mul *= 1.5;
   z.mulB = mul;
@@ -676,8 +681,13 @@ function updZ(z, dt) {
   }
   const ta = c.face != null ? c.face : Math.atan2(dy, dx);
   z.ang = angLerp(z.ang, ta, Math.min(1, dt * 8));
+  // the 2.0 zombies swing before they hit: a wind-up you can see (and step out of), then the blow lands with the swing
+  if (z.m.v2 && !z.illusion && G.mode === 'play' && !z.st.under && !(z.frozen && z.stun > 0) && z.hitCd < 0.22 && !(z.atkW > G.time - 0.5) && d < z.r + p.r + z.reach + 20) { z.atkW = G.time; z.atkT = G.time; z.hitCd = 0.22; }
   if (!z.illusion && !z.st.under && !(z.frozen && z.stun > 0) && z.hitCd <= 0 && G.mode === 'play' && (!z.snatch || z.snatch.state === 'idle') && (!z.rb || z.rb.ill || (z.rb.state !== 'holding' && z.rb.mutT <= 0 && !z.rb.hide && !(z.rb.state === 'act' && z.rb.mv === 'charge'))) && d < z.r + p.r + z.reach + 3) {
     z.hitCd = sp.twin ? 0.45 : 0.85;
+    if (z.m.v2 && !(z.atkW > G.time - 0.6)) { z.atkW = G.time; z.atkT = G.time; }
+    // a shot arm hits weaker
+    if (z.armK) mul *= z.armK === 3 ? 0.4 : 0.7;
     if (hurtPlayer(z.dmg * mul)) {
       onHitEffect(z);
       if (sp.lifesteal) heal(z, z.dmg * mul * 0.5);
@@ -735,6 +745,17 @@ function hurtZombie(z, dmg, o) {
     if (z.dodge && Math.random() < z.dodge) { G.texts.push({ x: z.x, y: z.y - z.r, t: 0, life: 0.45, s: 'miss', c: '#8f959e' }); return 'pass'; }
   }
   if (z.illusion) { killZombie(z); return true; }
+  // the 2.0 zombies: where it was hit (for the hit reaction, the death and a crippled limb), and a lethal hit is lethal
+  if (z.m.v2) {
+    const reg = o.reg || (o.src === 'blast' || o.src === 'a10' ? 'torso' : null);
+    if (reg) { z.hitReg = reg; z.hitT = G.time; z.hitP = o.P != null ? o.P : (o.src === 'blast' || o.src === 'a10' ? 2 : 0.6); if (o.kx || o.ky) z.hitA = Math.atan2(o.ky, o.kx); }
+    z.lastSrc = o.src || 'bullet';
+    if (o.cripple && !o.kill) {
+      if (reg === 'legL' || reg === 'legR') { const bit = reg === 'legL' ? 1 : 2; if (!((z.legM || 0) & bit)) { z.legM = (z.legM || 0) | bit; z.legK = (z.legK || 0) + 1; } }
+      else if (reg === 'armL') z.armK |= 1; else if (reg === 'armR') z.armK |= 2;
+    }
+    if (o.kill) dmg = Math.max(dmg, z.hp + (z.shield || 0) + 1);
+  }
   dmg *= 1 - z.dr;
   if (z.shield > 0) { const a = Math.min(z.shield, dmg); z.shield -= a; dmg -= a; }
   if (z.shieldMax) z.shieldCd = 3;
@@ -744,7 +765,7 @@ function hurtZombie(z, dmg, o) {
   if (o.crit) G.texts.push({ x: z.x + rand(-6, 6), y: z.y - z.r, t: 0, life: 0.6, s: String(Math.round(dmg)), c: '#f2cc3a' });
   if (z.abs.indexOf('hive') >= 0 && Math.random() < 0.28 && G.nFly < 30) { spawnZombie(z.m, z.x, z.y, { fly: true }); G.nFly++; }
   if (zp.surge && !z.st.surged && z.hp > 0 && z.hp < z.maxHp * 0.5) { z.st.surged = true; z.st.surgeT = 4; ring(z.x, z.y, z.r, z.r * 2.4, 0.4, '122,240,255', 3); }
-  if (z.hp <= 0 && zp.revive && !z.st.revived && !z.minion && !z.child && !z.fly && !z.boss) {
+  if (z.hp <= 0 && zp.revive && !z.st.revived && !z.minion && !z.child && !z.fly && !z.boss && o.reg !== 'head') {
     z.st.revived = true; z.st.down = 1.4; z.hp = 0.01; z.kvx = z.kvy = 0; burst(z.x, z.y, 8, '#e6dcc0', 80, 4, 0.4); return true;
   }
   if (z.rb && !z.rb.ill) checkBossForm(z);
@@ -754,8 +775,9 @@ function hurtZombie(z, dmg, o) {
 function killZombie(z) {
   if (z.dead) return;
   if (NET.role === 'client') { if (z.puppet && !NET.cosmetic) netSend({ t: 'kz', z: z.nid }); return; }
+  const dci = z.m.v2 && !z.fly && typeof animaDeath === 'function' ? animaDeath(z) : -1;   // it falls the way it was hit, and stays a while
   z.dead = true;
-  if (NET.role === 'host') { NET.kills.push([z.nid, NET.lastHitBy]); NET.zmap.delete(z.nid); }
+  if (NET.role === 'host') { NET.kills.push(dci >= 0 ? [z.nid, NET.lastHitBy, dci, Math.round((z.hitA || 0) * 100), Math.round(z.ang * 100)] : [z.nid, NET.lastHitBy]); NET.zmap.delete(z.nid); }
   const m = z.m, gore = m.S.gore, mine = NET.lastHitBy === 1;
   if (z.illusion) { burst(z.x, z.y, 10, '#efe9dc', 120, 4, 0.4); return; }
   if (!z.fly) {
@@ -1066,21 +1088,26 @@ function updFx(dt) {
 function startWave(n) {
   G.wave = n; const cap = Z.threatCap(n);
   if (SET.season === 'cycle' && n > 1 && (n - 1) % 5 === 0) setSeason(WORLD.season + 1);
-  G.pool = MUTS.filter(m => m.threat <= cap);
+  // while 2.0 is built only the new roster comes (the old mutations are switched off until all 1,000 are rebuilt)
+  G.pool = typeof ZR_ONLY !== 'undefined' && ZR_ONLY && ZR.length ? zrPool(n) : MUTS.filter(m => m.threat <= cap);
+  const capT = Math.max.apply(null, G.pool.map(m => m.threat));
   const k = Math.min(9, 3 + Math.floor(n / 2)), cand = G.pool.slice(), feat = [];
   for (let i = 0; i < k && cand.length; i++) {
-    let tot = 0; const ws = cand.map(m => { const w = (found.has(m.id) ? 1 : 3.2) * (m.threat >= cap - 1 ? 1.7 : 1); tot += w; return w; });
+    let tot = 0; const ws = cand.map(m => { const w = (found.has(m.id) ? 1 : 3.2) * (m.threat >= capT - 1 ? 1.7 : 1); tot += w; return w; });
     let r = Math.random() * tot, idx = 0; while (idx < ws.length - 1 && r > ws[idx]) { r -= ws[idx]; idx++; }
     feat.push(cand[idx]); cand.splice(idx, 1);
   }
   G.feat = feat;
   G.spawnTotal = G.spawnQ = Math.round((10 + n * 5) * (G.hordeMul || 1)); G.spawnT = 1.4;
-  G.roamAt = n >= 3 && n % 5 !== 0 && Math.random() < Math.min(0.6, 0.22 + n * 0.025) ? Math.round(G.spawnTotal * rand(0.3, 0.7)) : -1;
-  G.bossPending = n % 5 === 0;
+  // the bosses (the roster, the Snatcher, the Alphas, the roaming ones) are switched off until they are rebuilt too
+  const bossOff = typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF;
+  G.roamAt = !bossOff && n >= 3 && n % 5 !== 0 && Math.random() < Math.min(0.6, 0.22 + n * 0.025) ? Math.round(G.spawnTotal * rand(0.3, 0.7)) : -1;
+  G.bossPending = !bossOff && n % 5 === 0;
+  G.breakT = 0;
   if (typeof swarmWave === 'function') swarmWave(n);   // the hordes that come on top of the trickle
   SFX.waveStart(G.bossPending);
   const unk = feat.filter(m => !found.has(m.id)).length;
-  banner('Wave ' + n, G.bossPending ? (n % 10 === 5 ? 'The Snatcher is coming' : 'An Alpha is coming') : unk ? unk + ' unidentified mutation' + (unk > 1 ? 's' : '') + ' sighted' : 'Hold the line');
+  banner('Wave ' + n, G.bossPending ? (n % 10 === 5 ? 'The Snatcher is coming' : 'An Alpha is coming') : unk ? unk + ' unidentified zombie' + (unk > 1 ? 's' : '') + ' sighted' : 'Hold the line');
   G.mode = 'play';
   if (G.p) { const nc = NEON[(n - 1) % NEON.length]; ring(G.p.x, G.p.y, 20, 520, 0.9, rgbOf(nc), 5); ring(G.p.x, G.p.y, 10, 300, 0.7, rgbOf(nc), 3); }
 }
@@ -1108,11 +1135,35 @@ function spawnBoss() {
   G.boss = z; SFX.roar(); G.cineT = 2.4;
   banner('Alpha ' + m.name, 'Extra mutation: ' + ABILITIES.find(a => a.key === second).name);
 }
+// the card rounds between waves are switched off while 2.0 is built: a short breather instead, then the next wave
+const CARDS_OFF = true, BREAK_SECS = 7;
 function waveCleared() {
   G.score += G.wave * 100; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
   SFX.waveClear();
+  if (CARDS_OFF) { waveBreak(); return; }
   if (NET.role === 'host') netCardsOpen();
   openCards();
+}
+function waveBreak() {
+  G.breakT = BREAK_SECS;
+  // co-op: anyone down gets back up at half health (as the card round used to do)
+  if (NET.role === 'host' && NET.started) {
+    for (const peer of NET.peers.values()) if (peer.p && peer.p.down) netRevive(peer.p, 0.5);
+    if (G.p.down) netRevive(G.p, 0.5);
+    hostSend('*', { t: 'brk', w: G.wave, s: BREAK_SECS });
+  }
+  banner('Wave ' + G.wave + ' cleared', '+' + (G.wave * 100) + ' · next wave in ' + BREAK_SECS + ' seconds');
+  coreEmit('waveBreak', { wave: G.wave });
+}
+// the breather counts down; then the next wave (a teammate's game hears 'go' as it did after the cards)
+function breakTick(dt) {
+  if (!(G.breakT > 0)) return false;
+  G.breakT -= dt;
+  if (G.breakT <= 0) {
+    G.breakT = 0; startWave(G.wave + 1);
+    if (NET.role === 'host' && NET.started) hostSend('*', { t: 'go', w: G.wave, r: 0 });
+  }
+  return true;
 }
 
 /* ================= discovery / toasts / banner ================= */
@@ -1150,7 +1201,7 @@ function newRun(o) {
   if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
   $('skull').hidden = true;
-  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
+  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
   DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
@@ -1238,7 +1289,7 @@ function cleanTag(s, acct) {
 function refreshTitle() {
   if ($('bossCount')) $('bossCount').textContent = bossSeen.size + '/' + ZB.ROSTER.length;
   $('seasonName').textContent = SEASON_NAME; $('seasonLeft').textContent = seasonLeft();
-  $('foundCount').textContent = found.size + '/1000';
+  $('foundCount').textContent = typeof ZR_ONLY !== 'undefined' && ZR_ONLY && ZR.length ? ZR.filter(m => found.has(m.id)).length + '/' + ZR.length : found.size + '/1000';
   $('gunCount').textContent = guns.size + '/250';
   const lw = WEAPONS[loadoutId()], ll = $('loadLine'); ll.textContent = ''; const lb = document.createElement('b'); lb.textContent = lw.name; lb.style.color = WRAR[lw.rarity].color; ll.append('Starting weapon: ', lb);
   const loc = store.get('zc_lb_' + SEASON, []);
@@ -1374,6 +1425,8 @@ function thumb(canvas, m, size, sil, rBase) {
   Z.drawMutation(g, m, rBase * clamp(m.size, 0.8, 1.35), { sil: sil });
 }
 function renderCodex() {
+  if (typeof ZR_ONLY !== 'undefined' && ZR_ONLY && ZR.length) { renderCodex2(); return; }
+  $('cxSeries').hidden = false; $('cxStrains').hidden = false; $('cxStrainNote').hidden = false; $('cxV2Note').hidden = true;
   $('cxCount').textContent = found.size + ' / 1000';
   const rs = $('cxRarity'); rs.textContent = '';
   RARITY.forEach((r, i) => {
@@ -1414,6 +1467,8 @@ function renderCodex() {
   }
 }
 function openDetail(m) {
+  if (m.v2) { openDetail2(m); return; }
+  $('dtArt').classList.remove('v2'); $('cxDetail').querySelector('.detail-in').classList.remove('v2'); $('dtAnims').hidden = true; $('dtBal').hidden = true;
   const known = found.has(m.id), show = known || cxSpoil, r = RARITY[m.rarity], el = $('cxDetail');
   el.style.setProperty('--rc', show ? r.color : '#8f959e');
   thumb($('dtArt'), m, 180, !show, 38);
@@ -1439,7 +1494,94 @@ function openDetail(m) {
   $('dtWave').textContent = 'Can appear from wave ' + m.wave + '. Stats shown at wave 1; zombies get tougher every wave.';
   el.hidden = false; el.scrollTop = 0;
 }
-function closeDetail() { $('cxDetail').hidden = true; }
+function closeDetail() { $('cxDetail').hidden = true; if (typeof animaPreviewStop === 'function') animaPreviewStop(); }
+/* ---- the 2.0 roster in the log: the first 50 rebuilt zombies, each with its 50 animations to watch ---- */
+// a 2.0 zombie standing (facing up the card), drawn by the look engine; a dark shape if it is not identified yet
+function thumb2(canvas, m, size, sil) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
+  const g = canvas.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, canvas.width, canvas.height);
+  const P = new Float32Array(AN); animaEval(P, m, AC.idle, 0, 1.2);
+  const r = size * dpr / 7.2 * Math.pow(clamp(m.size, 0.8, 1.45), 0.4);
+  g.setTransform(0, -r, r, 0, canvas.width / 2, canvas.height * 0.56); g.lineCap = 'round'; g.lineJoin = 'round';
+  lookDraw(g, m, P, { lod: 0, t: 1.2, light: { x: -0.4, y: -0.7, c: '255,240,215', k: 0.5, rim: 0.4 }, glow: 1, preview: 1, noShadow: sil });
+  if (sil) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#06080b'; g.fillRect(0, 0, canvas.width, canvas.height); g.globalCompositeOperation = 'source-over'; }
+}
+function renderCodex2() {
+  const have = ZR.filter(m => found.has(m.id)).length;
+  $('cxCount').textContent = have + ' / ' + ZR.length;
+  $('cxSeries').hidden = true; $('cxStrains').hidden = true; $('cxStrainNote').hidden = true;
+  const note = $('cxV2Note'); note.hidden = false;
+  note.textContent = 'Zombie City 2.0: the first ' + ZR.length + ' of the 1,000 zombies, rebuilt from the ground up, each with its own look, behaviour and 50 animations. The old mutations and the bosses are switched off until the rest are rebuilt.';
+  const rs = $('cxRarity'); rs.textContent = '';
+  RARITY.forEach((r, i) => {
+    const tot = ZR.filter(m => m.rarity === i).length; if (!tot) return; const h = ZR.filter(m => m.rarity === i && found.has(m.id)).length;
+    const s = document.createElement('span'); s.style.setProperty('--rc', r.color); s.textContent = r.name + ' ' + h + '/' + tot; rs.appendChild(s);
+  });
+  const gridEl = $('cxGrid'); gridEl.textContent = '';
+  for (const m of ZR) {
+    const known = found.has(m.id), show = known || cxSpoil, r = RARITY[m.rarity];
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'card ' + (known ? 'known' : 'unknown'); b.style.setProperty('--rc', r.color);
+    const c = document.createElement('canvas'); c.setAttribute('aria-hidden', 'true');
+    const n1 = document.createElement('span'); n1.className = 'num'; n1.textContent = '#' + pad3(m.num);
+    const n2 = document.createElement('span'); n2.className = 'nm'; n2.textContent = show ? m.name : 'Unidentified';
+    const n3 = document.createElement('span'); n3.className = 'rar'; n3.textContent = show ? r.name + ' · T' + m.threat : 'Wave ' + m.wave + '+';
+    if (!show) n3.style.setProperty('--rc', '#8f959e');
+    b.append(c, n1, n2, n3); b.addEventListener('click', () => openDetail(m)); gridEl.appendChild(b);
+    thumb2(c, m, 88, !show);
+  }
+}
+// how bullets treat it, in words
+function balWords(m) {
+  const T = m.T || {}, d = m.def, a = [];
+  if (T.shield) a.push('a shield stops what comes at its front (flank it, or use a rifle round heavy enough)');
+  if (T.helmet) a.push('its helmet turns ' + Math.round(T.helmet * 100) + '% of light head shots');
+  if (T.armor) a.push((d.feat.indexOf('plates') >= 0 || d.top === 'riot' || d.top === 'space' ? 'plates stop rifle rounds' : 'a vest stops pistol rounds') + ' to the chest ' + Math.round(T.armor * 100) + '% of the time');
+  if (T.tough) a.push('shrugs off ' + Math.round(T.tough * 100) + '% of body shots that would kill another');
+  if (T.low) a.push(T.low >= 1 ? 'low to the ground: no legs to hit, and its head is exposed' : 'runs low: fewer leg hits');
+  if (T.brittle) a.push('brittle: limbs come off at a touch');
+  return a.length ? a.join('; ') + '.' : 'No protection: a body shot kills it most of the time, a head shot almost always.';
+}
+function openDetail2(m) {
+  const known = found.has(m.id), show = known || cxSpoil, r = RARITY[m.rarity], el = $('cxDetail');
+  el.style.setProperty('--rc', show ? r.color : '#8f959e');
+  const art = $('dtArt'); art.classList.add('v2'); el.querySelector('.detail-in').classList.add('v2');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2); art.width = Math.round(260 * dpr); art.height = Math.round(260 * dpr);
+  $('dtTag').textContent = '#' + pad3(m.num) + ' · ' + (show ? r.name + ' · Threat ' + m.threat + '/10' : 'Unidentified');
+  $('dtName').textContent = show ? m.name : 'Unidentified specimen';
+  const st = $('dtStrain'), ab = $('dtAbility'); st.textContent = ''; ab.textContent = '';
+  const b1 = document.createElement('b'); b1.textContent = show ? m.name + ': ' : 'Unknown: '; st.append(b1, show ? m.def.line : 'Kill one to log it.');
+  if (show) { const b2 = document.createElement('b'); b2.textContent = (m.def.ab === 'none' ? 'Behaviour' : m.A.name) + ': '; ab.append(b2, m.A.desc || 'It just keeps coming.'); }
+  const bars = $('dtBars'); bars.textContent = '';
+  const mx = { hp: Math.max(...ZR.map(q => q.hp)), spd: Math.max(...ZR.map(q => q.spd)), dmg: Math.max(...ZR.map(q => q.dmg)), size: Math.max(...ZR.map(q => q.size)) };
+  [['Durability', m.hp / mx.hp, Math.round(30 * m.hp) + ' HP'], ['Speed', m.spd / mx.spd, Math.round(68 * m.spd) + ''], ['Damage', m.dmg / mx.dmg, (9 * m.dmg).toFixed(1)], ['Size', m.size / mx.size, m.size.toFixed(2) + 'x']].forEach(rw => {
+    const row = document.createElement('div'); row.className = 'bar-row';
+    const l = document.createElement('span'); l.textContent = rw[0];
+    const t = document.createElement('div'); t.className = 'track'; const f = document.createElement('i'); f.style.width = show ? Math.round(rw[1] * 100) + '%' : '0%'; t.appendChild(f);
+    const v = document.createElement('em'); v.textContent = show ? rw[2] : '?'; row.append(l, t, v); bars.appendChild(row);
+  });
+  const bal = $('dtBal'); bal.textContent = ''; bal.hidden = !show;
+  if (show) { const b3 = document.createElement('b'); b3.textContent = 'Taking a bullet: '; bal.append(b3, balWords(m)); }
+  // its 50 animations: pick any to watch it (identified zombies only)
+  const box = $('dtAnims'); box.textContent = ''; box.hidden = !show;
+  if (show) {
+    const top = document.createElement('div'); top.className = 'an-top'; const lab = document.createElement('span'); top.append(lab);
+    const autoB = document.createElement('button'); autoB.type = 'button'; autoB.textContent = 'Play all'; top.append(autoB); box.append(top);
+    const btns = []; let cur = 0, autoT = 0;
+    const pick = ci => { cur = ci; btns.forEach((b, i) => b.classList.toggle('on', i === ci)); lab.textContent = (ci + 1) + ' / ' + AC_N + ' · ' + AC_GROUP[ci] + ': ' + m.anames[ci]; animaPreview(art, m, ci); };
+    const groups = {};
+    for (let ci = 0; ci < AC_N; ci++) {
+      const gname = AC_GROUP[ci]; let G2 = groups[gname];
+      if (!G2) { G2 = groups[gname] = document.createElement('div'); G2.className = 'ag'; const t = document.createElement('b'); t.textContent = gname; const row = document.createElement('div'); row.className = 'ab'; G2.append(t, row); box.append(G2); }
+      const bt = document.createElement('button'); bt.type = 'button'; bt.textContent = m.anames[ci]; bt.addEventListener('click', () => { clearInterval(autoT); autoT = 0; autoB.classList.remove('on'); pick(ci); });
+      G2.querySelector('.ab').append(bt); btns.push(bt);
+    }
+    autoB.addEventListener('click', () => { if (autoT) { clearInterval(autoT); autoT = 0; autoB.classList.remove('on'); return; } autoB.classList.add('on'); pick(0); autoT = setInterval(() => { if ($('cxDetail').hidden) { clearInterval(autoT); autoT = 0; return; } pick((cur + 1) % AC_N); }, 2600); });
+    pick(0);
+  } else { animaPreviewStop(); thumb2(art, m, 260, true); }
+  $('dtWave').textContent = 'Can appear from wave ' + m.wave + '. Stats shown at wave 1; zombies get tougher every wave.';
+  el.hidden = false; el.scrollTop = 0;
+}
 $('dtClose').addEventListener('click', closeDetail);
 
 /* ================= attract mode (title screen) ================= */
@@ -1451,7 +1593,7 @@ function initAttract() {
   for (let i = 0; i < 18; i++) spawnAttract(true);
 }
 function spawnAttract(anywhere) {
-  const m = MUTS[Math.floor(Math.random() * MUTS.length)], hw = W / ZOOM / 2, hh = H / ZOOM / 2;
+  const L = typeof ZR !== 'undefined' && ZR_ONLY && ZR.length ? ZR : MUTS, m = L[Math.floor(Math.random() * L.length)], hw = W / ZOOM / 2, hh = H / ZOOM / 2;
   for (let t = 0; t < 10; t++) {
     const x = anywhere ? cam.x + rand(-hw, hw) : cam.x + hw + rand(40, 160), y = cam.y + rand(-hh, hh);
     if (!blocked(x, y, 24)) { const z = spawnZombie(m, x, y); z.wx = x; z.wy = y; return true; }
@@ -1524,6 +1666,8 @@ function render() {
     ctx.fillStyle = '#c4262c'; ctx.fillRect(-2.5, -7, 5, 12); ctx.fillRect(-6, -3.5, 12, 5);
     ctx.restore();
   }
+  // the dead, where they fell (under the living)
+  if (typeof animaFrame === 'function') { animaFrame(G.rdt || 0.016); animaDrawCorpses(vis); }
   // zombie telegraphs under bodies
   const lowFx = Q.lod >= 2;
   for (const z of G.zs) {
@@ -1729,6 +1873,12 @@ function drawZ(z, lod, far) {
   lod = lod || 0;
   if (z.rb) { drawRoster(z); return; }
   if (z.m.unique) { drawSnatcher(z); return; }
+  if (z.m.v2 && !z.fly && !z.st.under && typeof animaDraw === 'function') {
+    const T = ctx.getTransform();
+    const ok = animaDraw(z, lod, z.swRkF === frameNo ? z.swRk : 0, T.a, T.e, T.f, swarmAlpha(z));
+    ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f); ctx.globalAlpha = 1;
+    if (ok) { drawZOver(z, lod, far); return; }
+  }
   if (z.st.down > 0) {
     const spr = getSprite(z.m, z.r, z.minion), k = z.r / spr.rq, hs = spr.half * k;
     ctx.save(); ctx.translate(z.x, z.y); ctx.rotate(z.ang + 1.3); ctx.globalAlpha = 0.5; ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); ctx.restore(); ctx.globalAlpha = 1;
@@ -1799,7 +1949,11 @@ function drawPlayer(p) {
   ctx.rotate(p.aim);
   // the survivor is one textured sprite per weapon and walking pose (made once by the texture engine), turned to the aim
   const fk = (p.weapon && p.weapon.F && p.weapon.F.key) || 'pistol', gl = GUN_LEN[fk] || 20, PS = texelPlayer(p);
+  // recoil: the gun (and the shoulders behind it) kick back with each shot and settle
+  if (p.kick > 0.01) { ctx.translate(-p.kick * 3.2, 0); ctx.rotate(p.kick * 0.035 * ((p.shots & 1) ? 1 : -1)); }
   ctx.drawImage(PS.c, -PS.half, -PS.half, PS.half * 2, PS.half * 2);
+  // the light that falls on the survivor: lit toward the lamp (or the sun), shaded away from it, a rim of its colour
+  if (typeof lookShade === 'function' && typeof aLight === 'function' && LUX.live && Q.lod < 3) { const L = aLight({ x: p.x, y: p.y, ang: p.aim }); lookShade(ctx, L, 14, 15, 1); }
   if (typeof muzzleDraw === 'function') { try { muzzleDraw(ctx, p, fk, gl, 1); } catch (e) { muzzleHurt(e); } }
   else if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M && p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
   if (p.frozenT > 0) { ctx.fillStyle = 'rgba(200,240,255,0.55)'; ctx.fillRect(-15, -15, 30, 30); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(-15, -15, 30, 30); }
@@ -2037,6 +2191,7 @@ function update(dt) {
   G.time += dt; if (G.hintT > 0) G.hintT -= dt;
   DEV.useT[DEV.kind] += dt;
   updPlayer(dt);
+  if (typeof balSettle === 'function') balSettle(G.p, dt);
   const host = NET.role === 'host' && NET.started;
   if (host) netHostPre(dt);
   spawner(dt);
@@ -2080,6 +2235,7 @@ function update(dt) {
   const ct = host && G.p.down ? (netAlive()[0] || G.p) : G.p;   // down in co-op: the camera follows a teammate
   const k = Math.min(1, dt * 7); cam.x += (ct.x - cam.x) * k; cam.y += (ct.y - cam.y) * k;
   if (G.skullPending && G.mode === 'play') { openSkull(); return; }
+  if (G.mode === 'play' && breakTick(dt)) return;
   if (G.mode === 'play' && G.spawnQ <= 0 && !G.bossPending && (typeof swarmDone !== 'function' || swarmDone()) && !G.zs.some(z => !z.illusion)) waveCleared();
 }
 // The city is big enough to explore now, so zombies left far behind (stuck around a block, or outrun) come back

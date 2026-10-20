@@ -86,7 +86,9 @@ function tracerSoft() {
 function tracerStreak(b, P, rgb, k, glowOnly, dt) {
   const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, bright = b.tr === false ? 0.55 : 1;
   // as long as a camera shutter would smear it, never back past the muzzle
-  const L = Math.min(Math.max(P.len, dt * 0.85) * (b.tr === false ? 0.8 : 1) * (b.crit ? 1.25 : 1), b.age || 0) * sp;
+  let L = Math.min(Math.max(P.len, dt * 0.85) * (b.tr === false ? 0.8 : 1) * (b.crit ? 1.25 : 1), b.age || 0) * sp;
+  // a real round (the ballistics engine's) moves a screen in a frame or two: its streak is kept to what the eye sees
+  if (b.bal) L = Math.min(L, (b.heavy ? 300 : b.fk === 'shotgun' ? 110 : 190) * SCL / SCALE_REAL * (b.age < 0.02 ? 0.7 : 1));
   if (L < 0.5) return;
   if (TRACER.perf <= -2) {
     // keeping up: one plain stroke per round

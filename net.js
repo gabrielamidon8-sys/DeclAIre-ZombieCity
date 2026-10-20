@@ -241,7 +241,8 @@ function netHostRecv(str) {
     case 'h':
       for (const h of m.h || []) {
         const z = NET.zmap.get(h[0]); if (!z || z.dead) continue;
-        NET.lastHitBy = from; hurtZombie(z, Math.min(+h[1] || 0, 99999), { src: h[5] || 'bullet', crit: !!h[2], kx: +h[3] || 0, ky: +h[4] || 0 }); NET.lastHitBy = 1;
+        const fl = h[7] | 0;
+        NET.lastHitBy = from; hurtZombie(z, Math.min(+h[1] || 0, 99999), { src: h[5] || 'bullet', crit: !!h[2], kx: +h[3] || 0, ky: +h[4] || 0, reg: NET_REG[h[6] | 0] || undefined, kill: !!(fl & 1), cripple: !!(fl & 2), deflect: !!(fl & 4), P: (+h[8] || 0) / 10 }); NET.lastHitBy = 1;
       }
       break;
     case 'zf':
@@ -476,7 +477,9 @@ function netTickHost(rdt) {
 }
 function zFlags(z) {
   return (z.boss ? 1 : 0) | (z.fly ? 2 : 0) | (z.minion ? 4 : 0) | (z.child ? 8 : 0) | (z.illusion ? 16 : 0) | (z.st.under ? 32 : 0) | (z.st.down > 0 ? 64 : 0) | (z.st.phased ? 128 : 0)
-    | (z.frozen && z.stun > 0 ? 256 : 0) | (z.burnT > 0 ? 512 : 0) | (z.poisonT > 0 ? 1024 : 0) | (z.slowT > 0 ? 2048 : 0) | (z.buffT > 0 ? 4096 : 0) | (z.warn > 0 ? 8192 : 0) | (z.st.fuse > 0 ? 16384 : 0) | (z.st.surgeT > 0 ? 32768 : 0);
+    | (z.frozen && z.stun > 0 ? 256 : 0) | (z.burnT > 0 ? 512 : 0) | (z.poisonT > 0 ? 1024 : 0) | (z.slowT > 0 ? 2048 : 0) | (z.buffT > 0 ? 4096 : 0) | (z.warn > 0 ? 8192 : 0) | (z.st.fuse > 0 ? 16384 : 0) | (z.st.surgeT > 0 ? 32768 : 0)
+    // the 2.0 zombies' animation cues: swinging, mid-leap or charging, a limp, a crawl
+    | (z.atkW > G.time - 0.3 ? 65536 : 0) | (z.leapK || z.st.charge > 0 || z.st.lt > 0 ? 131072 : 0) | (z.legK >= 2 ? 524288 : z.legK ? 262144 : 0);
 }
 const NUM = v => typeof v === 'number' && isFinite(v);
 function plainNums(o) { const r = {}; if (!o) return r; for (const k in o) { const v = o[k]; if (NUM(v)) r[k] = Math.round(v * 100) / 100; else if (typeof v === 'boolean') r[k] = v; else if (Array.isArray(v) && v.length < 40 && v.every(NUM)) r[k] = v.map(x => Math.round(x * 10) / 10); } return r; }
@@ -551,7 +554,12 @@ function netClientRecv(m) {
       if (G.mode === 'upgrade' && NET.myPicked !== NET.myRound) netAutoPick();
       $('upGrid').classList.remove('waiting'); if (G.mode === 'upgrade') showOv(null);
       G.wave = m.w; G.mode = 'play'; NET.myRound = 0; netUpWait();
-      SFX.waveStart(m.w % 5 === 0); banner('Wave ' + m.w, m.w % 5 === 0 ? 'A boss is coming' : 'Hold the line');
+      { const bw = m.w % 5 === 0 && !(typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF); SFX.waveStart(bw); banner('Wave ' + m.w, bw ? 'A boss is coming' : 'Hold the line'); }
+      break;
+    // the wave is cleared and the next one is a few seconds off (the card rounds are switched off for now)
+    case 'brk':
+      if (!NET.started || !G.p || G.mode === 'over' || G.mode === 'title') break;
+      G.eshots = []; SFX.waveClear(); banner('Wave ' + (m.w | 0) + ' cleared', 'next wave in ' + ((m.s | 0) || 7) + ' seconds');
       break;
     case 'over': if (NET.started) netFinish(m); break;
   }
@@ -623,10 +631,11 @@ function netApply(s) {
     z.st.under = !!(f & 32); z.st.down = f & 64 ? 1 : 0; z.st.phased = !!(f & 128);
     z.frozen = f & 256 ? 1 : 0; z.stun = f & 256 ? 0.2 : 0; z.burnT = f & 512 ? 1 : 0; z.poisonT = f & 1024 ? 1 : 0; z.slowT = f & 2048 ? 0.2 : 0; z.buffT = f & 4096 ? 1 : 0;
     z.warn = f & 8192 ? 0.2 : 0; z.st.fuse = f & 16384 ? 0.3 : 0; z.st.surgeT = f & 32768 ? 1 : 0;
+    if (z.m.v2) { const atk = !!(f & 65536); if (atk && !z.atkOn) z.atkT = G.time; z.atkOn = atk; z.leapK = f & 131072 ? 1 : 0; z.legK = f & 524288 ? 2 : f & 262144 ? 1 : 0; }
     z.kvx = z.kvy = 0; z.slowMul = 1; z.burnDps = z.poisonDps = 0;
     z.nb = [z.burnT, z.poisonT, z.slowT, z.stun];
   }
-  for (const k of s.kl || []) { const z = NET.zmap.get(k[0]); if (z && !z.dead) netKillFx(z, k[1]); }
+  for (const k of s.kl || []) { const z = NET.zmap.get(k[0]); if (z && !z.dead) netKillFx(z, k[1], k); }
   // gone without a kill (an illusion fading, a bomber going off), and on a full update anything the host no longer has
   for (const g of s.zg || []) { const z = NET.zmap.get(g); if (z && !z.dead) { z.dead = true; NET.zmap.delete(g); } NET.zst.delete(g); }
   if (seen) for (const z of G.zs) if (!z.dead && z.puppet && !seen.has(z.nid)) { z.dead = true; NET.zmap.delete(z.nid); }
@@ -664,7 +673,9 @@ function netApply(s) {
   for (const e of s.ev || []) if (e[0] === 'air' && e[5] !== NET.me) { launchStrafe(e[1], e[2], e[3], { mini: !!e[4], cos: true }); if (!e[4]) { SFX.radio(); SFX.a10Jet(2.8); banner('A-10 inbound', 'Danger close'); } }
 }
 // a puppet zombie the host says is dead: blood, the specimen log, and the boss's end
-function netKillFx(z, by) {
+function netKillFx(z, by, k) {
+  // a 2.0 zombie falls the way the host saw it fall (the same death)
+  if (z.m.v2 && k && k.length > 2 && typeof animaDeath === 'function') { z.hitA = (+k[3] || 0) / 100; if (k[4] != null) z.ang = k[4] / 100; animaDeath(z, k[2] | 0); }
   z.dead = true; NET.zmap.delete(z.nid);
   const m = z.m, gore = m.S.gore;
   if (z.illusion) { burst(z.x, z.y, 10, '#efe9dc', 120, 4, 0.4); return; }
@@ -748,10 +759,13 @@ function netZDiff() {
   }
 }
 // a hit on a puppet: shown at once, applied by the host
+const NET_REG = ['', 'head', 'torso', 'armL', 'armR', 'legL', 'legR'];
 function netHit(z, dmg, o) {
   if (z.dead) return false;
-  NET.hits.push([z.nid, Math.round(dmg * 10) / 10, o.crit ? 1 : 0, Math.round(o.kx || 0), Math.round(o.ky || 0), o.src && o.src !== 'bullet' ? o.src : 0]);
+  NET.hits.push([z.nid, Math.round(dmg * 10) / 10, o.crit ? 1 : 0, Math.round(o.kx || 0), Math.round(o.ky || 0), o.src && o.src !== 'bullet' ? o.src : 0, NET_REG.indexOf(o.reg || ''), (o.kill ? 1 : 0) | (o.cripple ? 2 : 0) | (o.deflect ? 4 : 0), Math.round((o.P || 0) * 10)]);
   z.flash = 0.09;
+  // the puppet flinches here at once (the host decides the rest)
+  if (z.m.v2 && o.reg) { z.hitReg = o.reg; z.hitP = o.P || 0.6; z.hitT = G.time; if (o.kx || o.ky) z.hitA = Math.atan2(o.ky, o.kx); }
   if ((o.src === 'blast' || o.src === 'a10') && typeof goreBlastHit === 'function') goreBlastHit(z, Math.atan2(o.ky || 0, o.kx || 0), dmg);
   if (o.crit) G.texts.push({ x: z.x + rand(-6, 6), y: z.y - z.r, t: 0, life: 0.6, s: String(Math.round(dmg)), c: '#f2cc3a' });
   return true;
@@ -781,7 +795,8 @@ function netTick(rdt) {
 
 /* ---------- shots from teammates (drawn, no damage) ---------- */
 function netShot(a, x, y, n, S, w) {
-  const m = { t: 'sh', x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, w: w.id, n: n, s: Math.round(S.speed), r: Math.round(S.range), sp: Math.round(S.spread * 1000) / 1000 };
+  const B = typeof BAL_GUN !== 'undefined' && w.kind === 'bullet' && !S.homing && !S.boomerang && balUp() ? BAL_GUN[w.F.key] : null, u = 32 * SCL / SCALE_REAL;
+  const m = { t: 'sh', x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, w: w.id, n: n, s: Math.round(B ? B.v * u : S.speed), r: Math.round(B ? BAL.maxD * u : S.range), sp: Math.round(S.spread * 1000) / 1000 };
   if (NET.role === 'client') netSend(m); else NET.shots.push([1, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp]);
 }
 function netCosShot(pid, x, y, a, wid, n, spd, rng, spr) {
@@ -801,6 +816,7 @@ function netCosShot(pid, x, y, a, wid, n, spd, rng, spr) {
   if (now - last > 110 && G.p && Math.hypot(x - G.p.x, y - G.p.y) < 700) { NET.shotSfx.set(pid, now); SFX.shot(w.F.key, w.M.key); }
 }
 function netCosBullet(b, dt) {
+  if (b.kind === 'bullet' && typeof balCos === 'function' && b.vx * b.vx + b.vy * b.vy > 9e6) { balCos(b, dt); return; }   // a real round: the same ray as the shooter's
   b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
   if (b.life <= 0) { b.dead = true; return; }
   const wall = pointInRect(b.x, b.y); if (wall) { b.dead = true; if (b.kind !== 'flame' && typeof tracerImpact === 'function') tracerImpact(b, wall); return; }

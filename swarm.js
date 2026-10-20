@@ -579,6 +579,18 @@ function swarmDraw(vis, hw, hh) {
     let lod = Q.lod + (far ? 1 + crowd : 0);
     if (!hi) { if (mob && i > 60) lod++; if (strain >= 2 && i > 30) lod++; if (low) lod++; }
     lod = Math.min(3, lod); ln[lod]++;
+    // the 2.0 zombies: the animation engine draws them (live joints near you, cached frames further out)
+    if (z.m.v2 && !z.fly && !z.st.under) {
+      const a = swarmAlpha(z);
+      if (animaDraw(z, lod, i, s, e, f, a)) {
+        if (lod < 2 && (z.wnd || z.charK || z.frostK) && typeof goreWounds === 'function') { ctx.setTransform(Math.cos(z.ang) * s, Math.sin(z.ang) * s, -Math.sin(z.ang) * s, Math.cos(z.ang) * s, e + z.x * s, f + z.y * s); goreWounds(ctx, z, z.r); }
+        if (lod < 3 || z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0) || z.shield > 1 || z.st.aim > 0) { OV.push(z); OL.push(lod, far ? 1 : 0); }
+        continue;
+      }
+      // no frame yet: a plain stand-in for a moment (never the old mutation art)
+      const sp = swarmImp(z), an = z.ang; ctx.setTransform(Math.cos(an) * s, Math.sin(an) * s, -Math.sin(an) * s, Math.cos(an) * s, e + z.x * s, f + z.y * s); ctx.globalAlpha = a;
+      ctx.drawImage(sp.c, sp.sx, sp.sy, sp.sw, sp.sh, sp.ox, sp.oy, sp.w, sp.h); OV.push(z); OL.push(lod, far ? 1 : 0); continue;
+    }
     if (z.rb || z.m.unique || z.st.down > 0 || z.st.under || z.fly) { setT(); drawZ(z, lod, far); continue; }
     const sp = swarmSpr(z, lod <= 1 ? 0 : 1), a = swarmAlpha(z);
     const an = z.ang + (lod < 3 ? Math.sin(G.time * 7 + z.bob) * 0.06 : 0), co = Math.cos(an) * s, si = Math.sin(an) * s;
@@ -603,6 +615,7 @@ function swarmDraw(vis, hw, hh) {
   SWKEEP.n = SWARM.keys.size;
   SWARM.msDraw = performance.now() - t0; SWARM.msDrawAvg = SWARM.msDrawAvg * 0.9 + SWARM.msDraw * 0.1;
   coreCost('SWARM', SWARM.msDraw);
+  if (typeof animaWatch === 'function') { coreCost('ANIMA', SWARM.msDraw * 0.5); animaWatch(SWARM.msDraw); }
 }
 // the zombies closest to the camera, for the shadows (the lighting engine casts the nearest ones first)
 function swarmBodies() { return SWARM.visF === frameNo && swarmUp() ? SWARM.vis : null; }

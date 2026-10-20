@@ -67,6 +67,8 @@ function volley(a, mul) {
     let ang = a;
     if (n > 1) ang += cone ? (i / (n - 1) - 0.5) * S.spread : (i - (n - 1) / 2) * gap;
     ang += rand(-1, 1) * (kind === 'flame' ? S.spread * 0.5 : S.spread * 0.35 + 0.012);
+    // recoil: the kick of the shots before this one, and a wider spread on the move (real guns only)
+    if (typeof balSpread === 'function' && kind === 'bullet') ang += (Math.random() + Math.random() - 1) * balSpread(p, w, S);
     let crit = Math.random() < S.crit; if (p.db.critNext) { p.db.critNext = 0; crit = true; }
     const spd = S.speed * (kind === 'flame' ? rand(0.75, 1.15) : 1), life = S.range / spd;
     G.bullets.push({
@@ -74,8 +76,10 @@ function volley(a, mul) {
       dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1) * dashDmgMul(p), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
       life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper', fk: w.F.key, mk: w.M.key
     });
+    if (typeof balArm === 'function') balArm(G.bullets[G.bullets.length - 1], p, w, S);   // a real round: real speed and energy
     if (typeof tracerTag === 'function') tracerTag(G.bullets[G.bullets.length - 1], p.shots + i);
   }
+  if (typeof balKick === 'function') balKick(p, w);
   p.flashT = 0.05;
   if (NET.started) netShot(a, mx, my, n, S, w);   // co-op: teammates see the shot
 }
@@ -96,6 +100,8 @@ function updBullets(dt) {
   for (const b of G.bullets) {
     if (b.dead) continue;
     if (b.cos) { netCosBullet(b, dt); continue; }   // a teammate's shot: drawn, no damage here
+    // a real round: the ballistics engine flies it (rays, energy, hit regions, ricochets)
+    if (b.bal) { try { balStep(b, dt); } catch (e) { balHurt(e); b.dead = true; } continue; }
     if (b.homing && b.boom !== 2 && (frameNo & 1) === 0) {
       const tg = nearestZ(b.x, b.y, 240, b.hit);
       if (tg) { const ta = Math.atan2(tg.y - b.y, tg.x - b.x), ca = Math.atan2(b.vy, b.vx), na = angLerp(ca, ta, Math.min(1, dt * 14)), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp; }
@@ -281,7 +287,9 @@ function buildWheel() {
   const pool = ZW.FORBIDDEN.slice(), good = CARDS.filter(k => k.r === 3 || k.r === 4), segs = [];
   for (let i = 0; i < 4 && pool.length; i++) { const k = Math.floor(Math.random() * pool.length); segs.push({ type: 'card', card: pool[k], r: 6 }); pool.splice(k, 1); }
   for (let i = 0; i < 3 && good.length; i++) { const k = Math.floor(Math.random() * good.length); segs.push({ type: 'card', card: good[k], r: good[k].r }); good.splice(k, 1); }
-  segs.push({ ddup: true });
+  // Death Do Us Part raises the Overlord: while the bosses are switched off (2.0 rebuilds them) the wheel has one more prize instead
+  if (typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF) { if (pool.length) segs.push({ type: 'card', card: pool[(Math.random() * pool.length) | 0], r: 6 }); }
+  else segs.push({ ddup: true });
   for (let i = segs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = segs[i]; segs[i] = segs[j]; segs[j] = t; }
   G.wheel = { segs: segs, angle: 0, spinning: false, done: false };
   drawWheel(); $('skullWheel').hidden = false; $('wheelSpin').hidden = false; $('wheelSpin').disabled = false;
@@ -310,7 +318,7 @@ function spinWheel() {
   const W8 = G.wheel; if (!W8 || W8.spinning || W8.done || G.mode !== 'skull') return;
   W8.spinning = true; $('wheelSpin').disabled = true; clearTimeout(buildWheel.t);
   const n = W8.segs.length, S = 360 / n, di = W8.segs.findIndex(s => s.ddup);
-  let k = Math.random() < 0.25 ? di : Math.floor(Math.random() * n); if (k === di && Math.random() < 0) k = (k + 1) % n;
+  let k = di >= 0 && Math.random() < 0.25 ? di : Math.floor(Math.random() * n); if (k === di && Math.random() < 0) k = (k + 1) % n;
   const target = 360 * 6 + (360 - (k * S + S / 2)) + rand(-S * 0.3, S * 0.3), dur = RM ? 600 : 4600, t0 = performance.now(), cv = $('wheelCv');
   let lastSeg = -1;
   (function step(now) {

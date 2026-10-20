@@ -458,6 +458,15 @@
       if (Math.random() < 0.35) osc('triangle', 380 + Math.random() * 300, 300, t + 0.05, 0.25, 0.03, out);
       setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 900);
     },
+    // a round skipping off a wall or a helmet: the classic falling whine with a sharp crack at its start
+    ricochet: function () {
+      if (!ok() || !throttle('ric', 120)) return;
+      var t = ac.currentTime, out = ac.createGain(); out.gain.value = 0.22;
+      out.connect(sfxBus);
+      noise(t, 0.04, 0.5, 'highpass', 2600, 1, 2600, out);
+      var f0 = 2600 + Math.random() * 1600; osc('sine', f0, f0 * 0.42, t + 0.01, 0.28 + Math.random() * 0.12, 0.12, out); osc('triangle', f0 * 1.5, f0 * 0.6, t + 0.01, 0.18, 0.04, out);
+      setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 700);
+    },
     carAlarm: function (hi, vol, pan) {
       if (!ok()) return; var t = ac.currentTime, g = ac.createGain(); g.gain.value = 0.06 * vol;
       if (ac.createStereoPanner) { var p = ac.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan || 0)); g.connect(p); p.connect(sfxBus); } else g.connect(sfxBus);
