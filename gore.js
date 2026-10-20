@@ -796,6 +796,6 @@ coreAdd({
 });
 // CORE v3: its level (stepped by CORE and by errors) and its detail (stepped by its own watch) read as one ladder;
 // CORE climbs the level back when there is room (it used to stay down until a new run)
-coreMeta('GORE', { ver: 3, climb: true, lv: () => goreLevel() * 4 + (GORE.perf + 3), adaptGet: () => GORE.adapt * 4 + GORE.perf,
+coreMeta('GORE', { ver: 3, climb: true, trimLv: 4, lv: () => goreLevel() * 4 + (GORE.perf + 3), adaptGet: () => GORE.adapt * 4 + GORE.perf,
   loadNow: () => G.splats.length, loadName: 'stains', zload: 0.15,
   reset: () => { goreReset(); goreForget(); GORE.perf = 0; GORE.good = 0; GORE.errT.length = 0; GORE.offUntil = 0; } });

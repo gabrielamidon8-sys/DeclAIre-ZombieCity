@@ -100,7 +100,8 @@ function learnFree() {
   return PERF.fps >= targetFps() * 0.97 ? Math.max(0, T * 0.92 - PERF.workMs) : Math.max(0, T - 1000 / PERF.fps);
 }
 // an engine asks before it steps itself up; false while a learned ceiling holds or the step would not fit
-function coreRise(name) {
+// (d: how many levels the step is, for engines whose level counts finer steps than the one CORE takes)
+function coreRise(name, d) {
   const e = CORE.by[name]; if (!e) return true;
   const now = performance.now();
   if (e.holdRise > now) { e.riseWhy = 'held one step lighter for ' + Math.max(1, Math.round((e.holdRise - now) / 1000)) + ' s more (' + (e.holdWhy || 'after a step down') + ')'; return false; }
@@ -109,7 +110,7 @@ function coreRise(name) {
   const ad = coreCall(e, 'adaptGet', null), c = r.ce[b];
   if (c && Date.now() < c[1] && ad != null && ad >= c[0]) { e.riseWhy = 'holding: the last time it stepped up with ' + learnLoadWords(e, b) + ' it had to come straight back down'; return false; }
   if (e.lv) {
-    const L = coreCall(e, 'lv', null), p0 = learnPredict(r, L, b), p1 = learnPredict(r, L + 1, b);
+    const L = coreCall(e, 'lv', null), p0 = learnPredict(r, L, b), p1 = learnPredict(r, L + (d || 1), b);
     if (p0 != null && p1 != null) {
       const extra = p1 - p0, free = learnFree();
       if (extra > 0.25 && extra > free * 0.8) { e.riseWhy = 'waiting: the next level costs about ' + extra.toFixed(1) + ' ms more here and the frame has ' + free.toFixed(1) + ' ms to spare'; return false; }
@@ -142,7 +143,7 @@ function learnLoadWords(e, b) { return (b ? LEARN_BUCKETS[b] : 'no') + ' ' + (e.
 function learnSaving(e) {
   if (!e.lv || !LEARN.ready) return null;
   const r = learnRec(e), L = coreCall(e, 'lv', null); if (L == null || L <= 0) return null;
-  const b = learnBucket(coreCall(e, 'loadNow', 0)), p0 = learnPredict(r, L, b), p1 = learnPredict(r, L - 1, b);
+  const b = learnBucket(coreCall(e, 'loadNow', 0)), p0 = learnPredict(r, L, b), p1 = learnPredict(r, L - (e.trimLv || 1), b);
   return p0 != null && p1 != null ? Math.max(0, p0 - p1) : null;
 }
 
@@ -270,7 +271,7 @@ function learnClimb(now) {
   for (const e of CORE.list) {
     if (!e.climb || e.down || !e.boost || e.holdRise > now) continue;
     const ad = coreCall(e, 'adaptGet', null); if (ad == null || ad >= 0) continue;
-    if (!coreRise(e.name)) continue;
+    if (!coreRise(e.name, e.trimLv || 1)) continue;
     if (coreCall(e, 'boost', false)) { LEARN.climbT = now; e.climbs = (e.climbs || 0) + 1; return; }
   }
 }
