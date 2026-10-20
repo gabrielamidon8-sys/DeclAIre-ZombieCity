@@ -1652,9 +1652,20 @@ button.lcd{cursor:pointer}
   .hx-weapon{max-width:calc(100% - 190px)}
   .hx-clear b{font-size:15px}
 }
+@media (max-width:480px){
+  /* a bigger HUD size grows the HUD only a little on a narrow phone, so the street stays visible */
+  .hx-top{zoom:min(var(--hud-scale, 1), 1.1);grid-template-columns:minmax(118px, 1fr) auto auto}
+  .hx-abil,.hx-weapon{zoom:min(var(--hud-scale, 1), 1.12)}
+  #toasts .toast{width:max-content;max-width:min(300px, calc(100vw - 36px))}
+  /* the A-10 sits above the dash, so the weapon has the width of the screen's bottom */
+  .hx-abil,.lefty .hx-abil{grid-template-columns:auto;grid-template-areas:"mark" "air" "dash";gap:8px}
+  .hx-weapon{max-width:calc(100% - 140px)}
+}
 @media (max-width:380px){
   .hx-cap{display:none}
   .hx-wn span{font-size:8px}
+  .hx-wave{padding:4px 8px 6px;column-gap:7px}
+  .hx-time{font-size:19px}
 }
 /* ---------- phones held sideways ---------- */
 @media (orientation:landscape) and (max-height:560px){
@@ -1811,6 +1822,24 @@ button.lcd{cursor:pointer}
 }
 @media (prefers-reduced-motion:reduce){ #title .mx-deck .mx-play::before,.mx-chev,.pz-clock.red::before{animation:none} }
 .rm #title .mx-deck .mx-play::before,.rm .mx-chev{animation:none}
+
+/* ---------- run over ---------- */
+#over .panel{border:0;border-radius:0;clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));box-shadow:inset 0 0 0 1px rgba(255,59,79,.3), 0 24px 60px rgba(0,0,0,.6);position:relative}
+#over .panel::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:repeating-linear-gradient(-45deg, var(--blood) 0 10px, #160407 10px 20px)}
+#over .stats{grid-template-columns:repeat(5, minmax(0, 1fr))}
+#over .stats div{border:0;border-left:3px solid var(--blood);background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.012))}
+#over .stats div:nth-child(n+6){border-left-color:rgba(242,204,58,.55)}
+@media (max-width:760px){ #over .stats{grid-template-columns:repeat(2, minmax(0, 1fr))} }
+@media (orientation:landscape) and (max-height:560px){ #over .stats{grid-template-columns:repeat(5, minmax(0, 1fr))} }
+
+/* ---------- settings: the same cut corners and accents ---------- */
+.set-sheet .sheet-head h2{position:relative}
+.set-sheet .sheet-head h2::after{content:"";display:block;width:56px;height:3px;margin-top:6px;background:linear-gradient(90deg, var(--tape), transparent)}
+.set-tabs .tab{border-radius:0;clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)}
+.set-tabs .tab.on{box-shadow:inset 3px 0 0 var(--tape)}
+.set-row{border-radius:0}
+.set-group{position:relative;padding-left:12px}
+.set-group::before{content:"";position:absolute;left:0;top:.35em;width:5px;height:.8em;background:var(--tape);clip-path:polygon(0 0, 100% 20%, 100% 80%, 0 100%)}
 
 /* ================= the engine room and its warning (1.9.990) =================
    Purple is the ecosystem's colour (anything it has locked), red is for the warning and for trouble, tape yellow for
@@ -2207,6 +2236,10 @@ button.lcd{cursor:pointer}
         <div><dt>Best chain</dt><dd id="ovChain">x0</dd></div>
         <div><dt>New specimens</dt><dd id="ovFound">0</dd></div>
         <div><dt>Weapon</dt><dd id="ovWeapon" class="small">Standard Pistol</dd></div>
+        <div><dt>Time alive</dt><dd id="ovTime">0:00</dd></div>
+        <div><dt>Accuracy</dt><dd id="ovAcc">—</dd></div>
+        <div><dt>Head shots</dt><dd id="ovHeads">0</dd></div>
+        <div><dt>Beat the clock</dt><dd id="ovClock" class="small">—</dd></div>
       </dl>
       <form id="postForm" class="post">
         <label for="callsign">Callsign for the leaderboard</label>
@@ -7710,7 +7743,7 @@ function waveTick(dt) {
   const t0 = G.waveT; G.waveT = Math.max(0, G.waveT - dt); waveCount(t0, G.waveT);
   if (G.waveT > 0) return false;
   // time is up: the next wave, now, on top of whatever is still here
-  if (SFX.timeUp) SFX.timeUp();
+  if (SFX.timeUp) SFX.timeUp(); G.timeUps = (G.timeUps || 0) + 1;
   startWave(G.wave + 1, true);
   if (NET.role === 'host' && NET.started) hostSend('*', { t: 'go', w: G.wave, r: 0, up: 1 });
   coreEmit('waveTimeUp', { wave: G.wave });
@@ -7773,7 +7806,7 @@ function spawnBoss() {
 const CARDS_OFF = true, BREAK_SECS = 7;
 function waveCleared() {
   // a bonus for every second left on the clock
-  G.clearBonus = G.waveMax > 0 && G.waveT > 0 ? Math.ceil(G.waveT) * 10 : 0; G.clearLeft = G.waveT || 0;
+  G.clearBonus = G.waveMax > 0 && G.waveT > 0 ? Math.ceil(G.waveT) * 10 : 0; G.clearLeft = G.waveT || 0; if (G.waveMax > 0) G.onTime = (G.onTime || 0) + 1;
   G.score += G.wave * 100 + G.clearBonus; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
   SFX.waveClear();
   if (CARDS_OFF) { waveBreak(); return; }
@@ -7852,7 +7885,7 @@ function newRun(o) {
   if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
   $('skull').hidden = true;
-  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, waveT: 0, waveMax: 0, timeUp: false, clearBonus: 0, heads: 0, hits: 0, rounds: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
+  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, waveT: 0, waveMax: 0, timeUp: false, clearBonus: 0, heads: 0, hits: 0, rounds: 0, onTime: 0, timeUps: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
   DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
@@ -7985,6 +8018,8 @@ function die() {
   $('ovScore').textContent = G.score.toLocaleString(); $('ovWave').textContent = G.wave;
   $('ovKills').textContent = G.kills; $('ovFound').textContent = G.runFound.length; $('ovChain').textContent = 'x' + G.bestChain;
   $('ovWeapon').textContent = p.weapon.name; $('ovWeapon').style.color = WRAR[p.weapon.rarity].color;
+  $('ovTime').textContent = fmtClock(G.time); $('ovAcc').textContent = G.rounds ? Math.min(100, Math.round((G.hits || 0) / G.rounds * 100)) + '%' : '—'; $('ovHeads').textContent = (G.heads || 0).toLocaleString();
+  { const done = (G.onTime || 0) + (G.timeUps || 0); $('ovClock').textContent = done ? (G.onTime || 0) + ' of ' + done + ' waves' : '—'; }
   $('callsign').value = entry.tag; $('postBtn').disabled = false; $('postBtn').textContent = 'Post score';
   $('postStatus').textContent = LB.src === 'wix' ? (ACCT.status === 'in' ? 'Saved on this device and to your account. Post it to the global board.' : 'Saved on this device. Log in to your free DeclAIre account (main menu) to post it to the global board.') : LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
   setTimeout(() => { if (G.mode === 'over') showOv('over'); }, 700);
@@ -8907,7 +8942,7 @@ function updClock() {
   const fw = off ? 1 : clamp(tl / Math.max(1, tm), 0, 1), fwk = Math.round(fw * 500);
   if (hc.cfw !== fwk) { hc.cfw = fwk; $('waveFill').style.width = (fw * 100).toFixed(1) + '%'; }
   const left = NET.role === 'client' ? (G.zLeftN | 0) : zLeft();
-  setTxt('waveLeft', brk ? 'Street clear' : left === 1 ? '1 zombie left' : left + ' zombies left');
+  setTxt('waveLeft', brk ? 'Street clear' : innerWidth < 420 ? left + ' left' : left === 1 ? '1 zombie left' : left + ' zombies left');
 }
 function setTxt(id, v) { if (hc[id] !== v) { hc[id] = v; $(id).textContent = v; } }
 function updHud() {
@@ -9334,7 +9369,7 @@ function coreToScreen(x, y, out) {
   const F = CORE.frame, s = F.zoom * F.dpr; out[0] = (x - F.cx) * s + cv.width / 2; out[1] = (y - F.cy) * s + cv.height / 2; return out;
 }
 
-coreAdd({ name: 'CORE', kind: 'sim', ver: 2, covers: ['TRACER', 'MUZZLE'], does: 'Engine hub: connects every engine through one shared frame, one time budget, a message bus and a watchdog; engines check themselves, repair themselves, help repair each other and cover for one another, and the hub remembers the level each one settled at and recalibrates after updates.', state: () => 'on', level: () => CORE.list.length + ' engines, ' + CORE.list.filter(e => e.down).length + ' resting, ' + Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0) + ' listeners' });
+coreAdd({ name: 'CORE', kind: 'sim', ver: 2, covers: ['TRACER', 'MUZZLE'], does: 'Engine hub: connects every engine through one shared frame, one time budget, a message bus and a watchdog; engines check themselves, repair themselves, help repair each other and cover for one another, and the hub remembers the level each one settled at and recalibrates after updates; it also runs the engine room\'s tuning (how hard each engine runs and on the CPU or GPU), locks what an engine cannot do and puts any choice that hurts the game back on Auto.', state: () => 'on', level: () => CORE.list.length + ' engines, ' + CORE.list.filter(e => e.down).length + ' resting, ' + Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0) + ' listeners' });
 // the engines that were here before the hub: registered so the whole set shows in one place and shares one budget
 coreAdd({ name: 'PERF', kind: 'sim', does: 'Performance governor: detects the hardware, sets resolution, quality tier and frame cap, trims caches and restarts a stalled game loop.', state: () => PERF.mode === 'auto' ? 'on' : 'manual', level: () => (typeof TIER_NAMES !== 'undefined' ? TIER_NAMES[PERF.tier] : PERF.tier) + ' ' + Math.round((PERF.resLock || RES_STEPS[PERF.res]) * 100) + '%' });
 coreAdd({ name: 'WORLD', kind: 'world', does: 'City generator: builds the endless city from a seed, district by district (blocks, rivers, bridges, props, seasons) at real-world scale.', state: () => 'on', level: () => (SCL > 1.2 ? 'real scale' : 'classic') + ', ' + chunks.size + ' blocks' });
@@ -21994,7 +22029,7 @@ renderPerfBtn();
    runs on (CPU, GPU, Auto). When the ecosystem has locked a control it shows "Auto-lock" in purple, with the reason.
    It is behind a red warning: changes here override the automatic choices and can cost frame rate; the ecosystem
    (CORE's watchdog and guard) puts anything that hurts the game back on Auto by itself. */
-const ENG_SRC = {"core":[219,26,65,25229],"perf":[308,26,36,24391],"world":[1682,82,186,150815],"net":[970,81,95,77693],"loader":[96,8,16,7153],"weather":[585,32,78,48552],"life":[503,32,44,38576],"sfx2":[447,76,53,43592],"audio":[939,213,76,83621],"radio":[426,70,31,38551],"mutations":[743,19,22,57975],"roster":[124,4,31,33396],"bosses":[318,47,12,39885],"bossai":[528,40,22,45163],"account":[428,34,47,37759],"acct-core":[230,27,31,18583],"filter":[126,8,18,8992],"filterdata":[1,0,3,10136],"lux":[732,37,132,66467],"prism":[335,19,55,37641],"texel":[319,17,77,32373],"mirror":[113,9,24,11555],"gore":[689,49,104,65339],"muzzle":[202,12,31,18070],"garage":[437,29,56,44146],"skyway":[245,19,47,23362],"tracer":[211,22,46,20282],"aura":[122,12,20,11106],"swarm":[645,66,107,54649],"anima":[1085,57,118,98199],"anilook":[427,30,56,57921],"ballistics":[210,12,39,19057],"game#flow":[69,6,4,4827]};
+const ENG_SRC = {"core":[219,26,65,25404],"perf":[308,26,36,24391],"world":[1682,82,186,150815],"net":[970,81,95,77693],"loader":[96,8,16,7153],"weather":[585,32,78,48552],"life":[503,32,44,38576],"sfx2":[447,76,53,43592],"audio":[939,213,76,83621],"radio":[426,70,31,38551],"mutations":[743,19,22,57975],"roster":[124,4,31,33396],"bosses":[318,47,12,39885],"bossai":[528,40,22,45163],"account":[428,34,47,37759],"acct-core":[230,27,31,18583],"filter":[126,8,18,8992],"filterdata":[1,0,3,10136],"lux":[732,37,132,66467],"prism":[335,19,55,37641],"texel":[319,17,77,32373],"mirror":[113,9,24,11555],"gore":[689,49,104,65339],"muzzle":[202,12,31,18070],"garage":[437,29,56,44146],"skyway":[245,19,47,23362],"tracer":[211,22,46,20282],"aura":[122,12,20,11106],"swarm":[645,66,107,54649],"anima":[1085,57,118,98199],"anilook":[427,30,56,57921],"ballistics":[210,12,39,19057],"game#flow":[69,6,4,4827]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };

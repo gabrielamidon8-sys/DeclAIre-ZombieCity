@@ -132,3 +132,21 @@
 }
 @media (prefers-reduced-motion:reduce){ #title .mx-deck .mx-play::before,.mx-chev,.pz-clock.red::before{animation:none} }
 .rm #title .mx-deck .mx-play::before,.rm .mx-chev{animation:none}
+
+/* ---------- run over ---------- */
+#over .panel{border:0;border-radius:0;clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));box-shadow:inset 0 0 0 1px rgba(255,59,79,.3), 0 24px 60px rgba(0,0,0,.6);position:relative}
+#over .panel::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:repeating-linear-gradient(-45deg, var(--blood) 0 10px, #160407 10px 20px)}
+#over .stats{grid-template-columns:repeat(5, minmax(0, 1fr))}
+#over .stats div{border:0;border-left:3px solid var(--blood);background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.012))}
+#over .stats div:nth-child(n+6){border-left-color:rgba(242,204,58,.55)}
+@media (max-width:760px){ #over .stats{grid-template-columns:repeat(2, minmax(0, 1fr))} }
+@media (orientation:landscape) and (max-height:560px){ #over .stats{grid-template-columns:repeat(5, minmax(0, 1fr))} }
+
+/* ---------- settings: the same cut corners and accents ---------- */
+.set-sheet .sheet-head h2{position:relative}
+.set-sheet .sheet-head h2::after{content:"";display:block;width:56px;height:3px;margin-top:6px;background:linear-gradient(90deg, var(--tape), transparent)}
+.set-tabs .tab{border-radius:0;clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)}
+.set-tabs .tab.on{box-shadow:inset 3px 0 0 var(--tape)}
+.set-row{border-radius:0}
+.set-group{position:relative;padding-left:12px}
+.set-group::before{content:"";position:absolute;left:0;top:.35em;width:5px;height:.8em;background:var(--tape);clip-path:polygon(0 0, 100% 20%, 100% 80%, 0 100%)}

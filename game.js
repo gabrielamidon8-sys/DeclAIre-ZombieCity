@@ -1119,7 +1119,7 @@ function waveTick(dt) {
   const t0 = G.waveT; G.waveT = Math.max(0, G.waveT - dt); waveCount(t0, G.waveT);
   if (G.waveT > 0) return false;
   // time is up: the next wave, now, on top of whatever is still here
-  if (SFX.timeUp) SFX.timeUp();
+  if (SFX.timeUp) SFX.timeUp(); G.timeUps = (G.timeUps || 0) + 1;
   startWave(G.wave + 1, true);
   if (NET.role === 'host' && NET.started) hostSend('*', { t: 'go', w: G.wave, r: 0, up: 1 });
   coreEmit('waveTimeUp', { wave: G.wave });
@@ -1182,7 +1182,7 @@ function spawnBoss() {
 const CARDS_OFF = true, BREAK_SECS = 7;
 function waveCleared() {
   // a bonus for every second left on the clock
-  G.clearBonus = G.waveMax > 0 && G.waveT > 0 ? Math.ceil(G.waveT) * 10 : 0; G.clearLeft = G.waveT || 0;
+  G.clearBonus = G.waveMax > 0 && G.waveT > 0 ? Math.ceil(G.waveT) * 10 : 0; G.clearLeft = G.waveT || 0; if (G.waveMax > 0) G.onTime = (G.onTime || 0) + 1;
   G.score += G.wave * 100 + G.clearBonus; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
   SFX.waveClear();
   if (CARDS_OFF) { waveBreak(); return; }
@@ -1261,7 +1261,7 @@ function newRun(o) {
   if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
   $('skull').hidden = true;
-  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, waveT: 0, waveMax: 0, timeUp: false, clearBonus: 0, heads: 0, hits: 0, rounds: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
+  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, waveT: 0, waveMax: 0, timeUp: false, clearBonus: 0, heads: 0, hits: 0, rounds: 0, onTime: 0, timeUps: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
   DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
@@ -1394,6 +1394,8 @@ function die() {
   $('ovScore').textContent = G.score.toLocaleString(); $('ovWave').textContent = G.wave;
   $('ovKills').textContent = G.kills; $('ovFound').textContent = G.runFound.length; $('ovChain').textContent = 'x' + G.bestChain;
   $('ovWeapon').textContent = p.weapon.name; $('ovWeapon').style.color = WRAR[p.weapon.rarity].color;
+  $('ovTime').textContent = fmtClock(G.time); $('ovAcc').textContent = G.rounds ? Math.min(100, Math.round((G.hits || 0) / G.rounds * 100)) + '%' : '—'; $('ovHeads').textContent = (G.heads || 0).toLocaleString();
+  { const done = (G.onTime || 0) + (G.timeUps || 0); $('ovClock').textContent = done ? (G.onTime || 0) + ' of ' + done + ' waves' : '—'; }
   $('callsign').value = entry.tag; $('postBtn').disabled = false; $('postBtn').textContent = 'Post score';
   $('postStatus').textContent = LB.src === 'wix' ? (ACCT.status === 'in' ? 'Saved on this device and to your account. Post it to the global board.' : 'Saved on this device. Log in to your free DeclAIre account (main menu) to post it to the global board.') : LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
   setTimeout(() => { if (G.mode === 'over') showOv('over'); }, 700);
@@ -2316,7 +2318,7 @@ function updClock() {
   const fw = off ? 1 : clamp(tl / Math.max(1, tm), 0, 1), fwk = Math.round(fw * 500);
   if (hc.cfw !== fwk) { hc.cfw = fwk; $('waveFill').style.width = (fw * 100).toFixed(1) + '%'; }
   const left = NET.role === 'client' ? (G.zLeftN | 0) : zLeft();
-  setTxt('waveLeft', brk ? 'Street clear' : left === 1 ? '1 zombie left' : left + ' zombies left');
+  setTxt('waveLeft', brk ? 'Street clear' : innerWidth < 420 ? left + ' left' : left === 1 ? '1 zombie left' : left + ' zombies left');
 }
 function setTxt(id, v) { if (hc[id] !== v) { hc[id] = v; $(id).textContent = v; } }
 function updHud() {

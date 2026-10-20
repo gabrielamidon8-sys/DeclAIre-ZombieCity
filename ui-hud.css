@@ -187,9 +187,20 @@
   .hx-weapon{max-width:calc(100% - 190px)}
   .hx-clear b{font-size:15px}
 }
+@media (max-width:480px){
+  /* a bigger HUD size grows the HUD only a little on a narrow phone, so the street stays visible */
+  .hx-top{zoom:min(var(--hud-scale, 1), 1.1);grid-template-columns:minmax(118px, 1fr) auto auto}
+  .hx-abil,.hx-weapon{zoom:min(var(--hud-scale, 1), 1.12)}
+  #toasts .toast{width:max-content;max-width:min(300px, calc(100vw - 36px))}
+  /* the A-10 sits above the dash, so the weapon has the width of the screen's bottom */
+  .hx-abil,.lefty .hx-abil{grid-template-columns:auto;grid-template-areas:"mark" "air" "dash";gap:8px}
+  .hx-weapon{max-width:calc(100% - 140px)}
+}
 @media (max-width:380px){
   .hx-cap{display:none}
   .hx-wn span{font-size:8px}
+  .hx-wave{padding:4px 8px 6px;column-gap:7px}
+  .hx-time{font-size:19px}
 }
 /* ---------- phones held sideways ---------- */
 @media (orientation:landscape) and (max-height:560px){
