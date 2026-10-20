@@ -263,7 +263,7 @@ function goreMirror(a, vis) {
     // the stain's own shape is the mask (its alpha is all the map reads)
     const sp = goreSprite(s.k, s.v, s.rgb, false); if (!sp) continue;
     if (!T) T = a.getTransform();
-    goreBlit(a, T, s, sp, 0.25 * (1 - t / GORE_FRESH), gr); any = true;
+    goreBlit(a, T, s, sp, 0.1 * (1 - t / GORE_FRESH), gr * 0.75); any = true;
   }
   if (T) a.setTransform(T);
   a.globalAlpha = 1; return any;
