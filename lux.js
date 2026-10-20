@@ -664,7 +664,13 @@ function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
   const bodies = [];
   // the crowd engine hands over the zombies nearest the camera first, so in a horde the closest ones cast shadows
   const swb = typeof swarmBodies === 'function' ? swarmBodies() : null;
-  for (const z of (swb || G.zs)) { if (z.dead || z.fly || (z.st && z.st.under)) continue; if (z.x < x0 - 400 || z.x > x1 + 400 || z.y < y0 - 400 || z.y > y1 + 400) continue; bodies.push(z.x, z.y, z.r, clamp(z.r * 0.17, 1.2, 6)); if (bodies.length > 320) break; }
+  const rigs = [];
+  for (const z of (swb || G.zs)) {
+    if (z.dead || z.fly || (z.st && z.st.under)) continue; if (z.x < x0 - 400 || z.x > x1 + 400 || z.y < y0 - 400 || z.y > y1 + 400) continue;
+    // a zombie drawn joint by joint this frame throws the shadow of its own pose (arms out, legs striding, falling)
+    if (z.m && z.m.v2 && z.an && z.an.jF >= frameNo - 1 && rigs.length < 32 && typeof animaShadow === 'function') { rigs.push(z); continue; }
+    bodies.push(z.x, z.y, z.r, clamp(z.r * 0.17, 1.2, 6)); if (bodies.length > 320) break;
+  }
   if (G.p && G.mode !== 'title' && !G.p.down) bodies.push(G.p.x, G.p.y, G.p.r, 1.75);
   if (NET.started) { const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values()); for (const q of each) if (q && !q.down) bodies.push(q.x, q.y, 9 * PK, 1.75); }
   for (const pr of WD.props) if (!pr.dead) bodies.push(pr.x, pr.y, pr.r, LUX_PH[pr.k] || 0.8);
@@ -714,6 +720,7 @@ function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
       const rx = L / 2 + r * 0.6, ry = r * 0.62, a = Math.atan2(oy, ox), ex = x + ox * 0.5, ey = y + oy * 0.5;
       m.moveTo(ex + Math.cos(a) * rx, ey + Math.sin(a) * rx); m.ellipse(ex, ey, rx, ry, a, 0, TAU); n++;
     }
+    for (const z of rigs) { animaShadow(m, z, ux, uy, UPM); n++; }
     if (n) m.fill();
     // trunks and lamp posts: thin shadows from the foot of the pole, the lamp head's at the end
     m.lineWidth = 0.32 * UPM; m.beginPath(); n = 0;

@@ -237,7 +237,7 @@ function netHostRecv(str) {
       if (Math.hypot(p.tx - p.x, p.ty - p.y) > 220) { p.x = p.tx; p.y = p.ty; }
       break;
     }
-    case 'sh': netCosShot(from, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp); NET.shots.push([from, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp]); if (peer.p) peer.p.flashT = 0.05; break;
+    case 'sh': if (typeof swarmHear === 'function' && WEAPONS[m.w]) swarmHear(+m.x || 0, +m.y || 0, WEAPONS[m.w].F.key); netCosShot(from, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp); NET.shots.push([from, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp]); if (peer.p) peer.p.flashT = 0.05; break;
     case 'h':
       for (const h of m.h || []) {
         const z = NET.zmap.get(h[0]); if (!z || z.dead) continue;
@@ -802,6 +802,7 @@ function netShot(a, x, y, n, S, w) {
 function netCosShot(pid, x, y, a, wid, n, spd, rng, spr) {
   const w = WEAPONS[wid] || WEAPONS[0]; n = clamp(n | 0, 1, 12); spd = spd || w.speed; rng = rng || w.range;
   if (G.bullets.length > 600) return;
+  NET.cosN = (NET.cosN || 0) + n;   // how many of a teammate's rounds this screen has flown
   const cone = w.F.key === 'shotgun' || w.kind === 'flame', gap = 0.11 * Math.min(1, 6 / Math.max(1, n));
   for (let i = 0; i < n; i++) {
     let ang = a; if (n > 1) ang += cone ? (i / (n - 1) - 0.5) * spr : (i - (n - 1) / 2) * gap;

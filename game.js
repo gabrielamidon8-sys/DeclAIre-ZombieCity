@@ -257,7 +257,7 @@ function buildField(F) {
 }
 // which field a zombie follows: by how wide it is (and bosses in the real-world city shove through the small stuff)
 function zBig(z) { return z.boss && ZP > 1; }
-function fieldFor(z) { return zBig(z) ? FFS : z.r >= 16 ? FFB : z.hd && FFP.ready && typeof swarmShoves === 'function' && swarmShoves(z) ? FFP : FF; }
+function fieldFor(z) { return zBig(z) ? FFS : z.r >= 16 ? FFB : z.hd && typeof swarmShoves === 'function' && swarmShoves(z) && FFP.ready ? FFP : FF; }
 function flowDir(x, y, F) {
   F = F || FF;
   if (!F.ready) { if (F !== FF) return flowDir(x, y, FF); return null; }
@@ -754,7 +754,7 @@ function hurtZombie(z, dmg, o) {
       if (reg === 'legL' || reg === 'legR') { const bit = reg === 'legL' ? 1 : 2; if (!((z.legM || 0) & bit)) { z.legM = (z.legM || 0) | bit; z.legK = (z.legK || 0) + 1; } }
       else if (reg === 'armL') z.armK |= 1; else if (reg === 'armR') z.armK |= 2;
     }
-    if (o.kill) dmg = Math.max(dmg, z.hp + (z.shield || 0) + 1);
+    if (o.kill && !z.noKill) dmg = Math.max(dmg, z.hp + (z.shield || 0) + 1);   // (noKill: a test's stand-in that must not die)
   }
   dmg *= 1 - z.dr;
   if (z.shield > 0) { const a = Math.min(z.shield, dmg); z.shield -= a; dmg -= a; }
@@ -2203,7 +2203,7 @@ function update(dt) {
     else if (G.needFS && (stale(FFS) || G.time - FFS.t > 0.6)) buildField(FFS);
     else if (G.needFB && (stale(FFB) || G.time - FFB.t > 0.6)) buildField(FFB);
     else if (G.needFP && (stale(FFP) || G.time - FFP.t > 0.6)) buildField(FFP);
-    let nb = 0, ns = 0, np = 0; for (const z of G.zs) { if (z.dead || z.fly) continue; if (zBig(z)) ns++; else if (z.r >= 16) nb++; else if (z.hd && typeof swarmShoves === 'function' && swarmShoves(z)) np++; } G.needFB = nb > 0; G.needFS = ns > 0; G.needFP = np > 0; }
+    let nb = 0, ns = 0, np = 0; for (const z of G.zs) { if (z.dead || z.fly) continue; if (zBig(z)) ns++; else if (z.r >= 16) nb++; else if (z.hd && z.pushOk && z.pkT > G.time) np++; } G.needFB = nb > 0; G.needFS = ns > 0; G.needFP = np > 0; }
   if (G.cineT > 0) G.cineT -= dt;
   let nf = 0; for (const z of G.zs) if (z.fly && !z.dead) nf++; G.nFly = nf;
   const fr = Math.max(W, H) / ZOOM * 0.75 + 220, far2 = fr * fr, px = G.p.x, py = G.p.y, me = G.p;

@@ -315,11 +315,17 @@ function lkProp(g, m, k, x, y, a, hr, pose) {
 }
 // the riot shield, on the left forearm, out in front
 function lkShield(g, m, pose) {
-  const ex = lkX(JN.elL), ey = lkY(JN.elL), hx = lkX(JN.haL), hy = lkY(JN.haL), a = Math.atan2(hy - ey, hx - ex) + Math.PI / 2;
-  const cx = (ex + hx) / 2, cy = (ey + hy) / 2;
+  // the shield stands across the front of the body (square to the shoulders), held out on the forearm, slightly curved
+  const hx = lkX(JN.haL), hy = lkY(JN.haL), a = Math.atan2(lkY(JN.shR) - lkY(JN.shL), lkX(JN.shR) - lkX(JN.shL));
+  // in front of the chest (whatever the arm is doing), pushed out further when the arm drives it forward
+  const fx = Math.sin(a), fy = -Math.cos(a), sx = lkX(JN.sc), sy = lkY(JN.sc), d0 = m.ad.chD + 0.45, px = sx + fx * d0, py = sy + fy * d0;
+  let reach = Math.max(0, (hx - sx) * fx + (hy - sy) * fy - d0), cx = px + fx * reach * 0.8, cy = py + fy * reach * 0.8, L = m.ad.chW * 1.3;
+  // down on the ground it lies where the hand let go of it
+  const fall = pose[AP.fall]; if (fall > 0.3) { const k = Math.min(1, (fall - 0.3) / 0.5); cx += (hx + 0.6 - cx) * k; cy += (hy - cy) * k; }
   g.save(); g.translate(cx, cy); g.rotate(a);
-  g.fillStyle = 'rgba(40,50,62,0.92)'; g.fillRect(-0.95, -0.12, 1.9, 0.24); g.strokeStyle = '#0e1012'; g.lineWidth = 0.05; g.strokeRect(-0.95, -0.12, 1.9, 0.24);
-  if (LKO.lod <= 1) { g.fillStyle = 'rgba(160,190,220,0.35)'; g.fillRect(-0.85, -0.1, 1.7, 0.06); g.fillStyle = '#e8e8e8'; g.font = 'bold 0.14px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; }
+  g.fillStyle = 'rgba(36,44,56,0.94)'; g.beginPath(); g.moveTo(-L, 0.06); g.quadraticCurveTo(0, -0.22, L, 0.06); g.lineTo(L, 0.22); g.quadraticCurveTo(0, -0.04, -L, 0.22); g.closePath(); g.fill();
+  g.strokeStyle = '#0e1012'; g.lineWidth = 0.05; g.stroke();
+  if (LKO.lod <= 1) { g.strokeStyle = 'rgba(170,200,230,0.45)'; g.lineWidth = 0.04; g.beginPath(); g.moveTo(-L * 0.85, 0.07); g.quadraticCurveTo(0, -0.16, L * 0.85, 0.07); g.stroke(); }
   g.restore();
 }
 // the trailing gut of the legless one

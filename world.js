@@ -754,6 +754,7 @@ function renderChunk(c) {
   drawStreetFurniture(g, c, B, Z.mulberry32(Z.hash32(c.cx * 7919 + c.cy * 104729 + 0x5f)), win);
   // the surface of the street (the texture engine): aggregate in the asphalt, concrete, grass, sand, snow, wear
   if (typeof texelGround === 'function') texelGround(g, c, win);
+  if (typeof texelSplats === 'function') texelSplats(g, c, win);   // one material growing into another, ragged district borders
   t1 = performance.now(); RT.block += t1 - t0; t0 = t1;
   // rivers, ponds and bridges
   if (c.fv) drawWaterArt(g, c, B);

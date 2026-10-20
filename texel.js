@@ -176,6 +176,70 @@ function texelGround(g, c, win) {
   } catch (e) { g.restore(); texelHurt(e); }
   TEXEL.groundMs = (TEXEL.groundMs || 0) * 0.8 + (performance.now() - t0) * 0.2;
 }
+/* ---------- material blending: one surface growing into another ----------
+   Hard edges between materials are what make a procedural city look procedural. On top of the base surfaces, each block
+   gets patches where one material creeps into another: dirt worn into a lawn, weeds pushing up through cracked
+   concrete, oil soaked into the asphalt, sand and snow drifting over the road, ash and rubble spilling off a ruin, moss at
+   the foot of the walls, and where two districts meet, each one's ground bleeding into the other's in ragged tongues
+   instead of a straight line. Every patch is a texture (from the library) seen through a soft, irregular mask made of
+   overlapping falloffs, tinted to its material, so its edge fades and wanders like the real thing. */
+const TX_MAT = {
+  dirt: ['gravel', '#5c4a36', 0.62, 0.5], mud: ['sand', '#3e3226', 0.6, 0.55], weeds: ['turf', '#41592c', 0.7, 0.55], moss: ['turf', '#3c4a2a', 0.55, 0.5],
+  oil: ['macro', '#101012', 0.45, 0.3], tar: ['asphalt', '#1c1d20', 0.55, 0.4], sand: ['sand', '#b09366', 0.7, 0.5], snow: ['snow', '#e6ecf2', 0.8, 0.5],
+  slush: ['snow', '#9aa4ac', 0.6, 0.5], ash: ['gravel', '#3a3836', 0.65, 0.45], rubble: ['gravel', '#6a645a', 0.7, 0.4], soot: ['macro', '#1a1614', 0.5, 0.35],
+  leaves: ['turf', '#6a4a24', 0.55, 0.45], cracked: ['concrete', '#7a7670', 0.5, 0.4]
+};
+// one patch: material k over (x, y), about rx by ry art units, its mask made of n soft blobs
+function texelSplat(g, c, k, x, y, rx, ry, n, R, alpha) {
+  const M = TX_MAT[k]; if (!M) return;
+  const px = c.px || 1, w = rx * 2.6, h = ry * 2.6, Sw = Math.ceil(w * px), Sh = Math.ceil(h * px), S = Math.max(Sw, Sh);
+  if (S < 4 || S > 1400) return;
+  const T = texelScratch(4, S), t = T.g;
+  // the mask: overlapping soft blobs, a ragged soft-edged shape
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU, d = Math.sqrt(R()) * 0.55, bx = (0.5 + Math.cos(a) * d * rx / w * 2) * Sw, by = (0.5 + Math.sin(a) * d * ry / h * 2) * Sh, br = (0.28 + R() * 0.32) * Math.min(Sw, Sh);
+    const gr = t.createRadialGradient(bx, by, br * 0.15, bx, by, br); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    t.fillStyle = gr; t.fillRect(bx - br, by - br, br * 2, br * 2);
+  }
+  // grain in the mask so the edge breaks up into specks instead of a smooth fade
+  t.globalCompositeOperation = 'destination-out'; const np = texelPattern(t, 'grain', 2); if (np) { t.globalAlpha = 0.9; t.fillStyle = np; t.fillRect(0, 0, Sw, Sh); t.globalAlpha = 1; }
+  // the material: its texture, then its colour on top
+  t.globalCompositeOperation = 'source-in'; const pat = texelGroundPat(t, M[0], M[3] * px * 0.5); t.fillStyle = pat || '#808080'; t.fillRect(0, 0, Sw, Sh);
+  t.globalCompositeOperation = 'source-atop'; t.globalAlpha = M[2]; t.fillStyle = M[1]; t.fillRect(0, 0, Sw, Sh); t.globalAlpha = 1; t.globalCompositeOperation = 'source-over';
+  g.globalAlpha = alpha == null ? 0.85 : alpha; g.drawImage(T, 0, 0, Sw, Sh, x - w / 2, y - h / 2, w, h); g.globalAlpha = 1;
+}
+// renderChunk calls this right after texelGround: the blends for this block, by district
+function texelSplats(g, c, win) {
+  const lvl = texelLevel(); if (lvl < 1 || (Q.deco || 1) < 0.6) return;
+  const t0 = performance.now(), ox = c.ox, oy = c.oy, bio = c.bio, bx = ox + ROAD, by = oy + ROAD, snow = bio === 'snow' || win;
+  const R = Z.mulberry32(Z.hash32(c.cx * 92821 + c.cy * 68917 + 0x7e11)), N = lvl >= 3 ? 14 : lvl >= 2 ? 10 : 5;
+  try {
+    g.save();
+    const onRoad = () => R() < 0.5 ? [ox + R() * CH, oy + 8 + R() * (ROAD - 16)] : [ox + 8 + R() * (ROAD - 16), by + R() * BS];
+    const onBlock = () => [bx + 10 + R() * (BS - 20), by + 10 + R() * (BS - 20)];
+    const atCurb = () => { const e = (R() * 4) | 0, t = R(); return e === 0 ? [bx + t * BS, by + 4] : e === 1 ? [bx + 4, by + t * BS] : e === 2 ? [bx + t * BS, oy + ROAD - 3] : [ox + ROAD - 3, by + t * BS]; };
+    const put = (k, at, s, n, a) => { const q = at(); texelSplat(g, c, k, q[0], q[1], s * (0.7 + R() * 0.6), s * (0.7 + R() * 0.6), n || 5, R, a); };
+    for (let i = 0; i < N; i++) {
+      const u = R();
+      if (snow) { if (u < 0.45) put('snow', onRoad, 34, 6, 0.8); else if (u < 0.7) put('slush', onRoad, 26, 5, 0.6); else put('snow', atCurb, 22, 5, 0.85); }
+      else if (bio === 'desert') { if (u < 0.55) put('sand', onRoad, 40, 6, 0.75); else if (u < 0.8) put('sand', atCurb, 26, 5, 0.85); else put('dirt', onBlock, 30, 5, 0.6); }
+      else if (bio === 'suburb') { if (u < 0.3) put('dirt', onBlock, 30, 6, 0.7); else if (u < 0.5) put('leaves', atCurb, 20, 5, 0.7); else if (u < 0.65) put('mud', onBlock, 22, 5, 0.6); else if (u < 0.8) put('weeds', atCurb, 16, 4, 0.75); else put('oil', onRoad, 16, 4, 0.5); }
+      else if (bio === 'ruins' || bio === 'ash' || bio === 'burning') { if (u < 0.3) put('rubble', atCurb, 28, 6, 0.75); else if (u < 0.5) put('ash', onRoad, 34, 6, 0.6); else if (u < 0.65) put('soot', onBlock, 36, 5, 0.6); else if (u < 0.8) put('weeds', onBlock, 18, 4, 0.6); else put('cracked', onBlock, 30, 5, 0.6); }
+      else { if (u < 0.25) put('oil', onRoad, 18, 4, 0.55); else if (u < 0.4) put('tar', onRoad, 26, 5, 0.5); else if (u < 0.55) put('weeds', atCurb, 12, 4, 0.7); else if (u < 0.7) put('dirt', atCurb, 16, 4, 0.55); else if (u < 0.85) put('cracked', onBlock, 26, 5, 0.55); else put('moss', onBlock, 18, 4, 0.5); }
+    }
+    // where two districts meet: each one's ground reaches into the other in ragged tongues
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const nb = distAt(c.cx + dx, c.cy + dy).bio; if (nb === bio) continue;
+      const k = nb === 'snow' ? 'snow' : nb === 'desert' ? 'sand' : nb === 'suburb' ? 'weeds' : nb === 'ruins' || nb === 'ash' || nb === 'burning' ? 'ash' : 'tar';
+      for (let i = 0; i < (lvl >= 2 ? 6 : 3); i++) {
+        const t = R(), d = R() * R() * 140, x = dx ? (dx < 0 ? ox + d : ox + CH - d) : ox + t * CH, y = dy ? (dy < 0 ? oy + d : oy + CH - d) : oy + t * CH;
+        texelSplat(g, c, k, x, y, 26 + R() * 30, 26 + R() * 30, 6, R, 0.7 * (1 - d / 160));
+      }
+    }
+    g.restore();
+  } catch (e) { g.restore(); texelHurt(e); }
+  TEXEL.splatMs = (TEXEL.splatMs || 0) * 0.8 + (performance.now() - t0) * 0.2;
+}
 // a pattern of a library texture, drawn at `scale` (pattern pixels per unit of the context it paints)
 function texelPattern(g, kind, scale) {
   const pat = g.createPattern(texelCanvas(kind), 'repeat'); if (!pat) return null;

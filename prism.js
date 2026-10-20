@@ -84,7 +84,7 @@ const PR_FS = {
     ' vec4 cur = vec4(sum / float(RAYS), open / float(RAYS)); vec4 prev = texture2D(uPrev, v + uShift);\n' +
     ' gl_FragColor = mix(prev, cur, uBlend); }',
   // the final pass: everything together, then the grade
-  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir; uniform vec4 uTr; uniform vec4 uHot[8];\n' +
+  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir; uniform vec4 uTr; uniform vec4 uHot[8]; uniform vec4 uPL[6]; uniform vec3 uPC[6]; uniform float uNPL, uLamp, uSpec;\n' +
     'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub, uRefK, uRbK, uSunK, uRain, uWind, uRelief, uClar, uGlare, uPurk; uniform vec3 uWB, uTS, uTH, uSky, uSun;\n' +
     'const vec3 W3 = vec3(0.2126, 0.7152, 0.0722);\n' +
     'vec3 tap(vec2 p) { return texture2D(uS, p).rgb; }\n' +
@@ -105,6 +105,14 @@ const PR_FS = {
     // relief: the picture's own detail (asphalt grain, roof gravel, cracks, skin) lit from the sun's side
     ' if (uRelief > 0.0) { float ln = dot(tap(uv + vec2(0.0, uIn.y)), W3), ls = dot(tap(uv - vec2(0.0, uIn.y)), W3), le = dot(tap(uv + vec2(uIn.x, 0.0)), W3), lw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
     '  c *= 1.0 - clamp(dot(vec2(le - lw, ln - ls), uSunDir) * uRelief * 6.0, -0.22, 0.22); }\n' +
+    // lamplight on every surface: the picture's own detail read as height, lit by each lamp, fire and flashlight near
+    // it (the side facing the light brighter, the far side darker), with a glint where the street is wet
+    ' if (uNPL > 0.0) { float hn = dot(tap(uv + vec2(0.0, uIn.y)), W3), hs = dot(tap(uv - vec2(0.0, uIn.y)), W3), he = dot(tap(uv + vec2(uIn.x, 0.0)), W3), hw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
+    '  vec3 nr = normalize(vec3((hw - he) * 7.0, (hs - hn) * 7.0, 1.0)); vec3 lsum = vec3(0.0);\n' +
+    '  for (int i = 0; i < 6; i++) { if (float(i) >= uNPL) break; vec2 d = (uPL[i].xy - uv) * vec2(uAsp, 1.0); float dist = length(d); float fall = clamp(1.0 - dist / uPL[i].z, 0.0, 1.0); if (fall <= 0.0) continue;\n' +
+    '   vec3 L = normalize(vec3(d, 0.06 + 0.22 * uPL[i].z)); float rel = dot(nr, L) - L.z; vec3 H = normalize(L + vec3(0.0, 0.0, 1.0)); float sp = pow(max(dot(nr, H), 0.0), 48.0) * uSpec;\n' +
+    '   lsum += uPC[i] * (fall * fall) * uPL[i].w * (rel * 2.2 + sp); }\n' +
+    '  c = max(c + c * lsum * uLamp + lsum * uSpec * 0.12, vec3(0.0)); }\n' +
     // clarity: local contrast against a wider ring, so textures read without oversharpening edges
     ' if (uClar > 0.0) { vec2 o1 = uIn * 5.0, o2 = vec2(uIn.x, -uIn.y) * 5.0; vec3 m = (tap(uv + vec2(o1.x, 0.0)) + tap(uv - vec2(o1.x, 0.0)) + tap(uv + vec2(0.0, o1.y)) + tap(uv - vec2(0.0, o1.y)) + tap(uv + o1 * 0.7) + tap(uv - o1 * 0.7) + tap(uv + o2 * 0.7) + tap(uv - o2 * 0.7)) * 0.125;\n' +
     '  c = max(c + (c - m) * uClar, vec3(0.0)); }\n' +
@@ -319,6 +327,10 @@ function prismGpu() {
   const sun = F.sun, sl = sun && sun.on ? Math.hypot(sun.dx, sun.dy) || 1 : 1;
   gl.uniform1f(u.uRelief, q.sharp && sun && sun.on && prismLevel() >= 2 ? 0.22 * sun.k : 0); gl.uniform2f(u.uSunDir, sun && sun.on ? -sun.dx / sl : 0, sun && sun.on ? sun.dy / sl : 0);
   gl.uniform1f(u.uClar, prismLevel() >= 2 ? 0.16 + 0.06 * night : 0);
+  // lamplight relief: up to six lights from the lighting engine (screen positions), stronger in the dark and on wet streets
+  { const Ls = prismLevel() >= 1 && LUX.live ? F.lights : null, n = Ls ? Math.min(6, Ls.length) : 0, pl = PRISM.plv || (PRISM.plv = new Float32Array(24)), pc = PRISM.plc || (PRISM.plc = new Float32Array(18));
+    for (let i = 0; i < n; i++) { const l = Ls[i]; pl[i * 4] = l.sx / cw; pl[i * 4 + 1] = 1 - l.sy / ch; pl[i * 4 + 2] = Math.min(1.4, l.r / ch * 1.4); pl[i * 4 + 3] = Math.min(1.5, l.i); pc[i * 3] = l.c0 / 255; pc[i * 3 + 1] = l.c1 / 255; pc[i * 3 + 2] = l.c2 / 255; }
+    gl.uniform4fv(u.uPL, pl); gl.uniform3fv(u.uPC, pc); gl.uniform1f(u.uNPL, n); gl.uniform1f(u.uLamp, n ? (0.18 + 0.5 * night) : 0); gl.uniform1f(u.uSpec, n ? clamp(0.15 + (F.wet || 0) * 0.9, 0, 1) * (0.3 + 0.7 * night) : 0); }
   gl.uniform1f(u.uGlare, PRISM.bloomGpu && prismLevel() >= 2 ? 0.05 * night : 0); gl.uniform1f(u.uPurk, LUX.live ? 0.42 * night : 0);
   prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
   prismBind(fp, 'uRf', 5, refl ? T.rfa : T.black); prismBind(fp, 'uRw', 6, refl ? T.rfw : T.black); prismBind(fp, 'uRb', 7, PRISM.bloomGpu ? PRISM.F.b0.t : T.black);

@@ -52,6 +52,7 @@ function fireWeapon(t, ang) {
   if (S.echo) p.queue.push({ t: 0.17, mul: 0.6 });
   if (S.jamEvery && p.shots % S.jamEvery === 0) { p.jamT = 1.2; SFX.jam(); G.texts.push({ x: p.x, y: p.y - 28, t: 0, life: 0.9, s: 'JAMMED', c: '#fff36b' }); }
   SFX.shot(p.weapon.F.key, p.weapon.M.key);
+  if (typeof swarmHear === 'function') swarmHear(p.x, p.y, p.weapon.F.key);   // hordes in earshot come running
 }
 function volley(a, mul) {
   const p = G.p, S = p.S, w = p.weapon, n = S.pellets, kind = S.kind, cone = w.F.key === 'shotgun' || kind === 'flame';

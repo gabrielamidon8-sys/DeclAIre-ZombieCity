@@ -190,6 +190,16 @@ function swarmSteer(z, ux, uy, d) {
       ux = ux * (1 - pull) + cx / cd * pull; uy = uy * (1 - pull) + cy / cd * pull; const m = Math.hypot(ux, uy) || 1; ux /= m; uy /= m;
       k = clamp(H.pace / Math.max(20, z.speed), 0.6, 1.35) * (1 + Math.min(0.2, 0.02 * z.alN));
     } else if (H.surgeT > 0) k *= 1.22;
+    // surrounding you: a horde that is close fans out to either side (each member keeps its own side), so it closes in
+    // as a ring rather than a queue; it converges again for the last few metres
+    if (H.state !== 'march' && H.k >= 12 && z.los && swarmOn('flock')) {
+      const u = 32 * SCL / SCALE_REAL, near = 3 * u, far = 13 * u;
+      if (d > near && d < far) {
+        if (z.encS === undefined) z.encS = (Math.random() * 2 - 1);
+        const f = Math.sin(clamp((d - near) / (far - near), 0, 1) * Math.PI), a = z.encS * 0.95 * f, c = Math.cos(a), sn = Math.sin(a);
+        const nx = ux * c - uy * sn, ny = ux * sn + uy * c; ux = nx; uy = ny; k *= 1 + 0.08 * Math.abs(z.encS) * f;
+      }
+    }
   }
   z.swk = k; SW_ST.ux = ux; SW_ST.uy = uy; SW_ST.k = k; return SW_ST;
 }
@@ -286,6 +296,14 @@ function swarmUnstick() {
     if (++z.swStill >= 4) { const s = spawnPos(); z.x = s.x; z.y = s.y; z.vx = z.vy = z.kvx = z.kvy = 0; z.swStill = 0; z.swPx = z.x; z.swPy = z.y; SWARM.stats.unstuck = (SWARM.stats.unstuck || 0) + 1; }
   }
 }
+// gunfire is loud: a marching horde within earshot of a shot turns and surges toward it (a pistol carries about 60
+// metres, a rifle 90, a sniper rifle 120; a flamethrower hardly at all)
+const SW_EAR = { pistol: 60, smg: 55, rifle: 90, shotgun: 80, sniper: 120, revolver: 75, lmg: 95, burst: 90, launcher: 110, flamer: 25 };
+function swarmHear(x, y, fk) {
+  if (!swarmUp() || NET.role === 'client' || !SWARM.hordes.length) return;
+  const R = (SW_EAR[fk] || 60) * 32 * SCL / SCALE_REAL;
+  for (const Hd of SWARM.hordes) if (Hd.state === 'march' && Hd.k && Math.hypot(Hd.cx - x, Hd.cy - y) < R) { Hd.state = 'surge'; Hd.surgeT = 3; Hd.heard = 1; SWARM.stats.heard = (SWARM.stats.heard || 0) + 1; }
+}
 // each horde: where its middle is, how fast it goes, and when it stops marching and charges
 function swarmHordes(dt) {
   if (!SWARM.hordes.length) return;
@@ -312,11 +330,45 @@ function swarmHordes(dt) {
 }
 
 /* ---------- vehicles ---------- */
-// members of a horde big enough to move a car go straight through parked cars instead of round them
-function swarmShoves(z) { const hd = SWARM.hb.get(z.hd); return !!hd && swarmPushOn() && hd.k >= 30; }
+// When a crowd pushes a vehicle, and when it goes round. All of these must hold for a zombie to put its shoulder to a car:
+//  · it is one of a horde of at least SW_PUSH_N (enough bodies to matter),
+//  · the player it is after is within SW_PUSH_D metres of it,
+//  · a vehicle stands in the straight line between them (it is in the way, not off to one side),
+//  · and that vehicle is within SW_PUSH_R metres of the player (the player is at the car, hiding behind it or beside it).
+// Otherwise a car is just an obstacle: the horde walks round it like anyone else, however many of them there are.
+const SW_PUSH_N = 30, SW_PUSH_D = 18, SW_PUSH_R = 9;
+// is there a vehicle on the straight line between two points? (the nearest one, or null)
+function swarmCarBetween(x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy); if (len < 1) return null;
+  const rs = rectsNear((x0 + x1) / 2, (y0 + y1) / 2, len / 2 + 4); let best = null, bt = 2;
+  for (let i = 0; i < rs.length; i++) {
+    const r = rs[i]; if (r.k !== 'car') continue;
+    let tn = 0, tf = 1;
+    if (Math.abs(dx) < 1e-9) { if (x0 < r.x || x0 > r.x + r.w) continue; } else { const a = (r.x - x0) / dx, b = (r.x + r.w - x0) / dx; tn = Math.max(tn, Math.min(a, b)); tf = Math.min(tf, Math.max(a, b)); }
+    if (Math.abs(dy) < 1e-9) { if (y0 < r.y || y0 > r.y + r.h) continue; } else { const a = (r.y - y0) / dy, b = (r.y + r.h - y0) / dy; tn = Math.max(tn, Math.min(a, b)); tf = Math.min(tf, Math.max(a, b)); }
+    if (tn <= tf && tn < bt) { bt = tn; best = r; }
+  }
+  return best;
+}
+// may this zombie push a vehicle right now? (worked out a few times a second, against the player it is after)
+function swarmPushOk(z) {
+  if (z.pkT > G.time) return !!z.pushOk;
+  z.pkT = G.time + 0.3 + Math.random() * 0.2; z.pushOk = false; z.pushR = null;
+  const hd = z.hd ? SWARM.hb.get(z.hd) : null, p = G.p;
+  if (!hd || !p || hd.k < SW_PUSH_N || !swarmPushOn() || NET.role === 'client') return false;
+  const u = 32 * SCL / SCALE_REAL, d = Math.hypot(p.x - z.x, p.y - z.y);
+  if (d > SW_PUSH_D * u) return false;
+  const r = swarmCarBetween(z.x, z.y, p.x, p.y); if (!r) return false;
+  const cx = clamp(p.x, r.x, r.x + r.w), cy = clamp(p.y, r.y, r.y + r.h);
+  if (Math.hypot(p.x - cx, p.y - cy) > SW_PUSH_R * u) return false;
+  z.pushOk = true; z.pushR = r; SWARM.stats.pushOk = (SWARM.stats.pushOk || 0) + 1;
+  return true;
+}
+// members of a horde big enough to move a car go straight through a parked car in their way, when you are at it
+function swarmShoves(z) { return !!z.hd && swarmPushOk(z); }
 // pressed against a vehicle that is moving, nearly moving, or with enough of the horde behind it: no going round
 function swarmPushing(z) {
-  if (!(z.pt > 0) || !z.pv || !z.pv.ph) return false;
+  if (!(z.pt > 0) || !z.pv || !z.pv.ph || !z.pushOk) return false;
   const P = z.pv.ph, S = P.S; if (P.vx || P.vy) return true;
   const need = S.mu * S.along * S.M * SW_G;
   if (P.F > need * 0.45) return true;
@@ -339,6 +391,8 @@ function swarmZF(z) {
 // a zombie walked into a vehicle: if it is leaning into it, it is pushing
 function swarmPress(z, r, nx, ny, vx, vy) {
   if (!swarmPushOn() || z.fly || z.illusion || NET.role === 'client') return;
+  // only a zombie allowed to push (see above) leans in; a boss always does
+  if (!z.boss && !z.pushOk) return;
   const v = Math.hypot(vx, vy); if (v < 5) return;
   if (-(vx * nx + vy * ny) / v < 0.3) return;
   z.pv = r; z.pd = 0; z.pt = 0.3; z.pnx = -nx; z.pny = -ny;

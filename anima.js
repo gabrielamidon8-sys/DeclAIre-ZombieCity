@@ -187,13 +187,15 @@ function aGait(o, ph, t, P, D, k, dir) {
 }
 // the arms in motion, by how the zombie holds them
 function aArms(o, ph, t, P, D, k) {
+  if (P.gait === 'crawl' || P.gait === 'scuttle') return;   // on all fours (or hauling itself along) the gait moves the arms
   const a = ph * Math.PI * 2, sw = P.armSw * (0.5 + 0.5 * k), c = A_COS(a), s1 = P.seed, n1 = aN(t * 0.8, s1), n2 = aN(t * 0.8, s1 + 3);
   const set = (side, y, p, e) => { if (side < 0) { o[AP.alY] = y; o[AP.alP] = p; o[AP.alE] = e; } else { o[AP.arY] = y; o[AP.arP] = p; o[AP.arE] = e; } };
-  const dangle = side => set(side, 0.34 + (side < 0 ? n1 : n2) * 0.04, -1.22 + sw * 0.4 * (side < 0 ? -c : c) * (P.stiff > 0.7 ? 0.6 : 1), 0.3 + 0.18 * Math.max(0, side < 0 ? -c : c));
+  // hanging arms swing past the vertical both ways (a pitch beyond -90 degrees points back), elbow bending on the way forward
+  const dangle = side => set(side, 0.34 + (side < 0 ? n1 : n2) * 0.04, -1.36 + sw * 0.5 * (side < 0 ? -c : c) * (P.stiff > 0.7 ? 0.6 : 1), 0.3 + 0.22 * Math.max(0, side < 0 ? -c : c));
   const reach = (side, low) => set(side, 0.2 + (side < 0 ? n1 : n2) * 0.06, -0.34 - (low || 0) + 0.1 * (side < 0 ? c : -c) + (side < 0 ? n1 : n2) * 0.05, 0.42 + (side < 0 ? n2 : n1) * 0.08);
   switch (P.arms) {
     case 'reach': reach(-1, P.side < 0 ? P.asym * 0.5 : 0); reach(1, P.side > 0 ? P.asym * 0.5 : 0); o[AP.grip] = 0.4; break;
-    case 'pump': set(-1, 0.06, -1.0 - 0.55 * c * k, 1.5); set(1, 0.06, -1.0 + 0.55 * c * k, 1.5); o[AP.grip] = 0.8; break;
+    case 'pump': set(-1, 0.1, -1.5 - 0.62 * c * Math.min(1.4, k), 1.65); set(1, 0.1, -1.5 + 0.62 * c * Math.min(1.4, k), 1.65); o[AP.grip] = 0.8; break;
     case 'claw': set(-1, 0.34 + n1 * 0.05, -0.55 + 0.1 * c, 1.2 + n2 * 0.1); set(1, 0.34 + n2 * 0.05, -0.55 - 0.1 * c, 1.2 + n1 * 0.1); o[AP.grip] = 0; break;
     case 'flail': set(-1, 0.4 + 0.42 * A_SIN(t * 2.3 + s1), -0.8 + 0.6 * A_SIN(t * 3.1 + s1), 0.5 + 0.4 * A_SIN(t * 4.2)); set(1, 0.4 + 0.42 * A_SIN(t * 2.7 + s1 + 1), -0.8 + 0.6 * A_SIN(t * 2.9 + s1 + 2), 0.5 + 0.4 * A_SIN(t * 3.7 + 1)); break;
     case 'one': dangle(-1); reach(1, 0); o[AP.grip] = 0.3; break;
@@ -221,15 +223,19 @@ function aHead(o, t, P, k) {
   }
   o[AP.jaw] = Math.max(0, 0.18 + 0.2 * aN(t * 1.4, s + 5));
 }
-// legless: hauls itself along on its arms, the torso flat to the ground and the head up
+// legless: hauls itself along on its arms, the torso flat to the ground and the head up. Each arm reaches out ahead
+// (lifted, opening), plants, and drags the body past it (the hand sweeping back to the side, the elbow folding); the
+// two arms take turns and the shoulders roll toward the one that is reaching
 function aCrawl(o, ph, t, P, D, k) {
-  const a = ph * Math.PI * 2, c = A_COS(a), sn = A_SIN(a);
-  o[AP.lean] = 1.32; o[AP.hunch] = -0.1; o[AP.headP] = 1.15 + 0.08 * sn; o[AP.crouch] = 0;
-  // one arm reaches forward while the other pulls back under the body
-  o[AP.alY] = 0.35 + 0.1 * c; o[AP.alP] = -0.15 - 0.85 * Math.max(0, -c) - 0.2 * Math.max(0, c); o[AP.alE] = 0.4 + 0.6 * Math.max(0, -c);
-  o[AP.arY] = 0.35 - 0.1 * c; o[AP.arP] = -0.15 - 0.85 * Math.max(0, c) - 0.2 * Math.max(0, -c); o[AP.arE] = 0.4 + 0.6 * Math.max(0, c);
-  o[AP.twist] = 0.18 * c * P.twist * 4; o[AP.hipY] = -0.1 * c; o[AP.leanS] = 0.06 * sn;
-  o[AP.offX] = -0.12 * Math.abs(sn) * k; o[AP.llS] = -0.4; o[AP.lrS] = -0.4; o[AP.grip] = 0.6;
+  const a = ph * Math.PI * 2, sn = A_SIN(a);
+  o[AP.lean] = 1.32; o[AP.hunch] = -0.1; o[AP.headP] = 1.1 + 0.1 * A_SIN(a * 2); o[AP.crouch] = 0;
+  for (let side = -1; side <= 1; side += 2) {
+    const q = (ph + (side > 0 ? 0.5 : 0)) % 1, b = side < 0 ? AP.alY : AP.arY;
+    if (q < 0.42) { const f = aSm(q / 0.42); o[b] = 1.0 - 0.8 * f; o[b + 1] = -0.55 + 0.45 * f + 0.15 * A_SIN(f * Math.PI); o[b + 2] = 1.1 - 0.85 * f; }
+    else { const f = aSm((q - 0.42) / 0.58); o[b] = 0.2 + 0.85 * f; o[b + 1] = -0.1 - 0.75 * f; o[b + 2] = 0.25 + 0.9 * f; }
+  }
+  o[AP.twist] = 0.28 * sn; o[AP.hipY] = -0.12 * sn; o[AP.leanS] = 0.07 * sn;
+  o[AP.offX] = -0.1 * Math.abs(A_COS(a)) * k; o[AP.llS] = -0.4; o[AP.lrS] = -0.4; o[AP.grip] = 0.7; o[AP.jaw] = 0.25 + 0.2 * Math.abs(sn);
 }
 // on all fours: the arms become front legs
 function aScuttle(o, ph, t, P, D, k) {
@@ -952,6 +958,8 @@ function animaDraw(z, lod, rank, s, e, f, a) {
     if (live) {
       ctx.setTransform(co, si, -si, co, e + x * s, f + y * s);
       lookDraw(ctx, z.m, A.pose, { lod: lod, t: G.time, z: z, light: aLight(z), flash: z.flash, minion: z.minion, burn: z.burnT > 0, frost: z.frostK, glow: 1 });
+      // its skeleton, kept for the lighting engine (the shadow of this exact pose)
+      (A.J || (A.J = new Float32Array(NJ * 3))).set(ANIMA.J); A.jF = frameNo;
       ANIMA.live++;
       return true;
     }
@@ -980,13 +988,29 @@ function aLight(z) {
         const Lt = LUX.lights[i]; if (!Lt) continue; const dx = Lt.x - z.x, dy = Lt.y - z.y, d2 = dx * dx + dy * dy, rr = (Lt.r || 100); if (d2 > rr * rr) continue;
         const w = (Lt.i || 1) * (1 - Math.sqrt(d2) / rr); if (w > best) { best = w; const dl = Math.sqrt(d2) || 1; bx = dx / dl; by = dy / dl; bc = Lt; }
       }
-      if (bc && best * (1 - day) > 0.06) { lx = bx; ly = by; col = Math.round(clamp(bc.c0, 0, 1) * 255) + ',' + Math.round(clamp(bc.c1, 0, 1) * 255) + ',' + Math.round(clamp(bc.c2, 0, 1) * 255); k = Math.min(0.9, 0.35 + best * 0.6); rim = Math.min(1, 0.4 + best * 0.9); }
+      if (bc && best * (1 - day) > 0.06) { lx = bx; ly = by; col = Math.round(clamp(bc.c0, 0, 255)) + ',' + Math.round(clamp(bc.c1, 0, 255)) + ',' + Math.round(clamp(bc.c2, 0, 255)); k = Math.min(0.9, 0.35 + best * 0.6); rim = Math.min(1, 0.4 + best * 0.9); }
     }
   }
   // into the zombie's frame (it is drawn turned to face its way)
   const c = Math.cos(-z.ang), s = Math.sin(-z.ang);
   L.x = lx * c - ly * s; L.y = lx * s + ly * c; L.c = col; L.k = k; L.rim = rim;
   return L;
+}
+
+// the shadow a posed zombie throws: each part of its skeleton moved along the light by its height (the lighting engine
+// adds these to its shadow shape; ux, uy is the shadow's offset per metre of height)
+const A_SHJ = [[JN.pel, JN.chest, 0.62], [JN.chest, JN.sc, 0.7], [JN.sc, JN.head, 0.4], [JN.shL, JN.elL, 0.2], [JN.elL, JN.haL, 0.17], [JN.shR, JN.elR, 0.2], [JN.elR, JN.haR, 0.17], [JN.hipL, JN.knL, 0.24], [JN.knL, JN.ftL, 0.2], [JN.hipR, JN.knR, 0.24], [JN.knR, JN.ftR, 0.2]];
+function animaShadow(g, z, ux, uy, UPM) {
+  const J = z.an.J; if (!J) return;
+  const c = Math.cos(z.ang), s = Math.sin(z.ang), r = z.r, k = r / UPM;
+  for (const sg of A_SHJ) {
+    const a = sg[0] * 3, b = sg[1] * 3, rad = sg[2] * r;
+    for (let t = 0; t <= 1.001; t += 0.5) {
+      const jx = J[a] + (J[b] - J[a]) * t, jy = J[a + 1] + (J[b + 1] - J[a + 1]) * t, jz = J[a + 2] + (J[b + 2] - J[a + 2]) * t;
+      const wx = z.x + (jx * c - jy * s) * r + ux * jz * k, wy = z.y + (jx * s + jy * c) * r + uy * jz * k;
+      g.moveTo(wx + rad, wy); g.arc(wx, wy, rad, 0, TAU);
+    }
+  }
 }
 
 /* ---------- each frame ---------- */
