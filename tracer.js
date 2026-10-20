@@ -40,7 +40,7 @@ function tracerRgb(col) { let v = trRgb.get(col); if (v) return v; const n = par
 // a bullet leaves the gun: which style it flies in (the bright tracer rounds of a machine gun, a teammate's rounds)
 function tracerTag(b, shotNo) {
   const P = TR_GUN[b.fk] || TR_GUN.pistol;
-  b.tr = P.every ? ((shotNo == null ? (Math.random() * P.every) | 0 : shotNo) % P.every === 0) : true;
+  b.tr = P && P.every ? ((shotNo == null ? (Math.random() * P.every) | 0 : shotNo) % P.every === 0) : true;
 }
 // every frame: remember where each round has been (for curved trails and heat), age the vapour trails and puffs
 function tracerTick(dt) {
@@ -234,7 +234,12 @@ function tracerCheck() {
   return '';
 }
 function tracerNotes() { const off = Object.keys(TRACER.partOff).filter(p => TRACER.partOff[p] > performance.now()); return off.length ? 'resting: ' + off.join(', ') : ''; }
-function tracerRepair() { TRACER.partOff = {}; TRACER.errT.length = 0; TRACER.offUntil = 0; TRACER.wakes.length = 0; TRACER.puffs.length = 0; TRACER.soft = null; trSoftT.clear(); }
+// a repair puts back any gun style that went bad (from the copy kept at start) and clears the trails; a part that was
+// switched off rests out its minute, so a fault that comes straight back cannot thrash on and off
+const TR_GUN0 = JSON.parse(JSON.stringify(TR_GUN));
+function tracerRepair() {
+  for (const k in TR_GUN0) { const P = TR_GUN[k]; if (!P || typeof P !== 'object' || !(P.len >= 0) || !(P.w > 0)) TR_GUN[k] = Object.assign({}, TR_GUN0[k]); }
+  TRACER.errT.length = 0; TRACER.offUntil = 0; TRACER.wakes.length = 0; TRACER.puffs.length = 0; TRACER.soft = null; trSoftT.clear(); }
 function tracerReset() { TRACER.wakes.length = 0; TRACER.puffs.length = 0; }
 function tracerHurt(e, part) {
   const now = performance.now(); coreHurt('TRACER', e); try { console.error(e); } catch (x) { }

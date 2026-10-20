@@ -6058,7 +6058,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.970';
+const ZC_VERSION = '1.9.980';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -6792,7 +6792,8 @@ function hurtZombie(z, dmg, o) {
   if (z.illusion) { killZombie(z); return true; }
   // the 2.0 zombies: where it was hit (for the hit reaction, the death and a crippled limb), and a lethal hit is lethal
   if (z.m.v2) {
-    const reg = o.reg || (o.src === 'blast' || o.src === 'a10' ? 'torso' : null);
+    // no region given (a dash, a homing round, a blast): a body blow, at most every 0.35 s for damage that keeps coming
+    const reg = o.reg || ((o.src === 'blast' || o.src === 'a10' || o.src === 'dash' || o.src === 'bullet') && !(z.hitT > G.time - 0.35) ? 'torso' : null);
     if (reg) { z.hitReg = reg; z.hitT = G.time; z.hitP = o.P != null ? o.P : (o.src === 'blast' || o.src === 'a10' ? 2 : 0.6); if (o.kx || o.ky) z.hitA = Math.atan2(o.ky, o.kx); }
     z.lastSrc = o.src || 'bullet';
     if (o.cripple) {
@@ -8540,8 +8541,8 @@ coreAdd({ name: 'WX', kind: 'world', does: 'Weather and atmosphere: rain, storms
 coreAdd({ name: 'LIFE', kind: 'world', does: 'Living city: trees, grass and bushes that sway, birds, props you can kick, explosive barrels, fires and car alarms.', state: () => 'on', level: () => WD.act.length + ' plants' });
 coreAdd({ name: 'SFX', kind: 'audio', does: 'Sound engine: synthesizes every gunshot, impact, kill chain and ambience live, with echoes that change by district.', state: () => SFX.sfxOn && SFX.sfxOn() === false ? 'muted' : 'on', level: () => '' });
 coreAdd({ name: 'RADIO', kind: 'audio', does: 'FM 66.6: writes and renders its own songs ahead of time on a separate audio thread, 7 channels of 35 songs, or your own music.', state: () => 'on', level: () => { try { return SFX.nowPlaying().name || ''; } catch (e) { return ''; } } });
-coreAdd({ name: 'MUTAGEN', kind: 'data', does: 'Mutation engine: builds the 1,000 zombie mutations (strain, ability, size, colors) and draws each one.', state: () => 'on', level: () => MUTS.length + ' mutations' });
-coreAdd({ name: 'BOSS', kind: 'sim', does: 'Boss engine: 50 bosses with attack patterns that mutate into new forms mid-fight, plus the Snatcher and the Overlord.', state: () => G.boss && !G.boss.dead ? 'fighting' : 'idle', level: () => '' });
+coreAdd({ name: 'MUTAGEN', kind: 'data', does: 'Mutation engine: builds the 2.0 roster (the first 50 regular zombies, each with its own name, look, build, walk, ability and strength) and keeps the 1,000 old mutations resting until they are rebuilt.', state: () => 'on', level: () => (typeof ZR_ONLY !== 'undefined' && ZR_ONLY ? ZR.length + ' zombies (2.0), ' + (MUTS.length - ZR.length) + ' resting' : MUTS.length + ' mutations') });
+coreAdd({ name: 'BOSS', kind: 'sim', does: 'Boss engine: 50 bosses with attack patterns that mutate into new forms mid-fight, plus the Snatcher and the Overlord; resting until the bosses are rebuilt for 2.0.', state: () => G.boss && !G.boss.dead ? 'fighting' : 'idle', level: () => (typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF ? 'off until rebuilt' : '') });
 coreAdd({ name: 'ACCOUNT', kind: 'data', does: 'Accounts and cloud saves: encrypts each save on the device (AES-GCM, PBKDF2) and merges progress across devices.', state: () => typeof ACCT !== 'undefined' ? ACCT.status : 'off', level: () => '' });
 coreAdd({ name: 'FILTER', kind: 'data', does: 'Name filter: keeps slurs, threats, personal details and fake studio names out of every name shown.', state: () => 'on', level: () => '' });
 
@@ -13306,7 +13307,7 @@ function luxExport(amb, use) {
 }
 
 coreAdd({
-  name: 'LUX', kind: 'render', does: 'Lighting engine: ray-traced shadows from every lamp, fire, muzzle flash, headlight and the flashlight; lamps with heights, so cars, trees, bushes and bodies throw shadows away from them; a moving sun as an area light whose shadows soften towards the tip; visible beams in rain and fog; path-traced bounce light, day and night, bloom.',
+  name: 'LUX', kind: 'render', does: 'Lighting engine: ray-traced shadows from every lamp, fire, muzzle flash, headlight and the flashlight; lamps with heights, so cars, trees, bushes and bodies throw shadows away from them; zombies throw shadows shaped by their pose, arms and legs moving with them; a moving sun as an area light whose shadows soften towards the tip; visible beams in rain and fog; path-traced bounce light, day and night, bloom.',
   state: () => SET.lux === 'off' ? 'off' : LUX.offUntil && performance.now() < LUX.offUntil ? 'paused' : LUX.live ? 'on' : 'idle',
   level: () => ['glow only', 'few shadows', 'shadows + bloom', 'soft shadows', 'full'][LUX.level] + (LUX.giOn ? ', bounce light' + (typeof PRISM !== 'undefined' && PRISM.giGpu ? ' (GPU)' : ' (CPU)') : '') + (CORE.frame.sun.on ? ', sun' : ''),
   canTrim: () => LUX.level > 0, trim: () => { if (LUX.adapt <= -3) return false; LUX.adapt--; LUX.A = null; return true; }, boost: () => { if (LUX.adapt >= 0) return false; LUX.adapt++; LUX.A = null; return true; },
@@ -13698,7 +13699,7 @@ function prismHurt(e) {
   if (PRISM.gl && !PRISM.gl.isContextLost() && (!PRISM.P.final || PRISM.errT.length === 2)) prismBuild();
 }
 coreAdd({
-  name: 'PRISM', kind: 'render', does: 'Shader engine: GPU shaders (WebGL 2 or 1) with a CPU fallback for path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, color temperature and grading, vignette and film grain.',
+  name: 'PRISM', kind: 'render', does: 'Shader engine: GPU shaders (WebGL 2 or 1) with a CPU fallback for path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, color temperature and grading, vignette and film grain; in the final pass, relief and highlights from the six nearest lamps, fires and flashes on every surface.',
   state: () => PRISM.mode === 'gpu' ? 'GPU' + (PRISM.v2 ? ' (WebGL 2)' : ' (WebGL 1)') : PRISM.mode === 'cpu' ? 'CPU' + (PRISM.reason ? ': ' + PRISM.reason : '') : PRISM.mode,
   level: () => PRISM.mode === 'gpu' ? ['color', 'bloom + sharpen', 'bounce light + shafts', 'full'][PRISM.lvl] + ', ' + PRISM.temp + ' K' : PRISM.temp + ' K',
   sec: prismWatch, canTrim: () => prismLevel() > 0,
@@ -14239,7 +14240,7 @@ function texelWatch() {
   else { TEXEL.bad = Math.max(0, TEXEL.bad - 1); }
 }
 coreAdd({
-  name: 'TEXEL', kind: 'render', does: 'Texture and resolution engine: procedural textures for zombies, the player and the city, sprites supersampled and scaled to the screen\'s exact sharpness, memory and error repair.',
+  name: 'TEXEL', kind: 'render', does: 'Texture and resolution engine: procedural textures for zombies, the player and the city; blended ground materials (asphalt, concrete, grass, dirt, sand, rubble) with soft edges and districts that bleed into each other; cloth, skin and grime on the 2.0 zombies; sprites supersampled and scaled to the screen\'s exact sharpness, memory and error repair.',
   state: () => TEXEL.offUntil && performance.now() < TEXEL.offUntil ? 'paused' : texelLevel() ? 'on' : 'plain',
   level: () => ['plain', 'textured', 'textured, rim, 1.5x', 'full, 2x'][texelLevel()],
   sec: texelWatch, canTrim: () => texelLevel() > 0, trim: () => { if (TEXEL.adapt <= -3) return false; TEXEL.adapt--; return true; }, boost: () => { if (TEXEL.adapt >= 0) return false; TEXEL.adapt++; return true; }
@@ -15318,7 +15319,7 @@ function tracerRgb(col) { let v = trRgb.get(col); if (v) return v; const n = par
 // a bullet leaves the gun: which style it flies in (the bright tracer rounds of a machine gun, a teammate's rounds)
 function tracerTag(b, shotNo) {
   const P = TR_GUN[b.fk] || TR_GUN.pistol;
-  b.tr = P.every ? ((shotNo == null ? (Math.random() * P.every) | 0 : shotNo) % P.every === 0) : true;
+  b.tr = P && P.every ? ((shotNo == null ? (Math.random() * P.every) | 0 : shotNo) % P.every === 0) : true;
 }
 // every frame: remember where each round has been (for curved trails and heat), age the vapour trails and puffs
 function tracerTick(dt) {
@@ -15512,7 +15513,12 @@ function tracerCheck() {
   return '';
 }
 function tracerNotes() { const off = Object.keys(TRACER.partOff).filter(p => TRACER.partOff[p] > performance.now()); return off.length ? 'resting: ' + off.join(', ') : ''; }
-function tracerRepair() { TRACER.partOff = {}; TRACER.errT.length = 0; TRACER.offUntil = 0; TRACER.wakes.length = 0; TRACER.puffs.length = 0; TRACER.soft = null; trSoftT.clear(); }
+// a repair puts back any gun style that went bad (from the copy kept at start) and clears the trails; a part that was
+// switched off rests out its minute, so a fault that comes straight back cannot thrash on and off
+const TR_GUN0 = JSON.parse(JSON.stringify(TR_GUN));
+function tracerRepair() {
+  for (const k in TR_GUN0) { const P = TR_GUN[k]; if (!P || typeof P !== 'object' || !(P.len >= 0) || !(P.w > 0)) TR_GUN[k] = Object.assign({}, TR_GUN0[k]); }
+  TRACER.errT.length = 0; TRACER.offUntil = 0; TRACER.wakes.length = 0; TRACER.puffs.length = 0; TRACER.soft = null; trSoftT.clear(); }
 function tracerReset() { TRACER.wakes.length = 0; TRACER.puffs.length = 0; }
 function tracerHurt(e, part) {
   const now = performance.now(); coreHurt('TRACER', e); try { console.error(e); } catch (x) { }
@@ -16419,7 +16425,7 @@ function swarmReset() {
 function swarmHordeFx(n, k, ang) { swarmAnnounce(n | 0, k === 2 ? 'drove' : k === 1 ? 'horde' : 'pack', (+ang || 0) / 100, G.p); }
 coreAdd({
   name: 'SWARM', kind: 'sim', ver: 1, needs: ['FLOW', 'PERF', 'TEXEL'], provides: ['crowd', 'hordes', 'zombieLod', 'vehiclePhysics'],
-  does: 'Crowd engine: hordes and droves of hundreds that gather out of sight, march together at one pace and surge when they see you; zombies moving the same way fall in step and go faster together; bodies push each other by weight and a crowd pushing through each other can shove a car (about 50 zombies) or a semi (about 460); zombie levels of detail so 500 and more can be on screen; one shared grid that the whole game finds zombies with.',
+  does: 'Crowd engine: hordes and droves of hundreds that gather out of sight, march together at one pace and surge when they see you; zombies moving the same way fall in step and go faster together; bodies push each other by weight and a crowd pushing through each other can shove a car (about 50 zombies) or a semi (about 460), but only when 30 or more are after you within 18 m and the vehicle stands between you and them within 9 m of you, otherwise they go round it; hordes spread out to surround you and come to gunfire they hear; zombie levels of detail so 500 and more can be on screen; one shared grid that the whole game finds zombies with.',
   state: () => swarmUp() ? (SWARM.hordes.length ? 'hordes' : 'on') : 'off',
   level: () => SWARM.n + ' zombies (cap ' + SWARM.capLive + '/' + SWARM.cap + '), ' + SWARM.hordes.length + ' hordes, ' + SWDYN.size + ' vehicles moved' + (SWARM.adapt ? ', detail ' + SWARM.adapt : '') + ', drawn ' + PERF.lodN.join('/'),
   canTrim: () => SWARM.adapt > -3, trim: () => { if (SWARM.adapt <= -3) return false; SWARM.adapt--; return true; }, boost: () => { if (SWARM.adapt >= 0) return false; SWARM.adapt++; return true; },
@@ -16563,6 +16569,7 @@ ABIL.pounce = function (z, dt, dx, dy, d, c) {
 // the ones with no special mutation still have a move: a brace and a lurch at you from just out of reach
 ABIL.none = function (z, dt, dx, dy, d, c) {
   if (!z.m.v2) return;
+  if (z.legK >= 2 || z.stun > 0) { z.leapK = 0; z.windK = 0; z.st.nl = z.st.nw = 0; return; }
   const s = z.st;
   if (s.nl > 0) { s.nl -= dt; z.leapK = 1; z.abMul = (z.abMul || 1) * 1.9; if (s.nl <= 0) z.leapK = 0; return; }
   if (s.nw > 0) { s.nw -= dt; z.windK = 1; c.move = Math.min(c.move, 0.25); if (s.nw <= 0) { z.windK = 0; s.nl = 0.32; } return; }
@@ -17376,7 +17383,7 @@ function animaTick(z, dt, full) {
   else { A.vx += (z.vx - A.vx) * Math.min(1, dt * 10); A.vy += (z.vy - A.vy) * Math.min(1, dt * 10); }
   A.px = z.x; A.py = z.y;
   // how fast it is turning (for turning on the spot)
-  if (dt > 0) { const da = ((z.ang - (A.la == null ? z.ang : A.la) + Math.PI) % TAU + TAU) % TAU - Math.PI; A.angV += (da / dt - (A.angV || 0)) * Math.min(1, dt * 8); } A.la = z.ang;
+  if (dt > 0) { const da = ((z.ang - (A.la == null ? z.ang : A.la) + Math.PI) % TAU + TAU) % TAU - Math.PI; A.angV = (A.angV || 0) + (da / dt - (A.angV || 0)) * Math.min(1, dt * 8); } A.la = z.ang;
   // a roar when it first gets you in sight (now and then), and when its horde surges
   const tg0 = aTarget(z);
   if (tg0 && !A.roared && !(A.one >= 0) && (tg0.x - z.x) * (tg0.x - z.x) + (tg0.y - z.y) * (tg0.y - z.y) < 340 * 340) { A.roared = true; if (Math.random() < 0.3) animaPlay(z, AC.roar); }
@@ -23877,7 +23884,7 @@ function zFlags(z) {
   return (z.boss ? 1 : 0) | (z.fly ? 2 : 0) | (z.minion ? 4 : 0) | (z.child ? 8 : 0) | (z.illusion ? 16 : 0) | (z.st.under ? 32 : 0) | (z.st.down > 0 ? 64 : 0) | (z.st.phased ? 128 : 0)
     | (z.frozen && z.stun > 0 ? 256 : 0) | (z.burnT > 0 ? 512 : 0) | (z.poisonT > 0 ? 1024 : 0) | (z.slowT > 0 ? 2048 : 0) | (z.buffT > 0 ? 4096 : 0) | (z.warn > 0 ? 8192 : 0) | (z.st.fuse > 0 ? 16384 : 0) | (z.st.surgeT > 0 ? 32768 : 0)
     // the 2.0 zombies' animation cues: swinging, mid-leap or charging, a limp, a crawl
-    | (z.atkW > G.time - 0.3 ? 65536 : 0) | (z.leapK || z.st.charge > 0 || z.st.lt > 0 ? 131072 : 0) | (z.legK >= 2 ? 524288 : z.legK ? 262144 : 0);
+    | (z.atkW > G.time - 0.3 ? 65536 : 0) | (z.leapK || z.st.charge > 0 || z.st.lt > 0 ? 131072 : 0) | (z.legK >= 2 ? 524288 : z.legK ? 262144 : 0) | (z.windK ? 1048576 : 0);
 }
 const NUM = v => typeof v === 'number' && isFinite(v);
 function plainNums(o) { const r = {}; if (!o) return r; for (const k in o) { const v = o[k]; if (NUM(v)) r[k] = Math.round(v * 100) / 100; else if (typeof v === 'boolean') r[k] = v; else if (Array.isArray(v) && v.length < 40 && v.every(NUM)) r[k] = v.map(x => Math.round(x * 10) / 10); } return r; }
@@ -24029,7 +24036,7 @@ function netApply(s) {
     z.st.under = !!(f & 32); z.st.down = f & 64 ? 1 : 0; z.st.phased = !!(f & 128);
     z.frozen = f & 256 ? 1 : 0; z.stun = f & 256 ? 0.2 : 0; z.burnT = f & 512 ? 1 : 0; z.poisonT = f & 1024 ? 1 : 0; z.slowT = f & 2048 ? 0.2 : 0; z.buffT = f & 4096 ? 1 : 0;
     z.warn = f & 8192 ? 0.2 : 0; z.st.fuse = f & 16384 ? 0.3 : 0; z.st.surgeT = f & 32768 ? 1 : 0;
-    if (z.m.v2) { const atk = !!(f & 65536); if (atk && !z.atkOn) z.atkT = G.time; z.atkOn = atk; z.leapK = f & 131072 ? 1 : 0; z.legK = f & 524288 ? 2 : f & 262144 ? 1 : 0; }
+    if (z.m.v2) { const atk = !!(f & 65536); if (atk && !z.atkOn) z.atkT = G.time; z.atkOn = atk; z.leapK = f & 131072 ? 1 : 0; z.windK = f & 1048576 ? 1 : 0; z.legK = f & 524288 ? 2 : f & 262144 ? 1 : 0; }
     z.kvx = z.kvy = 0; z.slowMul = 1; z.burnDps = z.poisonDps = 0;
     z.nb = [z.burnT, z.poisonT, z.slowT, z.stun];
   }

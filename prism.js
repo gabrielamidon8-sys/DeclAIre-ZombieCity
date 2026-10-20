@@ -383,7 +383,7 @@ function prismHurt(e) {
   if (PRISM.gl && !PRISM.gl.isContextLost() && (!PRISM.P.final || PRISM.errT.length === 2)) prismBuild();
 }
 coreAdd({
-  name: 'PRISM', kind: 'render', does: 'Shader engine: GPU shaders (WebGL 2 or 1) with a CPU fallback for path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, color temperature and grading, vignette and film grain.',
+  name: 'PRISM', kind: 'render', does: 'Shader engine: GPU shaders (WebGL 2 or 1) with a CPU fallback for path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, color temperature and grading, vignette and film grain; in the final pass, relief and highlights from the six nearest lamps, fires and flashes on every surface.',
   state: () => PRISM.mode === 'gpu' ? 'GPU' + (PRISM.v2 ? ' (WebGL 2)' : ' (WebGL 1)') : PRISM.mode === 'cpu' ? 'CPU' + (PRISM.reason ? ': ' + PRISM.reason : '') : PRISM.mode,
   level: () => PRISM.mode === 'gpu' ? ['color', 'bloom + sharpen', 'bounce light + shafts', 'full'][PRISM.lvl] + ', ' + PRISM.temp + ' K' : PRISM.temp + ' K',
   sec: prismWatch, canTrim: () => prismLevel() > 0,

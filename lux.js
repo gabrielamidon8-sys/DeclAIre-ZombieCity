@@ -867,7 +867,7 @@ function luxExport(amb, use) {
 }
 
 coreAdd({
-  name: 'LUX', kind: 'render', does: 'Lighting engine: ray-traced shadows from every lamp, fire, muzzle flash, headlight and the flashlight; lamps with heights, so cars, trees, bushes and bodies throw shadows away from them; a moving sun as an area light whose shadows soften towards the tip; visible beams in rain and fog; path-traced bounce light, day and night, bloom.',
+  name: 'LUX', kind: 'render', does: 'Lighting engine: ray-traced shadows from every lamp, fire, muzzle flash, headlight and the flashlight; lamps with heights, so cars, trees, bushes and bodies throw shadows away from them; zombies throw shadows shaped by their pose, arms and legs moving with them; a moving sun as an area light whose shadows soften towards the tip; visible beams in rain and fog; path-traced bounce light, day and night, bloom.',
   state: () => SET.lux === 'off' ? 'off' : LUX.offUntil && performance.now() < LUX.offUntil ? 'paused' : LUX.live ? 'on' : 'idle',
   level: () => ['glow only', 'few shadows', 'shadows + bloom', 'soft shadows', 'full'][LUX.level] + (LUX.giOn ? ', bounce light' + (typeof PRISM !== 'undefined' && PRISM.giGpu ? ' (GPU)' : ' (CPU)') : '') + (CORE.frame.sun.on ? ', sun' : ''),
   canTrim: () => LUX.level > 0, trim: () => { if (LUX.adapt <= -3) return false; LUX.adapt--; LUX.A = null; return true; }, boost: () => { if (LUX.adapt >= 0) return false; LUX.adapt++; LUX.A = null; return true; },

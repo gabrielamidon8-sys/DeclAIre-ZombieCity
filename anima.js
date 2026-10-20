@@ -785,7 +785,7 @@ function animaTick(z, dt, full) {
   else { A.vx += (z.vx - A.vx) * Math.min(1, dt * 10); A.vy += (z.vy - A.vy) * Math.min(1, dt * 10); }
   A.px = z.x; A.py = z.y;
   // how fast it is turning (for turning on the spot)
-  if (dt > 0) { const da = ((z.ang - (A.la == null ? z.ang : A.la) + Math.PI) % TAU + TAU) % TAU - Math.PI; A.angV += (da / dt - (A.angV || 0)) * Math.min(1, dt * 8); } A.la = z.ang;
+  if (dt > 0) { const da = ((z.ang - (A.la == null ? z.ang : A.la) + Math.PI) % TAU + TAU) % TAU - Math.PI; A.angV = (A.angV || 0) + (da / dt - (A.angV || 0)) * Math.min(1, dt * 8); } A.la = z.ang;
   // a roar when it first gets you in sight (now and then), and when its horde surges
   const tg0 = aTarget(z);
   if (tg0 && !A.roared && !(A.one >= 0) && (tg0.x - z.x) * (tg0.x - z.x) + (tg0.y - z.y) * (tg0.y - z.y) < 340 * 340) { A.roared = true; if (Math.random() < 0.3) animaPlay(z, AC.roar); }

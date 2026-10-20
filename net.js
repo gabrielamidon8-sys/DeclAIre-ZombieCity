@@ -479,7 +479,7 @@ function zFlags(z) {
   return (z.boss ? 1 : 0) | (z.fly ? 2 : 0) | (z.minion ? 4 : 0) | (z.child ? 8 : 0) | (z.illusion ? 16 : 0) | (z.st.under ? 32 : 0) | (z.st.down > 0 ? 64 : 0) | (z.st.phased ? 128 : 0)
     | (z.frozen && z.stun > 0 ? 256 : 0) | (z.burnT > 0 ? 512 : 0) | (z.poisonT > 0 ? 1024 : 0) | (z.slowT > 0 ? 2048 : 0) | (z.buffT > 0 ? 4096 : 0) | (z.warn > 0 ? 8192 : 0) | (z.st.fuse > 0 ? 16384 : 0) | (z.st.surgeT > 0 ? 32768 : 0)
     // the 2.0 zombies' animation cues: swinging, mid-leap or charging, a limp, a crawl
-    | (z.atkW > G.time - 0.3 ? 65536 : 0) | (z.leapK || z.st.charge > 0 || z.st.lt > 0 ? 131072 : 0) | (z.legK >= 2 ? 524288 : z.legK ? 262144 : 0);
+    | (z.atkW > G.time - 0.3 ? 65536 : 0) | (z.leapK || z.st.charge > 0 || z.st.lt > 0 ? 131072 : 0) | (z.legK >= 2 ? 524288 : z.legK ? 262144 : 0) | (z.windK ? 1048576 : 0);
 }
 const NUM = v => typeof v === 'number' && isFinite(v);
 function plainNums(o) { const r = {}; if (!o) return r; for (const k in o) { const v = o[k]; if (NUM(v)) r[k] = Math.round(v * 100) / 100; else if (typeof v === 'boolean') r[k] = v; else if (Array.isArray(v) && v.length < 40 && v.every(NUM)) r[k] = v.map(x => Math.round(x * 10) / 10); } return r; }
@@ -631,7 +631,7 @@ function netApply(s) {
     z.st.under = !!(f & 32); z.st.down = f & 64 ? 1 : 0; z.st.phased = !!(f & 128);
     z.frozen = f & 256 ? 1 : 0; z.stun = f & 256 ? 0.2 : 0; z.burnT = f & 512 ? 1 : 0; z.poisonT = f & 1024 ? 1 : 0; z.slowT = f & 2048 ? 0.2 : 0; z.buffT = f & 4096 ? 1 : 0;
     z.warn = f & 8192 ? 0.2 : 0; z.st.fuse = f & 16384 ? 0.3 : 0; z.st.surgeT = f & 32768 ? 1 : 0;
-    if (z.m.v2) { const atk = !!(f & 65536); if (atk && !z.atkOn) z.atkT = G.time; z.atkOn = atk; z.leapK = f & 131072 ? 1 : 0; z.legK = f & 524288 ? 2 : f & 262144 ? 1 : 0; }
+    if (z.m.v2) { const atk = !!(f & 65536); if (atk && !z.atkOn) z.atkT = G.time; z.atkOn = atk; z.leapK = f & 131072 ? 1 : 0; z.windK = f & 1048576 ? 1 : 0; z.legK = f & 524288 ? 2 : f & 262144 ? 1 : 0; }
     z.kvx = z.kvy = 0; z.slowMul = 1; z.burnDps = z.poisonDps = 0;
     z.nb = [z.burnT, z.poisonT, z.slowT, z.stun];
   }

@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.970';
+const ZC_VERSION = '1.9.980';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -747,7 +747,8 @@ function hurtZombie(z, dmg, o) {
   if (z.illusion) { killZombie(z); return true; }
   // the 2.0 zombies: where it was hit (for the hit reaction, the death and a crippled limb), and a lethal hit is lethal
   if (z.m.v2) {
-    const reg = o.reg || (o.src === 'blast' || o.src === 'a10' ? 'torso' : null);
+    // no region given (a dash, a homing round, a blast): a body blow, at most every 0.35 s for damage that keeps coming
+    const reg = o.reg || ((o.src === 'blast' || o.src === 'a10' || o.src === 'dash' || o.src === 'bullet') && !(z.hitT > G.time - 0.35) ? 'torso' : null);
     if (reg) { z.hitReg = reg; z.hitT = G.time; z.hitP = o.P != null ? o.P : (o.src === 'blast' || o.src === 'a10' ? 2 : 0.6); if (o.kx || o.ky) z.hitA = Math.atan2(o.ky, o.kx); }
     z.lastSrc = o.src || 'bullet';
     if (o.cripple) {

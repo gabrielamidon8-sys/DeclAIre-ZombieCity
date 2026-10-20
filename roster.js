@@ -128,6 +128,7 @@ ABIL.pounce = function (z, dt, dx, dy, d, c) {
 // the ones with no special mutation still have a move: a brace and a lurch at you from just out of reach
 ABIL.none = function (z, dt, dx, dy, d, c) {
   if (!z.m.v2) return;
+  if (z.legK >= 2 || z.stun > 0) { z.leapK = 0; z.windK = 0; z.st.nl = z.st.nw = 0; return; }
   const s = z.st;
   if (s.nl > 0) { s.nl -= dt; z.leapK = 1; z.abMul = (z.abMul || 1) * 1.9; if (s.nl <= 0) z.leapK = 0; return; }
   if (s.nw > 0) { s.nw -= dt; z.windK = 1; c.move = Math.min(c.move, 0.25); if (s.nw <= 0) { z.windK = 0; s.nl = 0.32; } return; }

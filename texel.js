@@ -393,7 +393,7 @@ function texelWatch() {
   else { TEXEL.bad = Math.max(0, TEXEL.bad - 1); }
 }
 coreAdd({
-  name: 'TEXEL', kind: 'render', does: 'Texture and resolution engine: procedural textures for zombies, the player and the city, sprites supersampled and scaled to the screen\'s exact sharpness, memory and error repair.',
+  name: 'TEXEL', kind: 'render', does: 'Texture and resolution engine: procedural textures for zombies, the player and the city; blended ground materials (asphalt, concrete, grass, dirt, sand, rubble) with soft edges and districts that bleed into each other; cloth, skin and grime on the 2.0 zombies; sprites supersampled and scaled to the screen\'s exact sharpness, memory and error repair.',
   state: () => TEXEL.offUntil && performance.now() < TEXEL.offUntil ? 'paused' : texelLevel() ? 'on' : 'plain',
   level: () => ['plain', 'textured', 'textured, rim, 1.5x', 'full, 2x'][texelLevel()],
   sec: texelWatch, canTrim: () => texelLevel() > 0, trim: () => { if (TEXEL.adapt <= -3) return false; TEXEL.adapt--; return true; }, boost: () => { if (TEXEL.adapt >= 0) return false; TEXEL.adapt++; return true; }
