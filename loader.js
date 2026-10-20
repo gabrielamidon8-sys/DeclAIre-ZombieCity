@@ -97,8 +97,10 @@ function warmJobs() {
   // the trees, bushes and grass around the start, so their sprites are drawn before the first frame needs them
   jobs.push(() => rebuildActive());
   jobs.push(() => { let n = 0; for (const d of WD.act) { if (d.k === 'tree') treeSprite(d); else if (d.k === 'bush') bushSprite(d); if (++n > 160) break; } });
+  // the 2.0 zombies of the first waves: their walk frames
+  if (typeof animaWarm === 'function' && typeof ZR_ONLY !== 'undefined' && ZR_ONLY) for (const m of zrPool(2)) jobs.push(() => animaWarm(m));
   const seen = new Set();
-  for (const m of MUTS) {
+  for (const m of (typeof ZR_ONLY !== 'undefined' && ZR_ONLY ? [] : MUTS)) {
     const k = m.S && m.S.key; if (!k || seen.has(k)) continue; seen.add(k);
     jobs.push(() => { getSprite(m, zombieR(m.size || 1, 1), true); });
   }

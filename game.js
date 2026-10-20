@@ -750,9 +750,17 @@ function hurtZombie(z, dmg, o) {
     const reg = o.reg || (o.src === 'blast' || o.src === 'a10' ? 'torso' : null);
     if (reg) { z.hitReg = reg; z.hitT = G.time; z.hitP = o.P != null ? o.P : (o.src === 'blast' || o.src === 'a10' ? 2 : 0.6); if (o.kx || o.ky) z.hitA = Math.atan2(o.ky, o.kx); }
     z.lastSrc = o.src || 'bullet';
-    if (o.cripple && !o.kill) {
+    if (o.cripple) {
       if (reg === 'legL' || reg === 'legR') { const bit = reg === 'legL' ? 1 : 2; if (!((z.legM || 0) & bit)) { z.legM = (z.legM || 0) | bit; z.legK = (z.legK || 0) + 1; } }
-      else if (reg === 'armL') z.armK |= 1; else if (reg === 'armR') z.armK |= 2;
+      else if (reg === 'armL' || reg === 'armR') {
+        const bit = reg === 'armL' ? 1 : 2; z.armK |= bit;
+        // a brittle body, or a round heavy enough, takes the arm clean off
+        if (!((z.sever || 0) & bit) && ((z.T && z.T.brittle) || (o.P || 0) > 2.4)) {
+          z.sever = (z.sever || 0) | bit;
+          if (typeof goreGib === 'function') { const a = (z.hitA || 0) + (Math.random() - 0.5) * 0.8, sx = z.x - Math.sin(z.ang) * z.r * (bit === 1 ? -0.8 : 0.8), sy = z.y + Math.cos(z.ang) * z.r * (bit === 1 ? -0.8 : 0.8); goreGib(sx, sy, a, 160 * PK, 'flesh', [118, 22, 20], 4.5 * PK); goreGib(sx, sy, a + 0.3, 140 * PK, 'bone', null, 2.6 * PK); }
+          burst(z.x, z.y, 8, z.m.S.gore, 160, 4, 0.5);
+        }
+      }
     }
     if (o.kill && !z.noKill) dmg = Math.max(dmg, z.hp + (z.shield || 0) + 1);   // (noKill: a test's stand-in that must not die)
   }
@@ -805,6 +813,7 @@ function killZombie(z) {
     if (dp === 'fire') G.haz.push({ k: 'fire', x: z.x, y: z.y, r: z.r * 1.8, life: 3.5, max: 3.5, dps: 10 + G.wave * 0.6 });
     if (dp === 'spores') G.haz.push({ k: 'spore', x: z.x, y: z.y, r: 72, life: 3.5, max: 3.5 });
     if (dp === 'brood') for (let i = 0; i < 3; i++) { const a = rand(TAU); spawnZombie(m, z.x + Math.cos(a) * 14, z.y + Math.sin(a) * 14, { minion: true }); }
+    if (dp === 'carrier' && typeof ZR_BY !== 'undefined') { const cw = ZR_BY.get('crawler'); for (let i = 0; i < 3 && cw; i++) { const a = rand(TAU), q = spawnZombie(cw, z.x + Math.cos(a) * z.r, z.y + Math.sin(a) * z.r, { minion: true, emerge: true }); } burst(z.x, z.y, 16, '#8a6a5a', 200, 5, 0.6); }
     if (dp === 'wisp' && G.p) { const a = Math.atan2(G.p.y - z.y, G.p.x - z.x); shoot(z.x, z.y, a, 190, z.dmg * 1.2, 7, 'wisp'); }
     for (const ab of z.abs) {
       if (ab === 'bomber' && !z.st.boomed) bombBlast(z);
@@ -1724,6 +1733,7 @@ function render() {
   if (vz) drawVizBullets(vz);
   for (const e of G.eshots) {
     if (e.k === 'acid') { ctx.fillStyle = 'rgba(165,212,58,0.35)'; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 1.8, 0, TAU); ctx.fill(); ctx.fillStyle = '#b8ec4a'; ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, TAU); ctx.fill(); }
+    else if (e.k === 'wrench') { ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(G.time * 14 + e.x * 0.01); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-7, -1, 14, 4); ctx.fillStyle = '#9aa0a6'; ctx.fillRect(-7, -1.6, 12, 3.2); ctx.beginPath(); ctx.arc(6, 0, 3.6, 0.8, TAU - 0.8); ctx.fill(); ctx.restore(); }
     else if (e.k === 'spike') { const a = Math.atan2(e.vy, e.vx); ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a); ctx.fillStyle = '#d9cfb4'; ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-6, -3.5); ctx.lineTo(-6, 3.5); ctx.closePath(); ctx.fill(); ctx.restore(); }
     else if (e.k === 'shard') { ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(Math.atan2(e.vy, e.vx)); ctx.fillStyle = '#e8eef5'; ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(0, -3.5); ctx.lineTo(-7, 0); ctx.lineTo(0, 3.5); ctx.closePath(); ctx.fill(); ctx.restore(); }
     else if (e.k === 'wisp') { ctx.fillStyle = 'rgba(255,150,50,0.3)'; ctx.beginPath(); ctx.arc(e.x, e.y, 14, 0, TAU); ctx.fill(); ctx.fillStyle = '#ffd38a'; ctx.beginPath(); ctx.arc(e.x, e.y, 6, 0, TAU); ctx.fill(); }

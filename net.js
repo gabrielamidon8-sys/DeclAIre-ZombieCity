@@ -20,7 +20,7 @@ const NET_PICK_SECS = 30, NET_AWAY_SECS = 30, NET_RECON_SECS = 25;
 // players on different versions would see different zombies, weapons and cards, so the host only lets in its own version
 const netVerOk = v => String(v || '') === ZC_VERSION;
 const NET_COLS = ['#f2cc3a', '#29e6ff', '#ff3df2', '#7dff4a'];
-const NET_SK = ['acid', 'wisp', 'shard', 'spike', 'fire', 'ice', 'void', 'shock', 'spirit', 'web', 'bolt'];
+const NET_SK = ['acid', 'wisp', 'shard', 'spike', 'fire', 'ice', 'void', 'shock', 'spirit', 'web', 'bolt', 'wrench'];
 const NET_HK = ['acid', 'fire', 'sludge', 'ice', 'spore', 'vortex'];
 const netCol = id => NET_COLS[(Math.max(1, id) - 1) % NET_COLS.length];
 // On Android the game is a secure (https) page and WebView won't let it open a plain ws:// connection to a PC on the

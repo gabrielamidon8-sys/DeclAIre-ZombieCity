@@ -458,6 +458,15 @@
       if (Math.random() < 0.35) osc('triangle', 380 + Math.random() * 300, 300, t + 0.05, 0.25, 0.03, out);
       setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 900);
     },
+    // a head shot that kills: a sharp wet crack over a short low knock (the thing the ear waits for)
+    headshot: function (pan) {
+      if (!ok() || !throttle('hs', 60)) return;
+      var t = ac.currentTime, out = ac.createGain(); out.gain.value = 0.34;
+      if (ac.createStereoPanner) { var pn = ac.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, pan || 0)); out.connect(pn); pn.connect(sfxBus); } else out.connect(sfxBus);
+      noise(t, 0.035, 0.55, 'bandpass', 1900 + Math.random() * 500, 1.6, 1400, out); noise(t + 0.01, 0.09, 0.28, 'lowpass', 900, 0.8, 300, out);
+      osc('sine', 110, 42, t, 0.11, 0.3, out); osc('triangle', 3200, 2400, t, 0.03, 0.05, out);
+      setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 500);
+    },
     // a round skipping off a wall or a helmet: the classic falling whine with a sharp crack at its start
     ricochet: function () {
       if (!ok() || !throttle('ric', 120)) return;

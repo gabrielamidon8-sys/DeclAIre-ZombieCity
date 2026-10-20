@@ -40,7 +40,7 @@ for (let i = 0; i < AC_N; i++) { AC_KIND[i] = i < 18 ? 'loop' : i < 28 ? 'once' 
 
 const ANIMA = {
   live: 0, liveCap: 14, cached: 0, made: 0, hits: 0, miss: 0, ms: 0, msAvg: 0, adapt: 0, good: 0, watchT: 0,
-  cache: new Map(), corpses: [], corpseCap: 80, bud: 0, statsF: 0, errT: [], offUntil: 0, bad: 0, badWhy: '',
+  cache: new Map(), corpses: [], corpseCap: 80, bud: 0, statsF: 0, errT: [], offUntil: 0, bad: 0, badWhy: '', sev: 0,
   J: new Float32Array(NJ * 3), P2: new Float32Array(NJ * 3), tmp: new Float32Array(AN), tmp2: new Float32Array(AN), tmp3: new Float32Array(AN),
   shadowN: 0, deadN: 0, lastCorpseClean: 0
 };
@@ -120,7 +120,7 @@ function animaNames(m) {
   const legless = P.gait === 'crawl';
   return [g, legless ? 'Fast crawl' : 'Hurried ' + g.toLowerCase(), legless ? 'Scramble' : P.gait === 'sprint' ? 'Flat-out sprint' : 'Run', legless ? 'Crawl left' : 'Sidestep left', legless ? 'Crawl right' : 'Sidestep right',
     'Turn', 'Stumble', legless ? 'Drag' : 'Limp', legless ? 'Belly crawl' : 'Crawl', legless ? 'Recoil' : 'Back away',
-    'Idle', 'Look around', 'Twitch', 'Sniff the air', 'Scratch', 'Sway', 'Groan', 'Feed',
+    'Idle', 'Look around', 'Twitch', 'Sniff the air', A_SIGN[m.def.key] || 'Scratch', 'Sway', 'Groan', 'Feed',
     'Right swipe', 'Left swipe', 'Bite', 'Grab', 'Lunge', 'Slam', 'Headbutt', 'Shove', 'Combo', sig,
     'Head hit', 'Body hit (front)', 'Body hit (back)', 'Left arm hit', 'Right arm hit', 'Left leg hit', 'Right leg hit', 'Stagger',
     'Head shot death', 'Falls forward', 'Falls backward', 'Spinning fall', 'Drops to its knees', 'Collapses', 'Blown off its feet', 'Falls sideways',
@@ -256,6 +256,72 @@ function aIdle(o, t, P, D) {
   aArms(o, 0.25 + 0.04 * br, t, P, D, 0.15); aHead(o, t, P, 0);
 }
 
+/* ---------- each zombie's own idle: the habit it kept from the life it had ---------- */
+const A_SIGN = { office: 'Phone to its ear', jogger: 'Jogs in place', mail: 'Rifles the mailbag', retiree: 'Hand on its back', tourist: 'Lines up a photo', hardhat: 'Wipes its brow', nurse: 'Wrings its hands',
+  cook: 'Chops at nothing', exec: 'Checks its watch', farm: 'Scratches its head', janitor: 'Mops', cop: 'Reaches for its holster', gym: 'Flexes', medic: 'Kneels over a patient', inmate: 'Rattles its chains',
+  mech: 'Wipes its hands', punk: 'Headbangs', lifeguard: 'Shades its eyes', crawler: 'Claws the ground', biker: 'Revs a throttle', surgeon: 'Holds up scrubbed hands', clown: 'Juggles', hazmat: 'Pats down its suit',
+  hunter: 'Crouches and listens', diver: 'Clears its mask', skipatrol: 'Stamps and shivers', drowned: 'Coughs up water', rotter: 'Wobbles', soldier: 'Sweeps its sector', bride: 'Dances alone', lab: 'Seizes',
+  burnt: 'Beats out flames', lineman: 'Jolts with current', butcher: 'Swings its hook', bugman: 'Sprays', spitter: 'Gargles acid', riot: 'Raps its shield', screamer: 'Silent scream', bloater: 'Heaves',
+  ravager: 'Sniffs the ground', leaper: 'Bounces on its springs', husk: 'Creaks round', astro: 'Floats in place', stalker: 'Tilts its head', climber: 'Hugs itself', fungal: 'Shudders', brute: 'Pounds its chest',
+  glow: 'Reads its dosimeter', stitched: 'Flexes its big arm', carrier: 'Heaves its sacs' };
+function aSigIdle(o, m, t) {
+  const P = m.an, D = m.ad, k = m.def.key, s = P.seed, w = A_SIN, a1 = w(t * 2.2 + s), a2 = w(t * 6 + s), fast = w(t * 11 + s);
+  const arm = (side, y, p, e) => { if (side < 0 && D.noArmL) return; const b = side < 0 ? AP.alY : AP.arY; o[b] = y; o[b + 1] = p; o[b + 2] = e; };
+  switch (k) {
+    case 'office': arm(1, 0.25, 0.65, 2.25); o[AP.headR] = 0.25; o[AP.headY] = 0.3 * w(t * 0.4); o[AP.jaw] = 0.2 + 0.3 * Math.max(0, a2); break;
+    case 'jogger': { const q = t * 6; o[AP.llL] = Math.max(0, w(q)) * 0.4; o[AP.lrL] = Math.max(0, -w(q)) * 0.4; o[AP.llS] = 0.15 * w(q); o[AP.lrS] = -0.15 * w(q); o[AP.bob] = 0.01 * Math.abs(w(q)); arm(-1, 0.1, -1.5 - 0.5 * w(q), 1.65); arm(1, 0.1, -1.5 + 0.5 * w(q), 1.65); break; }
+    case 'mail': arm(-1, 0.6, -1.35, 0.6 + 0.3 * a2); o[AP.headP] = -0.5; o[AP.headY] = -0.4; o[AP.leanS] = -0.12; break;
+    case 'retiree': arm(1, 2.8, -1.35, 1.2); o[AP.hunch] += 0.25; o[AP.lean] += 0.12; o[AP.headP] = -0.2 + 0.1 * a1; break;
+    case 'tourist': arm(1, -0.25, 0.25, 2.3); arm(-1, -0.35, 0.2, 2.2); o[AP.headP] = -0.05; o[AP.lean] -= 0.05; o[AP.headY] = 0.15 * w(t * 0.6); break;
+    case 'hardhat': arm(1, -1.0 + 0.6 * Math.max(0, a1), 0.55, 2.2); o[AP.headP] = 0.2; break;
+    case 'nurse': arm(-1, -0.5, -0.6, 1.9 + 0.2 * fast); arm(1, -0.5, -0.6, 1.9 - 0.2 * fast); o[AP.headP] = -0.4; break;
+    case 'cook': arm(1, 0.1, -0.5 + 0.55 * Math.max(0, w(t * 9)), 1.1); o[AP.headP] = -0.55; o[AP.lean] += 0.12; break;
+    case 'exec': arm(-1, -0.35, -0.25, 1.9); o[AP.headP] = -0.55; o[AP.headY] = -0.35; break;
+    case 'farm': arm(1, -0.2, 0.6, 2.6 + 0.2 * fast); o[AP.headR] = 0.25; o[AP.headP] = -0.1; break;
+    case 'janitor': arm(1, 0.3 + 0.6 * a1, -1.0, 1.0); arm(-1, -0.2 + 0.5 * a1, -0.9, 1.2); o[AP.twist] = 0.35 * a1; o[AP.lean] += 0.2; o[AP.headP] = -0.4; break;
+    case 'cop': arm(1, 0.5, -1.45, 0.9 + 0.3 * Math.max(0, a2)); o[AP.headP] = -0.25; o[AP.headY] = 0.4; break;
+    case 'gym': { const f = Math.max(0, w(t * 1.4 + s)); arm(-1, 1.15, 0.0 + 0.2 * f, 1.6 + 0.6 * f); arm(1, 1.15, 0.0 + 0.2 * f, 1.6 + 0.6 * f); o[AP.headP] = 0.25; o[AP.jaw] = 0.5 * f; o[AP.shake] = 0.3 * f; break; }
+    case 'medic': o[AP.crouch] = 0.9; o[AP.lean] = 0.55; arm(-1, 0.2, -1.15 + 0.15 * a2, 0.6); arm(1, 0.2, -1.15 - 0.15 * a2, 0.6); o[AP.headP] = -0.6; o[AP.llS] = 0.35; o[AP.lrS] = -0.5; break;
+    case 'inmate': { const j = Math.max(0, w(t * 3.3)) ** 6; arm(-1, 0.25 + 0.6 * j, -0.6, 1.2); arm(1, 0.25 + 0.6 * j, -0.6, 1.2); o[AP.jaw] = 0.3 + 0.6 * j; o[AP.headP] = 0.3 * j; o[AP.shake] = 0.4 * j; break; }
+    case 'mech': arm(-1, -0.3, -0.7, 1.6 + 0.25 * fast); arm(1, -0.3, -0.7, 1.6 - 0.25 * fast); o[AP.headP] = -0.45; break;
+    case 'punk': o[AP.headP] = -0.4 + 0.75 * Math.abs(w(t * 5)); o[AP.hunch] += 0.15 * Math.abs(w(t * 5)); o[AP.lean] += 0.1 * Math.abs(w(t * 5)); break;
+    case 'lifeguard': arm(1, -0.3, 0.4, 2.6); o[AP.headY] = 0.6 * w(t * 0.5); o[AP.headP] = 0.15; break;
+    case 'crawler': arm(-1, 0.4 + 0.2 * a2, -0.4 - 0.3 * Math.max(0, a2), 0.8); arm(1, 0.4 - 0.2 * a2, -0.4 - 0.3 * Math.max(0, -a2), 0.8); o[AP.jaw] = 0.4; break;
+    case 'biker': arm(1, 0.2, -0.3, 1.5); arm(-1, 0.2, -0.3, 1.5); o[AP.twist] = 0.06 * fast; o[AP.headP] = -0.1 + 0.08 * a2; o[AP.leanS] = 0.05 * a1; break;
+    case 'surgeon': arm(-1, 0.25, 0.2, 2.4); arm(1, 0.25, 0.2, 2.4); o[AP.headY] = 0.4 * w(t * 0.7); o[AP.grip] = 0; break;
+    case 'clown': { const q = t * 7; arm(-1, 0.2, -0.3 + 0.5 * Math.max(0, w(q)), 1.6); arm(1, 0.2, -0.3 + 0.5 * Math.max(0, -w(q)), 1.6); o[AP.headP] = 0.5; o[AP.headY] = 0.2 * w(q * 0.5); o[AP.jaw] = 0.5; break; }
+    case 'hazmat': arm(1, -0.6 + 0.4 * a2, -0.9, 1.7); arm(-1, -0.5, -0.9, 1.6); o[AP.headP] = -0.45; o[AP.headY] = 0.3 * a1; break;
+    case 'hunter': o[AP.crouch] = 0.7; o[AP.lean] = 0.35; o[AP.headY] = 0.7 * w(t * 0.35); o[AP.headP] = 0.1; arm(-1, 0.3, -1.2, 0.8); arm(1, 0.3, -1.2, 0.8); break;
+    case 'diver': arm(-1, -0.2, 0.45, 2.4 + 0.15 * a2); arm(1, -0.2, 0.45, 2.4 - 0.15 * a2); o[AP.headP] = 0.1; break;
+    case 'skipatrol': { const q = t * 5; o[AP.llL] = Math.max(0, w(q)) * 0.22; o[AP.lrL] = Math.max(0, -w(q)) * 0.22; arm(-1, -0.6, -0.6, 2.1 + 0.2 * fast); arm(1, -0.6, -0.6, 2.1 - 0.2 * fast); o[AP.shake] = 0.4; o[AP.hunch] += 0.2; break; }
+    case 'drowned': { const c = Math.max(0, w(t * 1.7)) ** 4; o[AP.hunch] += 0.5 * c; o[AP.lean] += 0.35 * c; o[AP.jaw] = 0.2 + 0.8 * c; o[AP.headP] = -0.4 * c; o[AP.shake] = 0.5 * c; break; }
+    case 'rotter': o[AP.leanS] = 0.32 * w(t * 0.9 + s); o[AP.lean] += 0.12 * w(t * 0.6); o[AP.llS] = 0.2 * w(t * 0.9 + s); o[AP.headR] = 0.4 * w(t * 0.9 + s + 0.6); break;
+    case 'soldier': arm(-1, -0.1, -0.15, 1.1); arm(1, 0.15, -0.35, 1.6); o[AP.twist] = 0.5 * w(t * 0.5); o[AP.headY] = 0.3 * w(t * 0.5); o[AP.lean] += 0.08; break;
+    case 'bride': { const q = t * 0.9; arm(-1, -0.15, -0.1, 0.9); arm(1, -0.15, -0.1, 0.9); o[AP.spin] = 0.6 * w(q); o[AP.leanS] = 0.12 * w(q * 2); o[AP.headR] = 0.45; o[AP.llS] = 0.25 * w(q * 2); o[AP.lrS] = -0.25 * w(q * 2); break; }
+    case 'lab': { const sz = Math.max(0, w(t * 2.6 + s)) ** 8; o[AP.shake] = 0.3 + 0.9 * sz; o[AP.headY] = 0.8 * sz * (P.rnd[40] - 0.5) * 2; o[AP.headP] = 0.5 * sz; arm(-1, 0.6 * sz + 0.2, -0.8 + 0.8 * sz, 1.3); arm(1, 0.7 * sz + 0.2, -0.8 + 0.9 * sz, 1.3); o[AP.jaw] = 0.7 * sz; break; }
+    case 'burnt': arm(-1, -0.6 + 0.5 * a2, -0.4, 1.6); arm(1, -0.6 - 0.5 * a2, -0.4, 1.6); o[AP.leanS] = 0.12 * a1; o[AP.headP] = -0.3; o[AP.shake] = 0.3; break;
+    case 'lineman': { const j = Math.max(0, w(t * 1.9 + s)) ** 10; o[AP.shake] = 0.2 + 1.2 * j; arm(-1, 0.6, -0.7 + 1.2 * j, 0.5); arm(1, 0.6, -0.7 + 1.2 * j, 0.5); o[AP.headP] = 0.6 * j; o[AP.jaw] = j; o[AP.grip] = 0; break; }
+    case 'butcher': { const q = t * 4.5; arm(1, 0.6 + 0.9 * w(q), 0.25, 1.0); o[AP.twist] = 0.2 * w(q); o[AP.headY] = 0.3 * w(q); break; }
+    case 'bugman': arm(1, 0.1 + 0.5 * w(t * 1.5), -0.2, 0.5); arm(-1, -0.1, -0.5, 1.3); o[AP.twist] = 0.3 * w(t * 1.5); break;
+    case 'spitter': o[AP.headP] = 0.8; o[AP.jaw] = 0.3 + 0.15 * fast; o[AP.sq] = 0.4 + 0.3 * a2; o[AP.shake] = 0.25; break;
+    case 'riot': arm(1, -0.3, -0.35, 1.5 - 0.6 * Math.max(0, w(t * 4))); o[AP.headP] = -0.15; break;
+    case 'screamer': { const f = Math.max(0, w(t * 0.7)); o[AP.jaw] = f; o[AP.headP] = 0.55 * f; arm(-1, 0.8 * f + 0.2, -1.2 + 1.0 * f, 0.4); arm(1, 0.8 * f + 0.2, -1.2 + 1.0 * f, 0.4); o[AP.shake] = 0.4 * f; break; }
+    case 'bloater': o[AP.sq] = 0.4 + 0.4 * a1; o[AP.leanS] = 0.1 * w(t * 0.7); o[AP.jaw] = 0.3 + 0.3 * Math.max(0, a1); break;
+    case 'ravager': o[AP.headP] = 0.3 + 0.2 * fast; o[AP.headY] = 0.6 * w(t * 1.3); o[AP.jaw] = 0.2; break;
+    case 'leaper': o[AP.crouch] = 0.35 + 0.35 * Math.abs(w(t * 3)); o[AP.rise] = 0.02 * Math.max(0, w(t * 3)); o[AP.headP] = 0.35; break;
+    case 'husk': { const q = Math.floor(t * 1.2) + s; o[AP.spin] = 0.4 * w(q * 3.7); o[AP.headY] = 0.6 * w(q * 1.9); o[AP.shake] = 0.15; break; }
+    case 'astro': o[AP.rise] = 0.04 * (0.5 + 0.5 * w(t * 1.1)); o[AP.llL] = o[AP.lrL] = 0.15 * (0.5 + 0.5 * w(t * 1.1)); arm(-1, 0.6, -0.5 + 0.2 * w(t * 1.1), 0.4); arm(1, 0.6, -0.5 + 0.2 * w(t * 1.1), 0.4); break;
+    case 'stalker': o[AP.headR] = 0.75 * w(t * 0.45 + s); o[AP.headY] = 0.25 * w(t * 0.3); o[AP.lean] = 0.3; o[AP.hunch] += 0.15; break;
+    case 'climber': arm(-1, -0.75, -0.45, 2.2); arm(1, -0.75, -0.45, 2.2); o[AP.shake] = 0.55; o[AP.hunch] += 0.25; o[AP.headP] = -0.35; break;
+    case 'fungal': { const c = Math.max(0, w(t * 1.3 + s)) ** 5; o[AP.shake] = 0.2 + 0.8 * c; o[AP.hunch] += 0.25 + 0.2 * c; o[AP.headP] = -0.5; break; }
+    case 'brute': { const q = t * 3; arm(-1, -0.4, -0.3 + 0.4 * Math.max(0, w(q)), 2.0); arm(1, -0.4, -0.3 + 0.4 * Math.max(0, -w(q)), 2.0); o[AP.headP] = 0.4; o[AP.jaw] = 0.6; o[AP.lean] -= 0.1; break; }
+    case 'glow': arm(-1, -0.4, -0.4, 1.9); o[AP.headP] = -0.6; o[AP.headY] = -0.2; break;
+    case 'stitched': { const f = Math.max(0, w(t * 1.1)); arm(1, 0.9, 0.1 + 0.2 * f, 1.4 + 0.7 * f); o[AP.headY] = 0.6; o[AP.jaw] = 0.4 * f; break; }
+    case 'carrier': o[AP.sq] = 0.3 + 0.5 * Math.max(0, a1); o[AP.hunch] += 0.2; o[AP.shake] = 0.2 + 0.3 * Math.max(0, a1); o[AP.jaw] = 0.3; break;
+    default: { const sc = A_SIN(t * 11) * 0.12; arm(1, -0.6, -0.2 + sc, 2.1 + sc); o[AP.headR] = -0.2; o[AP.headP] = -0.2; }
+  }
+}
+
 /* ---------- evaluating an animation: every slot, for this zombie ---------- */
 // writes the pose of animation ci at u (a loop's phase, or how far through a one-off it is) at time t into o
 function animaEval(o, m, ci, u, t) {
@@ -315,7 +381,7 @@ function animaEval(o, m, ci, u, t) {
       case AC.idleLook: o[AP.headY] = 0.9 * A_SIN(t * 0.75 + s) * (A_SIN(t * 0.3) > -0.2 ? 1 : 0.3); o[AP.twist] = o[AP.headY] * 0.3; break;
       case AC.idleTwitch: { const sp = Math.max(0, A_SIN(t * 2.1 + s)) ** 12; o[AP.headY] += sp * 0.6 * (R[9] - 0.5) * 2; o[AP.headR] += sp * 0.5; o[AP.alP] += sp * 0.6; o[AP.shake] = 0.3 + sp * 0.6; o[AP.leanS] += sp * 0.12; break; }
       case AC.idleSniff: o[AP.headP] = 0.55 + 0.1 * A_SIN(t * 9); o[AP.headY] = 0.4 * A_SIN(t * 0.5 + s); o[AP.lean] -= 0.08; o[AP.jaw] = 0.1; o[AP.hunch] -= 0.1; break;
-      case AC.idleScratch: { const sc = A_SIN(t * 11) * 0.12, side = R[10] < 0.5 ? -1 : 1; if (side > 0 || !D.noArmL) { const y = side < 0 ? AP.alY : AP.arY; o[y] = -0.6; o[y + 1] = -0.2 + sc; o[y + 2] = 2.1 + sc; } o[AP.headR] = side * -0.2; o[AP.headP] = -0.2; break; }
+      case AC.idleScratch: aSigIdle(o, m, t); break;
       case AC.idleSway: o[AP.leanS] = 0.16 * A_SIN(t * 0.8 + s); o[AP.lean] += 0.06 * A_SIN(t * 0.55 + s); o[AP.alP] += 0.2 * A_SIN(t * 0.8 + s + 1); o[AP.arP] += 0.2 * A_SIN(t * 0.8 + s + 1.5); o[AP.headR] = 0.25 * A_SIN(t * 0.8 + s + 0.5); break;
       case AC.idleGroan: { const gr = Math.max(0, A_SIN(t * 1.4 + s)); o[AP.headP] += gr * 0.5; o[AP.jaw] = 0.2 + gr * 0.8; o[AP.lean] -= gr * 0.1; o[AP.alP] += gr * 0.25; o[AP.arP] += gr * 0.25; o[AP.shake] = gr * 0.3; break; }
       case AC.idleFeed: { const ch = A_SIN(t * 6) * 0.5 + 0.5; o[AP.crouch] = 0.85; o[AP.lean] = 0.8; o[AP.hunch] += 0.3; o[AP.headP] = -0.4 - ch * 0.25; o[AP.jaw] = ch; o[AP.alP] = -1.0 - ch * 0.2; o[AP.arP] = -0.95; o[AP.alE] = o[AP.arE] = 1.3; o[AP.alY] = o[AP.arY] = 0.1; o[AP.llS] = 0.35; o[AP.lrS] = -0.35; break; }
@@ -608,10 +674,12 @@ function animaFK(D, p, J) {
   for (let side = -1; side <= 1; side += 2) {
     const b = side < 0 ? AP.alY : AP.arY, si = side < 0 ? JN.shL : JN.shR, ei = si + 1, hi = si + 2, k3 = si * 3;
     const hA = yawU + side * p[b], pt = p[b + 1], e = p[b + 2], cp = A_COS(pt);
-    let au = D.armU, af = D.armF; if (side < 0 && D.noArmL) { au *= 0.38; af = 0.01; } if (side > 0 && D.bigArm) { au *= 1.1; af *= 1.12; }
+    let au = D.armU, af = D.armF; if ((side < 0 && D.noArmL) || (ANIMA.sev & (side < 0 ? 1 : 2))) { au *= 0.38; af = 0.01; } if (side > 0 && D.bigArm) { au *= 1.1; af *= 1.12; }
     const ex = J[k3] + A_COS(hA) * cp * au, ey = J[k3 + 1] + A_SIN(hA) * cp * au, ez = J[k3 + 2] + A_SIN(pt) * au;
     aSetJ(J, ei, ex, ey, ez);
-    const fa = pt + e, hA2 = hA - side * e * 0.3, cfa = A_COS(fa);
+    // the forearm folds toward the body's midline: its plane turns in with the bend (the turn flips with the fold, so a
+    // forearm bent back past upright comes in toward the head, not out to the side)
+    const fa = pt + e, cfa0 = A_COS(fa), hA2 = hA - side * e * (0.3 + Math.max(0, e - 1.6) * 0.35) * (cfa0 >= 0 ? 1 : -1), cfa = cfa0;
     aSetJ(J, hi, ex + A_COS(hA2) * cfa * af, ey + A_SIN(hA2) * cfa * af, ez + A_SIN(fa) * af);
   }
   // legs: the foot where the pose puts it, the knee found between hip and foot, bending forward
@@ -685,10 +753,16 @@ function aPickBase(z, A, dt) {
   const m = z.m, P = m.an, sp = Math.hypot(A.vx, A.vy), base = 68 * m.spd * Math.min(1.3, 1 + 0.012 * ((G.wave || 1) - 1)), rel = sp / Math.max(20, base);
   const legHurt = z.legK || 0, hurt = z.hp < z.maxHp * 0.35;
   if (P.gait === 'crawl' || legHurt >= 2) return sp < 6 ? AC.idle : AC.crawl;
+  if (sp < 7 && Math.abs(A.angV || 0) > 1.6 && P.gait !== 'crawl') return AC.turn;
   if (sp < 7) {
     // standing: idles change now and then (feeding when there is a body close, sniffing the air, groaning)
     A.idleT -= dt;
-    if (A.idleT <= 0) { A.idleT = rand(3, 7); const r = Math.random(); A.idleC = r < 0.35 ? AC.idle : r < 0.5 ? AC.idleLook : r < 0.6 ? AC.idleSniff : r < 0.7 ? AC.idleTwitch : r < 0.78 ? AC.idleScratch : r < 0.88 ? AC.idleSway : AC.idleGroan; if (z.feedT > 0) A.idleC = AC.idleFeed; }
+    if (A.idleT <= 0) {
+      A.idleT = rand(3, 7); const r = Math.random();
+      A.idleC = r < 0.3 ? AC.idle : r < 0.42 ? AC.idleLook : r < 0.5 ? AC.idleSniff : r < 0.58 ? AC.idleTwitch : r < 0.78 ? AC.idleScratch : r < 0.88 ? AC.idleSway : AC.idleGroan;
+      // a body on the ground close by: it stoops to feed
+      for (const C of ANIMA.corpses) if (C.done && (C.x - z.x) * (C.x - z.x) + (C.y - z.y) * (C.y - z.y) < (z.r * 3.5) * (z.r * 3.5)) { A.idleC = AC.idleFeed; A.idleT = rand(5, 9); break; }
+    }
     return A.idleC;
   }
   const fa = Math.atan2(A.vy, A.vx), d = ((fa - z.ang + Math.PI) % TAU + TAU) % TAU - Math.PI;
@@ -710,6 +784,12 @@ function animaTick(z, dt, full) {
   if (z.puppet || !(z.vx === z.vx)) { const ivx = (z.x - A.px) / Math.max(1e-3, dt), ivy = (z.y - A.py) / Math.max(1e-3, dt); A.vx += (ivx - A.vx) * Math.min(1, dt * 6); A.vy += (ivy - A.vy) * Math.min(1, dt * 6); }
   else { A.vx += (z.vx - A.vx) * Math.min(1, dt * 10); A.vy += (z.vy - A.vy) * Math.min(1, dt * 10); }
   A.px = z.x; A.py = z.y;
+  // how fast it is turning (for turning on the spot)
+  if (dt > 0) { const da = ((z.ang - (A.la == null ? z.ang : A.la) + Math.PI) % TAU + TAU) % TAU - Math.PI; A.angV += (da / dt - (A.angV || 0)) * Math.min(1, dt * 8); } A.la = z.ang;
+  // a roar when it first gets you in sight (now and then), and when its horde surges
+  const tg0 = aTarget(z);
+  if (tg0 && !A.roared && !(A.one >= 0) && (tg0.x - z.x) * (tg0.x - z.x) + (tg0.y - z.y) * (tg0.y - z.y) < 340 * 340) { A.roared = true; if (Math.random() < 0.3) animaPlay(z, AC.roar); }
+  if (z.hd && typeof SWARM !== 'undefined') { const H = SWARM.hb.get(z.hd); if (H && H.surgeT > 2.6 && !A.surged) { A.surged = true; if (Math.random() < 0.5) animaPlay(z, AC.roar); } }
   // what the game tells the animation: an attack starting, a hit, an ability's tell and move, getting back up
   if (z.atkT && z.atkT !== A.lastAtk) { A.lastAtk = z.atkT; animaPlay(z, aPickAttack(z)); }
   if (z.hitT && z.hitT !== A.lastHit) { A.lastHit = z.hitT; aOnHit(z, A); }
@@ -748,7 +828,7 @@ function animaTick(z, dt, full) {
     animaEval(A.pO, m, AC.dieCollapse, Math.min(1, (1.4 - st.down) * 1.5 + 0.4), t); pose.set(A.pO);
   } else if (A.one >= 0) {
     A.ou += dt / A.od;
-    if (A.ou >= 1 && !(A.one === AC.action && actOn) && !(A.one === AC.windup && warnOn)) A.one = -1;
+    if (A.ou >= 1 && !(A.one === AC.action && actOn) && !(A.one === AC.windup && warnOn)) { const was = A.one; A.one = -1; if ((was === AC.stagger && A.rec) || (was === AC.action && P.ab !== 'pounce')) { A.rec = 0; if (Math.random() < 0.7) animaPlay(z, AC.recover); } }
     else {
       const ci = A.one, u = Math.min(1, A.ou); animaEval(A.pO, m, ci, AC_KIND[ci] === 'hold' ? (ci === AC.action ? (t * 0.8) % 1 : u) : u, t);
       const w = Math.min(aSm(Math.min(1, u * A.od / A.oin)), AC_KIND[ci] === 'hold' && (actOn || warnOn) ? 1 : aSm(Math.min(1, (1 - u) * A.od / A.oout)));
@@ -785,7 +865,8 @@ function aTarget(z) {
 function aPickAttack(z) {
   const P = z.m.an, A = z.an, r = Math.random();
   let ci;
-  if (P.prop && P.prop !== 'whistle' && r < 0.45) ci = AC.signature;
+  if (Math.random() < 0.15) ci = 18 + ((Math.random() * 10) | 0);
+  else if (P.prop && P.prop !== 'whistle' && r < 0.45) ci = AC.signature;
   else if (P.arms === 'claw' || P.arms === 'flail') ci = r < 0.35 ? AC.swipeR : r < 0.65 ? AC.swipeL : r < 0.8 ? AC.combo : AC.bite;
   else if (P.arms === 'reach' || P.arms === 'hug') ci = r < 0.35 ? AC.grab : r < 0.65 ? AC.bite : r < 0.8 ? AC.lunge : AC.swipeR;
   else if (P.arms === 'wide') ci = r < 0.35 ? AC.slam : r < 0.6 ? AC.shove : r < 0.8 ? AC.swipeR : AC.headbutt;
@@ -805,7 +886,7 @@ function aOnHit(z, A) {
   else if (reg === 'armL') ci = AC.hitArmL; else if (reg === 'armR') ci = AC.hitArmR;
   else if (reg === 'legL') ci = AC.hitLegL; else if (reg === 'legR') ci = AC.hitLegR;
   else ci = fromFront ? AC.hitFront : AC.hitBack;
-  if (pw > 1.4 && z.hp > 0 && !(A.one >= 0 && A.one !== AC.stagger)) animaPlay(z, AC.stagger);
+  if (pw > 1.4 && z.hp > 0 && !(A.one >= 0 && A.one !== AC.stagger)) { animaPlay(z, AC.stagger); A.rec = 1; }
   else animaPlay(z, ci, { k: pw });
 }
 // which death: where the last bullet went and what killed it
@@ -825,16 +906,19 @@ function animaDeathClip(z) {
 /* ---------- corpses: the dead stay a while ---------- */
 function animaDeath(z, forceCi) {
   if (!z.m || !z.m.v2 || !animaUp()) return -1;
+  // a bloater that went off leaves no body, only what was in it
+  if (z.st && z.st.boomed) { if (typeof goreGib === 'function') for (let i = 0; i < 6; i++) goreGib(z.x, z.y, Math.random() * TAU, (120 + Math.random() * 160) * PK, 'flesh', [120, 120, 60], (3 + Math.random() * 3) * PK); return -1; }
   try {
     const A = animaState(z); A.upF = -1; animaTick(z, 0.0001, true);
     const ci = forceCi >= 36 && forceCi < 44 ? forceCi : animaDeathClip(z), C = { m: z.m, x: z.x, y: z.y, ang: z.ang, r: z.r, ci: ci, t: 0, dur: z.m.adur[ci] * rand(0.92, 1.1), start: new Float32Array(A.pose), pose: new Float32Array(AN), done: false, life: 0, off: 0, seed: Math.random() * 100,
-      vx: (z.vx || 0) * 0.35 + Math.cos(z.hitA || 0) * (z.hitP || 0.5) * 22, vy: (z.vy || 0) * 0.35 + Math.sin(z.hitA || 0) * (z.hitP || 0.5) * 22, burn: z.burnT > 0 || z.lastSrc === 'fire' ? 1 : 0, frost: z.frostK || 0, char: z.charK || 0, minion: !!z.minion, spr: null };
+      vx: (z.vx || 0) * 0.35 + Math.cos(z.hitA || 0) * (z.hitP || 0.5) * 22, vy: (z.vy || 0) * 0.35 + Math.sin(z.hitA || 0) * (z.hitP || 0.5) * 22, burn: z.burnT > 0 || z.lastSrc === 'fire' ? 1 : 0, frost: z.frostK || 0, char: z.charK || 0, minion: !!z.minion, sever: z.sever | 0, spr: null };
     ANIMA.corpses.push(C); ANIMA.deadN++;
     const cap = ANIMA.corpseCap; if (ANIMA.corpses.length > cap) ANIMA.corpses.splice(0, ANIMA.corpses.length - cap);
     return ci;
   } catch (e) { animaHurt(e, 'corpse'); return -1; }
 }
 const A_CORPSE_LIFE = 26;
+const aCorpseLife = () => SET.bodies === 'short' ? 10 : SET.bodies === 'long' ? 60 : A_CORPSE_LIFE;
 function animaCorpses(dt) {
   const L = ANIMA.corpses; if (!L.length) return;
   const vis = typeof goreSeen === 'function' ? goreSeen : null;
@@ -850,7 +934,7 @@ function animaCorpses(dt) {
       C.life += dt;
       // off every screen for a while (all players' in co-op), or old: it goes
       if (vis && !vis(C.x, C.y, C.r * 6)) C.off += dt; else C.off = 0;
-      if (C.life > A_CORPSE_LIFE || C.off > 6) { L.splice(i, 1); continue; }
+      if (C.life > aCorpseLife() || C.off > 6) { L.splice(i, 1); continue; }
     }
   }
 }
@@ -869,7 +953,7 @@ function animaDrawCorpses(vis) {
   let live = 0; const liveCap = ANIMA.liveCap;
   for (const C of L) {
     if (!vis(C.x, C.y, C.r * 6)) continue;
-    const fade = C.done ? clamp((A_CORPSE_LIFE - C.life) / 3, 0, 1) : 1;
+    const life = aCorpseLife(), fade = C.done ? clamp((life - C.life) / 3, 0, 1) : 1;
     if (fade <= 0) continue;
     const co = Math.cos(C.ang) * s * C.r, si = Math.sin(C.ang) * s * C.r;
     if (!C.done || !C.spr) {
@@ -879,22 +963,22 @@ function animaDrawCorpses(vis) {
       }
       if (!C.done && live < liveCap + 6) {
         live++; ctx.setTransform(co, si, -si, co, e + C.x * s, f + C.y * s); ctx.globalAlpha = fade;
-        lookDraw(ctx, C.m, aCorpsePose(C), { lod: 1, dead: 1, burn: C.burn, minion: C.minion, t: G.time });
+        lookDraw(ctx, C.m, aCorpsePose(C), { lod: 1, dead: 1, burn: C.burn, minion: C.minion, t: G.time, sever: C.sever });
         continue;
       }
       if (!C.spr) continue;
     }
     const sp = C.spr, kz = C.r / sp.rq;
-    ctx.setTransform(co / C.r, si / C.r, -si / C.r, co / C.r, e + C.x * s, f + C.y * s); ctx.globalAlpha = fade * (C.life > A_CORPSE_LIFE - 8 ? 0.85 : 1);
+    ctx.setTransform(co / C.r, si / C.r, -si / C.r, co / C.r, e + C.x * s, f + C.y * s); ctx.globalAlpha = fade * (C.life > life - 8 ? 0.85 : 1);
     ctx.drawImage(sp.c, sp.x0 * kz, sp.y0 * kz, sp.w * kz, sp.h * kz);
   }
   ctx.globalAlpha = 1; ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f);
 }
 function aCorpseSprite(C) {
-  const m = C.m, rq = Math.max(3, Math.round(C.r)), key = 'c' + m.idx + '|' + C.ci + '|' + rq + '|' + (C.burn ? 1 : 0) + '|' + (C.minion ? 1 : 0);
+  const m = C.m, rq = Math.max(3, Math.round(C.r)), key = 'c' + m.idx + '|' + C.ci + '|' + rq + '|' + (C.burn ? 1 : 0) + '|' + (C.minion ? 1 : 0) + '|' + (C.sever || 0);
   let sp = ANIMA.cache.get(key); if (sp) { ANIMA.cache.delete(key); ANIMA.cache.set(key, sp); return sp; }
   const P = new Float32Array(AN); C.t = C.dur; aCorpsePose(C); P.set(C.pose);
-  sp = aBake(m, P, rq, aKp(1), { lod: 1, dead: 1, burn: C.burn, minion: C.minion }, 4.2);
+  sp = aBake(m, P, rq, aKp(1), { lod: 1, dead: 1, burn: C.burn, minion: C.minion, sever: C.sever }, 4.2);
   if (sp) { ANIMA.cache.set(key, sp); aTrim(); }
   return sp;
 }
@@ -915,7 +999,7 @@ function aBounds(m, pose) {
   return [x0, y0, x1, y1];
 }
 function aBake(m, pose, rq, kp, o, ext) {
-  const Bx = aBounds(m, pose), x0 = Bx[0] * rq, y0 = Bx[1] * rq, w = (Bx[2] - Bx[0]) * rq, h = (Bx[3] - Bx[1]) * rq, S = Math.max(8, Math.ceil(w * kp));
+  ANIMA.sev = o.sever | 0; const Bx = aBounds(m, pose); ANIMA.sev = 0; const x0 = Bx[0] * rq, y0 = Bx[1] * rq, w = (Bx[2] - Bx[0]) * rq, h = (Bx[3] - Bx[1]) * rq, S = Math.max(8, Math.ceil(w * kp));
   const c = document.createElement('canvas'); c.width = S; c.height = Math.max(8, Math.ceil(h * kp));
   const g = c.getContext('2d'); if (!g) return null;
   g.setTransform(kp * rq, 0, 0, kp * rq, -x0 * kp, -y0 * kp); g.lineCap = 'round'; g.lineJoin = 'round';
@@ -925,21 +1009,35 @@ function aBake(m, pose, rq, kp, o, ext) {
 }
 const A_FR = [12, 10, 8, 6];
 // the cached frame of a zombie's walk (or idle) for this moment
-function aFrame(z, A, lod) {
+function aFrame(z, A, lod, sev) {
   const m = z.m, ci = A.base, q = lod >= 2 ? 1 : 0, F = A_FR[Math.min(3, lod)], rq = Math.max(3, Math.round(z.r / (q ? 2 : 1)) * (q ? 2 : 1));
   const u = ci < 10 ? A.ph : ((G.time + A.t0) / m.adur[ci]) % 1, fi = Math.floor(u * F) % F;
-  const key = 'f' + m.idx + '|' + ci + '|' + fi + '|' + F + '|' + rq + '|' + q + '|' + (z.minion ? 1 : 0);
+  const key = 'f' + m.idx + '|' + ci + '|' + fi + '|' + F + '|' + rq + '|' + q + '|' + (z.minion ? 1 : 0) + (sev ? '|s' + sev : '');
   let sp = ANIMA.cache.get(key);
   if (sp) { ANIMA.hits++; if ((frameNo & 7) === 0) { ANIMA.cache.delete(key); ANIMA.cache.set(key, sp); } A.fk = key; A.fs = sp; return sp; }
   ANIMA.miss++;
   if (ANIMA.bud > 0) {
     ANIMA.bud--;
     const P = ANIMA.tmp; animaEval(P, m, ci, (fi + 0.5) / F, (fi + 0.5) / F * m.adur[ci < 10 ? AC.walk : ci]);
-    sp = aBake(m, P, rq, aKp(q), { lod: q ? 2 : 1, minion: z.minion }, 3.1);
+    sp = aBake(m, P, rq, aKp(q), { lod: q ? 2 : 1, minion: z.minion, sever: sev, tex: !q && texelLevel() >= 1 }, 3.1);
     if (sp) { ANIMA.cache.set(key, sp); aTrim(); A.fk = key; A.fs = sp; return sp; }
   }
   // not made yet: the last frame it had (any clip), so it never pops to nothing
   return A.fs || null;
+}
+// the loading screen makes the walk frames of the first waves' zombies ahead of time (so the first horde never waits)
+function animaWarm(m) {
+  if (!animaUp() || !m || !m.v2) return;
+  const P = new Float32Array(AN);
+  for (const lod of [1, 2]) {
+    const q = lod >= 2 ? 1 : 0, F = A_FR[lod], rq = Math.max(3, Math.round(zombieR(m.size, 1) / (q ? 2 : 1)) * (q ? 2 : 1));
+    for (let fi = 0; fi < F; fi++) {
+      const key = 'f' + m.idx + '|' + AC.walk + '|' + fi + '|' + F + '|' + rq + '|' + q + '|0'; if (ANIMA.cache.has(key)) continue;
+      animaEval(P, m, AC.walk, (fi + 0.5) / F, (fi + 0.5) / F * m.adur[AC.walk]);
+      const sp = aBake(m, P, rq, aKp(q), { lod: q ? 2 : 1, tex: !q && texelLevel() >= 1 }, 3.1); if (sp) ANIMA.cache.set(key, sp);
+    }
+  }
+  aTrim();
 }
 function aTrim() { const cap = ANIMA.cacheCap || 900; while (ANIMA.cache.size > cap) ANIMA.cache.delete(ANIMA.cache.keys().next().value); }
 function animaForget() { ANIMA.cache.clear(); for (const C of ANIMA.corpses) C.spr = null; for (const z of G.zs) if (z.an) { z.an.fs = null; z.an.fk = ''; } }
@@ -957,17 +1055,19 @@ function animaDraw(z, lod, rank, s, e, f, a) {
     ctx.globalAlpha = a;
     if (live) {
       ctx.setTransform(co, si, -si, co, e + x * s, f + y * s);
-      lookDraw(ctx, z.m, A.pose, { lod: lod, t: G.time, z: z, light: aLight(z), flash: z.flash, minion: z.minion, burn: z.burnT > 0, frost: z.frostK, glow: 1 });
+      lookDraw(ctx, z.m, A.pose, { lod: lod, t: G.time, z: z, light: aLight(z), flash: z.flash, minion: z.minion, burn: z.burnT > 0, frost: z.frostK, glow: 1, sever: z.sever | 0, tex: lod === 0 && texelLevel() >= 2 });
       // its skeleton, kept for the lighting engine (the shadow of this exact pose)
       (A.J || (A.J = new Float32Array(NJ * 3))).set(ANIMA.J); A.jF = frameNo;
       ANIMA.live++;
       return true;
     }
-    const sp = aFrame(z, A, lod);
+    const sp = aFrame(z, A, lod, z.sever | 0);
     if (!sp) return false;
     const kz = z.r / sp.rq;
     ctx.setTransform(co / z.r, si / z.r, -si / z.r, co / z.r, e + x * s, f + y * s);
     ctx.drawImage(sp.c, sp.x0 * kz, sp.y0 * kz, sp.w * kz, sp.h * kz);
+    // the light beside it on the picture too (near ones, on devices with room): lit side, shaded side, a rim of its colour
+    if (lod <= 1 && rank < 40 && PERF.tier >= 2 && typeof LUX !== 'undefined' && LUX.live && typeof lookShade === 'function') lookShade(ctx, aLight(z), z.r * 0.95, z.r * 0.85, 0.8);
     if (z.flash > 0 && lod < 3) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.5 * a; ctx.drawImage(sp.c, sp.x0 * kz, sp.y0 * kz, sp.w * kz, sp.h * kz); ctx.globalCompositeOperation = 'source-over'; }
     ANIMA.cached++;
     return true;

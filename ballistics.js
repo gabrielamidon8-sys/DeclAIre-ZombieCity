@@ -170,7 +170,7 @@ function balStep(b, dt) {
       const O = balResolve(z, b, e, side, front);
       dmg = bonusDmg(z, O.dmg); absorb = O.absorb;
       res = hurtZombie(z, dmg, { src: 'bullet', crit: O.reg === 'head' && !O.deflect, kx: ux * S.knock * 0.18, ky: uy * S.knock * 0.18, reg: O.reg, kill: O.kill, cripple: O.cripple, deflect: O.deflect, P: O.P });
-      if (O.kill && res === true) { BAL.kills++; if (O.reg === 'head') BAL.heads++; }
+      if (O.kill && res === true) { BAL.kills++; if (O.reg === 'head') { BAL.heads++; if (SFX.headshot) SFX.headshot(clamp((z.x - cam.x) / (W / ZOOM / 2), -1, 1)); } }
       if (O.deflect) { (b.hit || (b.hit = [])).push(z); b.E -= absorb; if (b.E < 60) { b.dead = true; break; } continue; }
     } else {
       dmg = bonusDmg(z, b.dmg * Math.sqrt(Math.max(0.1, b.E / Math.max(1, b.E0))));

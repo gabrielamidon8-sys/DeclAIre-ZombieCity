@@ -5,7 +5,7 @@
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
   quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: 100, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
-  decals: 'normal', bloodTime: '60', crowd: 'auto', swarm: 'auto', swarmPush: true, life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
+  decals: 'normal', bloodTime: '60', bodies: 'normal', crowd: 'auto', swarm: 'auto', swarmPush: true, life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
@@ -124,6 +124,7 @@ const SET_ROWS = [
   { tab: 'graphics', group: 'Effects' },
   { id: 'particles', tab: 'graphics', type: 'slider', label: 'Particles', desc: 'Blood, sparks, smoke and debris.', min: 25, max: 150, step: 25, fmt: v => v + '%' },
   { id: 'decals', tab: 'graphics', type: 'seg', label: 'Marks on the ground', desc: 'Blood, pieces, scorch marks and footprints.', opts: [['low', 'Few'], ['normal', 'Normal'], ['high', 'Lots']] },
+  { id: 'bodies', tab: 'graphics', type: 'seg', label: 'Bodies stay', desc: 'How long the dead lie where they fell. Bodies nobody can see (in co-op: off every player\'s screen) are cleared after a few seconds, and fewer stay when the frame is busy.', opts: [['short', '10 s'], ['normal', '25 s'], ['long', '1 min']] },
   { id: 'bloodTime', tab: 'graphics', type: 'seg', label: 'Blood lasts', desc: 'How long blood stays before it fades. Blood nobody can see (in co-op: off every player\'s screen) is cleared straight away.', opts: [['30', '30 s'], ['60', '1 min'], ['120', '2 min']] },
   { id: 'grade', tab: 'graphics', type: 'seg', label: 'Color grading', desc: 'Each district and the weather tint the screen.', opts: ON_OFF },
   { id: 'vis', tab: 'graphics', paused: true, type: 'seg', label: 'Light show', desc: 'The city pulses to the radio.', opts: [['full', 'Full'], ['low', 'Low'], ['off', 'Off']] },
@@ -154,7 +155,7 @@ const SET_ROWS = [
   { id: 'seedMode', tab: 'gameplay', type: 'seg', label: 'Same map every run', desc: 'Keep the map from your last run so you can learn it.', opts: [['random', 'Off'], ['fixed', 'On']] },
   { tab: 'gameplay', group: 'Hordes' },
   { id: 'swarm', tab: 'gameplay', basic: true, type: 'seg', label: 'Horde size', desc: 'How big the hordes and droves get, and how many zombies can be alive at once. Auto follows what your device can draw (500 and more on most).', opts: [['auto', 'Auto'], ['small', 'Smaller'], ['big', 'Bigger'], ['huge', 'Huge']] },
-  { id: 'swarmPush', tab: 'gameplay', type: 'seg', label: 'Crowds push vehicles', desc: 'Enough zombies pressing together shove parked cars, vans, buses and semis out of the way (about 50 for a car, 460 for a semi).', opts: ON_OFF },
+  { id: 'swarmPush', tab: 'gameplay', type: 'seg', label: 'Crowds push vehicles', desc: 'A horde big enough to move it (about 50 for a car, 460 for a semi) shoves a parked vehicle out of its way when you are at that vehicle and it stands between you; anywhere else the horde goes round it.', opts: ON_OFF },
   { tab: 'gameplay', group: 'Screen' },
   { id: 'shake', tab: 'gameplay', basic: true, type: 'slider', label: 'Screen shake', desc: 'How hard explosions and hits shake the view.', min: 0, max: 150, step: 25, fmt: v => v ? v + '%' : 'Off' },
   { id: 'ftext', tab: 'gameplay', type: 'seg', label: 'Floating text', desc: 'Pickups, dodges and jams written above you.', opts: ON_OFF },

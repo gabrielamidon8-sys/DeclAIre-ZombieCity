@@ -46,7 +46,7 @@ function lookBuild(m) {
 
 /* ---------- drawing ---------- */
 const LKP = new Float32Array(NJ * 3);   // the skeleton projected onto the ground (x, y, scale)
-let LKG = null, LKL = null, LKO = null, LKM = null;
+let LKG = null, LKL = null, LKO = null, LKM = null, LKSEV = 0;
 function lkX(i) { return LKP[i * 3]; } function lkY(i) { return LKP[i * 3 + 1]; } function lkK(i) { return LKP[i * 3 + 2]; }
 function lkSeg(g, x1, y1, x2, y2, w, col, out) {
   if (out) { g.strokeStyle = out; g.lineWidth = w + 0.11; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
@@ -67,6 +67,15 @@ function lkEll(g, x, y, rx, ry, rot, fill, out, ow) {
   if (out) { g.strokeStyle = out; g.lineWidth = ow || 0.07; g.stroke(); }
 }
 function lkCirc(g, x, y, r, fill) { g.beginPath(); g.arc(x, y, Math.max(0.01, r), 0, TAU); g.fillStyle = fill; g.fill(); }
+// surface texture: the texture engine's patterns (skin mottling, cloth weave, grime), one set per canvas it draws into
+const LK_PAT = new WeakMap();
+function lkPat(g, kind) {
+  let P = LK_PAT.get(g); if (!P) { P = {}; LK_PAT.set(g, P); }
+  if (P[kind] === undefined) { try { P[kind] = typeof texelPattern === 'function' ? texelPattern(g, kind, 0.075) : null; } catch (e) { P[kind] = null; } }
+  return P[kind];
+}
+// lays a texture over the path just filled (soft, so the colour underneath stays)
+function lkTex(g, kind, a) { if (LKO.lod > 1 || !LKO.tex) return; const p = lkPat(g, kind); if (!p) return; g.save(); g.globalAlpha = a; g.globalCompositeOperation = 'overlay'; g.fillStyle = p; g.fill(); g.restore(); }
 // a part lit from one side: a radial gradient whose bright spot sits toward the light
 function lkShade(g, x, y, r, S, k) {
   if (!LKL || LKO.lod >= 2) return S.b;
@@ -85,7 +94,7 @@ function lkRim(g, x, y, rx, ry, rot) {
 // a pose drawn into g (already moved to the zombie and turned to face its way, one unit per radius)
 function lookDraw(g, m, pose, o) {
   const D = m.ad, L = m.al, J = ANIMA.J, P = LKP, H = D.H;
-  animaFK(D, pose, J);
+  ANIMA.sev = o.sever | 0; animaFK(D, pose, J); LKSEV = ANIMA.sev; ANIMA.sev = 0;
   for (let i = 0; i < NJ; i++) { const k = i * 3; if (i === JN.fdir || i === JN.hup) { P[k] = J[k]; P[k + 1] = J[k + 1]; P[k + 2] = J[k + 2]; continue; } const s = 1 + A_PERSP * J[k + 2] / H; P[k] = J[k] * s; P[k + 1] = J[k + 1] * s; P[k + 2] = s; }
   LKG = g; LKL = o.light || null; LKO = o; LKM = m;
   g.lineCap = 'round'; g.lineJoin = 'round';
@@ -181,6 +190,7 @@ function lkTorso(g, m, pose) {
   // the chest and shoulders
   const cx = sx * 0.82 + px * 0.18 + (lkX(JN.chest) - sx) * 0.15, cy = sy * 0.82 + py * 0.18 + (lkY(JN.chest) - sy) * 0.15;
   lkEll(g, cx, cy, chW, chD, rot + Math.PI / 2 * 0, lkShade(g, cx, cy, chW, C), C.o, 0.07);
+  lkTex(g, L.bare ? 'skin' : 'cloth', 0.45); lkTex(g, 'grime', 0.35);
   // ---- what is on it, drawn in the chest's own frame (x along the shoulders, y front to back)
   g.save(); g.translate(cx, cy); g.rotate(rot);
   // after the rotation +y points to the zombie's back for a standing body; its front is -y
@@ -260,7 +270,7 @@ function lkArm(g, m, side, pose) {
   const D = m.ad, L = m.al, F = L.F, si = side < 0 ? JN.shL : JN.shR, ei = si + 1, hi = si + 2;
   const sx = lkX(si), sy = lkY(si), ex = lkX(ei), ey = lkY(ei), hx = lkX(hi), hy = lkY(hi), lit = LKO.lod <= 1;
   const big = side > 0 && D.bigArm ? 1.3 : 1, wu = D.limb * lkK(si) * big, wf = D.fore * lkK(hi) * big;
-  if (side < 0 && D.noArmL) {
+  if ((side < 0 && D.noArmL) || (LKSEV & (side < 0 ? 1 : 2))) {
     // the stump of a lost arm, bone showing
     lkLimb(g, sx, sy, ex, ey, wu, L.sleeve ? L.sleeveC : L.skin, lit); lkCirc(g, ex, ey, wu * 0.45, '#7a1a1a'); lkCirc(g, ex, ey, wu * 0.2, '#d9cfb4'); return;
   }
@@ -348,6 +358,7 @@ function lkHead(g, m, pose) {
   // the skull itself, lit from the side the light comes from
   const skinC = L.glowSkin && LKO.glow ? lkSet(lkMix(L.skin.rgb, [234, 255, 74], 0.25)) : L.skin;
   lkEll(g, x, y, hr, hr * 0.94, ang, lkShade(g, x, y, hr, skinC), skinC.o, 0.06);
+  lkTex(g, 'skin', 0.5);
   // where the top of the head is (seen when upright) and where the face is (at the front edge, or full on when it looks up)
   const tx = x + ux * hr * 0.45, ty = y + uy * hr * 0.45;
   const ffx = x + fdx * hr * (0.62 - 0.48 * vis), ffy = y + fdy * hr * (0.62 - 0.48 * vis);

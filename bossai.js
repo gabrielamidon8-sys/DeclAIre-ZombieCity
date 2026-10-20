@@ -10,7 +10,7 @@ const BOSS_MOVES = {
   howl: { max: 400, cd: 4.5, tele: 0.5 }, web: { max: 580, cd: 3.2, tele: 0.4 }, bombs: { max: 600, cd: 3.6, tele: 0.3 }, blades: { max: 450, cd: 5.5, tele: 0.4 },
   regen: { cd: 10, tele: 0.3 }, grab: { max: 540, cd: 20, tele: 0 }, quake: { max: 440, cd: 4.2, tele: 0.55 }, frost: { max: 600, cd: 3.6, tele: 0.3 }, lightning: { cd: 3.8, tele: 0.3 }
 };
-const SHOT_COL = { acid: '#a5d43a', wisp: '#ffb04a', shard: '#e8eef5', spike: '#d9cfb4', fire: '#ff8a2a', ice: '#9ff0ff', void: '#b48cff', shock: '#fff36b', spirit: '#cfe8ff', web: '#f2efe6', bolt: '#ff5a4a' };
+const SHOT_COL = { acid: '#a5d43a', wisp: '#ffb04a', shard: '#e8eef5', spike: '#d9cfb4', fire: '#ff8a2a', ice: '#9ff0ff', void: '#b48cff', shock: '#fff36b', spirit: '#cfe8ff', web: '#f2efe6', bolt: '#ff5a4a', wrench: '#8a9096' };
 const ROSTER_BY_ID = new Map(ZB.ROSTER.map(d => [d.id, d]));
 
 function rosterM(def) {
