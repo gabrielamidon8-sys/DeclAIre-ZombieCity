@@ -383,8 +383,8 @@ function burst(x, y, n, col, spd, size, life) {
   }
 }
 function ring(x, y, r0, r1, life, c, w) { G.rings.push({ x: x, y: y, r0: r0, r1: r1, t: 0, life: life, c: c, w: w || 2 }); }
-// a mark on the ground (explosions, dust): the blood engine draws it as a scorch and dries it into the street
-function splat(x, y, r, c) { if (typeof goreScorch === 'function') { goreScorch(x, y, r, c); return; } if (G.splats.length >= Q.splats) G.splats.shift(); G.splats.push({ k: 'old', x: x, y: y, r: r, c: c, rot: rand(TAU), sq: rand(0.5, 0.9) }); }
+// a mark on the ground (explosions, dust): the blood engine draws it as a scorch that fades like the blood
+function splat(x, y, r, c) { if (typeof goreScorch === 'function' && goreOk()) { goreScorch(x, y, r, c); return; } if (G.splats.length >= Q.splats) G.splats.shift(); G.splats.push({ k: 'old', x: x, y: y, r: r, c: c, rot: rand(TAU), sq: rand(0.5, 0.9) }); }
 function shakeIt(v) { if (!RM && SET.shake) G.shake = Math.max(G.shake, v * SET.shake / 100); }
 function bolt(x1, y1, x2, y2, c) {
   const pts = [x1, y1], n = 7;
@@ -721,6 +721,7 @@ function hurtZombie(z, dmg, o) {
   if (z.shield > 0) { const a = Math.min(z.shield, dmg); z.shield -= a; dmg -= a; }
   if (z.shieldMax) z.shieldCd = 3;
   z.hp -= dmg; z.flash = 0.09;
+  if ((o.src === 'blast' || o.src === 'a10') && typeof goreBlastHit === 'function') goreBlastHit(z, Math.atan2(o.ky || 0, o.kx || 0), dmg);   // burns, chunks
   if (o.kx) { z.kvx += o.kx * z.kb; z.kvy += o.ky * z.kb; }
   if (o.crit) G.texts.push({ x: z.x + rand(-6, 6), y: z.y - z.r, t: 0, life: 0.6, s: String(Math.round(dmg)), c: '#f2cc3a' });
   if (z.abs.indexOf('hive') >= 0 && Math.random() < 0.28 && G.nFly < 30) { spawnZombie(z.m, z.x, z.y, { fly: true }); G.nFly++; }
@@ -754,7 +755,8 @@ function killZombie(z) {
     if (op.enrage) o.buffT = 4;
   });
   burst(z.x, z.y, z.boss ? 40 : z.fly ? 3 : 10, gore, z.boss ? 260 : 150, z.fly ? 2 : 5, 0.6);
-  if (!z.fly) { if (typeof goreKill === 'function') goreKill(z); else splat(z.x, z.y, z.r * rand(0.9, 1.4), gore); }
+  if (!z.fly) { if (typeof goreKill === 'function' && goreOk()) goreKill(z); else splat(z.x, z.y, z.r * rand(0.9, 1.4), gore); }
+  coreEmit('kill', { z: z, by: NET.lastHitBy });
   if (!z.fly && G.chain >= 25 && G.mode === 'play') burst(z.x, z.y, 6 + Math.min(14, Math.floor(G.chain / 25) * 3), chainColor(G.chain), 260, 3, 0.45);
   const dp = m.S.p.death;
   if (!z.fly && !z.minion) {
@@ -1033,6 +1035,7 @@ function updFx(dt) {
   for (const q of G.parts) { q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; const dr = Math.exp(-4 * dt); q.vx *= dr; q.vy *= dr; if (q.bl && q.life <= 0) goreLand(q); }
   if (typeof goreTick === 'function') goreTick(dt);
   if (typeof muzzleTick === 'function') muzzleTick(dt);
+  if (typeof tracerTick === 'function') tracerTick(dt);
   G.parts = G.parts.filter(q => q.life > 0);
   for (const r of G.rings) r.t += dt; G.rings = G.rings.filter(r => r.t < r.life);
   for (const t of G.texts) { t.t += dt; t.y -= 26 * dt; } G.texts = G.texts.filter(t => t.t < t.life);
@@ -1123,7 +1126,7 @@ function showOv(id) { OVS.forEach(o => { $(o).hidden = o !== id; }); $('hud').hi
 function newRun(o) {
   o = o && !(o instanceof Event) ? o : {};
   if (typeof luxNewRun === 'function') luxNewRun();
-  if (typeof muzzleReset === 'function') muzzleReset();
+  if (typeof coreEmit === 'function') coreEmit('run', {});   // every engine that keeps something per run clears it
   // shut for maintenance (or this version is too old): the maintenance screen instead of a run
   if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
@@ -1476,13 +1479,14 @@ function render() {
   PERF.sec.wx += performance.now() - tw;
   const vz = vzNow; if (vz) drawVizGround(vz, x0, y0, x1, y1);
   // floor stains
-  if (typeof goreDraw === 'function') goreDraw(vis);
-  if (typeof muzzleWorld === 'function') muzzleWorld(vis, 'brass');
+  // the blood engine draws the stains; if it is down the game covers for it with plain ones
+  if (typeof goreDraw === 'function' && goreOk()) goreDraw(vis);
   else for (const p of G.splats) {
-    if (!vis(p.x, p.y, p.r * 2)) continue;
+    if (!p.c || !vis(p.x, p.y, p.r * 2)) continue;
     ctx.globalAlpha = 0.42; ctx.fillStyle = p.c; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, p.r * p.sq, p.rot, 0, TAU); ctx.fill();
   }
   ctx.globalAlpha = 1;
+  if (typeof muzzleWorld === 'function') muzzleWorld(vis, 'brass');
   drawHoles(vis);
   let tl = performance.now(); drawWorldUnder(vis); PERF.sec.life += performance.now() - tl;
   drawWindDebris(vis);
@@ -1525,26 +1529,29 @@ function render() {
   for (const z of G.zs) if (!z.dead && z.boss) drawZ(z);
   if (G.p && G.mode !== 'title') { drawDashActors(G.p); if (!G.p.down) drawPlayer(G.p); if (NET.started) netDrawPlayers(); }
   if (typeof muzzleWorld === 'function') muzzleWorld(vis, 'smoke');
-  // bullets
-  ctx.lineCap = 'round';
-  ctx.globalCompositeOperation = 'lighter';
-  for (const b of G.bullets) {
-    if (b.kind !== 'flame') continue;
-    const f = clamp(1 - b.life / b.max, 0, 1); ctx.globalAlpha = 0.7 * (1 - f);
-    ctx.fillStyle = f < 0.3 ? '#ffe9a0' : f < 0.6 ? '#ff9a3a' : '#c2401a';
-    ctx.beginPath(); ctx.arc(b.x, b.y, 4 + f * 13, 0, TAU); ctx.fill();
-  }
-  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-  for (const b of G.bullets) {
-    if (b.kind === 'flame') continue;
-    if (b.kind === 'grenade') {
-      ctx.fillStyle = '#2a2d22'; ctx.beginPath(); ctx.arc(b.x, b.y, 5.5, 0, TAU); ctx.fill();
-      ctx.fillStyle = Math.floor(G.time * 14) % 2 ? '#ff4a3a' : b.col; ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, TAU); ctx.fill(); continue;
+  // bullets: the bullet engine draws every round; if it is down the game draws plain tracers
+  if (typeof tracerDraw === 'function' && tracerOn()) tracerDraw(vis);
+  else {
+    ctx.lineCap = 'round';
+    ctx.globalCompositeOperation = 'lighter';
+    for (const b of G.bullets) {
+      if (b.kind !== 'flame') continue;
+      const f = clamp(1 - b.life / b.max, 0, 1); ctx.globalAlpha = 0.7 * (1 - f);
+      ctx.fillStyle = f < 0.3 ? '#ffe9a0' : f < 0.6 ? '#ff9a3a' : '#c2401a';
+      ctx.beginPath(); ctx.arc(b.x, b.y, 4 + f * 13, 0, TAU); ctx.fill();
     }
-    // the tracer never reaches back past where the bullet left the muzzle
-    const tl = Math.min(b.heavy ? 0.034 : b.shard ? 0.012 : 0.022, b.age || 0);
-    ctx.strokeStyle = b.crit ? '#ffffff' : b.col; ctx.lineWidth = b.heavy ? 3.4 : b.shard ? 1.6 : b.crit ? 3 : 2.4;
-    ctx.beginPath(); ctx.moveTo(b.x - b.vx * tl, b.y - b.vy * tl); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    for (const b of G.bullets) {
+      if (b.kind === 'flame') continue;
+      if (b.kind === 'grenade') {
+        ctx.fillStyle = '#2a2d22'; ctx.beginPath(); ctx.arc(b.x, b.y, 5.5, 0, TAU); ctx.fill();
+        ctx.fillStyle = Math.floor(G.time * 14) % 2 ? '#ff4a3a' : b.col; ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, TAU); ctx.fill(); continue;
+      }
+      // the tracer never reaches back past where the bullet left the muzzle
+      const tl = Math.min(b.heavy ? 0.034 : b.shard ? 0.012 : 0.022, b.age || 0);
+      ctx.strokeStyle = b.crit ? '#ffffff' : b.col; ctx.lineWidth = b.heavy ? 3.4 : b.shard ? 1.6 : b.crit ? 3 : 2.4;
+      ctx.beginPath(); ctx.moveTo(b.x - b.vx * tl, b.y - b.vy * tl); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
   }
   if (vz) drawVizBullets(vz);
   for (const e of G.eshots) {
@@ -1593,8 +1600,10 @@ function drawEmissive(vis) {
   const a = 1 - (LUX.amb[0] + LUX.amb[1] + LUX.amb[2]) / 3; if (a < 0.08) return;
   if (typeof garageEmissive === 'function') garageEmissive(vis, a);
   if (typeof muzzleEmissive === 'function') muzzleEmissive(a);
+  if (typeof goreEmissive === 'function') goreEmissive(a);
+  if (typeof auraEmissive === 'function') auraEmissive(a);
   ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-  for (const b of G.bullets) {
+  if (!(typeof tracerEmissive === 'function' && tracerEmissive(a))) for (const b of G.bullets) {
     if (!vis(b.x, b.y, 30)) continue;
     if (b.kind === 'flame') { const f = clamp(1 - b.life / b.max, 0, 1); ctx.globalAlpha = 0.55 * (1 - f) * a; ctx.fillStyle = f < 0.3 ? '#ffe9a0' : f < 0.6 ? '#ff9a3a' : '#c2401a'; ctx.beginPath(); ctx.arc(b.x, b.y, 4 + f * 13, 0, TAU); ctx.fill(); continue; }
     if (b.kind === 'grenade') { ctx.globalAlpha = a; ctx.fillStyle = Math.floor(G.time * 14) % 2 ? '#ff4a3a' : b.col; ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, TAU); ctx.fill(); continue; }
@@ -1722,7 +1731,7 @@ function drawZ(z, lod, far) {
   ctx.rotate(z.ang + Math.sin(G.time * 7 + z.bob) * 0.06);
   ctx.globalAlpha = a;
   ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2);
-  if (z.wnd && lod < 2) goreWounds(ctx, z, z.r);
+  if ((z.wnd || z.charK || z.frostK) && lod < 2 && typeof goreWounds === 'function') goreWounds(ctx, z, z.r);
   if (z.flash > 0 && lod < 3) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * a; ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); ctx.globalCompositeOperation = 'source-over'; }
   ctx.restore(); ctx.globalAlpha = 1;
   if (lod >= 3) { if (z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0)) lod = 2; else return; }

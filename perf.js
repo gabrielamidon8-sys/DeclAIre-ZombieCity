@@ -150,6 +150,7 @@ function applyRung(i, why) {
   PERF.rung = i; PERF.tier = r[0]; PERF.res = r[1];
   Object.assign(Q, TIER_Q[r[0]]); applyOverrides();
   ZB.setDetail(Q.boss); SFX.setQuality(Q.audio);
+  if (tierChanged && typeof coreEmit === 'function') coreEmit('quality', { tier: r[0], rung: i, why: why });   // the engines find their level again
   if (!Q.beat) { const a = $('app'); a.style.setProperty('--beat', '0'); VZ.css = ''; }
   resize();
   if (tierChanged) trimCaches(0);
@@ -250,8 +251,8 @@ function trimCaches(level) {
   const keep = level >= 2 ? 0 : level >= 1 ? live.filter(c => frameNo - c.seen < 3).length : Q.chunkKeep;
   let kept = keep; if (level < 2) { const budget = [60, 100, 150, 210][PERF.tier] * 1048576; let b = 0; for (let i = 0; i < Math.min(kept, live.length); i++) { b += canvasBytes(live[i].can) + canvasBytes(live[i].wcan); if (b > budget && i >= 6) { kept = i; break; } } }
   for (let i = kept; i < live.length; i++) { freed += canvasBytes(live[i].can) + canvasBytes(live[i].wcan) + canvasBytes(live[i].skyc); live[i].can = null; live[i].wcan = null; live[i].skyc = null; }
-  if (level >= 1 && typeof GORE !== 'undefined') { for (const v of GORE.spr.values()) freed += canvasBytes(v); GORE.spr.clear(); }
-  if (level >= 1 && typeof MUZZLE !== 'undefined') { for (const v of MUZZLE.spr.values()) freed += canvasBytes(v); MUZZLE.spr.clear(); }
+  // the engines that keep their own picture caches free them when they hear memory is short (the engine hub's bus)
+  if (level >= 1 && typeof coreEmit === 'function') { if (typeof GORE !== 'undefined') for (const v of GORE.spr.values()) freed += canvasBytes(v); if (typeof MUZZLE !== 'undefined') for (const v of MUZZLE.spr.values()) freed += canvasBytes(v); coreEmit('lowMemory', { level: level }); }
   if (level >= 1 && typeof WSPR !== 'undefined') { for (const v of WSPR.values()) freed += canvasBytes(v.c); WSPR.clear(); }
   if (level >= 1 && typeof TEXEL !== 'undefined') { for (const v of TEXEL.players.values()) freed += canvasBytes(v.c); TEXEL.players.clear(); for (const c of TEXEL.scratch) freed += canvasBytes(c); TEXEL.scratch.length = 0; }
   for (const [key, c] of chunks) if (Math.abs(c.sx + CHS / 2 - cam.x) > CHS * 5 || Math.abs(c.sy + CHS / 2 - cam.y) > CHS * 5) chunks.delete(key);
@@ -261,7 +262,7 @@ function trimCaches(level) {
     if (g && sh && sh.hidden && g.firstChild) { for (const c of g.querySelectorAll('canvas')) freed += canvasBytes(c); g.textContent = ''; }
   }
   if (G.parts.length > Q.parts) G.parts.splice(0, G.parts.length - Q.parts);
-  if (G.splats.length > Q.splats) G.splats.splice(0, G.splats.length - Q.splats);
+  { const cap = typeof goreCap === 'function' ? goreCap(Math.max(1, goreLevel())) : Q.splats; if (G.splats.length > cap) G.splats.splice(0, G.splats.length - cap); }
   if (G.texts.length > Q.texts) G.texts.splice(0, G.texts.length - Q.texts);
   if (level >= 2) { flashGrad = null; }
   PERF.freed += freed;

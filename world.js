@@ -761,8 +761,6 @@ function renderChunk(c) {
   drawDecals(g, c, B, R, win, sea);
   // the city's bloodstains: a splash with droplets thrown off one side
   for (let i = 0; i < 3; i++) bloodSplat(g, ox + R() * CH, oy + R() * CH, 6 + R() * 10, R, c.bio === 'snow' || win ? 'rgba(120,14,14,0.42)' : 'rgba(46,10,10,0.42)');
-  // and the blood of this run, dried in (the blood engine keeps a list per block)
-  if (typeof goreRebake === 'function') goreRebake(g, c);
   t1 = performance.now(); RT.decal += t1 - t0; t0 = t1;
   drawWrecks(g, c);
   for (const r of c.rects) drawRectArt(g, r, c, B, win);

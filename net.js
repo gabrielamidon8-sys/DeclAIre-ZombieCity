@@ -641,7 +641,8 @@ function netKillFx(z, by) {
   const m = z.m, gore = m.S.gore;
   if (z.illusion) { burst(z.x, z.y, 10, '#efe9dc', 120, 4, 0.4); return; }
   burst(z.x, z.y, z.boss ? 40 : z.fly ? 3 : 10, gore, z.boss ? 260 : 150, z.fly ? 2 : 5, 0.6);
-  if (!z.fly) { if (typeof goreKill === 'function') goreKill(z); else splat(z.x, z.y, z.r * rand(0.9, 1.4), gore); netChainFx(); }
+  if (!z.fly) { if (typeof goreKill === 'function' && goreOk()) goreKill(z, by); else splat(z.x, z.y, z.r * rand(0.9, 1.4), gore); netChainFx(); }
+  coreEmit('kill', { z: z, by: by });
   if (!z.fly && !z.minion && !m.unique) discover(m);
   if (by === NET.me && !z.fly) dashOnKill();
   if (z.boss) {
@@ -722,6 +723,7 @@ function netHit(z, dmg, o) {
   if (z.dead) return false;
   NET.hits.push([z.nid, Math.round(dmg * 10) / 10, o.crit ? 1 : 0, Math.round(o.kx || 0), Math.round(o.ky || 0), o.src && o.src !== 'bullet' ? o.src : 0]);
   z.flash = 0.09;
+  if ((o.src === 'blast' || o.src === 'a10') && typeof goreBlastHit === 'function') goreBlastHit(z, Math.atan2(o.ky || 0, o.kx || 0), dmg);
   if (o.crit) G.texts.push({ x: z.x + rand(-6, 6), y: z.y - z.r, t: 0, life: 0.6, s: String(Math.round(dmg)), c: '#f2cc3a' });
   return true;
 }
@@ -761,7 +763,8 @@ function netCosShot(pid, x, y, a, wid, n, spd, rng, spr) {
     let ang = a; if (n > 1) ang += cone ? (i / (n - 1) - 0.5) * spr : (i - (n - 1) / 2) * gap;
     ang += rand(-1, 1) * (w.kind === 'flame' ? spr * 0.5 : spr * 0.35);
     const sp = spd * (w.kind === 'flame' ? rand(0.75, 1.15) : 1), life = rng / sp;
-    G.bullets.push({ cos: true, x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: life, max: life, kind: w.kind, col: w.color, dmg: 0, pierce: 0, bounce: 0, split: 0, hit: null });
+    G.bullets.push({ cos: true, x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: life, max: life, kind: w.kind, col: w.color, dmg: 0, pierce: 0, bounce: 0, split: 0, hit: null, fk: w.F.key, mk: w.M.key, heavy: w.F.key === 'sniper', pid: pid });
+    if (typeof tracerTag === 'function') tracerTag(G.bullets[G.bullets.length - 1]);
   }
   // the teammate's muzzle flash, its light, smoke and brass, from the end of their gun
   if (typeof muzzleShot === 'function') { const o = NET.role === 'host' ? (NET.peers.get(pid) || {}).p : NET.others.get(pid); muzzleShot(o || null, w, a, x, y); }
@@ -770,9 +773,11 @@ function netCosShot(pid, x, y, a, wid, n, spd, rng, spr) {
 }
 function netCosBullet(b, dt) {
   b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
-  if (b.life <= 0 || pointInRect(b.x, b.y)) { b.dead = true; return; }
+  if (b.life <= 0) { b.dead = true; return; }
+  const wall = pointInRect(b.x, b.y); if (wall) { b.dead = true; if (b.kind !== 'flame' && typeof tracerImpact === 'function') tracerImpact(b, wall); return; }
   if (b.kind === 'flame') return;
-  near(b.x, b.y, 40, z => { if (b.dead || z.dead || Math.hypot(z.x - b.x, z.y - b.y) > z.r + 3) return; b.dead = true; burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25); return false; });
+  // a teammate's shot reaching a zombie: the same blood on this screen (cosmetic: the damage is the host's business)
+  near(b.x, b.y, 40, z => { if (b.dead || z.dead || Math.hypot(z.x - b.x, z.y - b.y) > z.r + 3) return; b.dead = true; burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25); if (typeof goreHit === 'function') goreHit(z, b.vx, b.vy, 12, b); return false; });
 }
 
 /* ---------- drawing teammates ---------- */

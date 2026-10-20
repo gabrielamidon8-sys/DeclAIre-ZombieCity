@@ -4,8 +4,8 @@
    Every change applies at once and is saved on the device. Graphics options default to "Auto", which follows the
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
-  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: true, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
-  decals: 'normal', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
+  quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: 100, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
+  decals: 'normal', bloodTime: '60', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
@@ -22,6 +22,9 @@ const SET = Object.assign({}, SET_DEF, { flash: SYS_RM }, (function () {
   if (au) { m.sfxOn = au.sfx !== false; if (au.vis) m.vis = au.vis; }
   return m;
 })());
+// bloom was on/off before 1.9.960; now it is a strength (0 to 200%)
+if (SET.bloom === true) SET.bloom = 100; else if (SET.bloom === false) SET.bloom = 0;
+function bloomK() { const v = SET.bloom === true ? 100 : SET.bloom === false ? 0 : +SET.bloom; return clamp(isFinite(v) ? v : 100, 0, 200) / 100; }
 function saveSettings() { store.set('zc_settings', SET); }
 
 /* ---------- applying ---------- */
@@ -112,13 +115,14 @@ const SET_ROWS = [
   { id: 'sun', tab: 'graphics', type: 'seg', label: 'Sun shadows', desc: 'Buildings, cars, trees and people throw shadows that move with the sun.', opts: ON_OFF },
   { id: 'gi', tab: 'graphics', type: 'seg', label: 'Bounce light', desc: 'Path-traced light bouncing off walls and streets, into the shade and round corners.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { id: 'refl', tab: 'graphics', type: 'seg', label: 'Reflections', desc: 'Rivers, puddles, rain-soaked streets, car glass and fresh blood reflect the sky and the lights.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
-  { id: 'bloom', tab: 'graphics', type: 'seg', label: 'Bloom', desc: 'A soft glow around lamps, fires, gunfire and explosions.', opts: ON_OFF },
+  { id: 'bloom', tab: 'graphics', type: 'slider', label: 'Bloom', desc: 'How strongly lamps, fires, gunfire, tracers, glowing zombies and explosions glow. 0% turns it off.', min: 0, max: 200, step: 10, fmt: v => v + '%' },
   { id: 'tod', tab: 'graphics', type: 'seg', label: 'Time of day', desc: 'A run starts in the morning; Cycle moves through dusk and night.', opts: [['cycle', 'Cycle'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['real', 'Clock']] },
   { id: 'nightDark', tab: 'graphics', type: 'seg', label: 'Night darkness', desc: 'How dark the night gets.', opts: [['gentle', 'Gentle'], ['deep', 'Deep']] },
   { id: 'light', tab: 'graphics', type: 'seg', label: 'Light glows', desc: 'Glow sprites on fires, police lights and flickering lamps, on top of the ray-traced lighting.', opts: [['auto', 'Auto'], ['simple', 'Simple'], ['full', 'Full']] },
   { tab: 'graphics', group: 'Effects' },
   { id: 'particles', tab: 'graphics', type: 'slider', label: 'Particles', desc: 'Blood, sparks, smoke and debris.', min: 25, max: 150, step: 25, fmt: v => v + '%' },
-  { id: 'decals', tab: 'graphics', type: 'seg', label: 'Marks on the ground', desc: 'Bloodstains, bullet holes and footprints.', opts: [['low', 'Few'], ['normal', 'Normal'], ['high', 'Lots']] },
+  { id: 'decals', tab: 'graphics', type: 'seg', label: 'Marks on the ground', desc: 'Blood, pieces, scorch marks and footprints.', opts: [['low', 'Few'], ['normal', 'Normal'], ['high', 'Lots']] },
+  { id: 'bloodTime', tab: 'graphics', type: 'seg', label: 'Blood lasts', desc: 'How long blood stays before it fades. Blood nobody can see (in co-op: off every player\'s screen) is cleared straight away.', opts: [['30', '30 s'], ['60', '1 min'], ['120', '2 min']] },
   { id: 'grade', tab: 'graphics', type: 'seg', label: 'Color grading', desc: 'Each district and the weather tint the screen.', opts: ON_OFF },
   { id: 'vis', tab: 'graphics', paused: true, type: 'seg', label: 'Light show', desc: 'The city pulses to the radio.', opts: [['full', 'Full'], ['low', 'Low'], ['off', 'Off']] },
   { id: 'fpsShow', tab: 'graphics', type: 'seg', label: 'Show frame rate', desc: 'A small counter in the corner.', opts: ON_OFF },
@@ -323,10 +327,14 @@ function engineInfo() {
   const box = el('div', 'set-device'), list = coreStatus();
   const dl = el('dl', 'build-stats eng-list'); dl.id = 'setEngines';
   for (const e of list) {
-    const d = el('div'), dd = el('dd', '', String(e.state) + (e.level ? ' · ' + e.level : '') + (e.kind === 'render' ? ' · ' + e.ms.toFixed(2) + ' ms' : '') + (e.repairs ? ' · fixed itself ' + e.repairs + 'x' : ''));
-    d.title = e.does; d.append(el('dt', '', e.name), dd); dl.appendChild(d);
+    const health = e.health && e.health !== 'ok' ? ' · ' + e.health : '';
+    const links = (e.needs.length ? ' · needs ' + e.needs.join(', ') : '') + (e.covers.length ? ' · covers ' + e.covers.join(', ') : '') + (e.helps.length ? ' · helps ' + e.helps.length : '');
+    const d = el('div'), dd = el('dd', '', String(e.state) + (e.level ? ' · ' + e.level : '') + (e.kind === 'render' ? ' · ' + e.ms.toFixed(2) + ' ms' : '') + health + (e.notes ? ' · ' + e.notes : '') + (e.repairs ? ' · fixed ' + e.repairs + 'x' : '') + links);
+    d.title = e.does + ' (v' + e.ver + ')'; d.append(el('dt', '', e.name), dd); dl.appendChild(d);
   }
-  box.append(dl, setNote(list.length + ' engines work together through the engine hub: they share one frame, one time budget and one repair log. Hover or long-press a name for what it does.'));
+  box.append(dl, setNote(list.length + ' engines work together through the engine hub: one frame, one time budget, a message bus and a watchdog. Each checks and repairs itself, the others help or cover when one is down, and each remembers the level it settled at (recalibrating after updates). Hover or long-press a name for what it does.'));
+  const recent = CORE.log.slice(-6).reverse();
+  if (recent.length) { const ul = el('div', 'set-note'); ul.textContent = 'Lately: ' + recent.map(r => r.msg).join(' · '); box.append(ul); }
   return box;
 }
 function deviceInfo() {

@@ -197,8 +197,8 @@ function luxGather(x0, y0, x1, y1, dt) {
     const f = e.life / e.max, k = f * f * (3 - 2 * f), cc = e.col.split(',');
     luxPush(e.x, e.y, e.r * (0.7 + 0.3 * k), +cc[0], +cc[1], +cc[2], e.i * k, e.shade, 2, e.cone, e.hgt || 1.4);
   }
-  // bosses and strong things glow a little
-  for (const z of G.zs) {
+  // glowing zombies (the zombie glow engine), or else just the bosses
+  if (!(typeof auraLights === 'function' && auraLights(x0, y0, x1, y1, m, t))) for (const z of G.zs) {
     if (z.dead || !z.boss || z.x < x0 - m || z.x > x1 + m || z.y < y0 - m || z.y > y1 + m) continue;
     const el = z.rb && z.rb.def && z.rb.def.el, col = el === 'fire' ? [255, 110, 40] : el === 'ice' ? [140, 210, 255] : el === 'toxic' || el === 'poison' ? [150, 240, 70] : el === 'shock' || el === 'volt' ? [255, 240, 110] : el === 'void' ? [160, 90, 255] : [255, 90, 70];
     luxPush(z.x, z.y, z.r * 5 + 120, col[0], col[1], col[2], 0.55, false, 0, null, 2);
@@ -501,7 +501,7 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
   if (use && !gpuBloom) {
     // wet streets shine and fog glows around every lamp
     ctx.globalAlpha = Math.min(1, (0.1 + 0.12 * night) * (1 + 0.6 * wet + 0.8 * fogk)); ctx.drawImage(LUX.A, 0, 0, cv.width, cv.height);
-    if (lq.bloom && SET.bloom !== false) {
+    if (lq.bloom && bloomK() > 0) {
       // two blurs (a third and a ninth of the light map), summed small and laid over the picture in one pass
       const b1 = LUX.b1, B1w = LUX.B1.width, B1h = LUX.B1.height;
       const a1 = Math.min(1, (0.16 + 0.12 * night) * (1 + 0.4 * wet + 1.2 * fogk)), a2 = lq.bloom > 1 ? Math.min(1, (0.2 + 0.14 * night) * (1 + 0.4 * wet + 1.2 * fogk)) : 0, top = Math.max(a1, a2);
@@ -512,7 +512,8 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
         b1.globalCompositeOperation = 'lighter'; b1.globalAlpha = a2 / top; b1.drawImage(LUX.B2, 0, 0, B1w, B1h);
         b1.globalCompositeOperation = 'source-over'; b1.globalAlpha = 1;
       }
-      ctx.globalAlpha = top; ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height);
+      ctx.globalAlpha = Math.min(1, top * bloomK()); ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height);
+      if (bloomK() > 1.05) { ctx.globalAlpha = Math.min(1, top * (bloomK() - 1)); ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height); }
     }
   }
   if (use) {

@@ -273,7 +273,7 @@ function prismGpu() {
   PRISM.bloomGpu = false;
   let bloomT = T.black;
   const hw = Math.max(1, cw >> 1), hh = Math.max(1, ch >> 1);
-  if (q.bloom && P.bright && P.down && P.up && SET.bloom !== false) {
+  if (q.bloom && P.bright && P.down && P.up && bloomK() > 0) {
     const B = PRISM.F; B.b0 = prismFbo(B.b0, hw, hh);
     gl.useProgram(P.bright.p); gl.uniform2f(P.bright.u.uPx, 1 / cw, 1 / ch); gl.uniform1f(P.bright.u.uTh, 0.75); gl.uniform1f(P.bright.u.uLk, lux ? 0.18 + 0.22 * (F.night || 0) : 0);
     prismBind(P.bright, 'uS', 0, T.scene); prismBind(P.bright, 'uL', 1, lux ? T.light : T.black); prismDraw(P.bright, B.b0, hw, hh);
@@ -297,7 +297,7 @@ function prismGpu() {
   gl.uniform2f(u.uIn, 1 / cw, 1 / ch); gl.uniform2f(u.uCv, cw, ch); gl.uniform2f(u.uRes, ow, oh); gl.uniform4f(u.uTr, t.a, t.e, t.d, t.f);
   const sharp = (SET.sharp == null ? 40 : SET.sharp) / 100, up = ow / cw;
   gl.uniform1f(u.uSharp, q.sharp ? clamp(sharp * (up > 1.05 ? 1.3 : 1), 0, 1.6) : 0); gl.uniform1f(u.uCub, q.up >= 2 && up > 1.05 ? 1 : 0);
-  gl.uniform1f(u.uBlK, PRISM.bloomGpu ? 0.5 + 0.3 * night + 0.5 * (F.fog || 0) + 0.25 * (F.wet || 0) : 0); gl.uniform1f(u.uShK, shK);
+  gl.uniform1f(u.uBlK, PRISM.bloomGpu ? (0.5 + 0.3 * night + 0.5 * (F.fog || 0) + 0.25 * (F.wet || 0)) * bloomK() : 0); gl.uniform1f(u.uShK, shK);
   const gig = PRISM.giGpu && F.gi;
   gl.uniform1f(u.uGIK, gig ? 0.9 : 0); gl.uniform1f(u.uAOK, gig ? 0.12 + 0.18 * (F.day || 0) : 0);
   if (gig) { gl.uniform2f(u.uOrg, F.gi.gx * F.gi.cell, F.gi.gy * F.gi.cell); gl.uniform2f(u.uG, F.gi.gw, F.gi.gh); gl.uniform1f(u.uCell, F.gi.cell); }

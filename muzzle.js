@@ -228,5 +228,6 @@ function muzzleHurt(e) {
 coreAdd({
   name: 'MUZZLE', kind: 'render', does: 'Muzzle flash engine: a different fire for every gun (star, fireball, flash-hider fan, shotgun bloom, sniper brake jets, launcher back-blast, flamethrower pilot light), tinted by the modification, with sparks, drifting smoke, ejected brass and shells, and a light that casts shadows.',
   state: () => muzzleOn() ? (MUZZLE.shots ? 'on' : 'idle') : 'paused', level: () => MUZZLE.spr.size + ' flames drawn, ' + MUZZLE.smoke.length + ' puffs, ' + MUZZLE.brass.length + ' casings',
-  repair: () => { MUZZLE.spr.clear(); MUZZLE.offUntil = 0; MUZZLE.errT.length = 0; muzzleReset(); }
+  repair: () => { MUZZLE.spr.clear(); MUZZLE.offUntil = 0; MUZZLE.errT.length = 0; muzzleReset(); },
+  on: { run: () => muzzleReset(), lowMemory: () => MUZZLE.spr.clear() }
 });

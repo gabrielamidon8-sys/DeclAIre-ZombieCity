@@ -72,8 +72,9 @@ function volley(a, mul) {
     G.bullets.push({
       x: mx, y: my, sx: p.x, sy: p.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
       dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1) * dashDmgMul(p), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
-      life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper'
+      life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper', fk: w.F.key, mk: w.M.key
     });
+    if (typeof tracerTag === 'function') tracerTag(G.bullets[G.bullets.length - 1], p.shots + i);
   }
   p.flashT = 0.05;
   if (NET.started) netShot(a, mx, my, n, S, w);   // co-op: teammates see the shot
@@ -118,7 +119,7 @@ function updBullets(dt) {
       if (b.wall.k === 'car' && b.kind !== 'flame') carHit(b.wall);
       if (b.kind === 'grenade') { b.x -= b.vx * dt; b.y -= b.vy * dt; explodeAt(b.x, b.y, b, null); b.dead = true; continue; }
       if (b.bounce > 0 && b.kind !== 'flame') { reflectBullet(b, dt); b.bounce--; continue; }
-      b.dead = true; if (b.kind !== 'flame') burst(b.x, b.y, 3, b.col, 90, 2, 0.2); continue;
+      b.dead = true; if (b.kind !== 'flame') { burst(b.x, b.y, 3, b.col, 90, 2, 0.2); if (typeof tracerImpact === 'function') tracerImpact(b, b.wall); } continue;
     }
     const dx = b.x - sx, dy = b.y - sy, l2 = dx * dx + dy * dy;
     near((sx + b.x) / 2, (sy + b.y) / 2, 64 + Math.sqrt(l2) / 2, z => {
@@ -130,7 +131,8 @@ function updBullets(dt) {
       const res = hurtZombie(z, dmg, { src: 'bullet', crit: b.crit, kx: b.vx / sp * S.knock, ky: b.vy / sp * S.knock });
       if (res === 'pass' || !res) return;
       if (res === 'reflect') { b.dead = true; return false; }
-      if (b.kind !== 'flame') { burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25); if (typeof goreHit === 'function') goreHit(z, b.vx, b.vy, dmg); }
+      if (b.kind !== 'flame') burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25);
+      if (typeof goreHit === 'function') goreHit(z, b.vx, b.vy, dmg, b);   // the blood engine: this gun on this zombie
       onHitFx(z, b, dmg);
       (b.hit || (b.hit = [])).push(z);
       if (b.split > 0 && !b.shard) splitBullet(b, z);
