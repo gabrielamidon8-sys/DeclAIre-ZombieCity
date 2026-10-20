@@ -683,7 +683,7 @@ function wxAhead(k) {
   if (add > learnFree() && PERF.wxScale > 0.26) { PERF.wxScale = Math.max(0.25, PERF.wxScale - 0.25); coreLog('WX starts the coming ' + k + ' thinner: it costs about ' + full.toFixed(1) + ' ms a frame at full density on this device'); }
 }
 coreMeta('WX', { ver: 2, provides: ['weather', 'wind', 'wetness'], sec: wxLearn,
-  lv: () => Math.round(wxLevel() * 4), adaptGet: () => Math.round(PERF.wxScale * 4), load: () => Math.round(wxStrength() * 10) + WXD.length, loadName: 'weather strength',
+  lv: () => Math.round(wxLevel() * 4), adaptGet: () => Math.round(PERF.wxScale * 4), loadNow: () => Math.round(wxStrength() * 10) + WXD.length, loadName: 'weather strength',
   canTrim: () => SET.weather === 'auto' && PERF.wxScale > 0.26, trim: () => { if (SET.weather !== 'auto' || PERF.wxScale <= 0.26) return false; PERF.wxScale = Math.max(0.25, PERF.wxScale - 0.25); return true; },
   boost: () => { if (PERF.wxScale >= 1) return false; PERF.wxScale = Math.min(1, PERF.wxScale + 0.25); return true; },
   check: () => WXD.length > 600 ? 'its drifting debris piled up' : WXD.some(d => !(d.x === d.x && d.y === d.y)) ? 'a drifting leaf lost its place' : !(WX.wet >= 0 && WX.wet <= 1.5) ? 'its wetness went out of range' : '',

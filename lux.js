@@ -875,7 +875,7 @@ coreAdd({
 });
 // CORE v3: how the hub reads, steps, checks and teaches the lighting engine
 coreMeta('LUX', { ver: 4, provides: ['light', 'shadows', 'bloom', 'sun'], feats: { want: ['offscreen'] },
-  lv: () => LUX.level | 0, adaptGet: () => LUX.adapt, load: () => (CORE.frame.lights || []).length, loadName: 'lights',
+  lv: () => LUX.level | 0, adaptGet: () => LUX.adapt, loadNow: () => (CORE.frame.lights || []).length, loadName: 'lights',
   alive: () => G.mode === 'play' && SET.lux !== 'off' && !(LUX.offUntil > performance.now()), beatOwn: true,
   check: () => !(LUX.adapt <= 0 && LUX.adapt >= -3) ? 'its level went out of range' : LUX.live && LUX.A && !(LUX.cw > 0) ? 'its light map lost its size' : '',
   reset: () => { LUX.adapt = clamp(LUX.adapt | 0, -3, 0); LUX.A = null; LUX.offUntil = 0; LUX.errT.length = 0; LUX.fx.length = 0; LUX.bad = 0; try { luxWarm(); } catch (x) { } },

@@ -1218,7 +1218,7 @@ coreAdd({
 coreMeta('ANIMA', { helps: { SWARM: () => animaForget(), TEXEL: () => animaForget() } });
 // CORE v3: its cost by how many zombies it animates (live rigs and cached frames); a self-test that runs a handful of
 // zombies' clips through the rig and checks every joint comes out finite
-coreMeta('ANIMA', { ver: 2, lv: () => ANIMA.adapt + 3, adaptGet: () => ANIMA.adapt, load: () => (ANIMA.live | 0) + (ANIMA.cached | 0), loadName: 'zombies animated',
+coreMeta('ANIMA', { ver: 2, lv: () => ANIMA.adapt + 3, adaptGet: () => ANIMA.adapt, loadNow: () => (ANIMA.live | 0) + (ANIMA.cached | 0), loadName: 'zombies animated',
   reset: () => { animaRepair(); animaForget(); ANIMA.good = 0; },
   selfTest: () => {
     const o = new Float32Array(AN), J = new Float32Array(NJ * 3); let n = 0, pass = 0, why = '';

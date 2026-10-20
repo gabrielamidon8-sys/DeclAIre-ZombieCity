@@ -234,7 +234,7 @@ coreAdd({
 // CORE v3: a ladder of its own (full, about two thirds, under half the smoke and brass), stepped by CORE when the
 // frame runs late and climbed back when there is room; a check that keeps its lists finite and bounded
 coreMeta('MUZZLE', { ver: 2, climb: true, provides: ['muzzleFlash', 'smoke', 'brass'],
-  lv: () => MUZZLE.adapt + 2, adaptGet: () => MUZZLE.adapt, load: () => MUZZLE.smoke.length + MUZZLE.brass.length, loadName: 'puffs and casings',
+  lv: () => MUZZLE.adapt + 2, adaptGet: () => MUZZLE.adapt, loadNow: () => MUZZLE.smoke.length + MUZZLE.brass.length, loadName: 'puffs and casings',
   canTrim: () => MUZZLE.adapt > -2, trim: () => { if (MUZZLE.adapt <= -2) return false; MUZZLE.adapt--; const cap = MUZZLE.adapt < -1 ? 30 : 60; if (MUZZLE.smoke.length > cap) MUZZLE.smoke.splice(0, MUZZLE.smoke.length - cap); return true; },
   boost: () => { if (MUZZLE.adapt >= 0) return false; MUZZLE.adapt++; return true; },
   check: () => MUZZLE.smoke.length > 400 || MUZZLE.brass.length > 400 ? 'its smoke or brass piled up' : MUZZLE.smoke.some(p => !(p.x === p.x && p.y === p.y)) ? 'a puff of smoke lost its place' : '',

@@ -400,7 +400,7 @@ coreAdd({
 });
 // CORE v3: what a level costs it in sprite making, by how many sprites it had to make that second
 coreMeta('TEXEL', { ver: 3, provides: ['textures', 'sprites', 'ground'], feats: { want: ['offscreen'] },
-  lv: () => texelLevel(), adaptGet: () => TEXEL.adapt, load: () => { const m = TEXEL.made - (TEXEL._m || 0); TEXEL._m = TEXEL.made; return m; }, loadName: 'new sprites a second',
+  lv: () => texelLevel(), adaptGet: () => TEXEL.adapt, loadNow: () => { const m = TEXEL.made - (TEXEL._m || 0); TEXEL._m = TEXEL.made; return m; }, loadName: 'new sprites a second',
   check: () => !(TEXEL.adapt <= 0 && TEXEL.adapt >= -3) ? 'its level went out of range' : sprites.size > Math.max(800, Q.sprCap * 3) ? 'its sprite cache overflowed (' + sprites.size + ')' : '',
   repair: () => { if (sprites.size > Q.sprCap) trimCaches(0); TEXEL.adapt = clamp(TEXEL.adapt | 0, -3, 0); },
   reset: () => { sprites.clear(); TEXEL.players.clear(); TEXEL.scratch.length = 0; TEXEL.offUntil = 0; TEXEL.errT.length = 0; } });

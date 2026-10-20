@@ -292,7 +292,7 @@ coreAdd({
 });
 // CORE v3: its cost by how many decks are in view (it has no levels: the highways are baked into each block's picture),
 // a check that its maps of highway lines stay a sensible size
-coreMeta('SKYWAY', { ver: 2, provides: ['highways'], lv: () => 0, load: () => SKY.drawn | 0, loadName: 'decks in view',
+coreMeta('SKYWAY', { ver: 2, provides: ['highways'], lv: () => 0, loadNow: () => SKY.drawn | 0, loadName: 'decks in view',
   check: () => SKY.rows.size + SKY.cols.size > 6000 ? 'its map of highway lines overflowed' : !(SKY.ms >= 0) ? 'its cost reading went bad' : '',
   repair: () => { if (SKY.rows.size + SKY.cols.size > 6000) { SKY.rows.clear(); SKY.cols.clear(); } SKY.ms = 0; },
   learned: () => [] });

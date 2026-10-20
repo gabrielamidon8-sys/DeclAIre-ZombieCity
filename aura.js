@@ -140,5 +140,5 @@ coreAdd({
   save: () => AURA.perf, load: v => { AURA.perf = clamp(v | 0, -2, 0); },
   on: { kill: d => auraDeath(d && d.z), quality: () => { AURA.perf = 0; AURA.good = 0; }, lowMemory: () => auraT.clear() }
 });
-coreMeta('AURA', { ver: 2, lv: () => AURA.perf + 3, adaptGet: () => AURA.perf, load: () => AURA.n | 0, loadName: 'glowing zombies', zload: 0.08,
+coreMeta('AURA', { ver: 2, lv: () => AURA.perf + 3, adaptGet: () => AURA.perf, loadNow: () => AURA.n | 0, loadName: 'glowing zombies', zload: 0.08,
   reset: () => { auraRepair(); AURA.perf = 0; AURA.good = 0; } });

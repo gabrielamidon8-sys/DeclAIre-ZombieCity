@@ -759,6 +759,6 @@ coreAdd({
 coreMeta('SWARM', { helps: { TEXEL: () => swarmForget() } });
 coreOn('engineDown', 'SWARM', d => { if (d && d.name === 'TEXEL') SWARM.partOff.full = performance.now() + 60000; });
 // CORE v3: the crowd's cost by how many are alive; CORE looks ahead when a horde sets off (zload: each zombie adds one)
-coreMeta('SWARM', { ver: 2, trimAny: true, lv: () => SWARM.adapt + 3, adaptGet: () => SWARM.adapt * 10000 + (SWARM.capLive | 0), load: () => G.zs.length, loadName: 'zombies', zload: 1,
+coreMeta('SWARM', { ver: 2, trimAny: true, lv: () => SWARM.adapt + 3, adaptGet: () => SWARM.adapt * 10000 + (SWARM.capLive | 0), loadNow: () => G.zs.length, loadName: 'zombies', zload: 1,
   alive: () => G.mode === 'play' && swarmUp() && G.zs.length > 0, stallS: 4,
   reset: () => { swarmForget(); SWARM.good = 0; SWARM.adapt = clamp(SWARM.adapt | 0, -3, 0); swarmCaps(); } });

@@ -81,7 +81,7 @@ function learnSample(e, now) {
   if (e._L !== L) { e._L = L; e._Lt = now; return; }          // a level just changed: the next seconds are a transition
   if (now - e._Lt < 2000 || !(e.msSec > 0)) return;
   if (typeof PERF !== 'undefined' && now < PERF.holdT) return;   // the whole picture is changing tier
-  const r = learnRec(e), b = learnBucket(coreCall(e, 'load', 0)), k = L + ':' + b, c = r.c[k];
+  const r = learnRec(e), b = learnBucket(coreCall(e, 'loadNow', 0)), k = L + ':' + b, c = r.c[k];
   if (c) { c[0] = c[0] * 0.8 + e.msSec * 0.2; c[1] = Math.min(9999, c[1] + 1); } else r.c[k] = [e.msSec, 1];
   r.secs = (r.secs | 0) + 1; LEARN.dirty = true;
 }
@@ -105,7 +105,7 @@ function coreRise(name) {
   const now = performance.now();
   if (e.holdRise > now) { e.riseWhy = 'held one step lighter for ' + Math.max(1, Math.round((e.holdRise - now) / 1000)) + ' s more (' + (e.holdWhy || 'after a step down') + ')'; return false; }
   if (!LEARN.ready) return true;
-  const r = learnRec(e), load = coreCall(e, 'load', 0), b = learnBucket(load);
+  const r = learnRec(e), load = coreCall(e, 'loadNow', 0), b = learnBucket(load);
   const ad = coreCall(e, 'adaptGet', null), c = r.ce[b];
   if (c && Date.now() < c[1] && ad != null && ad >= c[0]) { e.riseWhy = 'holding: the last time it stepped up with ' + learnLoadWords(e, b) + ' it had to come straight back down'; return false; }
   if (e.lv) {
@@ -115,7 +115,7 @@ function coreRise(name) {
       if (extra > 0.25 && extra > free * 0.8) { e.riseWhy = 'waiting: the next level costs about ' + extra.toFixed(1) + ' ms more here and the frame has ' + free.toFixed(1) + ' ms to spare'; return false; }
     }
   }
-  e.riseWhy = ''; return true;
+  e.riseWhy = ''; e._riseAt = now; return true;
 }
 // level changes, watched once a second: a step up that falls straight back becomes a ceiling for that load
 function learnSteps(e, now) {
@@ -126,8 +126,9 @@ function learnSteps(e, now) {
     if (e._rise && now - e._rise.t > 60000) { const r = learnRec(e), c = r.ce[e._rise.b]; if (c) { c[2] = Math.max(0, c[2] - 1); if (!c[2]) delete r.ce[e._rise.b]; LEARN.dirty = true; } e._rise = null; }
     return;
   }
-  const b = learnBucket(coreCall(e, 'load', 0));
-  if (ad > e._ad) e._rise = { from: e._ad, to: ad, b: b, t: now };
+  const b = learnBucket(coreCall(e, 'loadNow', 0));
+  // (only a step the engine took with CORE's say-so counts: a setting changed by hand or a new run is not a lesson)
+  if (ad > e._ad) e._rise = now - (e._riseAt || -1e9) < 3000 ? { from: e._ad, to: ad, b: b, t: now } : null;
   else if (e._rise && now - e._rise.t < 15000 && ad < e._rise.to) {
     const r = learnRec(e), old = r.ce[e._rise.b], strikes = (old ? old[2] : 0) + 1, wait = Math.min(1800000, 180000 * Math.pow(2, strikes - 1));
     r.ce[e._rise.b] = [e._rise.from, Date.now() + wait, strikes]; LEARN.dirty = true;
@@ -141,7 +142,7 @@ function learnLoadWords(e, b) { return (b ? LEARN_BUCKETS[b] : 'no') + ' ' + (e.
 function learnSaving(e) {
   if (!e.lv || !LEARN.ready) return null;
   const r = learnRec(e), L = coreCall(e, 'lv', null); if (L == null || L <= 0) return null;
-  const b = learnBucket(coreCall(e, 'load', 0)), p0 = learnPredict(r, L, b), p1 = learnPredict(r, L - 1, b);
+  const b = learnBucket(coreCall(e, 'loadNow', 0)), p0 = learnPredict(r, L, b), p1 = learnPredict(r, L - 1, b);
   return p0 != null && p1 != null ? Math.max(0, p0 - p1) : null;
 }
 
@@ -153,7 +154,7 @@ function learnAhead(n, why) {
   let free = learnFree(), steps = 0; const now = performance.now(), out = [];
   const list = CORE.list.filter(e => e.zload && e.lv && e.trim && !e.down && (e.effort || 'auto') !== 'max');
   const est = list.map(e => {
-    const r = learnRec(e), L = coreCall(e, 'lv', null), x = coreCall(e, 'load', 0), b0 = learnBucket(x), b1 = learnBucket(x + n * e.zload);
+    const r = learnRec(e), L = coreCall(e, 'lv', null), x = coreCall(e, 'loadNow', 0), b0 = learnBucket(x), b1 = learnBucket(x + n * e.zload);
     const p0 = learnPredict(r, L, b0), p1 = learnPredict(r, L, b1);
     return { e: e, add: p0 != null && p1 != null ? p1 - p0 : 0 };
   }).filter(o => o.add > 0.2).sort((a, b) => b.add - a.add);
@@ -340,7 +341,7 @@ function coreAudit(name) {
   const a = {
     adapts: !!(e.trim || (e.lv && e.adaptGet) || (e.tune && e.tune.apply) || e.adapts),
     repairs: !!((e.check || e.alive || e.selfTest) && (e.repair || e.reset || e.isolate)),
-    learns: !!((e.lv && e.load) || e.learned),
+    learns: !!((e.lv && e.loadNow) || e.learned),
     covers: !!((e.covers && e.covers.length) || coveredBy.length),
     beats: !!(e.alive || e.heart), tested: !!e.selfTest, compat: !!(e.feats || e.provides), docs: !!(typeof ENG_DOCS !== 'undefined' && ENG_DOCS[name]),
     coveredBy: coveredBy, why: e.noLearn || ''
@@ -352,8 +353,8 @@ function coreAudit(name) {
 function learnSummary(name) {
   const e = CORE.by[name]; if (!e || !LEARN.ready) return [];
   const r = learnRec(e), out = [];
-  if (e.lv && e.load) {
-    const b = learnBucket(coreCall(e, 'load', 0)), L = coreCall(e, 'lv', null), row = [];
+  if (e.lv && e.loadNow) {
+    const b = learnBucket(coreCall(e, 'loadNow', 0)), L = coreCall(e, 'lv', null), row = [];
     for (let l = Math.max(0, L - 2); l <= L + 1; l++) { const p = learnPredict(r, l, b); if (p != null) row.push('level ' + l + (l === L ? ' (now)' : '') + ' ≈ ' + p.toFixed(p < 1 ? 2 : 1) + ' ms'); }
     out.push(row.length ? 'With ' + learnLoadWords(e, b) + ': ' + row.join(', ') + '.' : 'Still learning what its levels cost with ' + learnLoadWords(e, b) + '.');
     const cells = Object.keys(r.c).length; out.push('Watched ' + (r.secs | 0) + ' seconds of play, ' + cells + ' level-and-load combination' + (cells === 1 ? '' : 's') + ' so far.');
@@ -371,8 +372,8 @@ function learnTrust(name) { const e = CORE.by[name]; return e && LEARN.ready ? l
 /* ---------- adding an engine ---------- */
 // One call registers an engine with everything the hub, the engine room and the docs read:
 // coreDefine({ name, kind, ver, does, provides, needs, covers, feats: { need, want, without },
-//   state, level, lv, adaptGet, load, loadName, zload, trim, canTrim, boost, alive, check, repair, reset, isolate,
-//   restore, selfTest, learned, save, load, on: { event: fn }, spec: { files, parts, effort, procs, hard, eco, stats },
+//   state, level, lv, adaptGet, loadNow, loadName, zload, trim, canTrim, boost, alive, check, repair, reset, isolate,
+//   restore, selfTest, learned, save/load (its remembered level), on: { event: fn }, spec: { files, parts, effort, procs, hard, eco, stats },
 //   docs: { title, character, does, adapts, repairs, learns, works, runs, tune } })
 function coreDefine(s) {
   const e = coreAdd(s);
@@ -392,7 +393,7 @@ function learnContracts() {
     learned: () => { const d = LEARN.data || {}; return ['Learning on this device for ' + (d.ses | 0) + ' session' + (d.ses === 1 ? '' : 's') + '; ' + Object.values(d.e || {}).reduce((a, r) => a + Object.keys(r.c || {}).length, 0) + ' costs and ' + Object.values(d.e || {}).reduce((a, r) => a + Object.keys(r.r || {}).length, 0) + ' kinds of repair known across the engines.']; },
     selfTest: () => { const k = learnBucket(5) === 3 && learnBucket(0) === 0 && learnBucket(300) === 9, s = learnSig('3 errors (x is null)') === learnSig('7 errors (y)'); return { ok: k && s, n: 2, pass: (k ? 1 : 0) + (s ? 1 : 0), why: k ? (s ? '' : 'problem grouping') : 'load buckets' }; } });
   // pathfinding: how long a field takes to build here, and a refresh interval that follows it (host only)
-  coreMeta('FLOW', { ver: 2, adapts: 'how often the paths refresh follows what a field costs here', provides: ['paths'], loadName: 'zombies', load: () => G.zs.length,
+  coreMeta('FLOW', { ver: 2, adapts: 'how often the paths refresh follows what a field costs here', provides: ['paths'], loadName: 'zombies', loadNow: () => G.zs.length,
     alive: () => G.mode === 'play' && NET.role !== 'client' && G.zs.length > 0, stallS: 4,
     check: () => G.mode === 'play' && NET.role !== 'client' && FF.ready && G.time - FF.t > 3 ? 'its paths are ' + (G.time - FF.t).toFixed(1) + ' s old' : '',
     repair: () => { FF.ready = false; FF.t = -1; }, reset: () => { for (const F of [FF, FFS, FFB, FFP]) { F.ready = false; F.t = -1; } },

@@ -504,7 +504,7 @@ coreAdd({
 // CORE v3: a ladder for the headlights (both beams' shadows off and the tail glow dropped when the frame runs late at
 // night with many lit cars in view), climbed back when there is room; its cost by how many lit cars it lights
 coreMeta('GARAGE', { ver: 2, trimAny: true, climb: true, provides: ['vehicles', 'headlights'],
-  lv: () => GARAGE.adapt + 1, adaptGet: () => GARAGE.adapt, load: () => GARAGE.beams | 0, loadName: 'lit cars',
+  lv: () => GARAGE.adapt + 1, adaptGet: () => GARAGE.adapt, loadNow: () => GARAGE.beams | 0, loadName: 'lit cars',
   canTrim: () => GARAGE.adapt > -1 && GARAGE.beams > 0, trim: () => { if (GARAGE.adapt <= -1) return false; GARAGE.adapt--; return true; },
   boost: () => { if (GARAGE.adapt >= 0) return false; GARAGE.adapt++; return true; },
   check: () => { for (const r of SWDYN.values()) if (!(r.x === r.x && r.y === r.y)) return 'a vehicle the crowd moved lost its place'; return ''; },

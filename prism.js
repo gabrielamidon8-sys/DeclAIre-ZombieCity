@@ -407,7 +407,7 @@ function prismGpuShy() {
   return (o.loss | 0) >= 3;
 }
 coreMeta('PRISM', { ver: 4, provides: ['shaders', 'grading', 'gpuBloom', 'gpuBounce'], feats: { want: ['webgl', 'webgl2'], without: 'every shader runs on the processor (slower, same look)' },
-  lv: () => PRISM.mode === 'gpu' ? prismLevel() : -1, adaptGet: () => PRISM.adapt, load: () => Math.round(cv.width * cv.height / 100000), loadName: 'hundred-thousand pixels',
+  lv: () => PRISM.mode === 'gpu' ? prismLevel() : -1, adaptGet: () => PRISM.adapt, loadNow: () => Math.round(cv.width * cv.height / 100000), loadName: 'hundred-thousand pixels',
   alive: () => G.mode === 'play' && PRISM.mode === 'gpu' && !PRISM.lost, stallS: 5, beatOwn: true,
   check: () => PRISM.mode === 'gpu' && PRISM.gl && !PRISM.lost && PRISM.gl.isContextLost() ? 'its graphics context is gone' : '',
   reset: () => { PRISM.offUntil = 0; PRISM.errT.length = 0; PRISM.adapt = clamp(PRISM.adapt | 0, -3, 0); if (PRISM.gl && !PRISM.gl.isContextLost()) prismBuild(); },

@@ -21,6 +21,7 @@ Everyone fights the same zombies, waves and bosses in the same city, and shares 
 - **Card rounds never freeze.** Each round has a number, the host sends the cards again until every player has them, and a 30-second timer picks a card for anyone who is away (in the pause menu, on another app, or disconnected). The waiting line shows who has picked.
 - **Ping.** The lobby shows every player's ping live. In a run it sits on the HUD; switch it off in the pause menu or in Settings > Gameplay > Wi-Fi co-op.
 - **Find your team.** When a teammate is off screen an arrow on the edge of the screen points to them, with their name and distance. Press G (LB on a controller, the pin button on a phone) to drop a marker for everyone.
+- **Smooth on a shaky link.** A teammate's game learns how often the host's snapshots really arrive and how much that wobbles, draws each zombie and teammate a little ahead along the way it was moving (by about one snapshot, never more than 0.16 s) and follows more softly when the link is jittery. The host still decides every position, hit and kill; what was learned about the network is kept for next time.
 - **Drops are survivable.** If the Wi-Fi blips, the game reconnects by itself for 25 seconds and puts you back in the same slot of the same run; the host keeps your place for 30 seconds. Everyone must run the same version, and an older copy is told to update.
 - **What is local and what is shared.** Each device builds the city itself from the run's seed (streets, rivers, weather, props), so the world never travels over the network. Your own movement, aiming and shots run on your device for instant response. The host owns everything that must agree: zombies and bosses, the wave, the score, the cards and revives, and sends a compact snapshot 15 times a second. Late snapshots are dropped rather than queued, so a slow device catches up instead of falling behind.
 
@@ -29,6 +30,7 @@ Everyone fights the same zombies, waves and bosses in the same city, and shares 
 A free DeclAIre Studios account keeps your progress on every device. Make one on the [account page](https://headless-iilujwebfcb-gabrielamidon8-140e.wix-site-host.com/), then log in from **Account** on the game's main menu (browser, Android app or Windows launcher). After every run the game merges this device's progress with the cloud: unlocks from every device add up, bests are kept, and each device keeps its own totals.
 
 - Accounts run on Wix (members and a data collection). Passwords are never stored by the game; Wix stores only a one-way hash.
+- Saves and scores wait for the internet: a cloud save or a board score that cannot get through is kept and sent by itself (after 30 seconds, then 1, 2 and 5 minutes, and straight away when the device is back online). A score left over from last month's season is dropped.
 - Each account's save is encrypted on the device with AES-GCM under a random 256-bit key made for that account. That key is wrapped with a key derived from the password (PBKDF2-SHA256, 600,000 rounds, a random salt per account) before it is uploaded, so the stored save can't be read without the password. Changing the password re-wraps the key; after a password reset the game asks once for the old password, or starts a new cloud save from the device's progress.
 - One season leaderboard for every platform: your best run each month goes up under your account name.
 - Names (survivor, board and co-op) go through a filter for slurs, swearing, threats and personal details (emails, phone numbers, links), with 50 different remarks for anyone trying to sneak something past it. Names that pose as the studio (ADMIN, DECLAIRE, moderator, official and so on, in any spelling such as D3CLA1RE) are saved for the team.
@@ -42,7 +44,8 @@ A free DeclAIre Studios account keeps your progress on every device. Make one on
 - Wave timers: every wave runs against a clock (about 44 seconds for wave 1, more for each wave after, up to 2½ minutes; Settings > Gameplay > Wave timer: Short, Normal, Long or Off). When it runs out the next wave starts on the spot, on top of whatever is left, with no screen in between. Clear the street first and you get 7 seconds to walk around and a bonus of 10 points for every second left. The last 5 seconds of either clock glow red (the clock, and the edge of the screen) and tick out loud
 - A new HUD on every device: glass plates with cut corners, a segmented health bar with a ghost of the damage just taken, the wave clock in the middle with the zombies still to come, the weapon in its rarity's colour, a ticked dash ring, and a touch joystick that lights the way you push. On narrow phones the A-10 sits above the dash and a bigger HUD size grows only a little
 - A command-deck main menu (a status bar with the version, the engines, the wave timer, the network and the time; the run as one big tile; everything else as tiles with what is behind them), a pause screen with the clock, eight of the run's numbers (accuracy and head shots among them) and three tabs (your build, this wave's threats, a map of the streets around you), and a run-over screen with the new numbers
-- The engine room (Settings > Accessibility > Ultra advanced, behind a red warning): every engine's live cost, share of the frame, a minute of history, its level, health and its own numbers, how intricate it is (lines, functions, parts and links), and two controls each: how hard it runs (Auto, Eco, Normal, Hard, Max) and what it runs on (CPU, GPU, Auto). What an engine cannot do shows Auto-lock in purple with the reason, and a choice that hurts the game (well under the frame-rate target for 8 seconds, or failing again and again) is put back on Auto by the ecosystem for 5 minutes, with the numbers
+- The engine room (Settings > Accessibility > Ultra advanced, behind a red warning): every engine's live cost, share of the frame, a minute of history, its level, health and its own numbers, how intricate it is (lines, functions, parts and links), and two controls each: how hard it runs (Auto, Eco, Normal, Hard, Max) and what it runs on (CPU, GPU, Auto). What an engine cannot do shows Auto-lock in purple with the reason, and a choice that hurts the game (well under the frame-rate target for 8 seconds, or failing again and again) is put back on Auto by the ecosystem for 5 minutes, with the numbers Each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat, self-test, compatible), what it has learned on this device, how far the ecosystem trusts it, its self-test, whether this device gives it what it needs, and who it is (About); Forget wipes what the engines learned
+- 27 engines that work as one learning ecosystem (CORE v3, see [ENGINES.md](ENGINES.md) for every engine's character and capabilities). On each device the hub learns what every engine costs at each level and load, so it steps down the engine that saves the most, climbs engines back only when the next level fits, and steps the crowd down before a horde arrives instead of after the frame stutters; it remembers which fix cleared which problem and tries that first next time, trusts engines that run clean (and starts shaky ones a step lighter), restarts an engine that goes quiet, and runs self-tests at start. Engines learn their own lessons too: how jittery the co-op link is (a teammate's screen smooths over it), how fast the radio renders (it keeps more music ready on slow devices), when a phone starts to run hot (the governor eases off just before), how long a city block takes to draw (streaming only builds what fits the frame), how often the sound falls behind (it settles on a quality the device keeps up with), how often the graphics chip loses its context (Auto stays on the processor for a while). Learning never changes the rules of a run, only how the work is done and drawn
 - Forbidden cards from the skull at x100 and a prize wheel at x200 and up (the card round between waves is switched off while 2.0 is built)
 - An A-10 Warthog airstrike earned at chain 75, with splash-damage rounds that chew up the road
 - 25 dashes with their own effects and passives
@@ -120,7 +123,9 @@ The game is plain JavaScript split into modules that `build.js` joins into one p
 |---|---|
 | `shell.html` | Page layout, menus and styles |
 | `game.js` | Core game loop, zombies, waves and drawing |
-| `core.js` | CORE, the engine hub: the engine registry, the shared frame, the time budget, the message bus, the watchdog, peer repair, the remembered levels, and the tuning, locks and guard behind the engine room |
+| `core.js` | CORE, the engine hub: the engine registry, the shared frame, the time budget, the message bus, the watchdog (learned repairs, heartbeats, self-tests), peer repair, the remembered levels, and the tuning, locks and guard behind the engine room |
+| `learn.js` | CORE v3, the learning ecosystem: per-device cost models, ceilings, looking ahead at hordes and waves, repair memory, trust and cautious starts, heartbeats, self-tests, the capability registry, what each engine needs from the device, `coreDefine` for new engines, and the contracts of the engines that live in game.js |
+| `engdocs.js` | Every engine characterized: who it is, what it does, how it adapts, repairs itself and learns, who it works with, where it runs (the engine room's About, and [ENGINES.md](ENGINES.md) via `node tools/engdocs.js`) |
 | `lux.js` | LUX, the lighting engine: lamps and lights, ray-cast shadows, the sun and its shadows, the path-traced global illumination on the processor, and the day and night cycle |
 | `prism.js` | PRISM, the shader engine: the WebGL post-processing passes (GI path tracer, bloom, light shafts, the final grade), the processor fallback and self-repair |
 | `texel.js` | TEXEL, the texture and resolution engine: procedural textures, textured high-resolution zombie sprites and the cached player sprites |
@@ -194,6 +199,23 @@ ZC_KEY=/path/to/zombie-city-signing-key.p12 ZC_KEY_PASS=... python3 build_apk.py
 ```
 
 The signing key is kept out of this repository on purpose. Every update must be signed with the same key, or phones will refuse to install it over the old version, so keep your copy backed up somewhere safe.
+
+## Adding an engine
+
+Engines are built to be added. A new engine is one more file in the `MODULES` list in `build.js` and one `coreDefine({...})` call inside it:
+
+```js
+coreDefine({ name: 'ECHO', kind: 'audio', ver: 1, does: 'One line on what it does.', provides: ['echoes'], needs: ['SFX'],
+  feats: { need: ['audio'], without: 'what happens on a device without it' },
+  lv: () => ECHO.level, adaptGet: () => ECHO.adapt, loadNow: () => ECHO.voices, loadName: 'voices',   // levels and load: CORE learns what each costs
+  trim: () => { ... }, boost: () => { ... }, canTrim: () => ECHO.adapt > -2,                         // how CORE steps it down and back up
+  alive: () => G.mode === 'play', check: () => '', repair: () => { }, reset: () => { }, selfTest: () => ({ ok: true, n: 1, pass: 1 }),
+  learned: () => ['What it has learned, in a sentence for the engine room.'],
+  spec: { files: ['echo'], parts: ['...'], hard: 'what Hard does', eco: 'what Eco does', stats: () => [['Voices', ECHO.voices]] },
+  docs: { title: 'The ...', character: '...', does: '...', adapts: '...', repairs: '...', learns: '...', works: '...', runs: '...', tune: '...' } });
+```
+
+From that one call the hub links it, budgets it, watches it (heartbeat, checks, learned repairs, self-test), learns its costs on each device, lists its capabilities; the engine room gives it a card with its traits, lessons and controls; the contract test (every engine documented, self-repairing, declaring what it needs and provides) covers it; "how intricate is it" counts its file; and `node tools/engdocs.js > ENGINES.md` writes it into the engines document. Engine rules: learning may change how work is done and drawn, never the rules of a run, and everything an engine does must be guarded so it can never stop the game.
 
 ## Releasing an update
 

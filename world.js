@@ -1894,7 +1894,7 @@ function worldLearn(ms) {
 }
 function worldChunkMs() { if (typeof LEARN === 'undefined' || !LEARN.ready || !CORE.by.WORLD) return 0; const o = learnOwn('WORLD'); return o['c' + Math.round((Q.chunkScale || 1) * 4)] || 0; }
 function worldSig(c) { let h = c.rects.length * 31 + (c.bio ? c.bio.length : 0); for (const r of c.rects) h = (h * 33 + Math.round(r.x) * 7 + Math.round(r.y) * 13 + Math.round(r.w) + Math.round(r.h) * 3 + (r.k ? r.k.length : 0)) | 0; return h; }
-coreMeta('WORLD', { ver: 2, adapts: 'block sharpness by tier; streams ahead only what fits the frame', provides: ['city', 'water', 'districts'], lv: () => Math.round((Q.chunkScale || 1) * 4), load: () => WORLD.rf | 0, loadName: 'blocks drawn a frame',
+coreMeta('WORLD', { ver: 2, adapts: 'block sharpness by tier; streams ahead only what fits the frame', provides: ['city', 'water', 'districts'], lv: () => Math.round((Q.chunkScale || 1) * 4), loadNow: () => WORLD.rf | 0, loadName: 'blocks drawn a frame',
   check: () => chunks.size > 600 ? 'its block cache overflowed (' + chunks.size + ')' : '',
   repair: () => { trimCaches(0); }, reset: () => { trimCaches(2); },
   learned: () => { const ms = worldChunkMs(); return ms ? ['Drawing a block takes about ' + ms.toFixed(1) + ' ms here at this sharpness; it streams one ahead only when that fits the frame' + (learnFree() > ms * 3 ? ', and two at a time right now.' : '.')] : []; },

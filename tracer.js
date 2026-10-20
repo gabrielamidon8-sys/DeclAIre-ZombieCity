@@ -255,5 +255,5 @@ coreAdd({
   save: () => TRACER.perf, load: v => { TRACER.perf = clamp(v | 0, -2, 0); },
   on: { run: () => tracerReset(), quality: () => { TRACER.perf = 0; TRACER.good = 0; }, lowMemory: () => { trSoftT.clear(); TRACER.soft = null; } }
 });
-coreMeta('TRACER', { ver: 2, lv: () => TRACER.perf + 3, adaptGet: () => TRACER.perf, load: () => TRACER.drawn | 0, loadName: 'rounds in flight',
+coreMeta('TRACER', { ver: 2, lv: () => TRACER.perf + 3, adaptGet: () => TRACER.perf, loadNow: () => TRACER.drawn | 0, loadName: 'rounds in flight',
   reset: () => { tracerReset(); tracerRepair(); TRACER.perf = 0; TRACER.good = 0; } });
