@@ -1463,6 +1463,506 @@ button.lcd{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.mskull,.mskull.talk .mk-jaw,.mskull.hint .mk-eye,.mk-eye,.mskull.done,.mskull.done .mk-hat,.mbubble.pop,.mskull.laugh,.mskull.laugh .mk-jaw,.mskull.laugh .mk-eye{animation:none}.mprog i{transition:none}}
 .maint-admin{top:12px;background:rgba(20,24,30,.92);color:#ffb38a;border:1px solid rgba(255,138,26,.5)}
 .test-badge{position:fixed;right:14px;bottom:12px;z-index:58;padding:5px 10px;border:1px dashed rgba(41,230,255,.6);border-radius:2px;background:rgba(8,10,13,.8);color:#29e6ff;font-family:var(--f-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+/* ================= 2.0 HUD (1.9.990) =================
+   Glass plates with cut corners over the city, one accent each: tape yellow for the wave, blood for health, the
+   weapon's rarity for the weapon, the dash's own colour for the dash. The wave clock sits in the middle; its last five
+   seconds turn it (and the screen's edge) red. Everything here sits on top of the older HUD rules and replaces them. */
+:root{
+  --hx-glass:rgba(9,12,16,.78);
+  --hx-glass-2:rgba(9,12,16,.5);
+  --hx-line:rgba(235,229,214,.14);
+  --hx-red:#ff3b4f;
+  --hx-green:#7dff9a;
+  --hx-boss:#c86bff;
+  --hx-cut:10px;
+}
+#hud{--hx-acc:var(--tape)}
+.hx-top{position:absolute;top:0;left:0;right:0;display:grid;grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr);align-items:start;gap:12px;
+  padding:max(10px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) 0 max(14px, env(safe-area-inset-left, 0px));zoom:var(--hud-scale, 1);pointer-events:none}
+.hx-top button{pointer-events:auto}
+
+/* ---------- vitals: name, health, status, where you are, the team, toasts ---------- */
+.hx-vitals{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:280px}
+.hx-hp{--hp:1;position:relative;padding:8px 12px 6px 14px;background:linear-gradient(100deg, var(--hx-glass), var(--hx-glass-2));
+  clip-path:polygon(0 0, calc(100% - var(--hx-cut)) 0, 100% var(--hx-cut), 100% 100%, var(--hx-cut) 100%, 0 calc(100% - var(--hx-cut)))}
+.hx-hp::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--blood);box-shadow:0 0 10px var(--blood)}
+.hx-hp::after{content:"";position:absolute;right:0;top:0;width:22px;height:2px;background:var(--blood);opacity:.7}
+.hx-hpbar{position:relative;height:14px;background:rgba(0,0,0,.6);transform:skewX(-16deg);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(235,229,214,.1);margin-left:4px}
+.hx-ghost{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg, rgba(255,226,190,.55), rgba(255,240,220,.9))}
+.hx-fill{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg, #7e131b, var(--blood) 55%, #ff8a7a);box-shadow:0 0 14px rgba(229,72,77,.65);transition:width .12s linear}
+.hx-fill::after{content:"";position:absolute;inset:0 0 50% 0;background:linear-gradient(180deg, rgba(255,255,255,.28), transparent)}
+.hx-segs{position:absolute;inset:0;background:repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgba(6,8,11,.9) calc(10% - 2px) 10%)}
+.hx-hprow{display:flex;align-items:baseline;gap:7px;margin-top:5px;min-height:18px;flex-wrap:wrap}
+.hx-tag{font-family:var(--f-num);font-size:10px;letter-spacing:.2em;color:var(--blood)}
+.hx-hprow b{white-space:nowrap;font-family:var(--f-num);font-weight:400;font-size:15px;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000;color:var(--bone)}
+.hx-fx{display:inline-flex;flex-wrap:wrap;gap:4px}
+.hx-fx .fx-chip{font-size:9.5px;padding:1px 5px;background:rgba(0,0,0,.65);clip-path:polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);border:0;box-shadow:inset 0 0 0 1px currentColor}
+#hud.low .hx-fill{animation:hxlow 1s ease-in-out infinite}
+#hud.crit .hx-fill{animation-duration:.55s}
+#hud.low .hx-hp::before{animation:hxlow 1s ease-in-out infinite}
+@keyframes hxlow{50%{filter:brightness(1.6) saturate(1.3);box-shadow:0 0 22px rgba(255,59,79,.95)}}
+.hx-vitals .where{padding:2px 10px 3px 8px;align-self:flex-start;max-width:100%;background:linear-gradient(90deg, rgba(9,12,16,.6), transparent);border-left:2px solid rgba(235,229,214,.25)}
+.hx-vitals .hud-name{background:var(--hx-glass);border:0;clip-path:polygon(0 0, 100% 0, calc(100% - 7px) 100%, 0 100%);padding-right:14px}
+.hx-vitals .hud-team{padding:4px 8px;background:linear-gradient(90deg, rgba(9,12,16,.6), transparent)}
+#toasts{position:static;max-width:100%;margin-top:2px;left:auto;top:auto}
+.has-boss #toasts,.coop #toasts,.coop.has-boss #toasts,.coop .has-boss #toasts{top:auto}
+.toast{background:linear-gradient(100deg, rgba(9,12,16,.94), rgba(9,12,16,.74));border:0;border-left:3px solid var(--rc,#888);clip-path:polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);padding:6px 16px 7px 10px;border-radius:0}
+
+/* ---------- the wave clock ---------- */
+.hx-wave{--wc:var(--tape);--wbg:rgba(9,12,16,.88);--wbg2:rgba(9,12,16,.6);position:relative;isolation:isolate;display:grid;grid-template-columns:auto auto;grid-template-areas:"wn clock" "bar bar";column-gap:14px;row-gap:5px;align-items:center;
+  min-width:212px;padding:7px 16px 9px}
+/* the plate itself (cut corners, accent line along the top, faint scanlines) is drawn behind, so the ribbon below is not clipped */
+.hx-wave::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(90deg, transparent, var(--wc) 18%, var(--wc) 82%, transparent) top / 100% 2px no-repeat,
+             repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px),
+             linear-gradient(180deg, var(--wbg), var(--wbg2));
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px))}
+.hx-wave::after{content:"";position:absolute;left:18%;right:18%;top:0;height:2px;z-index:-1;pointer-events:none;box-shadow:0 0 14px 1px var(--wc)}
+.hx-wn{grid-area:wn;display:flex;flex-direction:column;align-items:center;line-height:1}
+.hx-wn span{font-family:var(--f-num);font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+.hx-wn b{font-family:var(--f-display);font-weight:400;font-size:36px;color:var(--wc);text-shadow:0 2px 8px rgba(0,0,0,.8), 0 0 calc(8px + var(--beat, 0) * 24px) color-mix(in srgb, var(--wc) 55%, transparent);transform:scale(calc(1 + var(--beat, 0) * .1))}
+.hx-clock{grid-area:clock;display:flex;flex-direction:column;align-items:flex-start;line-height:1.05;min-width:0}
+.hx-cap{font-family:var(--f-num);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.hx-time{font-family:var(--f-num);font-weight:400;font-size:28px;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:var(--bone);text-shadow:0 2px 6px rgba(0,0,0,.8)}
+.hx-left{font-size:11px;letter-spacing:.04em;color:#c9c3b4;white-space:nowrap}
+.hx-tbar{grid-area:bar;position:relative;height:5px;background:rgba(0,0,0,.6);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(235,229,214,.08)}
+.hx-tbar i{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--wc);box-shadow:0 0 10px var(--wc);transition:width .25s linear}
+.hx-tbar::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg, transparent 0 calc(5% - 1px), rgba(6,8,11,.85) calc(5% - 1px) 5%)}
+.hx-wave[data-st="brk"]{--wc:var(--hx-green)}
+.hx-wave[data-st="brk"] .hx-time{color:#d9ffe2}
+.hx-wave[data-st="hold"]{--wc:var(--hx-boss)}
+.hx-wave[data-st="off"] .hx-time{color:var(--muted);font-size:22px}
+/* the last five seconds: red, and a beat each second */
+.hx-wave.red{--wc:var(--hx-red);--wbg:rgba(64,6,14,.93);--wbg2:rgba(34,4,9,.72)}
+.hx-wave.red .hx-time{color:#ffd9dd;font-size:32px;text-shadow:0 0 14px rgba(255,59,79,.95), 0 0 30px rgba(255,59,79,.6)}
+.hx-wave.red .hx-cap{color:#ff9aa5}
+.hx-wave.beat{animation:hxbeat 1s ease-out}
+.hx-wave.beat .hx-time{animation:hxtick 1s ease-out}
+@keyframes hxbeat{0%{filter:brightness(1.9)}30%{filter:brightness(1.15)}100%{filter:none}}
+@keyframes hxtick{0%{transform:scale(1.28)}25%{transform:scale(1)}}
+.hx-edge{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s}
+#hud.clock-red .hx-edge{opacity:1;box-shadow:inset 0 0 90px rgba(255,40,60,.32), inset 0 0 18px rgba(255,40,60,.4);animation:hxedge 1s ease-in-out infinite}
+@keyframes hxedge{0%,100%{opacity:.55}20%{opacity:1}}
+/* a wave cleared: a short ribbon under the clock */
+.hx-clear{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:1px;min-width:100%;padding:5px 14px 6px;white-space:nowrap;
+  background:linear-gradient(90deg, rgba(12,40,22,.0), rgba(12,40,22,.9) 15%, rgba(12,40,22,.9) 85%, rgba(12,40,22,0));text-align:center;pointer-events:none}
+.hx-clear b{font-family:var(--f-display);font-weight:400;font-size:18px;letter-spacing:.04em;color:var(--hx-green);text-shadow:0 0 12px rgba(125,255,154,.6)}
+.hx-clear span{font-family:var(--f-num);font-size:11px;letter-spacing:.1em;color:#d9ffe2}
+.hx-clear.show{animation:hxclear 2.6s ease-out forwards}
+@keyframes hxclear{0%{opacity:0;transform:translate(-50%, -8px)}10%{opacity:1;transform:translate(-50%, 0)}80%{opacity:1}100%{opacity:0}}
+
+/* ---------- right: radio, pause, score, chain ---------- */
+.hx-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0}
+.hx-btns{display:flex;gap:8px}
+.hx-btns .icon-btn{width:44px;height:44px;border:0;border-radius:0;background:var(--hx-glass);clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));box-shadow:inset 0 0 0 1px var(--hx-line)}
+.hx-btns .icon-btn:hover{box-shadow:inset 0 0 0 1px rgba(242,204,58,.55)}
+.hx-btns .radio-btn[aria-expanded="true"]{box-shadow:inset 0 0 0 1px var(--tape), 0 0 14px rgba(242,204,58,.4)}
+.hx-btns #pauseBtn{position:relative;overflow:visible;clip-path:none;border-radius:0;background:linear-gradient(135deg, var(--hx-glass) 0 calc(100% - 9px), transparent calc(100% - 9px))}
+.hx-score{display:flex;flex-direction:column;align-items:flex-end;line-height:1.05;padding:4px 10px 5px 18px;background:linear-gradient(270deg, var(--hx-glass), transparent);border-right:3px solid var(--tape)}
+.hx-score b{font-family:var(--f-num);font-weight:400;font-size:22px;font-variant-numeric:tabular-nums;color:var(--bone);text-shadow:0 1px 3px #000}
+.hx-score span{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.hx-right #combo{position:static;margin-top:2px}
+.dev-kbm .hx-score,.dev-pad .hx-score{margin-top:8px}
+.hx-right #combo b{font-size:36px}
+.hx-right #combo .cbar{width:84px;height:4px;transform:skewX(-20deg)}
+.has-boss .hx-right #combo{top:auto}
+.radio-drop{top:calc(var(--hx-top-h, 112px))}
+.has-boss .radio-drop{top:calc(var(--hx-top-h, 112px) + 70px)}
+#fmTicker.hud{top:calc(var(--hx-top-h, 112px) + 6px)}
+
+/* ---------- boss bar, banners, chain pops ---------- */
+#bossBar{top:calc(var(--hx-top-h, 104px) + 4px);padding:6px 14px 8px;background:linear-gradient(180deg, rgba(30,6,24,.85), rgba(30,6,24,.4));clip-path:polygon(10px 0, calc(100% - 10px) 0, 100% 100%, 0 100%)}
+#bossBar .bar{transform:skewX(-14deg)}
+#banner{top:27%;z-index:1}
+#banner b{font-size:clamp(44px, 11vw, 96px);letter-spacing:.05em;text-shadow:0 4px 26px rgba(0,0,0,.9)}
+#banner span{background:none;color:var(--tape);font-size:13px;letter-spacing:.24em;padding:0}
+#banner.bn-wave::before,#banner.bn-up::before{content:"";position:absolute;left:0;right:0;top:-10px;bottom:-12px;z-index:-1;transform:skewY(-2.5deg);
+  background:linear-gradient(90deg, transparent, rgba(8,10,13,.82) 18%, rgba(8,10,13,.82) 82%, transparent);
+  border-top:2px solid transparent;border-bottom:2px solid transparent;border-image:linear-gradient(90deg, transparent, var(--tape) 25%, var(--tape) 75%, transparent) 1}
+#banner.bn-wave b{color:var(--bone)}
+#banner.bn-wave b::first-letter{color:var(--tape)}
+#banner.bn-up b{color:#ffd9dd;text-shadow:0 0 22px rgba(255,59,79,.9), 0 4px 26px #000}
+#banner.bn-up span{color:#ff7a88}
+#banner.bn-up::before{border-image:linear-gradient(90deg, transparent, var(--hx-red) 25%, var(--hx-red) 75%, transparent) 1;background:linear-gradient(90deg, transparent, rgba(44,4,10,.86) 18%, rgba(44,4,10,.86) 82%, transparent)}
+
+/* ---------- bottom right: dash, A-10, team marker ---------- */
+.hx-abil{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:max(14px, env(safe-area-inset-bottom, 0px));display:grid;grid-template-columns:auto auto;grid-template-areas:". mark" "air dash";align-items:end;justify-items:center;gap:8px 12px;zoom:var(--hud-scale, 1);pointer-events:none}
+.hx-abil button{pointer-events:auto}
+.hx-abil #dashBtn,.hx-abil #airBtn,.hx-abil #markBtn{position:relative;inset:auto;right:auto;left:auto;bottom:auto;top:auto;margin:0}
+.hx-abil #markBtn{grid-area:mark}
+.hx-abil #airBtn{grid-area:air}
+.hx-abil #dashBtn{grid-area:dash}
+#dashBtn{--dash:#f2cc3a;width:86px;height:86px;border:0;border-radius:50%;
+  background:radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--dash) 26%, rgba(12,15,19,.92)) 0, rgba(9,12,16,.9) 62%),
+             conic-gradient(color-mix(in srgb, var(--dash) 55%, transparent) calc(var(--cd,1) * 360deg), rgba(9,12,16,.85) 0);
+  background-size:calc(100% - 12px) calc(100% - 12px), 100% 100%;background-position:center;background-repeat:no-repeat;
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--dash) 60%, transparent), 0 6px 18px rgba(0,0,0,.55), 0 0 calc(var(--beat, 0) * 26px) color-mix(in srgb, var(--neon, #000) 60%, transparent);
+  color:var(--dash);font-size:14px}
+#dashBtn .hx-ring{position:absolute;inset:-6px;border-radius:50%;pointer-events:none;
+  background:repeating-conic-gradient(color-mix(in srgb, var(--dash) 75%, transparent) 0 4deg, transparent 4deg 30deg);
+  -webkit-mask:radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));mask:radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));opacity:.9}
+#dashBtn:not(.cool) .hx-ring{animation:hxspin 9s linear infinite}
+#dashBtn:not(.cool){text-shadow:0 0 10px color-mix(in srgb, var(--dash) 70%, transparent)}
+#dashBtn.cool{color:var(--muted);box-shadow:0 0 0 1px color-mix(in srgb, var(--dash) 25%, transparent), 0 6px 18px rgba(0,0,0,.55)}
+#dashBtn.cool .hx-ring{opacity:.25}
+#dashBtn b{font-size:15px;letter-spacing:.16em}
+#dashBtn .dname{font-size:9px;max-width:66px}
+@keyframes hxspin{to{transform:rotate(360deg)}}
+#airBtn{width:64px;height:64px;border:0;background:radial-gradient(circle at 50% 40%, rgba(40,58,30,.9), rgba(9,12,16,.9) 66%);box-shadow:0 0 0 1px rgba(159,211,106,.32), 0 6px 16px rgba(0,0,0,.5)}
+#airBtn.ready{box-shadow:0 0 0 2px #9fd36a, 0 0 22px rgba(159,211,106,.6);background:radial-gradient(circle at 50% 40%, rgba(90,140,50,.85), rgba(9,12,16,.9) 70%)}
+#airBtn em{background:#0b0e12}
+#markBtn{width:46px;height:46px}
+.dev-kbm #dashBtn,.dev-pad #dashBtn{width:72px;height:72px}
+.dev-kbm #airBtn,.dev-pad #airBtn{width:56px;height:56px;bottom:auto}
+.lefty .hx-abil{right:auto;left:max(16px, env(safe-area-inset-left, 0px));grid-template-areas:"mark ." "dash air"}
+.lefty #dashBtn,.lefty #airBtn,.lefty #markBtn{left:auto;right:auto}
+
+/* ---------- bottom left: the weapon ---------- */
+.hx-weapon{--wr:#a9adb5;position:absolute;left:max(16px, env(safe-area-inset-left, 0px));bottom:max(14px, env(safe-area-inset-bottom, 0px));display:flex;align-items:center;gap:10px;max-width:calc(100% - 210px);min-width:0;
+  padding:6px 18px 6px 10px;background:linear-gradient(100deg, var(--hx-glass), var(--hx-glass-2));clip-path:polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);box-shadow:inset 3px 0 0 var(--wr);zoom:var(--hud-scale, 1)}
+.hx-weapon canvas{flex:none;filter:drop-shadow(0 0 6px color-mix(in srgb, var(--wr) 45%, transparent))}
+.hx-wtxt{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.hx-wtxt small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--wr);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hx-wtxt span{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000}
+.lefty .hx-weapon{left:auto;right:max(16px, env(safe-area-inset-right, 0px));clip-path:polygon(12px 0, 100% 0, 100% 100%, 0 100%);padding:6px 10px 6px 18px;box-shadow:inset -3px 0 0 var(--wr)}
+
+/* ---------- touch screens: bigger thumbs, the weapon up out of the joystick's way ---------- */
+.dev-touch #dashBtn{width:90px;height:90px}
+.dev-touch #airBtn{width:66px;height:66px}
+
+/* ---------- phones held upright ---------- */
+@media (max-width:560px){
+  .hx-top{grid-template-columns:minmax(0, 1fr) auto auto;gap:8px;padding-left:max(10px, env(safe-area-inset-left, 0px));padding-right:max(10px, env(safe-area-inset-right, 0px))}
+  .hx-vitals{max-width:none}
+  .hx-hp{padding:6px 9px 5px 11px}
+  .hx-hpbar{height:11px}
+  .hx-hprow b{font-size:13px}
+  .hx-wave{min-width:0;padding:5px 10px 7px;column-gap:9px}
+  .hx-wn b{font-size:27px}
+  .hx-time{font-size:21px}
+  .hx-wave.red .hx-time{font-size:24px}
+  .hx-cap{font-size:8.5px;letter-spacing:.1em}
+  .hx-left{font-size:10px}
+  .hx-btns{gap:6px}
+  .hx-btns .icon-btn{width:40px;height:40px}
+  .hx-score{padding:3px 8px 4px 12px}
+  .hx-score b{font-size:17px}
+  .hx-right #combo b{font-size:28px}
+  .hx-vitals .where span{display:none}
+  .hx-weapon{max-width:calc(100% - 190px)}
+  .hx-clear b{font-size:15px}
+}
+@media (max-width:480px){
+  /* a bigger HUD size grows the HUD only a little on a narrow phone, so the street stays visible */
+  .hx-top{zoom:min(var(--hud-scale, 1), 1.1);grid-template-columns:minmax(118px, 1fr) auto auto}
+  .hx-abil,.hx-weapon{zoom:min(var(--hud-scale, 1), 1.12)}
+  #toasts .toast{width:max-content;max-width:min(300px, calc(100vw - 36px))}
+  /* the A-10 sits above the dash, so the weapon has the width of the screen's bottom */
+  .hx-abil,.lefty .hx-abil{grid-template-columns:auto;grid-template-areas:"mark" "air" "dash";gap:8px}
+  .hx-weapon{max-width:calc(100% - 140px)}
+}
+@media (max-width:380px){
+  .hx-cap{display:none}
+  .hx-wn span{font-size:8px}
+  .hx-wave{padding:4px 8px 6px;column-gap:7px}
+  .hx-time{font-size:19px}
+}
+/* ---------- phones held sideways ---------- */
+@media (orientation:landscape) and (max-height:560px){
+  .hx-top{padding-top:max(6px, env(safe-area-inset-top, 0px))}
+  .hx-wave{padding:4px 12px 6px;row-gap:3px}
+  .hx-wn b{font-size:28px}
+  .hx-time{font-size:22px}
+  .hx-hp{padding:6px 10px 4px 12px}
+  .hx-abil{bottom:max(10px, env(safe-area-inset-bottom, 0px))}
+  .dev-touch #dashBtn{width:78px;height:78px}
+  .dev-touch #airBtn{width:58px;height:58px}
+  #banner{top:20%}
+}
+/* ---------- comfort and contrast ---------- */
+@media (prefers-reduced-motion:reduce){
+  .hx-wave.beat,.hx-wave.beat .hx-time,#hud.clock-red .hx-edge,#hud.low .hx-fill,#hud.low .hx-hp::before,#dashBtn .hx-ring{animation:none}
+}
+.rm .hx-wave.beat,.rm .hx-wave.beat .hx-time,.rm #hud.clock-red .hx-edge,.rm #dashBtn .hx-ring{animation:none}
+.hi-contrast .hx-wave{--wbg:#000;--wbg2:#000}
+.hi-contrast .hx-hp,.hi-contrast .hx-score,.hi-contrast .hx-weapon,.hi-contrast .hx-vitals .where{background:#000}
+.hi-contrast .hx-left,.hi-contrast .hx-cap{color:#fff}
+
+/* ================= 2.0 menus (1.9.990) =================
+   The main menu becomes a command deck (a status bar along the top, the run as one big tile, everything else as
+   tiles with what is behind them), and the pause screen gets the clock, more of the run's numbers and three tabs. */
+
+/* ---------- main menu: status bar ---------- */
+.mx-bar{position:absolute;left:0;right:0;top:0;z-index:2;display:flex;align-items:center;gap:16px;min-height:44px;
+  padding:max(6px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 6px max(16px, env(safe-area-inset-left, 0px));
+  background:linear-gradient(180deg, rgba(8,10,13,.92), rgba(8,10,13,.55));border-bottom:1px solid rgba(235,229,214,.08);pointer-events:none}
+.mx-bar::after{content:"";position:absolute;left:0;bottom:-1px;width:min(260px, 30%);height:2px;background:linear-gradient(90deg, var(--tape), transparent)}
+.mx-brand{display:flex;flex-direction:column;line-height:1.05;flex:none}
+.mx-brand b{font-family:var(--f-num);font-weight:400;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)}
+.mx-brand span{font-family:var(--f-display);font-size:16px;letter-spacing:.04em;color:var(--bone)}
+.mx-chips{display:flex;gap:8px;flex:1 1 auto;min-width:0;justify-content:center;flex-wrap:wrap}
+.mx-chip{display:inline-flex;align-items:baseline;gap:6px;padding:3px 10px 3px 8px;background:rgba(255,255,255,.035);clip-path:polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);white-space:nowrap}
+.mx-chip small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.mx-chip b{font-family:var(--f-num);font-weight:400;font-size:12px;color:var(--bone)}
+.mx-chip.ok b{color:#9fe8a8}
+.mx-chip.warn b{color:#ffb35c}
+.mx-clock{display:flex;flex-direction:column;align-items:flex-end;line-height:1.05;flex:none}
+.mx-clock b{font-family:var(--f-num);font-weight:400;font-size:18px;color:var(--tape);letter-spacing:.06em}
+.mx-clock span{font-family:var(--f-num);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mx-scan{position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px), radial-gradient(ellipse at 30% 60%, transparent 40%, rgba(0,0,0,.35) 100%)}
+#title .title-body,#title .title-panel{position:relative;z-index:1}
+#title{padding-top:calc(48px + env(safe-area-inset-top, 0px))}
+#title .mx-deck .mx-tile em:empty{display:none}
+.mx-play-s{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#title .title-panel{position:absolute}
+#title .tape{z-index:1}
+
+/* ---------- main menu: the deck ---------- */
+.mx-deck{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px;width:min(620px, 100%)}
+.mx-deck .btn{margin:0}
+#title .mx-deck .mx-play{grid-column:1 / -1;position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:76px;padding:12px 64px 12px 20px;text-align:left;border:0;border-radius:0;overflow:hidden;
+  background:linear-gradient(100deg, #ffe07a, var(--tape) 45%, #e0b020);color:var(--tape-ink);clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+  box-shadow:0 10px 30px rgba(242,204,58,.18)}
+#title .mx-deck .mx-play::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(-45deg, rgba(23,20,11,.09) 0 12px, transparent 12px 24px);animation:mxstripe 2.4s linear infinite}
+@keyframes mxstripe{to{background-position:34px 0}}
+.mx-play-t{position:relative;font-family:var(--f-display);font-weight:400;font-size:28px;letter-spacing:.04em;text-transform:none;line-height:1}
+.mx-play-s{position:relative;font-family:var(--f-num);font-weight:400;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.mx-chev{position:absolute;right:22px;top:50%;width:26px;height:26px;margin-top:-13px;background:var(--tape-ink);clip-path:polygon(0 0, 100% 50%, 0 100%, 30% 50%);animation:mxchev 1.2s ease-in-out infinite}
+@keyframes mxchev{50%{transform:translateX(6px)}}
+#title .mx-deck .mx-play:hover{filter:brightness(1.06)}
+#title .mx-deck .mx-tile{display:grid;grid-template-columns:auto minmax(0, 1fr) auto;grid-template-areas:"ic t em" "ic s s";align-items:center;column-gap:10px;row-gap:1px;min-height:58px;padding:9px 12px;text-align:left;
+  border:0;border-radius:0;background:linear-gradient(135deg, rgba(31,36,44,.95), rgba(15,18,23,.95));clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  box-shadow:inset 0 0 0 1px rgba(235,229,214,.1);text-transform:none;letter-spacing:0;transition:box-shadow .15s, transform .15s}
+#title .mx-deck .mx-tile:hover,#title .mx-deck .mx-tile:focus-visible{box-shadow:inset 0 0 0 1px rgba(242,204,58,.45), inset 3px 0 0 var(--tape);transform:translateY(-1px)}
+.mx-ic{grid-area:ic;width:24px;height:24px;fill:none;stroke:var(--tape);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.mx-t{grid-area:t;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#title .mx-deck .mx-tile em{grid-area:em;font-style:normal;font-family:var(--f-num);font-size:12px;color:var(--muted);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+#title .mx-deck .mx-tile small{grid-area:s;font-size:11px;color:#9a968c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#title .mx-deck .mx-tile.acct-on{box-shadow:inset 0 0 0 1px rgba(125,255,154,.35)}
+#title .mx-deck .mx-tile.acct-on .mx-ic{stroke:var(--hx-green, #7dff9a)}
+
+/* ---------- main menu: the side panel ---------- */
+.tp-card{border:0;border-radius:0;clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);box-shadow:inset 0 0 0 1px rgba(235,229,214,.1), 0 12px 30px rgba(0,0,0,.45)}
+.tp-new{border-left:3px solid var(--tape)}
+
+/* ---------- main menu on phones ---------- */
+@media (max-width:640px){
+  .mx-bar{gap:10px;min-height:40px}
+  .mx-brand b{display:none}
+  .mx-brand span{font-size:14px}
+  .mx-chips{justify-content:flex-end}
+  .mx-chip:nth-child(n+2){display:none}
+  .mx-chips{flex-wrap:nowrap}
+  #title{padding-top:calc(44px + env(safe-area-inset-top, 0px))}
+  .mx-clock span{display:none}
+  .mx-clock b{font-size:15px}
+  .mx-deck{grid-template-columns:repeat(2, minmax(0, 1fr));gap:7px}
+  #title .mx-deck .mx-play{min-height:68px}
+  .mx-play-t{font-size:24px}
+  #title .mx-deck .mx-tile{min-height:52px;padding:8px 10px}
+  #title .mx-deck .mx-tile small{display:none}
+}
+@media (orientation:landscape) and (max-height:560px){
+  .mx-bar{min-height:34px;padding-top:max(3px, env(safe-area-inset-top, 0px));padding-bottom:3px}
+  .mx-brand b,.mx-clock span,.mx-chip:nth-child(n+3){display:none}
+  .mx-chips{flex-wrap:nowrap}
+  #title{padding-top:calc(36px + env(safe-area-inset-top, 0px))}
+  .title-side .btns.mx-deck{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:6px}
+  #title .mx-deck .mx-play{min-height:54px;padding:8px 44px 8px 14px}
+  .mx-play-t{font-size:20px}
+  .mx-play-s{font-size:10px}
+  #title .mx-deck .mx-tile{min-height:42px;padding:6px 9px;grid-template-areas:"ic t em"}
+  #title .mx-deck .mx-tile small{display:none}
+  .mx-ic{width:18px;height:18px}
+}
+
+/* ---------- pause screen ---------- */
+.pause-card{border:0;border-radius:0;clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));box-shadow:inset 0 0 0 1px rgba(235,229,214,.1)}
+.pz-clock{display:flex;align-items:center;gap:8px;padding:7px 12px;font-family:var(--f-num);font-size:12.5px;letter-spacing:.06em;color:var(--bone);background:linear-gradient(90deg, rgba(242,204,58,.12), transparent);border-left:3px solid var(--tape)}
+.pz-clock::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;flex:none;color:var(--tape)}
+.pz-clock.brk{border-left-color:var(--hx-green, #7dff9a);background:linear-gradient(90deg, rgba(125,255,154,.12), transparent)}
+.pz-clock.brk::before{color:var(--hx-green, #7dff9a)}
+.pz-clock.red{border-left-color:var(--hx-red, #ff3b4f);background:linear-gradient(90deg, rgba(255,59,79,.18), transparent)}
+.pz-clock.red::before{color:var(--hx-red, #ff3b4f);animation:hxlow 1s ease-in-out infinite}
+.pz-clock.hold{border-left-color:var(--hx-boss, #c86bff)}
+.pz-clock.off{border-left-color:var(--muted);color:#cfc9bb}
+.pause-stats{grid-template-columns:repeat(4, minmax(0, 1fr))}
+.pause-stats div{border:0;border-left:3px solid var(--tape);background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.015))}
+.pause-stats div:nth-child(n+5){border-left-color:rgba(242,204,58,.45)}
+.pause-stats div:nth-child(n+5){animation-delay:.2s}
+.pause-side{display:flex;flex-direction:column;gap:10px;min-width:0;padding-left:20px;border-left:1px solid var(--line)}
+.pause-side .build{border-top:0;padding-top:0}
+.pz-tabs{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:4px;padding:3px;background:rgba(0,0,0,.35);clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)}
+.pz-tabs button{min-height:36px;border:0;background:transparent;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.pz-tabs button.on{background:var(--tape);color:var(--tape-ink)}
+.pz-tabs button:not(.on):hover{color:var(--bone);background:rgba(255,255,255,.05)}
+.pz-note{font-size:12.5px;color:#bdb7a8}
+.pz-th-grid{display:flex;flex-direction:column;gap:6px;max-height:min(46vh, 380px);overflow-y:auto;padding-right:2px}
+.pz-th{display:grid;grid-template-columns:56px minmax(0, 1fr);gap:10px;align-items:center;padding:6px 8px;background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.01));border-left:3px solid var(--rc, #888)}
+.pz-th canvas{width:54px;height:54px;background:radial-gradient(circle, #232831, #12151a 70%)}
+.pz-th-t{min-width:0;display:flex;flex-direction:column;gap:1px}
+.pz-th-t b{font-size:14px}
+.pz-th-t small{font-family:var(--f-num);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--rc, #888)}
+.pz-th-t span{font-family:var(--f-num);font-size:11px;color:#cfc9bb}
+.pz-th-t p{font-size:12px;color:#9a968c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pz-th.unknown b{color:#8f959e}
+.pz-map{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.pz-map canvas{max-width:100%;clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);box-shadow:inset 0 0 0 1px var(--line)}
+.pz-legend{font-family:var(--f-num);font-size:11px;letter-spacing:.06em;color:var(--muted)}
+@media (max-width:760px){
+  .pause-side{padding-left:0;border-left:0;padding-top:14px;border-top:1px solid var(--line)}
+  .pause-stats{grid-template-columns:repeat(2, minmax(0, 1fr))}
+}
+@media (orientation:landscape) and (max-height:560px){
+  .pause-side{padding:0 0 0 16px;border-top:0;border-left:1px solid var(--line)}
+  .pause-stats{grid-template-columns:repeat(4, minmax(0, 1fr))}
+  .pz-clock{padding:5px 10px;font-size:11px}
+  .pz-th-grid{max-height:44vh}
+}
+@media (prefers-reduced-motion:reduce){ #title .mx-deck .mx-play::before,.mx-chev,.pz-clock.red::before{animation:none} }
+.rm #title .mx-deck .mx-play::before,.rm .mx-chev{animation:none}
+
+/* ---------- run over ---------- */
+#over .panel{width:min(720px, 100%);border:0;border-radius:0;clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));box-shadow:inset 0 0 0 1px rgba(255,59,79,.3), 0 24px 60px rgba(0,0,0,.6);position:relative}
+#over .panel::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:repeating-linear-gradient(-45deg, var(--blood) 0 10px, #160407 10px 20px)}
+#over .stats{grid-template-columns:repeat(5, minmax(0, 1fr))}
+#over .stats div{border:0;border-left:3px solid var(--blood);background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.012))}
+#over .stats div:nth-child(n+6){border-left-color:rgba(242,204,58,.55)}
+@media (max-width:760px){ #over .stats{grid-template-columns:repeat(2, minmax(0, 1fr))} }
+@media (orientation:landscape) and (max-height:560px){ #over .stats{grid-template-columns:repeat(5, minmax(0, 1fr))} }
+
+/* ---------- settings: the same cut corners and accents ---------- */
+.set-sheet .sheet-head h2{position:relative}
+.set-sheet .sheet-head h2::after{content:"";display:block;width:56px;height:3px;margin-top:6px;background:linear-gradient(90deg, var(--tape), transparent)}
+.set-tabs .tab{border-radius:0;clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)}
+.set-tabs .tab.on{box-shadow:inset 3px 0 0 var(--tape)}
+.set-row{border-radius:0}
+.set-group{position:relative;padding-left:12px}
+.set-group::before{content:"";position:absolute;left:0;top:.35em;width:5px;height:.8em;background:var(--tape);clip-path:polygon(0 0, 100% 20%, 100% 80%, 0 100%)}
+
+/* ================= the engine room and its warning (1.9.990) =================
+   Purple is the ecosystem's colour (anything it has locked), red is for the warning and for trouble, tape yellow for
+   what you have chosen yourself. */
+:root{--eng-purple:#c86bff;--eng-purple-2:#7d3cff;--eng-red:#ff3b4f}
+
+/* ---------- the button in Settings > Accessibility ---------- */
+.set-row.set-ultra{position:relative;border-left:3px solid var(--eng-purple);background:linear-gradient(90deg, rgba(125,60,255,.14), transparent 60%)}
+.set-row.set-ultra label,.set-row.set-ultra b{color:#e6ccff}
+.btn.ultra{border:0;color:#fff;background:linear-gradient(135deg, var(--eng-purple-2), #ff3b8a);box-shadow:0 0 18px rgba(200,107,255,.45);text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.btn.ultra:hover{filter:brightness(1.12)}
+
+/* ---------- the red warning ---------- */
+.eng-warn{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background:radial-gradient(ellipse at center, rgba(90,0,12,.55), rgba(8,0,2,.92) 70%);animation:ewin .25s ease-out}
+@keyframes ewin{from{opacity:0}to{opacity:1}}
+.ew-card{position:relative;width:min(620px, 100%);max-height:100%;overflow-y:auto;background:linear-gradient(180deg, #1c0a0e, #0f0507);
+  clip-path:polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));box-shadow:inset 0 0 0 1px rgba(255,59,79,.55), 0 0 60px rgba(255,59,79,.35);animation:ewpulse 2.4s ease-in-out infinite}
+@keyframes ewpulse{50%{box-shadow:inset 0 0 0 1px rgba(255,59,79,.9), 0 0 80px rgba(255,59,79,.5)}}
+.ew-stripe{height:14px;background:repeating-linear-gradient(-45deg, var(--eng-red) 0 14px, #160407 14px 28px)}
+.ew-body{display:flex;flex-direction:column;gap:12px;padding:18px 22px 22px}
+.ew-eye{font-family:var(--f-num);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#ff8a96}
+.eng-warn h2{display:flex;align-items:center;gap:14px;font-family:var(--f-display);font-weight:400;font-size:clamp(40px, 10vw, 60px);line-height:1;color:var(--eng-red);text-shadow:0 0 24px rgba(255,59,79,.6)}
+.ew-ico{display:grid;place-items:center;width:.95em;height:.85em;flex:none;background:var(--eng-red);color:#160407;font-family:var(--f-ui);font-weight:700;font-size:.7em;clip-path:polygon(50% 0, 100% 100%, 0 100%);padding-top:.18em;text-shadow:none}
+.ew-lead{font-size:17px;line-height:1.45;color:#ffd9dd;font-weight:600}
+.ew-list{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:7px;font-size:14px;color:#e7c9cc}
+.ew-list b{color:#fff}
+.ew-purple{color:var(--eng-purple);font-weight:700}
+.ew-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:4px}
+.ew-btns .btn{flex:1 1 200px}
+.btn.ew-go{background:var(--eng-red);border-color:var(--eng-red);color:#160407}
+.btn.ew-go:hover{filter:brightness(1.1)}
+
+/* ---------- the room ---------- */
+.eng-sheet{z-index:50;background:radial-gradient(ellipse at 80% 0%, rgba(125,60,255,.16), transparent 50%), radial-gradient(ellipse at 0% 100%, rgba(255,59,79,.08), transparent 50%), #080a0e}
+.eng-sheet::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(rgba(200,107,255,.035) 1px, transparent 1px) 0 0 / 100% 32px, linear-gradient(90deg, rgba(200,107,255,.035) 1px, transparent 1px) 0 0 / 32px 100%}
+.eng-in{width:min(1240px, 100%);position:relative}
+.eng-head{background:linear-gradient(#080a0e 80%, rgba(8,10,14,0))}
+.eng-eye{color:var(--eng-purple)}
+.eng-head h2{font-size:40px;background:linear-gradient(90deg, #f3e6ff, var(--eng-purple) 55%, #ff6a8a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eng-sub{margin-top:4px;font-size:13px;color:#a9a3b8;max-width:64ch}
+.eng-top{display:flex;flex-direction:column;gap:8px;padding:12px 14px;background:linear-gradient(180deg, rgba(30,20,48,.7), rgba(14,12,22,.7));clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);box-shadow:inset 0 0 0 1px rgba(200,107,255,.22)}
+.eng-meters{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:10px}
+.eng-meter{display:flex;flex-direction:column;gap:2px;min-width:0}
+.eng-meter small{font-family:var(--f-num);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#a495c2}
+.eng-meter b{font-family:var(--f-num);font-weight:400;font-size:22px;color:#f3e6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eng-meter b.ok{color:#9fe8a8}.eng-meter b.warn{color:#ffb35c}.eng-meter b.bad{color:var(--eng-red)}
+.eng-budget{display:flex;height:10px;background:rgba(0,0,0,.5);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.eng-budget i{display:block;height:100%;transition:width .5s}
+.eng-legend{font-family:var(--f-num);font-size:11px;letter-spacing:.04em;color:#a9a3b8}
+.eng-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.eng-seg{display:flex;flex-wrap:wrap;gap:3px;padding:3px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.eng-seg button{min-height:34px;padding:4px 12px;border:0;background:transparent;color:#a9a3b8;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.eng-seg button.on{background:var(--eng-purple);color:#12061c}
+.eng-seg.small button{min-height:30px;padding:3px 10px;font-size:11px}
+.eng-reset{margin-left:auto;border-color:rgba(200,107,255,.45);color:#e6ccff}
+.eng-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(min(100%, 360px), 1fr));gap:12px;align-items:start}
+.eng-card{--acc:rgba(235,229,214,.18);position:relative;display:flex;flex-direction:column;gap:8px;padding:12px 14px 12px 16px;min-width:0;background:linear-gradient(180deg, rgba(26,30,38,.95), rgba(14,16,21,.95));
+  clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);box-shadow:inset 0 0 0 1px rgba(235,229,214,.08), inset 3px 0 0 var(--acc)}
+.eng-card.is-tuned{--acc:var(--tape)}
+.eng-card.is-locked{--acc:var(--eng-purple);background:linear-gradient(180deg, rgba(40,24,60,.95), rgba(16,12,24,.95))}
+.ec-head{display:grid;grid-template-columns:minmax(0, 1fr) auto auto;gap:10px;align-items:center}
+.ec-title{display:flex;flex-direction:column;min-width:0}
+.ec-title b{font-family:var(--f-display);font-weight:400;font-size:22px;letter-spacing:.04em;line-height:1}
+.ec-kind{font-family:var(--f-num);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.ec-health{font-family:var(--f-num);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:2px 8px;border-radius:999px;box-shadow:inset 0 0 0 1px currentColor}
+.ec-health.ok{color:#9fe8a8}.ec-health.warn{color:#ffb35c}.ec-health.bad{color:var(--eng-red)}.ec-health.lock{color:var(--eng-purple);background:rgba(200,107,255,.14)}
+.ec-cost{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.ec-ms{font-family:var(--f-num);font-weight:400;font-size:17px;color:var(--bone)}
+.ec-share{font-size:10.5px;color:var(--muted)}
+.ec-spark{width:100%;height:26px;display:block}
+.ec-does{font-size:12.5px;line-height:1.4;color:#bdb7a8;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ec-stats{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:4px;margin:0}
+.ec-stats div{min-width:0;padding:4px 7px;background:rgba(255,255,255,.035)}
+.ec-stats dt{font-family:var(--f-num);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ec-stats dd{margin:1px 0 0;font-family:var(--f-num);font-size:13px;color:var(--bone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ec-intri{display:flex;flex-direction:column;gap:4px}
+.ec-itext{display:flex;flex-direction:column;gap:1px}
+.ec-itext b{font-size:12.5px;font-weight:600;color:#e6dfcf}
+.ec-itext span{font-family:var(--f-num);font-size:10.5px;color:var(--muted)}
+.ec-imeter{height:6px;background:rgba(0,0,0,.5);overflow:hidden;transform:skewX(-18deg)}
+.ec-imeter i{display:block;height:100%;background:linear-gradient(90deg, #7dff9a, #f2cc3a 45%, #ff8a3d 75%, var(--eng-red))}
+.ec-ctl{display:flex;flex-direction:column;gap:4px}
+.ec-ctl-l{font-family:var(--f-num);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#a9a3b8}
+.ec-seg{display:flex;flex-wrap:wrap;gap:3px}
+.ec-seg button{flex:1 1 auto;min-height:32px;padding:3px 9px;border:0;background:rgba(255,255,255,.05);color:#cfc9bb;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  clip-path:polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%)}
+.ec-seg button:hover:not(:disabled){background:rgba(255,255,255,.1)}
+.ec-seg button.on{background:var(--tape);color:var(--tape-ink)}
+.ec-seg button.e-max.on{background:linear-gradient(90deg, #ff8a3d, var(--eng-red));color:#1c0508}
+.ec-seg button.e-eco.on{background:#7dff9a;color:#08200e}
+.ec-seg button.lock{flex:0 0 auto;color:rgba(200,107,255,.45);background:rgba(200,107,255,.06);cursor:default}
+.ec-seg button.lock.on{color:#12061c;background:var(--eng-purple);box-shadow:0 0 14px rgba(200,107,255,.7)}
+.ec-seg button.lock.on::before{content:"";display:inline-block;width:8px;height:9px;margin-right:6px;vertical-align:-1px;background:#12061c;clip-path:polygon(15% 40%, 15% 25%, 30% 5%, 70% 5%, 85% 25%, 85% 40%, 100% 40%, 100% 100%, 0 100%, 0 40%, 30% 40%, 30% 28%, 40% 18%, 60% 18%, 70% 28%, 70% 40%)}
+.ec-seg.locked button:not(.lock){opacity:.35;cursor:not-allowed}
+.ec-msg{display:flex;flex-direction:column;gap:5px}
+.ec-msg p{font-size:12.5px;line-height:1.45;color:#d9d3c4}
+.ec-msg p.lock{padding:6px 9px;color:#ecd9ff;background:rgba(125,60,255,.18);border-left:3px solid var(--eng-purple)}
+.ec-msg p.now{font-family:var(--f-num);font-size:11px;letter-spacing:.02em;color:#a9a3b8}
+.ec-det summary{cursor:pointer;font-family:var(--f-num);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#a495c2;list-style-position:inside}
+.ec-det[open] summary{margin-bottom:6px}
+.ec-parts{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 6px;padding:0;list-style:none}
+.ec-parts li{font-size:11px;padding:2px 8px;background:rgba(200,107,255,.1);color:#e6ccff}
+.ec-links,.ec-hist{font-size:12px;color:#bdb7a8;margin-top:4px}
+.ec-hist{font-family:var(--f-num);font-size:11px;color:#8f8aa0}
+.eng-log{padding:12px 14px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(200,107,255,.16)}
+.eng-log h3{margin:0 0 8px;font-family:var(--f-num);font-weight:400;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#a495c2}
+.eng-log ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.eng-log li{display:grid;grid-template-columns:72px minmax(0, 1fr);gap:8px;font-size:12px;color:#cfc9bb}
+.eng-log time{font-family:var(--f-num);color:#6f6a80}
+.eng-log li.lock span{color:#e6ccff}.eng-log li.bad span{color:#ff9aa5}.eng-log li.fix span{color:#b9f5c2}
+@media (max-width:640px){
+  .eng-head h2{font-size:30px}
+  .eng-meters{grid-template-columns:repeat(2, minmax(0, 1fr))}
+  .eng-meter b{font-size:18px}
+  .eng-reset{margin-left:0}
+  .ec-stats{grid-template-columns:repeat(2, minmax(0, 1fr))}
+  .ew-body{padding:14px 16px 18px}
+  .ew-lead{font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){ .ew-card,.eng-warn{animation:none} }
+.rm .ew-card,.rm .eng-warn{animation:none}
+
 </style>
 
 <div id="app">
@@ -1479,29 +1979,47 @@ button.lcd{cursor:pointer}
   <canvas id="cv" aria-label="Zombie City game view"></canvas>
 
   <div id="hud" hidden>
-    <div class="hud-top">
-      <div class="vitals">
+    <div class="hx-edge" aria-hidden="true"></div>
+    <div class="hx-top">
+      <div class="hx-vitals">
         <div class="hud-name" id="hudName" hidden><span id="hudDev" aria-hidden="true"></span><b id="hudNameTxt"></b></div>
-        <div class="hp"><i id="hpFill"></i></div>
-        <div class="hp-row"><b id="hpText">100</b><span id="fxChips"></span></div>
+        <div class="hx-hp" id="hpBox">
+          <div class="hx-hpbar"><i class="hx-ghost" id="hpGhost"></i><i class="hx-fill" id="hpFill"></i><i class="hx-segs" aria-hidden="true"></i></div>
+          <div class="hx-hprow"><span class="hx-tag">HP</span><b id="hpText">100</b><span class="hx-fx" id="fxChips"></span></div>
+        </div>
         <div class="where" id="whereChip" aria-live="polite"></div>
         <div class="hud-team" id="hudTeam" hidden></div>
+        <div id="toasts" aria-live="polite"></div>
       </div>
-      <div class="wave"><span>Wave</span><b id="waveNum">1</b></div>
-      <div class="score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
-      <button id="radioBtn" class="icon-btn radio-btn" type="button" aria-label="Radio" aria-expanded="false" aria-controls="hudRadio"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="rb-ant" d="M5 9 L18 3.5"/><rect x="2.5" y="9" width="19" height="12" rx="2"/><circle cx="8.5" cy="15" r="3.2"/><path d="M14.5 13 H19 M14.5 16 H19"/></svg><i class="rb-dot" aria-hidden="true"></i></button>
-      <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span><i class="glyph" id="pauseKey" aria-hidden="true"></i></button>
+      <div class="hx-wave" id="waveBox">
+        <div class="hx-wn"><span>Wave</span><b id="waveNum">1</b></div>
+        <div class="hx-clock">
+          <span class="hx-cap" id="waveCap">Next wave in</span>
+          <b class="hx-time" id="waveTime" role="timer">0:00</b>
+          <span class="hx-left" id="waveLeft"></span>
+        </div>
+        <div class="hx-tbar" aria-hidden="true"><i id="waveFill"></i></div>
+        <div class="hx-clear" id="clearPop" role="status" hidden></div>
+      </div>
+      <div class="hx-right">
+        <div class="hx-btns">
+          <button id="radioBtn" class="icon-btn radio-btn" type="button" aria-label="Radio" aria-expanded="false" aria-controls="hudRadio"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="rb-ant" d="M5 9 L18 3.5"/><rect x="2.5" y="9" width="19" height="12" rx="2"/><circle cx="8.5" cy="15" r="3.2"/><path d="M14.5 13 H19 M14.5 16 H19"/></svg><i class="rb-dot" aria-hidden="true"></i></button>
+          <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span class="pause-ico"><i></i><i></i></span><i class="glyph" id="pauseKey" aria-hidden="true"></i></button>
+        </div>
+        <div class="hx-score"><b id="scoreNum">0</b><span id="killNum">0 kills</span></div>
+        <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
+      </div>
     </div>
     <div id="hudRadio" class="radio-drop" hidden></div>
     <div id="bossBar" hidden><span id="bossName"></span><div class="bar bar1"><i id="bossFill"></i></div><div class="bar bar2"><i id="bossFill2"></i></div><span id="bossInfo"></span></div>
-    <div id="toasts" aria-live="polite"></div>
     <div id="banner" hidden></div>
-    <div id="combo" hidden><b id="comboN">x3</b><span>Chain</span><i class="cbar"><i id="comboBar"></i></i></div>
     <div id="chainPop" hidden></div>
-    <button id="dashBtn" aria-label="Dash"><b>Dash</b><span class="dname">Sprint</span><i class="glyph" id="dashKey" aria-hidden="true"></i></button>
+    <div class="hx-abil" id="abilBox">
       <button id="markBtn" class="mark-btn" type="button" aria-label="Mark a spot for your team"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
-    <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em><i class="glyph" id="airKey" aria-hidden="true"></i></button>
-    <div class="wchip" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><span id="wName">Standard Pistol</span></div>
+      <button id="airBtn" type="button" aria-label="Call an A-10 airstrike" disabled><svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-90)" fill="currentColor"><path d="M-8 -46 L4 -46 L8 -6 L8 6 L4 46 L-8 46 L-4 6 L-4 -6 Z"/><path d="M46 0 Q40 -6 20 -6 L-36 -5 L-40 0 L-36 5 L20 6 Q40 6 46 0 Z"/><rect x="-26" y="-14" width="16" height="9"/><rect x="-26" y="5" width="16" height="9"/><rect x="-43" y="-21" width="9" height="42"/></g></svg><b>A-10</b><em id="airN">x75</em><i class="glyph" id="airKey" aria-hidden="true"></i></button>
+      <button id="dashBtn" aria-label="Dash"><i class="hx-ring" aria-hidden="true"></i><b>Dash</b><span class="dname">Sprint</span><i class="glyph" id="dashKey" aria-hidden="true"></i></button>
+    </div>
+    <div class="hx-weapon" id="wChip"><canvas id="wIcon" aria-hidden="true"></canvas><div class="hx-wtxt"><small id="wRar">Common</small><span id="wName">Standard Pistol</span></div></div>
     <div id="qte" hidden>
       <div class="qte-head"><b>Break free</b><span id="qtePips" aria-label="Escape progress"></span><div class="qte-time"><i id="qteTime"></i></div></div>
       <button id="qteBtn" type="button" aria-label="Tap to break free"></button>
@@ -1509,6 +2027,8 @@ button.lcd{cursor:pointer}
   </div>
 
   <section id="title" class="ov ov-title" aria-label="Main menu">
+    <div class="mx-bar" id="mxBar" aria-label="Status"></div>
+    <div class="mx-scan" aria-hidden="true"></div>
     <div class="tape" aria-hidden="true"><span>Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183; Quarantine zone &#183; Do not enter &#183;</span></div>
     <div class="title-body">
       <p class="season-chip"><span id="seasonName">Season</span> season &#183; resets in <b id="seasonLeft">--</b></p>
@@ -1521,14 +2041,14 @@ button.lcd{cursor:pointer}
           <p class="dev-badge" id="devBadge" aria-live="polite"></p>
           <p class="name-err" id="nameErr" role="alert" hidden></p>
         </form>
-        <div class="btns">
-          <button class="btn primary" id="playBtn">Enter the city</button>
-          <button class="btn" id="armoryBtn">Armory <em id="gunCount">1/250</em></button>
-          <button class="btn" id="codexBtn">Specimen log <em id="foundCount">0/1000</em></button>
-          <button class="btn" id="bossLogBtn">Boss log <em id="bossCount">0/50</em></button>
-          <button class="btn" id="lbBtn">Leaderboard</button>
-          <button class="btn" id="coopBtn">Wi-Fi co-op <em>2-4</em></button>
-          <button class="btn" id="acctBtn">Account <em id="acctBtnEm">Log in</em></button>
+        <div class="btns mx-deck">
+          <button class="btn primary mx-play" id="playBtn"><span class="mx-play-t">Enter the city</span><span class="mx-play-s" id="playSub">Wave 1 · the first 50 of 2.0</span><i class="mx-chev" aria-hidden="true"></i></button>
+          <button class="btn mx-tile" id="armoryBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15h11l2-3h5v3h-3l-1 2H8l-1 3H4l1-3H3z"/><path d="M9 12V9h6"/></svg><span class="mx-t">Armory</span><em id="gunCount">1/250</em><small>Weapons and dashes</small></button>
+          <button class="btn mx-tile" id="codexBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span class="mx-t">Specimen log</span><em id="foundCount">0/50</em><small>Every zombie you have met</small></button>
+          <button class="btn mx-tile" id="bossLogBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c-5 0-8 3.4-8 8 0 2.6 1.2 4.4 2.6 5.4V20h10.8v-3.6C18.8 15.4 20 13.6 20 11c0-4.6-3-8-8-8z"/><path d="M9 11.5h.01M15 11.5h.01M10 17v3M14 17v3"/></svg><span class="mx-t">Boss log</span><em id="bossCount">0/50</em><small>Resting until rebuilt</small></button>
+          <button class="btn mx-tile" id="lbBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V12h4v9M10 21V5h4v16M16 21v-6h4v6"/></svg><span class="mx-t">Leaderboard</span><em id="lbEm"></em><small>One board, every device</small></button>
+          <button class="btn mx-tile" id="coopBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10a10 10 0 0 1 14 0M8 13.5a5.5 5.5 0 0 1 8 0"/><circle cx="12" cy="17.5" r="1.5"/></svg><span class="mx-t">Wi-Fi co-op</span><em>2-4</em><small>One city, same Wi-Fi</small></button>
+          <button class="btn mx-tile" id="acctBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.2-6 8-6s6.8 2 8 6"/></svg><span class="mx-t">Account</span><em id="acctBtnEm">Log in</em><small>Cloud saves, every device</small></button>
         </div>
         <div class="title-radio" id="titleAudio"></div>
         <div class="audio-row"><button type="button" class="btn small ghost" id="titleRadioBtn">Radio &amp; sound</button><button type="button" class="btn small ghost" id="titlePerf">Settings</button><button type="button" class="btn small ghost" id="toLauncher" hidden>Launcher</button><button type="button" class="btn small ghost" id="quitApp" hidden>Quit</button></div>
@@ -1674,6 +2194,7 @@ button.lcd{cursor:pointer}
       <div class="pause-grid">
         <div class="pause-main">
           <div class="pause-title"><p class="eyebrow" id="pauseInfo">Wave 1</p><h2>Paused</h2></div>
+          <div class="pz-clock" id="pzClock"></div>
           <dl class="pause-stats" id="pauseStats"></dl>
           <div class="pause-btns">
             <button class="btn primary pause-resume" id="resumeBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 L20 12 L7 20 Z"/></svg>Resume</button>
@@ -1685,12 +2206,20 @@ button.lcd{cursor:pointer}
           </div>
           <div class="pause-radio" id="pauseAudio"></div>
         </div>
-        <div class="build pause-side">
-          <p class="sub-eyebrow">Your build</p>
-          <div class="build-w"><canvas id="bwIcon" aria-hidden="true"></canvas><div><b id="bwName"></b><span id="bwRar"></span><p id="bwDesc"></p></div></div>
-          <div class="build-dash" id="bDash"></div>
-          <dl class="build-stats" id="bStats"></dl>
-          <div class="build-cards" id="bCards"></div>
+        <div class="pause-side">
+          <div class="pz-tabs" id="pzTabs" role="tablist" aria-label="Run details">
+            <button type="button" role="tab" class="on" data-t="build" aria-selected="true">Build</button>
+            <button type="button" role="tab" data-t="threats" aria-selected="false">Threats</button>
+            <button type="button" role="tab" data-t="map" aria-selected="false">Map</button>
+          </div>
+          <div class="build pz-pane" data-p="build" role="tabpanel">
+            <div class="build-w"><canvas id="bwIcon" aria-hidden="true"></canvas><div><b id="bwName"></b><span id="bwRar"></span><p id="bwDesc"></p></div></div>
+            <div class="build-dash" id="bDash"></div>
+            <dl class="build-stats" id="bStats"></dl>
+            <div class="build-cards" id="bCards"></div>
+          </div>
+          <div class="pz-pane pz-threats" data-p="threats" id="pzThreats" role="tabpanel" hidden></div>
+          <div class="pz-pane pz-map" data-p="map" role="tabpanel" hidden><canvas id="pzMap" aria-label="Map of the streets around you"></canvas><p class="pz-legend" id="pzLegend"></p></div>
         </div>
       </div>
     </div>
@@ -1707,6 +2236,10 @@ button.lcd{cursor:pointer}
         <div><dt>Best chain</dt><dd id="ovChain">x0</dd></div>
         <div><dt>New specimens</dt><dd id="ovFound">0</dd></div>
         <div><dt>Weapon</dt><dd id="ovWeapon" class="small">Standard Pistol</dd></div>
+        <div><dt>Time alive</dt><dd id="ovTime">0:00</dd></div>
+        <div><dt>Accuracy</dt><dd id="ovAcc">—</dd></div>
+        <div><dt>Head shots</dt><dd id="ovHeads">0</dd></div>
+        <div><dt>Beat the clock</dt><dd id="ovClock" class="small">—</dd></div>
       </dl>
       <form id="postForm" class="post">
         <label for="callsign">Callsign for the leaderboard</label>
@@ -2141,6 +2674,35 @@ button.lcd{cursor:pointer}
       <div class="set-layout">
         <nav class="tabs set-tabs" id="setTabs" aria-label="Settings sections" hidden></nav>
         <div class="set-body" id="setBody"></div>
+      </div>
+    </div>
+  </section>
+  <section id="engRoom" class="ov sheet eng-sheet" hidden aria-label="Engine room">
+    <div class="sheet-inner eng-in">
+      <div class="sheet-head eng-head">
+        <div><p class="eyebrow eng-eye">Ultra advanced &#183; Accessibility</p><h2>Engine room</h2><p class="eng-sub">Every engine in the game, live. What each one costs, what it is doing, how intricate it is, and how hard it runs.</p></div>
+        <button type="button" class="icon-btn" id="engClose" aria-label="Close the engine room">&#215;</button>
+      </div>
+      <div class="eng-top" id="engTop"></div>
+      <div class="eng-tools" id="engTools"></div>
+      <div class="eng-grid" id="engGrid"></div>
+      <div class="eng-log" id="engLog" aria-live="polite"></div>
+    </div>
+  </section>
+  <section id="engWarn" class="eng-warn" hidden role="alertdialog" aria-modal="true" aria-labelledby="engWarnT" aria-describedby="engWarnD">
+    <div class="ew-card">
+      <div class="ew-stripe" aria-hidden="true"></div>
+      <div class="ew-body">
+        <p class="ew-eye">Ultra advanced</p>
+        <h2 id="engWarnT"><span class="ew-ico" aria-hidden="true">!</span>Warning</h2>
+        <p id="engWarnD" class="ew-lead">This will affect performance and cause other issues. The self-adaptive system and repairable ecosystem these engines have will fix itself for your convenience.</p>
+        <ul class="ew-list">
+          <li><b>What you can change.</b> How hard each engine runs (Auto, Eco, Normal, Hard, Max) and what it runs on (CPU, GPU or Auto). Your choice overrides what the game would pick for your device.</li>
+          <li><b>What can go wrong.</b> A lower frame rate, a hotter device and a faster-draining battery, stutter in big fights, and on some devices an engine that fails and has to rest.</li>
+          <li><b>How it fixes itself.</b> If a choice keeps the game well under its frame-rate target for 8 seconds, or the engine keeps failing, the ecosystem puts it back on Auto for 5 minutes and shows <span class="ew-purple">Auto-lock</span> in purple with the reason. Engines that cannot do something are locked the same way.</li>
+          <li><b>Going back.</b> "Everything back to Auto" in the engine room undoes it all at once.</li>
+        </ul>
+        <div class="ew-btns"><button type="button" class="btn" id="engWarnBack">Go back</button><button type="button" class="btn ew-go" id="engWarnGo">I understand, open the engine room</button></div>
       </div>
     </div>
   </section>
@@ -4622,6 +5184,23 @@ var SFX = (function () {
       osc('sine', 110, 42, t, 0.11, 0.3, out); osc('triangle', 3200, 2400, t, 0.03, 0.05, out);
       setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 500);
     },
+    // the wave clock's last five seconds: a hard steel tick, higher and with a low thud on the last one
+    countTick: function (n) {
+      if (!ok() || !throttle('ctick', 400)) return;
+      var t = ac.currentTime, out = ac.createGain(), last = n <= 1; out.gain.value = last ? 0.42 : 0.3; out.connect(sfxBus);
+      noise(t, 0.025, 0.6, 'bandpass', last ? 3600 : 2800, 6, last ? 3000 : 2400, out);
+      osc('square', last ? 1320 : 990, last ? 1320 : 990, t, 0.06, 0.05, out);
+      osc('sine', last ? 88 : 70, 40, t, last ? 0.32 : 0.16, last ? 0.5 : 0.25, out);
+      setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 600);
+    },
+    // the clock ran out with zombies still on the street: a rising siren under the next wave's drums
+    timeUp: function () {
+      if (!ok() || !throttle('tup', 1500)) return;
+      var t = ac.currentTime, out = ac.createGain(); out.gain.value = 0.3; out.connect(sfxBus);
+      osc('sawtooth', 220, 660, t, 0.9, 0.11, out); osc('sawtooth', 223, 664, t + 0.02, 0.9, 0.09, out);
+      osc('sine', 55, 44, t, 1.1, 0.4, out); noise(t, 0.6, 0.12, 'bandpass', 700, 2, 1600, out);
+      setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 1500);
+    },
     // a round skipping off a wall or a helmet: the classic falling whine with a sharp crack at its start
     ricochet: function () {
       if (!ok() || !throttle('ric', 120)) return;
@@ -6058,7 +6637,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.980';
+const ZC_VERSION = '1.9.990';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -6363,6 +6942,8 @@ const joy = { id: null, ox: 0, oy: 0, dx: 0, dy: 0, active: false, kx: 0, ky: 0 
 // App bridge: the Android app calls these for its back button and when it goes to the background.
 window.zcBack = function () {
   if (typeof INTRO !== 'undefined' && INTRO.on) return introSkip();
+  if (!$('engWarn').hidden) { closeEngineWarn(); return true; }
+  if (!$('engRoom').hidden) { closeEngineRoom(); return true; }
   if (!$('settings').hidden) { closeSettings(); return true; }
   if (!$('radioPanel').hidden) { closeRadio(); return true; }
   if (!$('hudRadio').hidden) { toggleHudRadio(false); return true; }
@@ -7140,7 +7721,35 @@ function updFx(dt) {
 }
 
 /* ================= waves ================= */
-function startWave(n) {
+/* Wave timers: every wave runs against a preset clock. When it runs out the next wave starts on the spot: whatever is
+   left of this one stays on the street, and up to half a wave of the zombies that had not come in yet join the next.
+   Clear the street before then and there are seven seconds to walk around (with a bonus for the time left) before the
+   next wave starts on its own; no screen in between. The last five seconds of either clock glow red and count down
+   out loud. A boss holds the clock while it lives. Settings > Gameplay > Wave timer sets the length (or turns it off). */
+const WT_K = { short: 0.7, normal: 1, long: 1.5, off: 0 };
+function waveTime(n) { const k = WT_K[SET.waveTimer] != null ? WT_K[SET.waveTimer] : 1; return k ? Math.round(Math.min(150, 40 + n * 4) * k) : 0; }
+// how many zombies this wave still has: on the street, still to come, and in hordes on their way
+function zLeft() {
+  let n = 0; for (const z of G.zs) if (!z.dead && !z.illusion && !z.fly) n++;
+  n += Math.max(0, G.spawnQ | 0);
+  if (typeof SWARM !== 'undefined') { for (const p of SWARM.plan) n += p.n | 0; for (const H of SWARM.hordes) n += Math.max(0, H.queue | 0); }
+  return n;
+}
+// the clock's last five seconds: a tick each second (the HUD glows red at the same time)
+function waveCount(t0, t1) { const a = Math.ceil(t0), b = Math.ceil(t1); if (b < a && t1 > 0 && b >= 1 && b <= 5 && SFX.countTick) SFX.countTick(b); }
+function waveTick(dt) {
+  if (G.breakT > 0 || !(G.waveMax > 0) || !(G.waveT > 0)) return false;
+  if (G.boss && !G.boss.dead) return false;   // a boss holds the clock
+  const t0 = G.waveT; G.waveT = Math.max(0, G.waveT - dt); waveCount(t0, G.waveT);
+  if (G.waveT > 0) return false;
+  // time is up: the next wave, now, on top of whatever is still here
+  if (SFX.timeUp) SFX.timeUp(); G.timeUps = (G.timeUps || 0) + 1;
+  startWave(G.wave + 1, true);
+  if (NET.role === 'host' && NET.started) hostSend('*', { t: 'go', w: G.wave, r: 0, up: 1 });
+  coreEmit('waveTimeUp', { wave: G.wave });
+  return true;
+}
+function startWave(n, carry) {
   G.wave = n; const cap = Z.threatCap(n);
   if (SET.season === 'cycle' && n > 1 && (n - 1) % 5 === 0) setSeason(WORLD.season + 1);
   // while 2.0 is built only the new roster comes (the old mutations are switched off until all 1,000 are rebuilt)
@@ -7153,7 +7762,9 @@ function startWave(n) {
     feat.push(cand[idx]); cand.splice(idx, 1);
   }
   G.feat = feat;
-  G.spawnTotal = G.spawnQ = Math.round((10 + n * 5) * (G.hordeMul || 1)); G.spawnT = 1.4;
+  { const base = Math.round((10 + n * 5) * (G.hordeMul || 1)), left = carry ? Math.min(Math.max(0, G.spawnQ | 0), Math.round(base * 0.5)) : 0;
+    G.spawnTotal = G.spawnQ = base + left; G.spawnT = carry ? 0.6 : 1.4; }
+  G.waveMax = G.waveT = waveTime(n); G.timeUp = !!carry; G.waveAt = G.time;
   // the bosses (the roster, the Snatcher, the Alphas, the roaming ones) are switched off until they are rebuilt too
   const bossOff = typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF;
   G.roamAt = !bossOff && n >= 3 && n % 5 !== 0 && Math.random() < Math.min(0.6, 0.22 + n * 0.025) ? Math.round(G.spawnTotal * rand(0.3, 0.7)) : -1;
@@ -7162,7 +7773,8 @@ function startWave(n) {
   if (typeof swarmWave === 'function') swarmWave(n);   // the hordes that come on top of the trickle
   SFX.waveStart(G.bossPending);
   const unk = feat.filter(m => !found.has(m.id)).length;
-  banner('Wave ' + n, G.bossPending ? (n % 10 === 5 ? 'The Snatcher is coming' : 'An Alpha is coming') : unk ? unk + ' unidentified zombie' + (unk > 1 ? 's' : '') + ' sighted' : 'Hold the line');
+  const still = carry ? G.zs.filter(z => !z.dead && !z.illusion).length : 0;
+  banner('Wave ' + n, carry ? 'Time is up' + (still ? ' · ' + still + ' still on the street' : '') : G.bossPending ? (n % 10 === 5 ? 'The Snatcher is coming' : 'An Alpha is coming') : unk ? unk + ' unidentified zombie' + (unk > 1 ? 's' : '') + ' sighted' : 'Hold the line');
   G.mode = 'play';
   if (G.p) { const nc = NEON[(n - 1) % NEON.length]; ring(G.p.x, G.p.y, 20, 520, 0.9, rgbOf(nc), 5); ring(G.p.x, G.p.y, 10, 300, 0.7, rgbOf(nc), 3); }
 }
@@ -7193,7 +7805,9 @@ function spawnBoss() {
 // the card rounds between waves are switched off while 2.0 is built: a short breather instead, then the next wave
 const CARDS_OFF = true, BREAK_SECS = 7;
 function waveCleared() {
-  G.score += G.wave * 100; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
+  // a bonus for every second left on the clock
+  G.clearBonus = G.waveMax > 0 && G.waveT > 0 ? Math.ceil(G.waveT) * 10 : 0; G.clearLeft = G.waveT || 0; if (G.waveMax > 0) G.onTime = (G.onTime || 0) + 1;
+  G.score += G.wave * 100 + G.clearBonus; G.eshots = []; G.p.queue = []; G.blasts = []; G.quakes = []; G.jets = []; G.dfx = []; G.decoy = null; G.warpT = 0;
   SFX.waveClear();
   if (CARDS_OFF) { waveBreak(); return; }
   if (NET.role === 'host') netCardsOpen();
@@ -7205,15 +7819,16 @@ function waveBreak() {
   if (NET.role === 'host' && NET.started) {
     for (const peer of NET.peers.values()) if (peer.p && peer.p.down) netRevive(peer.p, 0.5);
     if (G.p.down) netRevive(G.p, 0.5);
-    hostSend('*', { t: 'brk', w: G.wave, s: BREAK_SECS });
+    hostSend('*', { t: 'brk', w: G.wave, s: BREAK_SECS, b: G.clearBonus || 0, l: Math.ceil(G.clearLeft || 0) });
   }
-  banner('Wave ' + G.wave + ' cleared', '+' + (G.wave * 100) + ' · next wave in ' + BREAK_SECS + ' seconds');
+  // no screen in between: the HUD's clock turns into the breather, and a short line says what the wave was worth
+  clearPop(G.wave, G.wave * 100, G.clearBonus || 0, G.clearLeft || 0);
   coreEmit('waveBreak', { wave: G.wave });
 }
 // the breather counts down; then the next wave (a teammate's game hears 'go' as it did after the cards)
 function breakTick(dt) {
   if (!(G.breakT > 0)) return false;
-  G.breakT -= dt;
+  const t0 = G.breakT; G.breakT -= dt; waveCount(t0, G.breakT);
   if (G.breakT <= 0) {
     G.breakT = 0; startWave(G.wave + 1);
     if (NET.role === 'host' && NET.started) hostSend('*', { t: 'go', w: G.wave, r: 0 });
@@ -7237,13 +7852,27 @@ function toast(small, big, color) {
   setTimeout(() => el.classList.add('out'), 2600); setTimeout(() => el.remove(), 3100);
 }
 let bannerTimer = 0;
-function banner(a, b) {
+function banner(a, b, kind) {
   const el = $('banner'); el.textContent = '';
+  // wave banners get the tape edges; "Time is up" is red
+  kind = kind || (/^Wave \d+$/.test(a) ? (b && /^Time is up/.test(b) ? 'up' : 'wave') : '');
+  el.className = kind ? 'bn-' + kind : '';
   const t = document.createElement('b'); t.textContent = a; el.appendChild(t);
   if (b) { const s = document.createElement('span'); s.textContent = b; el.appendChild(s); }
   el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   clearTimeout(bannerTimer); bannerTimer = setTimeout(() => { el.hidden = true; }, 2600);
 }
+
+// a wave cleared: a short line under the clock (what it was worth), no screen in between
+let clearTimer = 0;
+function clearPop(w, pts, bonus, left) {
+  const el = $('clearPop'); if (!el) return; el.textContent = '';
+  const a = document.createElement('b'); a.textContent = 'Wave ' + w + ' cleared'; el.appendChild(a);
+  const s = document.createElement('span'); s.textContent = '+' + Number(pts || 0).toLocaleString() + (bonus ? ' · +' + bonus + ' for ' + fmtClock(left) + ' left' : ''); el.appendChild(s);
+  el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(clearTimer); clearTimer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+function fmtClock(t) { t = Math.max(0, Math.ceil(t || 0)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
 
 /* ================= screens ================= */
 const OVS = ['title', 'upgrade', 'pause', 'over'];
@@ -7256,7 +7885,7 @@ function newRun(o) {
   if (!o.client && typeof statusBlocked === 'function' && statusBlocked()) { statusApply(); return; }
   startWorld(false, o.world);
   $('skull').hidden = true;
-  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
+  Object.assign(G, { dfx: [], decoy: null, warpT: 0, smoke: [], holes: [], flashA: 0, blasts: [], quakes: [], jets: [], air: 0, cine: null, bossMusKey: '', roamAt: -1, slowT: 0, tierFlash: 0, cineT: 0, skullPending: false, skullChoices: null, zhpMul: 0, bossHpMul: 0, breakT: 0, waveT: 0, waveMax: 0, timeUp: false, clearBonus: 0, heads: 0, hits: 0, rounds: 0, onTime: 0, timeUps: 0, time: 0, wave: 0, score: 0, kills: 0, zs: [], bullets: [], eshots: [], haz: [], picks: [], parts: [], rings: [], texts: [], bolts: [], splats: [], spawnQ: 0, spawnT: 0, bossPending: false, boss: null, shake: 0, hurtFlash: 0, runFound: [], upChoices: null, lastEntry: null, hintT: 6, grab: null, chain: 0, lastKill: -9, bestChain: 0, picking: false });
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
   DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
@@ -7285,12 +7914,82 @@ function newRun(o) {
 }
 function pauseGame() {
   if (G.mode !== 'play') return; G.mode = 'pause'; $('pauseInfo').textContent = 'Wave ' + G.wave + ' · ' + (NET.role === 'client' ? 'co-op: the game keeps going while you are here' : NET.role === 'host' ? 'co-op: paused for everyone' : 'run in progress');
-  const st = $('pauseStats'); st.textContent = '';
-  const tm = Math.floor(G.time || 0);
-  [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', Math.floor(tm / 60) + ':' + String(tm % 60).padStart(2, '0')]].forEach(([k, v]) => {
-    const d = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; d.append(dt, dd); st.append(d);
-  });
-  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio(); netPingBtn();
+  renderPauseStats(true);
+  toggleHudRadio(false); showOv('pause'); joy.active = false; joy.id = null; renderBuild(); renderAudio(); netPingBtn(); pzTab(PZ.tab);
+  // in co-op the game keeps going behind the pause screen: its numbers, the clock and the map stay live
+  clearInterval(PZ.iv); PZ.iv = setInterval(() => { if (G.mode !== 'pause') { clearInterval(PZ.iv); return; } renderPauseStats(); if (PZ.tab === 'map') drawPzMap(); }, 1000);
+}
+/* ---------- the pause screen: the run so far, the clock, and three tabs (your build, this wave's threats, a map) ---------- */
+const PZ = { tab: 'build', iv: 0 };
+function renderPauseStats(fresh) {
+  const st = $('pauseStats'); if (!st) return;
+  const tm = Math.floor(G.time || 0), acc = G.rounds ? Math.min(100, Math.round((G.hits || 0) / G.rounds * 100)) + '%' : '—';
+  const left = NET.role === 'client' ? (G.zLeftN | 0) : zLeft();
+  const rows = [['Wave', G.wave], ['Score', G.score.toLocaleString()], ['Kills', (G.kills || 0).toLocaleString()], ['Time', fmtClock(tm)],
+   ['Best chain', G.bestChain ? 'x' + G.bestChain : '—'], ['Accuracy', acc], ['Head shots', (G.heads || 0).toLocaleString()], ['Zombies left', left.toLocaleString()]];
+  // built once when the screen opens (the cells rise in), then only the numbers change
+  if (fresh || st.children.length !== rows.length) {
+    st.textContent = '';
+    for (const [k, v] of rows) { const d = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; d.append(dt, dd); st.append(d); }
+  } else rows.forEach(([k, v], i) => { const dd = st.children[i].lastChild; if (dd.textContent !== String(v)) dd.textContent = v; });
+  const ck = $('pzClock'); if (!ck) return;
+  const brk = G.breakT > 0, hold = NET.role === 'client' ? !!G.clockHold : !!(G.boss && !G.boss.dead), off = !brk && !(G.waveMax > 0), tl = brk ? G.breakT : G.waveT;
+  ck.className = 'pz-clock ' + (brk ? 'brk' : off ? 'off' : hold ? 'hold' : tl <= 5 ? 'red' : 'run');
+  ck.textContent = brk ? 'Breather · wave ' + (G.wave + 1) + ' starts in ' + fmtClock(tl) : off ? 'No wave timer · the wave lasts until the street is clear' : hold ? 'The boss holds the clock at ' + fmtClock(tl) : 'Wave ' + (G.wave + 1) + ' starts in ' + fmtClock(tl) + (NET.role === 'client' ? ' (co-op: the clock keeps running)' : ' · the clock is stopped while you are paused');
+}
+function pzTab(t) {
+  PZ.tab = t;
+  document.querySelectorAll('#pzTabs button').forEach(b => { const on = b.dataset.t === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  document.querySelectorAll('#pause .pz-pane').forEach(p => { p.hidden = p.dataset.p !== t; });
+  if (t === 'threats') renderThreats(); else if (t === 'map') drawPzMap();
+}
+document.querySelectorAll('#pzTabs button').forEach(b => b.addEventListener('click', () => { SFX.click(); pzTab(b.dataset.t); }));
+// this wave's zombies: who they are (if you have met them), how many are on the street, how dangerous
+function renderThreats() {
+  const box = $('pzThreats'); box.textContent = '';
+  const pool = (G.feat && G.feat.length ? G.feat : G.pool || []).slice(0, 9), live = new Map();
+  for (const z of G.zs) if (!z.dead && !z.illusion) live.set(z.m.id, (live.get(z.m.id) || 0) + 1);
+  const head = el('p', 'pz-note', 'Wave ' + G.wave + ': ' + pool.length + ' kinds leading the horde' + (G.pool && G.pool.length > pool.length ? ', ' + G.pool.length + ' kinds in all' : '') + '. Kill one to identify it.');
+  box.append(head);
+  const grid = el('div', 'pz-th-grid');
+  for (const m of pool) {
+    const known = found.has(m.id), r = RARITY[m.rarity] || RARITY[0], card = el('div', 'pz-th' + (known ? '' : ' unknown')); card.style.setProperty('--rc', r.color);
+    const c = document.createElement('canvas'); c.setAttribute('aria-hidden', 'true');
+    const t = el('div', 'pz-th-t'); t.append(el('b', null, known ? m.name : 'Unidentified'), el('small', null, known ? r.name + ' · threat ' + m.threat : 'Seen from wave ' + (m.wave || G.wave)));
+    const n = live.get(m.id) || 0; t.append(el('span', null, n ? n + ' on the street' : 'none on the street'));
+    if (known && m.def && m.def.line) t.append(el('p', null, m.def.line));
+    card.append(c, t); grid.append(card);
+    try { if (typeof thumb2 === 'function' && m.v2) thumb2(c, m, 54, !known); else { c.width = c.height = 54; } } catch (e) { }
+  }
+  box.append(grid);
+}
+// a map of the streets around you: buildings and vehicles, water, every zombie, your team and you
+function drawPzMap() {
+  const cv2 = $('pzMap'); if (!cv2 || !G.p) return;
+  const box = cv2.parentNode, w = Math.max(220, Math.min(460, box.clientWidth || 300)), h = Math.round(w * 0.72), dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv2.width = Math.round(w * dpr); cv2.height = Math.round(h * dpr); cv2.style.width = w + 'px'; cv2.style.height = h + 'px';
+  const g = cv2.getContext('2d'), R = 34 * 32 * SCL / 2.4, sc = Math.min(w, h) / 2 / R, cx = G.p.x, cy = G.p.y;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#0b0e12'; g.fillRect(0, 0, w, h);
+  const X = x => w / 2 + (x - cx) * sc, Y = y => h / 2 + (y - cy) * sc;
+  // water
+  const step = 9; g.fillStyle = 'rgba(40,90,140,0.55)';
+  for (let py = 0; py < h; py += step) for (let px = 0; px < w; px += step) { const wx = cx + (px - w / 2) / sc, wy = cy + (py - h / 2) / sc; try { if (waterAt(wx, wy)) g.fillRect(px, py, step, step); } catch (e) { } }
+  // buildings and vehicles
+  try {
+    const rs = rectsNear(cx, cy, Math.hypot(w, h) / 2 / sc).slice();
+    for (const r of rs) { const veh = !!(r.vid || r.vt); g.fillStyle = veh ? 'rgba(160,170,185,0.55)' : 'rgba(235,229,214,0.13)'; g.fillRect(X(r.x), Y(r.y), Math.max(1, r.w * sc), Math.max(1, r.h * sc)); }
+  } catch (e) { }
+  // rings every 10 m
+  g.strokeStyle = 'rgba(242,204,58,0.12)'; g.lineWidth = 1;
+  for (let m = 10; m <= 40; m += 10) { g.beginPath(); g.arc(w / 2, h / 2, m * 32 * SCL / 2.4 * sc, 0, TAU); g.stroke(); }
+  // zombies
+  let n = 0;
+  for (const z of G.zs) { if (z.dead || z.illusion) continue; const x = X(z.x), y = Y(z.y); if (x < -4 || y < -4 || x > w + 4 || y > h + 4) continue; n++; g.fillStyle = z.boss ? '#c86bff' : '#ff4a55'; g.beginPath(); g.arc(x, y, z.boss ? 4 : Math.max(1.6, Math.min(3.2, z.r * sc * 1.2)), 0, TAU); g.fill(); }
+  // teammates and you
+  if (typeof netPlayers === 'function' && NET.started) for (const q of netPlayers()) { if (q === G.p) continue; g.fillStyle = '#29e6ff'; g.beginPath(); g.arc(X(q.x), Y(q.y), 4, 0, TAU); g.fill(); }
+  g.save(); g.translate(w / 2, h / 2); g.rotate(G.p.aim || 0); g.fillStyle = '#f2cc3a'; g.shadowColor = '#f2cc3a'; g.shadowBlur = 8;
+  g.beginPath(); g.moveTo(8, 0); g.lineTo(-5, -5); g.lineTo(-2, 0); g.lineTo(-5, 5); g.closePath(); g.fill(); g.restore();
+  const lg = $('pzLegend'); if (lg) lg.textContent = n + ' zombie' + (n === 1 ? '' : 's') + ' within about 34 m · rings every 10 m · north is up';
 }
 function resumeGame() { if (G.mode !== 'pause') return; G.mode = 'play'; showOv(null); }
 function toTitle() {
@@ -7319,6 +8018,8 @@ function die() {
   $('ovScore').textContent = G.score.toLocaleString(); $('ovWave').textContent = G.wave;
   $('ovKills').textContent = G.kills; $('ovFound').textContent = G.runFound.length; $('ovChain').textContent = 'x' + G.bestChain;
   $('ovWeapon').textContent = p.weapon.name; $('ovWeapon').style.color = WRAR[p.weapon.rarity].color;
+  $('ovTime').textContent = fmtClock(G.time); $('ovAcc').textContent = G.rounds ? Math.min(100, Math.round((G.hits || 0) / G.rounds * 100)) + '%' : '—'; $('ovHeads').textContent = (G.heads || 0).toLocaleString();
+  { const done = (G.onTime || 0) + (G.timeUps || 0); $('ovClock').textContent = done ? (G.onTime || 0) + ' of ' + done + ' waves' : '—'; }
   $('callsign').value = entry.tag; $('postBtn').disabled = false; $('postBtn').textContent = 'Post score';
   $('postStatus').textContent = LB.src === 'wix' ? (ACCT.status === 'in' ? 'Saved on this device and to your account. Post it to the global board.' : 'Saved on this device. Log in to your free DeclAIre account (main menu) to post it to the global board.') : LB.db ? 'Saved on this device. Post it to the global board.' : 'Saved on this device.';
   setTimeout(() => { if (G.mode === 'over') showOv('over'); }, 700);
@@ -8189,28 +8890,74 @@ function drawScreenFx() {
       ctx.save(); ctx.translate(ex, ey); ctx.rotate(a); ctx.fillStyle = '#e5484d'; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.restore();
     }
   }
-  if (G.mode === 'play' && joy.active) {
-    const R = JR(), k = SET.joySize / 100;
-    ctx.strokeStyle = 'rgba(235,229,214,0.28)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(joy.ox, joy.oy, R, 0, TAU); ctx.stroke();
-    ctx.fillStyle = 'rgba(242,204,58,0.42)'; ctx.beginPath(); ctx.arc(joy.ox + joy.kx, joy.oy + joy.ky, 22 * k, 0, TAU); ctx.fill();
-  } else if (G.mode === 'play' && DEV.kind === 'touch' && SET.joy === 'fixed') {
-    const h = joyHome(); ctx.strokeStyle = 'rgba(235,229,214,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(h[0], h[1], JR(), 0, TAU); ctx.stroke();
-  } else if (G.mode === 'play' && DEV.kind === 'touch' && G.hintT > 0 && SET.hints) {
-    const a = clamp(G.hintT, 0, 1) * 0.35, hx = SET.lefty ? W - 96 : 96; ctx.strokeStyle = 'rgba(235,229,214,' + a + ')'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(hx, H - 120, 56, 0, TAU); ctx.stroke();
-    ctx.fillStyle = 'rgba(235,229,214,' + a + ')'; ctx.font = "12px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 120);
+  if (G.mode === 'play' && joy.active) drawJoy(joy.ox, joy.oy, JR(), joy.kx, joy.ky, 1);
+  else if (G.mode === 'play' && DEV.kind === 'touch' && SET.joy === 'fixed') { const h = joyHome(); drawJoy(h[0], h[1], JR(), 0, 0, 0.45); }
+  else if (G.mode === 'play' && DEV.kind === 'touch' && G.hintT > 0 && SET.hints) {
+    const a = clamp(G.hintT, 0, 1), hx = SET.lefty ? W - 96 : 96;
+    drawJoy(hx, H - 130, 56, Math.cos(G.time * 2.4) * 22, Math.sin(G.time * 2.4) * 22, a * 0.7);
+    ctx.globalAlpha = a * 0.85; ctx.fillStyle = '#ebe5d6'; ctx.font = "11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 130 + 56 + 18); ctx.globalAlpha = 1;
   }
+}
+// the touch joystick: a glass disc with a ticked rim, the push direction lit on the rim, and a glowing thumb knob
+function drawJoy(ox, oy, R, kx, ky, a) {
+  const k = SET.joySize / 100, m = Math.min(1, Math.hypot(kx, ky) / Math.max(1, R)), ang = Math.atan2(ky, kx);
+  ctx.save(); ctx.globalAlpha = a;
+  const g = ctx.createRadialGradient(ox, oy, R * 0.2, ox, oy, R);
+  g.addColorStop(0, 'rgba(9,12,16,0.05)'); g.addColorStop(0.75, 'rgba(9,12,16,0.32)'); g.addColorStop(1, 'rgba(9,12,16,0.5)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ox, oy, R, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(235,229,214,0.26)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(ox, oy, R, 0, TAU); ctx.stroke();
+  // ticks round the rim, longer at the four main directions
+  ctx.strokeStyle = 'rgba(235,229,214,0.32)';
+  for (let i = 0; i < 24; i++) { const t = i / 24 * TAU, main = i % 6 === 0, r0 = R - (main ? 10 : 5); ctx.lineWidth = main ? 2 : 1; ctx.beginPath(); ctx.moveTo(ox + Math.cos(t) * r0, oy + Math.sin(t) * r0); ctx.lineTo(ox + Math.cos(t) * (R - 1), oy + Math.sin(t) * (R - 1)); ctx.stroke(); }
+  // the way you are pushing, lit on the rim
+  if (m > 0.08) {
+    ctx.strokeStyle = 'rgba(242,204,58,' + (0.35 + m * 0.6).toFixed(2) + ')'; ctx.lineWidth = 4; ctx.shadowColor = 'rgba(242,204,58,0.8)'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(ox, oy, R + 1, ang - 0.45 - m * 0.25, ang + 0.45 + m * 0.25); ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(242,204,58,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox + kx, oy + ky); ctx.stroke();
+  }
+  // the knob
+  const kr = 22 * k, x = ox + kx, y = oy + ky, kg = ctx.createRadialGradient(x - kr * 0.3, y - kr * 0.35, 1, x, y, kr);
+  kg.addColorStop(0, 'rgba(255,240,170,0.95)'); kg.addColorStop(0.45, 'rgba(242,204,58,0.75)'); kg.addColorStop(1, 'rgba(150,110,20,0.55)');
+  ctx.shadowColor = 'rgba(242,204,58,0.6)'; ctx.shadowBlur = 16 * (0.4 + m);
+  ctx.fillStyle = kg; ctx.beginPath(); ctx.arc(x, y, kr, 0, TAU); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(23,20,11,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, kr - 5, 0, TAU); ctx.stroke();
+  ctx.restore();
 }
 
 /* ================= HUD ================= */
 const hc = {};
+// the wave clock at the top: wave number, time to the next wave, zombies left; red for the last five seconds
+function updClock() {
+  const brk = G.breakT > 0, hold = NET.role === 'client' ? !!G.clockHold : !!(G.boss && !G.boss.dead);
+  const tm = brk ? BREAK_SECS : G.waveMax, tl = brk ? G.breakT : G.waveT, off = !brk && !(tm > 0);
+  const red = !off && !hold && tl > 0 && tl <= 5, st = brk ? 'brk' : off ? 'off' : hold ? 'hold' : 'run';
+  const box = $('waveBox');
+  if (hc.cst !== st) { hc.cst = st; box.dataset.st = st; setTxt('waveCap', brk ? 'Cleared · next wave in' : off ? 'Clear the street' : hold ? 'The boss holds the clock' : 'Next wave in'); }
+  if (hc.cred !== red) { hc.cred = red; box.classList.toggle('red', red); $('hud').classList.toggle('clock-red', red); }
+  const sec = off ? -1 : Math.ceil(tl);
+  if (hc.csec !== sec) {
+    hc.csec = sec; setTxt('waveTime', off ? '--:--' : fmtClock(tl));
+    if (red) { box.classList.remove('beat'); void box.offsetWidth; box.classList.add('beat'); }
+  }
+  const fw = off ? 1 : clamp(tl / Math.max(1, tm), 0, 1), fwk = Math.round(fw * 500);
+  if (hc.cfw !== fwk) { hc.cfw = fwk; $('waveFill').style.width = (fw * 100).toFixed(1) + '%'; }
+  const left = NET.role === 'client' ? (G.zLeftN | 0) : zLeft();
+  setTxt('waveLeft', brk ? 'Street clear' : innerWidth < 420 ? left + ' left' : left === 1 ? '1 zombie left' : left + ' zombies left');
+}
 function setTxt(id, v) { if (hc[id] !== v) { hc[id] = v; $(id).textContent = v; } }
 function updHud() {
   const p = G.p; if (!p) return;
   const f = clamp(p.hp / p.maxHp, 0, 1), fk = Math.round(f * 300);
-  if (hc.hpw !== fk) { hc.hpw = fk; $('hpFill').style.width = (f * 100).toFixed(1) + '%'; }
+  if (hc.hpw !== fk) { hc.hpw = fk; $('hpFill').style.width = (f * 100).toFixed(1) + '%'; $('hpBox').style.setProperty('--hp', f.toFixed(3)); }
+  // the ghost: the health just lost hangs behind the bar for a moment, then drains away
+  { const now = performance.now(), gdt = Math.min(0.1, (now - (hc.gt || now)) / 1000); hc.gt = now;
+    if (hc.ghost == null || f >= hc.ghost) { hc.ghost = f; hc.gHold = 0; } else if (fk !== hc.gk) { hc.gHold = 0.45; }
+    hc.gk = fk; if (hc.gHold > 0) hc.gHold -= gdt; else hc.ghost = Math.max(f, hc.ghost - gdt * 0.5);
+    const gw = Math.round(hc.ghost * 400); if (hc.gw !== gw) { hc.gw = gw; $('hpGhost').style.width = (hc.ghost * 100).toFixed(1) + '%'; } }
+  { const lv = f < 0.15 ? 2 : f < 0.3 ? 1 : 0; if (hc.lv !== lv) { hc.lv = lv; const hd = $('hud'); hd.classList.toggle('low', lv >= 1); hd.classList.toggle('crit', lv >= 2); } }
+  updClock();
   setTxt('hpText', Math.ceil(Math.max(0, p.hp)) + ' / ' + Math.round(p.maxHp));
-  setTxt('waveNum', String(G.wave)); setTxt('scoreNum', G.score.toLocaleString()); setTxt('killNum', G.kills + ' kills');
+  setTxt('waveNum', String(G.wave)); setTxt('scoreNum', G.score.toLocaleString()); setTxt('killNum', G.kills === 1 ? '1 kill' : G.kills.toLocaleString() + ' kills');
   const fx = (p.poisonT > 0 ? 'P' : '') + (p.burnT > 0 ? 'B' : '') + (p.slowT > 0 ? 'C' : '') + (p.jamT > 0 ? 'J' : '') + (p.weakT > 0 ? 'W' : '') + (p.frozenT > 0 ? 'F' : '') + (p.rootT > 0 ? 'R' : '') + (p.blindT > 0 ? 'X' : '') + (p.bleedT > 0 ? 'L' : '');
   if (hc.fx !== fx) {
     hc.fx = fx; const box = $('fxChips'); box.textContent = '';
@@ -8241,6 +8988,12 @@ function updHud() {
   if (hc.cd !== ck) { hc.cd = ck; const db = $('dashBtn'); db.style.setProperty('--cd', cd.toFixed(3)); db.classList.toggle('cool', cd < 1); }
 }
 
+// the height of the top bar, for what hangs under it (the radio, the boss bar, the song ticker)
+try {
+  const hxTop = document.querySelector('.hx-top');
+  if (hxTop && window.ResizeObserver) new ResizeObserver(() => { const h = hxTop.getBoundingClientRect().height; if (h > 0) $('app').style.setProperty('--hx-top-h', Math.round(h + 8) + 'px'); }).observe(hxTop);
+} catch (e) { /* older browsers keep the default */ }
+
 /* ================= loop ================= */
 function update(dt) {
   if (NET.role === 'client') { netClientUpdate(dt); return; }
@@ -8254,7 +9007,7 @@ function update(dt) {
   buildGrid();
   if (typeof swarmTick === 'function') swarmTick(dt);   // hordes coming in, the crowd moving as one, who thinks how often
   { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS), stale = F => !F.ready || F.n !== FF_N || Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2;
-    if (stale(FF) || G.time - FF.t > 0.35) buildField(FF);
+    if (stale(FF) || G.time - FF.t > [0.55, 0.35, 0.25, 0.18][(TUNE.FLOW || 0) + 1]) buildField(FF);   // (engine room: Eco refreshes the paths less often, Hard and Max more)
     // the wide fields only while something that big is chasing, and never both in the same frame
     else if (G.needFS && (stale(FFS) || G.time - FFS.t > 0.6)) buildField(FFS);
     else if (G.needFB && (stale(FFB) || G.time - FFB.t > 0.6)) buildField(FFB);
@@ -8292,6 +9045,7 @@ function update(dt) {
   const k = Math.min(1, dt * 7); cam.x += (ct.x - cam.x) * k; cam.y += (ct.y - cam.y) * k;
   if (G.skullPending && G.mode === 'play') { openSkull(); return; }
   if (G.mode === 'play' && breakTick(dt)) return;
+  if (G.mode === 'play' && waveTick(dt)) return;
   if (G.mode === 'play' && G.spawnQ <= 0 && !G.bossPending && (typeof swarmDone !== 'function' || swarmDone()) && !G.zs.some(z => !z.illusion)) waveCleared();
 }
 // The city is big enough to explore now, so zombies left far behind (stuck around a block, or outrun) come back
@@ -8411,7 +9165,13 @@ function coreTick(now) {
   CORE.fc = (CORE.fc || 0) + 1;
   if (now - CORE.lastSec < 1000) return; CORE.lastSec = now;
   const n = Math.max(1, CORE.fc); CORE.fc = 0;
-  for (const e of CORE.list) { const ms = e.ms / n; e.msAvg = e.msAvg ? e.msAvg * 0.6 + ms * 0.4 : ms; e.ms = 0; if (e.sec) coreCall(e, 'sec'); }
+  for (const e of CORE.list) {
+    const ms = e.ms / n; e.msAvg = e.msAvg ? e.msAvg * 0.6 + ms * 0.4 : ms; e.ms = 0; if (e.sec) coreCall(e, 'sec');
+    // the last minute of what it cost, for the engine room's graphs
+    (e.hist || (e.hist = [])).push(Math.round(e.msAvg * 100) / 100); if (e.hist.length > 60) e.hist.shift();
+  }
+  CORE.fps = typeof PERF !== 'undefined' ? PERF.fps : 0;
+  try { coreTuneTick(now); } catch (x) { }
   if (!CORE.verified) coreVerify();
   if (now - CORE.watchT >= 2000) { CORE.watchT = now; try { coreWatch(now); } catch (x) { } }
   if (now - CORE.saveT >= 30000) { CORE.saveT = now; coreSave(); }
@@ -8497,16 +9257,94 @@ function coreSave() {
   for (const e of CORE.list) if (e.save) { try { out.engines[e.name] = { ver: e.ver, v: e.save(), downs: e.downs || 0 }; } catch (x) { } }
   try { store.set('zc_core', out); } catch (x) { }
 }
-// the frame is running late: step down the render engine taking the biggest share (above a floor), true if one did
+/* ---------- tuning (Settings > Accessibility > Ultra advanced, the engine room) ----------
+   Every engine can be told to run harder or lighter (its effort: Auto, Eco, Normal, Hard, Max) and, where it has both,
+   to run on the processor or the graphics chip (CPU, GPU, Auto). The player chooses, the ecosystem has the last word:
+   - what an engine cannot do is locked to what it can ("Auto-lock", purple), with the reason written down: an engine
+     that only exists on the processor, a GPU path on a device without a usable graphics chip, a path that needs
+     another engine on the GPU first, an engine resting after errors, an engine whose job must be the same everywhere;
+   - when a choice starts to hurt the game (the frame rate well under its target for 8 seconds while that engine is
+     among the costliest, or the engine failing again and again), it is locked back to Auto for 5 minutes, and the
+     engine room says what happened, with the numbers.
+   Effort reaches each engine through TUNE[name] (-1 Eco, 0 Normal or Auto, 1 Hard, 2 Max) and its tune.apply hook. */
+const TUNE = {};
+const EFFORTS = ['auto', 'eco', 'normal', 'hard', 'max'], EFFORT_K = { auto: 0, eco: -1, normal: 0, hard: 1, max: 2 }, EFFORT_W = { auto: 1, eco: 1.9, normal: 1, hard: 0.4, max: 0 };
+function coreTune(name) {
+  const T = (typeof SET !== 'undefined' && SET.eng && SET.eng[name]) || {};
+  // (PRISM's processor is the same choice as Settings > Graphics > Shader engine)
+  const proc = name === 'PRISM' && typeof SET !== 'undefined' ? (SET.prism === 'gpu' || SET.prism === 'cpu' ? SET.prism : 'auto') : T.proc === 'cpu' || T.proc === 'gpu' ? T.proc : 'auto';
+  return { effort: EFFORTS.indexOf(T.effort) >= 0 ? T.effort : 'auto', proc: proc };
+}
+// what locks an engine's choices right now, and why (an empty reason: free to choose)
+function coreLocks(e, now) {
+  const t = e.tune || {}, L = { effort: '', proc: '', procTo: '' }, at = d => { const m = Math.max(0, Math.ceil((d - now) / 60000)); return m <= 1 ? 'in about a minute' : 'in about ' + m + ' minutes'; };
+  if (e.down) { const w = e.name + ' is resting after repeated errors and comes back ' + at(e.downUntil) + '; until then the ecosystem runs it for you.'; L.effort = w; L.proc = w; L.procTo = 'auto'; return L; }
+  if (e.lockUntil > now) { L.effort = e.lockWhy + ' Unlocks ' + at(e.lockUntil) + '.'; L.proc = L.effort; L.procTo = 'auto'; return L; }
+  if (t.effort === false) L.effort = t.effortWhy || 'The ecosystem keeps this engine where it is.';
+  const procs = t.procs || ['cpu'];
+  if (procs.length < 2) { L.proc = t.procWhy || (e.name + ' only runs on the processor.'); L.procTo = procs[0] || 'cpu'; }
+  else if (typeof t.gpuNo === 'function') { const why = coreCall({ f: t.gpuNo }, 'f', ''); if (why) { L.proc = why; L.procTo = 'cpu'; } }
+  return L;
+}
+// what applies right now, after the locks
+function coreEff(name) {
+  const e = CORE.by[name]; if (!e) return { effort: 'auto', proc: 'auto', locks: { effort: '', proc: '' } };
+  const t = coreTune(name), L = coreLocks(e, performance.now());
+  return { effort: L.effort ? 'auto' : t.effort, proc: L.proc ? (L.procTo || 'auto') : t.proc, locks: L, want: t };
+}
+// once a second: hand every engine its effort, then let the ecosystem check that no choice is hurting the game
+function coreTuneTick(now) {
+  for (const e of CORE.list) {
+    const f = coreEff(e.name), k = EFFORT_K[f.effort] || 0;
+    TUNE[e.name] = f.effort === 'auto' ? 0 : k; e.effort = f.effort; e.procNow = f.proc;
+    if (e.tune && e.tune.apply) { try { e.tune.apply(f.effort === 'auto' ? null : k, f.proc); } catch (x) { coreHurt(e.name, x); } }
+  }
+  coreGuard(now);
+}
+function coreGuard(now) {
+  const fps = typeof PERF !== 'undefined' ? PERF.fps : 0, tgt = typeof targetFps === 'function' ? targetFps() : 60;
+  // a choice that keeps failing goes back to Auto
+  for (const e of CORE.list) {
+    const t = coreTune(e.name), mine = t.effort !== 'auto' || t.proc !== 'auto';
+    if (!mine || e.lockUntil > now) { e.tuneErrs = e.errs; continue; }
+    if (e.errs - (e.tuneErrs == null ? e.errs : e.tuneErrs) >= 3) coreLock(e, now, 'Locked by the ecosystem: ' + e.name + ' failed ' + (e.errs - e.tuneErrs) + ' times since you set it to ' + coreTuneWords(t) + ' (' + (e.lastErr || 'an error') + '), so it was put back on Auto.');
+    e.tuneErrs = e.errs;
+  }
+  // the frame rate well under target for 8 seconds: the costliest engine running on your choice goes back to Auto
+  if (fps && fps < tgt * 0.7) CORE.slowS = (CORE.slowS || 0) + 1; else CORE.slowS = 0;
+  if (CORE.slowS >= 8) {
+    let worst = null;
+    for (const e of CORE.list) { const t = coreTune(e.name); if ((t.effort === 'hard' || t.effort === 'max' || t.proc !== 'auto') && !(e.lockUntil > now) && !e.down && (!worst || e.msAvg > worst.msAvg)) worst = e; }
+    // (it has to matter: at least 0.4 ms and 5% of the frame)
+    if (worst && worst.msAvg > 0.4 && (!fps || worst.msAvg / (1000 / fps) > 0.05)) {
+      const t = coreTune(worst.name), frame = fps ? 1000 / fps : 0;
+      coreLock(worst, now, 'Locked by the ecosystem: the game ran at ' + Math.round(fps) + ' fps for 8 seconds against a target of ' + Math.round(tgt) + ', and ' + worst.name + ' on ' + coreTuneWords(t) + ' was taking ' + worst.msAvg.toFixed(1) + ' ms of every ' + frame.toFixed(0) + ' ms frame, the most of any engine you had tuned, so it went back to Auto.');
+      CORE.slowS = 0;
+    }
+  }
+}
+function coreTuneWords(t) { const E = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' }; return (t.effort !== 'auto' ? E[t.effort] : '') + (t.effort !== 'auto' && t.proc !== 'auto' ? ', ' : '') + (t.proc !== 'auto' ? t.proc.toUpperCase() : '') || 'Auto'; }
+function coreLock(e, now, why) {
+  e.lockUntil = now + 300000; e.lockWhy = why; e.locks = (e.locks || 0) + 1;
+  coreLog(why); if (typeof noteRepair === 'function') noteRepair(e.name + ' was put back on Auto');
+  coreEmit('engineLocked', { name: e.name, why: why });
+}
+// the frame is running late: step down the render engine taking the biggest share (above a floor), true if one did;
+// an engine set to Eco goes first, one set to Hard last, one set to Max never (the ecosystem's guard watches that)
 function coreTrim(frameMs) {
-  let best = null, bestMs = Math.max(0.6, frameMs * 0.12);
-  for (const e of CORE.list) if (e.kind === 'render' && e.trim && e.msAvg > bestMs && coreCall(e, 'canTrim', true)) { best = e; bestMs = e.msAvg; }
+  let best = null, bestMs = Math.max(0.6, frameMs * 0.12), bestW = 0;
+  for (const e of CORE.list) {
+    if (e.kind !== 'render' || !e.trim || !coreCall(e, 'canTrim', true)) continue;
+    const w = e.msAvg * (EFFORT_W[e.effort || 'auto'] == null ? 1 : EFFORT_W[e.effort || 'auto']);
+    if (e.msAvg > bestMs * 0.5 && w > Math.max(bestW, bestMs)) { best = e; bestW = w; }
+  }
   if (!best) return false;
   if (coreCall(best, 'trim', false)) { CORE.trims.push(best.name); if (CORE.trims.length > 12) CORE.trims.shift(); if (typeof logTrim === 'function') logTrim(best.name.toLowerCase()); return true; }
   return false;
 }
-// there is room again: give the last trimmed engine a level back
+// there is room again: give the last trimmed engine a level back (one set to Hard or Max first)
 function coreBoost() {
+  for (const e of CORE.list) if ((e.effort === 'hard' || e.effort === 'max') && CORE.trims.indexOf(e.name) >= 0 && coreCall(e, 'boost', false)) return true;
   while (CORE.trims.length) {
     const e = CORE.by[CORE.trims[CORE.trims.length - 1]];
     if (e && coreCall(e, 'boost', false)) return true;
@@ -8517,7 +9355,8 @@ function coreBoost() {
 // for Settings > System: one line per engine
 function coreStatus() {
   return CORE.list.map(e => ({ name: e.name, does: e.does, kind: e.kind, state: e.down ? 'resting' : coreCall(e, 'state', 'on'), level: coreCall(e, 'level', ''), ms: Math.round(e.msAvg * 100) / 100, errs: e.errs, repairs: e.repairs,
-    health: e.health, ver: e.ver, needs: e.needs || [], covers: e.covers || [], helps: e.helps ? Object.keys(e.helps) : [], notes: String(coreCall(e, 'notes', '') || '') }));
+    health: e.health, ver: e.ver, needs: e.needs || [], covers: e.covers || [], helps: e.helps ? Object.keys(e.helps) : [], notes: String(coreCall(e, 'notes', '') || ''),
+    effort: e.effort || 'auto', proc: e.procNow || 'auto', locked: !!(e.lockUntil > performance.now()), downs: e.downs || 0 }));
 }
 // the renderer fills the shared frame once, before the engines that read it
 function coreFrame(x0, y0, x1, y1, dt) {
@@ -8530,7 +9369,7 @@ function coreToScreen(x, y, out) {
   const F = CORE.frame, s = F.zoom * F.dpr; out[0] = (x - F.cx) * s + cv.width / 2; out[1] = (y - F.cy) * s + cv.height / 2; return out;
 }
 
-coreAdd({ name: 'CORE', kind: 'sim', ver: 2, covers: ['TRACER', 'MUZZLE'], does: 'Engine hub: connects every engine through one shared frame, one time budget, a message bus and a watchdog; engines check themselves, repair themselves, help repair each other and cover for one another, and the hub remembers the level each one settled at and recalibrates after updates.', state: () => 'on', level: () => CORE.list.length + ' engines, ' + CORE.list.filter(e => e.down).length + ' resting, ' + Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0) + ' listeners' });
+coreAdd({ name: 'CORE', kind: 'sim', ver: 2, covers: ['TRACER', 'MUZZLE'], does: 'Engine hub: connects every engine through one shared frame, one time budget, a message bus and a watchdog; engines check themselves, repair themselves, help repair each other and cover for one another, and the hub remembers the level each one settled at and recalibrates after updates; it also runs the engine room\'s tuning (how hard each engine runs and on the CPU or GPU), locks what an engine cannot do and puts any choice that hurts the game back on Auto.', state: () => 'on', level: () => CORE.list.length + ' engines, ' + CORE.list.filter(e => e.down).length + ' resting, ' + Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0) + ' listeners' });
 // the engines that were here before the hub: registered so the whole set shows in one place and shares one budget
 coreAdd({ name: 'PERF', kind: 'sim', does: 'Performance governor: detects the hardware, sets resolution, quality tier and frame cap, trims caches and restarts a stalled game loop.', state: () => PERF.mode === 'auto' ? 'on' : 'manual', level: () => (typeof TIER_NAMES !== 'undefined' ? TIER_NAMES[PERF.tier] : PERF.tier) + ' ' + Math.round((PERF.resLock || RES_STEPS[PERF.res]) * 100) + '%' });
 coreAdd({ name: 'WORLD', kind: 'world', does: 'City generator: builds the endless city from a seed, district by district (blocks, rivers, bridges, props, seasons) at real-world scale.', state: () => 'on', level: () => (SCL > 1.2 ? 'real scale' : 'classic') + ', ' + chunks.size + ' blocks' });
@@ -10694,8 +11533,10 @@ function garageLights(c, x0, y0, x1, y1, m, t, night, uk) {
     const horiz = r.w >= r.h, L = horiz ? r.w : r.h, W = horiz ? r.h : r.w, a = vehAng(r);
     if (r.lit === 'head' && night > 0.08) {
       // two beams from the front corners (each a cone that casts shadows), and the red glow at the back
-      for (const sd of [-1, 1]) { vehPt(r, L / 2, sd * W * 0.3, VP); luxPush(VP[0], VP[1], 300 * uk, 255, 240, 215, 0.62 * night, sd > 0, 0, { a: a, h: 0.34 }, 0.8); }
-      vehPt(r, -L / 2, 0, VP); luxPush(VP[0], VP[1], 70 * uk, 255, 40, 30, 0.42 * night, false, 0, null, 0.8);
+      // (engine room: Eco drops the beams' shadows and the tail glow, Hard and Max give both beams shadows)
+      const gk = TUNE.GARAGE || 0;
+      for (const sd of [-1, 1]) { vehPt(r, L / 2, sd * W * 0.3, VP); luxPush(VP[0], VP[1], 300 * uk, 255, 240, 215, 0.62 * night, gk < 0 ? false : gk > 0 ? true : sd > 0, 0, { a: a, h: 0.34 }, 0.8); }
+      if (gk >= 0) { vehPt(r, -L / 2, 0, VP); luxPush(VP[0], VP[1], 70 * uk, 255, 40, 30, 0.42 * night, false, 0, null, 0.8); }
     } else if (r.lit === 'hazard') {
       if (Math.floor(t * 1.6 + (r.s & 7) * 0.1) % 2 === 0) for (const sx of [-1, 1]) { vehPt(r, sx * L * 0.48, 0, VP); luxPush(VP[0], VP[1], 95 * uk, 255, 170, 40, (0.35 + 0.4 * night), false, 0, null, 0.9); }
     } else if (r.lit === 'bar') {
@@ -11572,7 +12413,7 @@ function shade(hex, k) {
 
 /* ---------- drawing ---------- */
 const GRASS_COL = { lawn: ['#4f8a38', '#3f7a2c', '#9a7a34', '#c9d3da'], reed: ['#6a8a3a', '#5a7a30', '#9a8a40', '#aab4ba'], dry: ['#9a8050', '#a08654', '#8a6a40', '#a08a6a'], weed: ['#5a7a30', '#4a6a2a', '#8a7a3a', '#b9c3ca'] };
-function vegLevel() { return SET.veg === 'auto' ? (PERF.vegCut ? Math.min(1, Q.veg) : Q.veg) : SET.veg === 'off' ? 0 : SET.veg === 'low' ? 1 : 2; }
+function vegLevel() { const v = SET.veg === 'auto' ? (PERF.vegCut && !(TUNE.LIFE > 0) ? Math.min(1, Q.veg) : Q.veg) : SET.veg === 'off' ? 0 : SET.veg === 'low' ? 1 : 2; return v ? clamp(v + (TUNE.LIFE || 0), 0, 2) : 0; }
 // under the zombies: puddles, glints on the water, footprints, grass, tree trunks, props and birds on the ground
 function drawWorldUnder(vis) {
   const wet = WX.wet || 0, t = G.time;
@@ -11796,7 +12637,7 @@ const WX_SEASON = [
   [['clear', 2.5], ['overcast', 2.5], ['rain', 3], ['storm', 1.4], ['fog', 2.2]],
   [['clear', 2.5], ['overcast', 2], ['snow', 3.5], ['blizzard', 1.5], ['fog', 1.3]]
 ];
-function wxLevel() { return SET.weather === 'off' ? 0 : SET.weather === 'low' ? 0.45 : SET.weather === 'full' ? 1 : Q.wx * PERF.wxScale; }
+function wxLevel() { const k = TUNE.WX || 0, sc = k >= 2 ? 1 : k >= 1 ? Math.max(PERF.wxScale, 0.75) : k < 0 ? Math.min(PERF.wxScale, 0.55) : PERF.wxScale; return SET.weather === 'off' ? 0 : SET.weather === 'low' ? 0.45 : SET.weather === 'full' ? 1 : Math.min(1, Q.wx * sc * (k >= 2 ? 1.15 : 1)); }
 function wxReset() {
   WX.kind = 'clear'; WX.t = 25 + Math.random() * 20; WX.strikes = []; WX.bolts = []; WX.flash = 0; WX.next = 5; WX.cover = 0; WX.splash = [];
   WX.rain = WX.snow = WX.sand = WX.ash = WX.fog = WX.storm = WX.leaves = WX.embers = WX.petals = WX.dark = WX.wet = 0;
@@ -12849,7 +13690,7 @@ function luxDraw(g, L, lq, shadowed) {
 /* ---------- one frame: called by render() after the world is drawn ---------- */
 function luxLevelNow(want) {
   const base = want === 'auto' ? [1, 2, 3, 4][clamp(PERF.tier | 0, 0, 3)] : want === 'basic' ? 1 : want === 'full' ? 3 : want === 'ultra' ? 4 : (+want || 2);
-  return clamp(base + LUX.adapt, 0, 4);
+  return clamp(base + LUX.adapt + (base ? TUNE.LUX || 0 : 0), 0, 4);   // (TUNE: Hard or Max in the engine room add a level, Eco takes one)
 }
 function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
   const now = performance.now();
@@ -13346,9 +14187,10 @@ const PRISM = {
   adapt: 0, lvl: 2, slow: 0, fast: 0, slowCopy: 0, errT: [], offUntil: 0, ms: 0, msAvg: 0, frames: 0, P: {}, T: {}, F: {}, quad: null, giGpu: false, bloomGpu: false, vigGpu: false,
   gi: { a: null, b: null, w: 0, h: 0, gx: 0, gy: 0, cell: 0, rays: 0 }, wb: [1, 1, 1], temp: 6500, cpuG: null
 };
-function prismLevel() { return PRISM.lvl = clamp(([1, 2, 2, 3][clamp(PERF.tier | 0, 0, 3)]) + PRISM.adapt, 0, 3); }
+function prismLevel() { return PRISM.lvl = clamp(([1, 2, 2, 3][clamp(PERF.tier | 0, 0, 3)]) + PRISM.adapt + (TUNE.PRISM || 0), 0, 3); }
 function prismWanted() {
-  const w = SET.prism || 'auto';
+  // (procOverride: what the engine room's CORE says applies right now; the ecosystem can lock it back to Auto)
+  const o = PRISM.procOverride, w = SET.prism === 'off' ? 'off' : o === 'auto' || o === 'cpu' || o === 'gpu' ? o : SET.prism || 'auto';
   if (w === 'off') return 'off';
   if (PRISM.offUntil && performance.now() < PRISM.offUntil) return 'cpu';
   if (w === 'cpu') return 'cpu';
@@ -13574,7 +14416,7 @@ function prismGpu() {
   // bounce light on the GPU
   PRISM.giGpu = false;
   const giP = q.gi >= 2 ? P.gi2 : P.gi1;
-  if (q.gi && giP && lux && LUX.giOn && F.gi && F.gi.occ && PRISM.tr) {
+  if (q.gi && giP && lux && LUX.giOn && F.gi && F.gi.occ && PRISM.tr && !LUX.giCpuOnly) {   // (giCpuOnly: bounce light set to CPU in the engine room)
     const G2 = F.gi, g = PRISM.gi, gw = G2.gw, gh = G2.gh;
     gl.bindTexture(gl.TEXTURE_2D, T.occ); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     if (!G2.occ255 || G2.occ255.length !== gw * gh) G2.occ255 = new Uint8Array(gw * gh);
@@ -13723,7 +14565,7 @@ const MIRROR = { MA: null, ma: null, MW: null, mw: null, RF: null, rf: null, cw:
 function mirrorLevel() {
   if (MIRROR.offUntil && performance.now() < MIRROR.offUntil) return 0;
   const w = SET.refl || 'auto', base = w === 'off' ? 0 : w === 'on' ? 2 : [1, 2, 2, 2][clamp(PERF.tier | 0, 0, 3)];
-  return clamp(base + MIRROR.adapt, 0, 2);
+  return base ? clamp(base + MIRROR.adapt + (TUNE.MIRROR || 0), 0, 2) : 0;
 }
 function mirrorCanvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(2, w); c.height = Math.max(2, h); return c; }
 // a block's water as a small mask (alpha = how reflective; open water ripples, ice does not), made once
@@ -13826,7 +14668,7 @@ function mirrorRun(x0, y0, x1, y1) {
     mirrorSky();
     if (!mirrorMask(x0, y0, x1, y1, lvl)) return;
     MIRROR.on = true; MIRROR.lvl = lvl;
-    if (typeof PRISM !== 'undefined' && PRISM.mode === 'gpu' && PRISM.ok) MIRROR.gpu = true;
+    if (typeof PRISM !== 'undefined' && PRISM.mode === 'gpu' && PRISM.ok && !MIRROR.cpuOnly) MIRROR.gpu = true;   // (cpuOnly: set to CPU in the engine room)
     else mirrorCpu(x0, y0, x1, y1, lvl);
   } catch (e) { mirrorHurt(e); MIRROR.on = false; }
   finally { ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
@@ -13871,7 +14713,7 @@ const TEXEL = { adapt: 0, lib: new Map(), scratch: [], ms: 0, made: 0, errT: [],
 function texelLevel() {
   if (TEXEL.offUntil && performance.now() < TEXEL.offUntil) return 0;
   const want = SET.texel || 'auto', base = want === 'auto' ? [1, 2, 2, 3][clamp(PERF.tier | 0, 0, 3)] : want === 'low' ? 1 : want === 'high' ? 2 : want === 'ultra' ? 3 : want === 'off' ? 0 : 2;
-  return TEXEL.lvl = clamp(base + TEXEL.adapt, 0, 3);
+  return TEXEL.lvl = base ? clamp(base + TEXEL.adapt + (TUNE.TEXEL || 0), 0, 3) : 0;
 }
 function texelMk(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, w | 0); c.height = Math.max(1, h | 0); return c; }
 // a scratch canvas big enough for one sprite (reused, so making sprites does not churn memory)
@@ -14346,7 +15188,7 @@ const GORE_MOD = {
 function goreLevel() {
   if (GORE.offUntil && performance.now() < GORE.offUntil) return 0;
   const d = SET.decals === 'low' ? 1 : SET.decals === 'high' ? 3 : 2;
-  return clamp(d + GORE.adapt, 0, 3);
+  return clamp(d + GORE.adapt + (TUNE.GORE || 0), 0, 3);
 }
 function goreOk() { return goreLevel() > 0; }
 function goreOn(f) { const t = GORE.featOff[f]; return !(t && performance.now() < t); }
@@ -15155,8 +15997,8 @@ function muzzleShot(o, w, a, x, y) {
   }
   if (P.dust && typeof ring === 'function') ring(x, y, 4 * PK, 34 * PK, 0.3, '196,186,166', 2);
   // smoke: a puff (or the launcher's back-blast cloud behind the shooter), drifting off on the wind
-  const sm = MUZZLE.smoke, wx = (WX.wx || 0) * 22, wy = (WX.wy || 0) * 22, cap = PERF.tier >= 2 ? 90 : 40;
-  const puffs = Math.round(P.smoke * (Q.lod >= 2 ? 0.5 : 1) * 1.6 + Math.random() * 0.6);
+  const mk = [0.45, 1, 1.5, 2][(TUNE.MUZZLE || 0) + 1], sm = MUZZLE.smoke, wx = (WX.wx || 0) * 22, wy = (WX.wy || 0) * 22, cap = Math.round((PERF.tier >= 2 ? 90 : 40) * mk);
+  const puffs = Math.round(P.smoke * (Q.lod >= 2 ? 0.5 : 1) * 1.6 * Math.min(1.4, mk) + Math.random() * 0.6);
   for (let i = 0; i < puffs && sm.length < cap; i++) {
     const back = P.back && i % 2 === 0, d = back ? -(26 + Math.random() * 18) * PK : (4 + Math.random() * 10) * PK, sp = (back ? -60 : 30) * (0.5 + Math.random());
     sm.push({ x: x + ca * d, y: y + sa * d, vx: ca * sp + (Math.random() - 0.5) * 20 + wx, vy: sa * sp + (Math.random() - 0.5) * 20 + wy, r: (4 + Math.random() * 4) * PK * (P.smoke > 1 ? 1.5 : 1), g: (5 + Math.random() * 6) * PK, life: 0.8 + Math.random() * 0.9 * P.smoke, max: 0, a: 0.16 + 0.1 * Math.min(1, P.smoke), back: back });
@@ -15165,7 +16007,7 @@ function muzzleShot(o, w, a, x, y) {
   if (P.back) luxFlash(x - ca * 34 * PK, y - sa * 34 * PK, 200 * (0.55 + 0.45 * SCL), '255,170,80', 0.9, 0.12, { shade: true });
   // brass, out to the right of the gun, spinning; it bounces and lies in the street
   if (P.brass && Q.lod < 3) {
-    const B = MUZZLE.brass, bcap = PERF.tier >= 2 ? 70 : 30, ra = a + Math.PI / 2 + (Math.random() - 0.5) * 0.5 - 0.25, sp = (110 + Math.random() * 90) * PK;
+    const B = MUZZLE.brass, bcap = Math.round((PERF.tier >= 2 ? 70 : 30) * mk), ra = a + Math.PI / 2 + (Math.random() - 0.5) * 0.5 - 0.25, sp = (110 + Math.random() * 90) * PK;
     const back = 12 * PK; if (B.length >= bcap) B.shift();
     B.push({ x: x - ca * back * 1.6, y: y - sa * back * 1.6, vx: Math.cos(ra) * sp, vy: Math.sin(ra) * sp, h: 6 * PK, vh: 70 * PK, rot: a, vr: (Math.random() - 0.5) * 40, k: P.brass, t: 0, bounced: 0 });
   }
@@ -16305,7 +17147,7 @@ function swarmDraw(vis, hw, hh) {
   for (const z of G.zs) { if (z.dead || z.boss || !vis(z.x, z.y, z.r * 2.6)) continue; z.swD = (z.x - fx) * (z.x - fx) + (z.y - fy) * (z.y - fy); V.push(z); }
   V.sort((a, b) => a.swD - b.swD); SWARM.visF = frameNo;
   const nv = V.length, nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, ln = PERF.lodN; ln[0] = ln[1] = ln[2] = ln[3] = 0;
-  const crowd = nv > 70 ? 1 : 0, mob = nv > 220 ? 1 : 0, strain = -SWARM.adapt, hi = SET.crowd === 'high', low = SET.crowd === 'low';
+  const crowd = nv > 70 ? 1 : 0, mob = nv > 220 ? 1 : 0, strain = -SWARM.adapt, hi = SET.crowd === 'high' || TUNE.SWARM > 0, low = SET.crowd === 'low' || TUNE.SWARM < 0;
   const tier = clamp(PERF.tier | 0, 0, 3); SWARM.budF = [2, 3, 5, 8][tier] + (strain ? 0 : 1); SWARM.budL = [6, 10, 16, 24][tier]; SWARM.keys.clear();
   const T = ctx.getTransform(), s = T.a, e = T.e, f = T.f, setT = () => ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f), FL = SWARM.fl, FS = SWARM.flS, OV = SWARM.ov, OL = SWARM.ovL; FL.length = 0; FS.length = 0; OV.length = 0; OL.length = 0;
   for (let i = 0; i < nv; i++) {
@@ -17717,7 +18559,7 @@ function animaFrame(dt) {
   const t0 = performance.now();
   try {
     const tier = clamp(PERF.tier | 0, 0, 3);
-    ANIMA.liveCap = Math.max(2, [5, 10, 16, 24][tier] + ANIMA.adapt * 2 + (SET.crowd === 'high' ? 6 : SET.crowd === 'low' ? -3 : 0));
+    ANIMA.liveCap = Math.max(2, [5, 10, 16, 24][tier] + ANIMA.adapt * 2 + (SET.crowd === 'high' ? 6 : SET.crowd === 'low' ? -3 : 0) + (TUNE.ANIMA || 0) * 5);
     ANIMA.bud = [3, 4, 6, 9][tier] + (ANIMA.adapt < 0 ? ANIMA.adapt : 0);
     ANIMA.cacheCap = [500, 700, 1000, 1400][tier];
     ANIMA.corpseCap = Math.max(16, [36, 56, 90, 130][tier] + ANIMA.adapt * 12);
@@ -18339,7 +19181,7 @@ function balArm(b, p, w, S) {
   const sp = B.v * u, a = Math.atan2(b.vy, b.vx);
   b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
   b.bal = 1; b.E = e0 * k; b.E0 = b.E; b.cd = B.cd; b.trav = 0; b.maxD = BAL.maxD * u; b.life = b.maxD / sp + 0.05; b.max = b.life; b.ric = 0;
-  BAL.shots++;
+  BAL.shots++; G.rounds = (G.rounds || 0) + 1;   // (per run, for the pause screen's accuracy)
   return true;
 }
 // recoil: where the next round goes (the base spread, the kick of the shots before it, wider on the move)
@@ -18474,7 +19316,7 @@ function balStep(b, dt) {
       const O = balResolve(z, b, e, side, front);
       dmg = bonusDmg(z, O.dmg); absorb = O.absorb;
       res = hurtZombie(z, dmg, { src: 'bullet', crit: O.reg === 'head' && !O.deflect, kx: ux * S.knock * 0.18, ky: uy * S.knock * 0.18, reg: O.reg, kill: O.kill, cripple: O.cripple, deflect: O.deflect, P: O.P });
-      if (O.kill && res === true) { BAL.kills++; if (O.reg === 'head') { BAL.heads++; if (SFX.headshot) SFX.headshot(clamp((z.x - cam.x) / (W / ZOOM / 2), -1, 1)); } }
+      if (O.kill && res === true) { BAL.kills++; if (O.reg === 'head') { BAL.heads++; G.heads = (G.heads || 0) + 1; if (SFX.headshot) SFX.headshot(clamp((z.x - cam.x) / (W / ZOOM / 2), -1, 1)); } }
       if (O.deflect) { (b.hit || (b.hit = [])).push(z); b.E -= absorb; if (b.E < 60) { b.dead = true; break; } continue; }
     } else {
       dmg = bonusDmg(z, b.dmg * Math.sqrt(Math.max(0.1, b.E / Math.max(1, b.E0))));
@@ -18482,7 +19324,7 @@ function balStep(b, dt) {
     }
     if (res === 'pass' || !res) continue;
     if (res === 'reflect') { b.dead = true; break; }
-    BAL.hits++;
+    BAL.hits++; if (!b.hc) { b.hc = 1; G.hits = (G.hits || 0) + 1; }   // (a round that hits counts once for accuracy, however many it goes through)
     burst(b.x, b.y, 2, z.m.S.gore, 80, 3, 0.25);
     if (typeof goreHit === 'function') goreHit(z, b.vx, b.vy, dmg, b);
     onHitFx(z, b, dmg);
@@ -19066,7 +19908,9 @@ function equipWeapon(w) {
 function updWeaponChip() {
   const p = G.p; if (!p) return;
   paintWeapon($('wIcon'), p.weapon, 48, 22, false);
-  const n = $('wName'); n.textContent = p.weapon.name; n.style.color = WRAR[p.weapon.rarity].color;
+  const n = $('wName'), R = WRAR[p.weapon.rarity]; n.textContent = p.weapon.name; n.style.color = R.color;
+  const r = $('wRar'); if (r) r.textContent = (R.name || p.weapon.rarity) + ' · ' + (p.weapon.F && p.weapon.F.name ? p.weapon.F.name : '');
+  $('wChip').style.setProperty('--wr', R.color);
 }
 
 /* ---------- build summary (pause screen) ---------- */
@@ -20797,11 +21641,12 @@ const SET_DEF = {
   quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: 100, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
   decals: 'normal', bloodTime: '60', bodies: 'normal', crowd: 'auto', swarm: 'auto', swarmPush: true, life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
-  wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
+  waveTimer: 'normal', wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
   aimKbm: 'manual', fireKbm: 'hold', aimPad: 'assist', firePad: 'stick', padDead: 18, padSwap: false, padRumble: true, xhair: 'cross', xhairSize: 100, xhairColor: 'yellow',
   motion: 'auto', flash: false, hudScale: 100, contrast: false,
-  saver: 'auto', netPing: true, netArrows: true
+  saver: 'auto', netPing: true, netArrows: true,
+  eng: {}   // the engine room's choices: { NAME: { effort, proc } }
 };
 const SYS_RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const SET = Object.assign({}, SET_DEF, { flash: SYS_RM }, (function () {
@@ -20836,6 +21681,7 @@ function applyLook() {
   app.style.setProperty('--hud-scale', (SET.hudScale / 100).toFixed(2));
   app.classList.toggle('hi-contrast', !!SET.contrast);
   app.classList.toggle('lefty', !!SET.lefty);
+  app.classList.toggle('rm', !!RM);
   $('fpsBox').hidden = !SET.fpsShow;
   const h = $('ctrlHint'); if (h) h.hidden = !SET.hints;
 }
@@ -20859,7 +21705,7 @@ function setSetting(k, v) {
     case 'zoom': resize(); break;
     case 'vis': AUD.vis = v; store.set('zc_audio', AUD); break;
     case 'sfxOn': AUD.sfx = v; store.set('zc_audio', AUD); SFX.setSfx(v); break;
-    case 'motion': RM = v === 'on' || (v === 'auto' && SYS_RM); break;
+    case 'motion': RM = v === 'on' || (v === 'auto' && SYS_RM); applyLook(); break;
     case 'season': if (G.mode !== 'title' && v !== 'cycle') setSeason(seasonFromSetting()); else if (G.mode === 'title') { WORLD.season = seasonFromSetting(); for (const c of chunks.values()) c.stale = 1; WSPR.clear(); } break;
     case 'wxMode': if (v !== 'dynamic') { WX.kind = v; WX.t = 60; } else WX.t = Math.min(WX.t, 20); break;
     case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
@@ -20936,6 +21782,8 @@ const SET_ROWS = [
   { id: 'aq', tab: 'sound', type: 'seg', label: 'Audio quality', desc: 'Low uses less processing on older phones.', opts: [['auto', 'Auto'], ['low', 'Low'], ['high', 'High']] },
   { tab: 'sound', action: 'radio', label: 'Radio', desc: 'Channels, songs and Bluetooth music.', btn: 'Open the radio' },
   // gameplay
+  { tab: 'gameplay', group: 'Waves' },
+  { id: 'waveTimer', tab: 'gameplay', basic: true, type: 'seg', label: 'Wave timer', desc: 'Every wave runs against a clock (about 44 seconds for wave 1, more for each wave after, up to 2½ minutes). When it runs out the next wave starts on top of what is left; clear the street first and you get 7 seconds to walk around and a bonus for the time left. The last 5 seconds glow red. Off: a wave lasts until it is cleared. In co-op the host\'s setting counts.', opts: [['short', 'Short'], ['normal', 'Normal'], ['long', 'Long'], ['off', 'Off']] },
   { tab: 'gameplay', group: 'World' },
   { id: 'wxMode', tab: 'gameplay', type: 'seg', label: 'Weather', desc: 'Changing weather, or keep one kind all the time.', opts: [['dynamic', 'Changing'], ['clear', 'Clear'], ['rain', 'Rain'], ['storm', 'Storms'], ['snow', 'Snow'], ['fog', 'Fog'], ['sand', 'Sand']] },
   { id: 'wxPlay', tab: 'gameplay', type: 'seg', label: 'Weather affects play', desc: 'Fog and sand cut how far you see, blizzards slow everyone, lightning strikes.', opts: ON_OFF },
@@ -20985,13 +21833,13 @@ const SET_ROWS = [
   { tab: 'access', group: 'Display' },
   { id: 'hudScale', tab: 'access', type: 'slider', label: 'HUD size', desc: 'Health, wave, score and the buttons.', min: 80, max: 140, step: 10, fmt: v => v + '%' },
   { id: 'contrast', tab: 'access', type: 'seg', label: 'High-contrast HUD', desc: 'Solid backgrounds behind the HUD text.', opts: ON_OFF },
+  { tab: 'access', group: 'Ultra advanced' },
+  { tab: 'access', action: 'engines', ultra: true, label: 'Ultra advanced: the engine room', desc: 'All 27 engines with their live performance, values and stats, how intricate each one is, and which ones run harder: on the processor, the graphics chip or Auto. Changes here can cost frame rate; the engines\' ecosystem puts back anything that hurts the game.', btn: 'Ultra advanced' },
   // system
   { tab: 'system', group: 'This device' },
   { tab: 'system', info: 'device' },
   { id: 'saver', tab: 'system', basic: true, type: 'seg', label: 'Battery saver', desc: 'Caps the game at 30 fps and Medium quality. Auto turns on when the battery is low.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { tab: 'system', action: 'fullscreen', desk: true, basic: 'kbm', label: 'Full screen', desc: 'Fill the whole screen, or play in a window. F11 or Alt+Enter also switch.', btn: 'Switch' },
-  { tab: 'system', group: 'Engines' },
-  { tab: 'system', info: 'engines' },
   { tab: 'system', group: 'Tools' },
   { tab: 'system', action: 'tester', tester: true, label: 'Tester mode', desc: 'This device got past maintenance with the tester code. Leave to follow maintenance again.', btn: 'Leave' },
   { tab: 'system', action: 'cache', label: 'Refresh cache', desc: 'Frees the graphics the game has stored. They rebuild as needed.', btn: 'Refresh' },
@@ -21095,7 +21943,8 @@ function settingRow(r) {
 function actionRow(r) {
   const row = el('div', 'set-row'), txt = el('div', 'set-txt');
   txt.append(el('b', null, r.label), el('p', null, r.desc)); row.append(txt);
-  const b = el('button', 'btn small' + (r.danger ? ' danger' : ''), r.btn); b.type = 'button';
+  const b = el('button', 'btn small' + (r.danger ? ' danger' : '') + (r.ultra ? ' ultra' : ''), r.btn); b.type = 'button';
+  if (r.ultra) row.classList.add('set-ultra');
   b.addEventListener('click', () => settingsAction(r.action, b));
   const ctl = el('div', 'set-ctl'); ctl.append(b); row.append(ctl);
   return row;
@@ -21103,6 +21952,7 @@ function actionRow(r) {
 function settingsAction(a, b) {
   SFX.click();
   if (a === 'radio') { openRadio(); return; }
+  if (a === 'engines') { openEngineWarn(); return; }
   if (a === 'tester') { testerLeave(); renderSettings(); return; }
   if (a === 'fullscreen') { if (window.ZCDesktop) window.ZCDesktop.fullscreen(); return; }
   if (a === 'cache') { const before = cacheBytes().total; trimCaches(2); WSPR.clear(); toast('Cache refreshed', 'Freed ' + fmtMB(Math.max(0, before - cacheBytes().total)), '#7dff4a'); renderSettings(); return; }
@@ -21171,6 +22021,354 @@ function updFpsBox(now) {
 }
 applyAll();
 renderPerfBtn();
+
+/* ================= the engine room (Settings > Accessibility > Ultra advanced) =================
+   Every one of the game's engines on one page: what it is doing right now (its cost each frame and its share of the
+   frame, a minute of history, its level, its health, its own numbers), how intricate it is (its lines, functions,
+   parts and links to the other engines), and two controls: how hard it runs (Auto, Eco, Normal, Hard, Max) and what it
+   runs on (CPU, GPU, Auto). When the ecosystem has locked a control it shows "Auto-lock" in purple, with the reason.
+   It is behind a red warning: changes here override the automatic choices and can cost frame rate; the ecosystem
+   (CORE's watchdog and guard) puts anything that hurts the game back on Auto by itself. */
+const ENG_SRC = {"core":[219,26,65,25404],"perf":[308,26,36,24391],"world":[1682,82,186,150815],"net":[970,81,95,77693],"loader":[96,8,16,7153],"weather":[585,32,78,48552],"life":[503,32,44,38576],"sfx2":[447,76,53,43592],"audio":[939,213,76,83621],"radio":[426,70,31,38551],"mutations":[743,19,22,57975],"roster":[124,4,31,33396],"bosses":[318,47,12,39885],"bossai":[528,40,22,45163],"account":[428,34,47,37759],"acct-core":[230,27,31,18583],"filter":[126,8,18,8992],"filterdata":[1,0,3,10136],"lux":[732,37,132,66467],"prism":[335,19,55,37641],"texel":[319,17,77,32373],"mirror":[113,9,24,11555],"gore":[689,49,104,65339],"muzzle":[202,12,31,18070],"garage":[437,29,56,44146],"skyway":[245,19,47,23362],"tracer":[211,22,46,20282],"aura":[122,12,20,11106],"swarm":[645,66,107,54649],"anima":[1085,57,118,98199],"anilook":[427,30,56,57921],"ballistics":[210,12,39,19057],"game#flow":[69,6,4,4827]};
+const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
+const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
+const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };
+const engFloor = (o, key, k) => { if (!o || k == null) return; if (k >= 2) o[key] = Math.max(o[key] | 0, 0); else if (k >= 1) o[key] = Math.max(o[key] | 0, -1); };
+const engPerf = (o, k) => { if (!o || k == null) return; if (k >= 2) o.perf = Math.max(o.perf | 0, 0); else if (k >= 1) o.perf = Math.max(o.perf | 0, -1); else if (k < 0) o.perf = Math.min(o.perf | 0, -1); };
+const prismGpuNo = () => {
+  if (typeof PRISM === 'undefined') return 'There is no shader engine on this build.';
+  if (PRISM.glcv && !PRISM.gl) return 'This device or browser gave the game no WebGL graphics context' + (PRISM.reason ? ' (' + PRISM.reason + ')' : '') + ', so shaders can only run on the processor.';
+  if (PRISM.lost) return 'The graphics context was lost (the device took it back); PRISM runs on the processor while it rebuilds it.';
+  return '';
+};
+const viaPrism = what => () => {
+  const p = prismGpuNo(); if (p) return p;
+  if (typeof PRISM !== 'undefined' && PRISM.mode !== 'gpu') return what + ' reaches the graphics chip through PRISM\'s shaders, and PRISM is on the processor right now' + (PRISM.soft ? ' (this device draws with a software renderer, so Auto keeps shaders off the GPU)' : SET.prism === 'cpu' ? ' (you set it to CPU)' : '') + '. Put PRISM on GPU first.';
+  return '';
+};
+/* What each engine is made of, what "harder" and "lighter" mean for it, what it can run on, and its live numbers.
+   files: its own source (for how intricate it is); parts: what it does, piece by piece. */
+const ENG_SPEC = {
+  CORE: { files: ['core'], parts: ['one shared frame', 'one time budget', 'message bus', 'watchdog', 'repair and cover', 'remembered levels', 'tuning and locks'], effort: false,
+    effortWhy: 'CORE is the hub that runs this page and every repair: it costs almost nothing and must always run in full, so the ecosystem keeps it where it is.',
+    stats: () => [['Engines', CORE.list.length], ['Resting', CORE.list.filter(e => e.down).length], ['Locked', CORE.list.filter(e => e.lockUntil > performance.now()).length], ['Listeners', Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0)], ['Stepped down', CORE.trims.length], ['Log lines', CORE.log.length]] },
+  PERF: { files: ['perf'], parts: ['hardware check', 'quality tiers', 'resolution steps', 'frame cap', 'battery and heat care', 'cache trimming', 'loop watchdog'], effort: false,
+    effortWhy: 'PERF is the governor that does the adapting for every other engine; how hard the game runs as a whole is Settings > Graphics > Graphics quality.',
+    stats: () => [['Frame rate', PERF.fps ? Math.round(PERF.fps) + ' fps' : '…'], ['Target', Math.round(targetFps()) + ' fps'], ['Quality', TIER_NAMES[PERF.tier]], ['Resolution', Math.round((PERF.resLock || RES_STEPS[PERF.res]) * 100) + '%'], ['Battery saver', PERF.saver ? 'on' : 'off'], ['Self-repairs', PERF.repairs || 0]] },
+  WORLD: { files: ['world'], parts: ['seeded city', 'districts and biomes', 'rivers and bridges', 'props', 'seasons', 'real-world scale'], effort: false,
+    effortWhy: 'The city is built the same way on every device (and for everyone in a co-op run), block by block as you walk, so there is nothing to run harder or lighter without changing the city itself.',
+    stats: () => [['Blocks built', chunks.size], ['Seed', WORLD.lastSeed || WORLD.seed || 0], ['District', WORLD.cur ? WORLD.cur.name : '—'], ['Season', ['Spring', 'Summer', 'Fall', 'Winter'][WORLD.season] || '—'], ['Scale', SCL > 1.2 ? 'real-world' : 'classic']] },
+  FLOW: { files: ['game#flow'], parts: ['flow fields', 'wide paths for big zombies', 'push fields for hordes', 'reachability'],
+    hard: 'refreshes the zombies\' paths more often (every 0.25 s on Hard, 0.18 s on Max instead of 0.35 s), so they turn the corner after you sooner', eco: 'refreshes the paths every 0.55 s, a little cheaper, a little slower to react',
+    stats: () => [['Grid', FF_N + ' × ' + FF_N], ['Field age', FF.ready ? Math.round((G.time - FF.t) * 1000) + ' ms' : '—'], ['Refresh', [0.55, 0.35, 0.25, 0.18][(TUNE.FLOW || 0) + 1] + ' s'], ['Wide fields', [G.needFB ? 'big' : '', G.needFS ? 'huge' : '', G.needFP ? 'push' : ''].filter(Boolean).join(', ') || 'none']] },
+  NET: { files: ['net'], parts: ['host and clients', 'snapshots', 'reconnects', 'shared clock', 'hits and kills', 'revives', 'markers'], effort: false,
+    effortWhy: 'Co-op has to run the same on every screen in the game (the same zombies, hits and clock at the same moment), so its timing is never turned up or down.',
+    stats: () => [['Role', NET.role || 'off'], ['Players', NET.started ? (NET.role === 'host' ? 1 + NET.peers.size : '2+') : 1], ['Ping', NET.started && NET.rtt ? Math.round(NET.rtt) + ' ms' : '—'], ['Zombies mirrored', NET.zmap ? NET.zmap.size : 0], ['Teammate rounds', NET.cosN || 0]] },
+  LOADER: { files: ['loader'], parts: ['loading screens', 'street warm-up', 'light warm-up', 'sprite and rig warm-up'], effort: false,
+    effortWhy: 'LOADER only works behind the loading screens, never during play, so it has nothing to turn up or down.',
+    stats: () => [['State', LOADING.on ? 'loading' : 'idle'], ['Progress', Math.round((LOADING.frac || 0) * 100) + '%']] },
+  WX: { files: ['weather'], parts: ['rain and snow', 'storms and lightning', 'fog and sand', 'wind and gusts', 'seasons', 'puddles and breath'],
+    hard: 'keeps the weather at full density even when the frame gets busy (Max also adds 15% more of it)', eco: 'draws at most about half the rain, snow and dust',
+    stats: () => [['Weather', WX.kind], ['Detail', Math.round(wxLevel() * 100) + '%'], ['Fog', Math.round((WX.fog || 0) * 100) + '%'], ['Wet', Math.round((WX.wet || 0) * 100) + '%']] },
+  LIFE: { files: ['life'], parts: ['swaying plants', 'birds', 'kickable props', 'barrels', 'fires', 'car alarms'],
+    hard: 'lets every tree, bush and patch of grass sway and shake, even when the frame is busy', eco: 'draws the plants one step stiller',
+    stats: () => [['Plants moving', WD.act.length], ['Birds', WD.birds ? WD.birds.length : 0], ['Plant detail', ['still', 'light', 'full'][vegLevel()]]] },
+  SFX: { files: ['sfx2', 'audio'], parts: ['synthesised guns', 'impacts and kills', 'ambience', 'district echoes', 'the clock\'s ticks'],
+    hard: 'synthesises every sound at high quality', eco: 'synthesises sounds at low quality (less work for older phones)',
+    apply: k => { const q = k == null ? Q.audio : k < 0 ? 0 : k > 0 ? 2 : Q.audio; if (ENGR.sfxQ !== q) { ENGR.sfxQ = q; try { SFX.setQuality(SET.aq === 'auto' ? q : SET.aq === 'low' ? 0 : 2); } catch (x) { } } },
+    stats: () => { let h = {}; try { h = SFX.health(); } catch (x) { } return [['Audio', h.state || '—'], ['Quality', ['low', 'medium', 'high'][ENGR.sfxQ == null ? Q.audio : ENGR.sfxQ] || '—'], ['Late renders', h.late || 0]]; } },
+  RADIO: { files: ['radio'], parts: ['song writer', 'renderer on its own audio thread', '7 channels', 'your own music'], effort: false,
+    effortWhy: 'FM 66.6 writes and renders its songs ahead of time on its own audio thread, apart from the game, so it never competes with the frame.',
+    stats: () => { let n = ''; try { n = SFX.nowPlaying().name; } catch (x) { } return [['Now playing', n || '—']]; } },
+  MUTAGEN: { files: ['roster', 'mutations'], parts: ['the 2.0 roster', 'looks and builds', 'walks and abilities', 'the 1,000 old mutations (resting)'], effort: false,
+    effortWhy: 'MUTAGEN is data: it builds every zombie once at start, the same on every device.',
+    stats: () => [['2.0 zombies', ZR.length], ['Identified', ZR.filter(m => found.has(m.id)).length], ['Resting', MUTS.length - ZR.length]] },
+  BOSS: { files: ['bosses', 'bossai'], parts: ['50 bosses', 'mutating forms', 'the Snatcher', 'the Overlord'], effort: false,
+    effortWhy: 'The bosses are switched off until they are rebuilt for 2.0, so there is nothing for this engine to do yet.',
+    stats: () => [['Boss on the street', G.boss && !G.boss.dead ? 'yes' : 'none'], ['Status', typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF ? 'resting until rebuilt' : 'on']] },
+  ACCOUNT: { files: ['account', 'acct-core'], parts: ['accounts', 'AES-GCM saves', 'PBKDF2 keys', 'merging devices', 'maintenance status'], effort: false,
+    effortWhy: 'Accounts and encryption are about keeping your progress safe, not about frame rate, so they always run in full.',
+    stats: () => [['Status', typeof ACCT !== 'undefined' ? ACCT.status : 'off']] },
+  FILTER: { files: ['filter', 'filterdata'], parts: ['name checks', 'tricks with numbers and letters', 'personal details', 'studio names'], effort: false,
+    effortWhy: 'The name filter keeps every name shown safe; it is never made lighter.',
+    stats: () => [['Status', 'on'], ['Checks', 'every name shown']] },
+  LUX: { files: ['lux'], parts: ['lamp shadows', 'sun area light', 'light beams in fog', 'bounce light', 'bloom', 'pose shadows', 'self-repair'], procs: ['cpu', 'gpu'],
+    hard: 'keeps one more level of shadows, light and bounce light than your quality sets, and stops it stepping itself down (Max keeps it at the top)', eco: 'draws one level less light and fewer shadows',
+    gpuNo: viaPrism('Bounce light'), procWhat: 'bounce light (the path-traced light off walls and streets)',
+    apply: (k, proc) => { engFloor(LUX, 'adapt', k); LUX.giCpuOnly = proc === 'cpu'; },
+    stats: () => [['Level', ['glow only', 'few shadows', 'shadows + bloom', 'soft shadows', 'full'][LUX.level] || '—'], ['Lights', (CORE.frame.lights || []).length], ['Bounce light', LUX.giOn ? (typeof PRISM !== 'undefined' && PRISM.giGpu ? 'on, GPU' : 'on, CPU') : 'off'], ['Sun', CORE.frame.sun.on ? 'up' : 'down'], ['Self-adjust', LUX.adapt]] },
+  PRISM: { files: ['prism'], parts: ['WebGL 2/1 shaders', 'bloom', 'light shafts', 'heat haze', 'sharpen and upscale', 'grading', 'lamp relief', 'CPU fallback'], procs: ['cpu', 'gpu'],
+    hard: 'runs one more shader level than your quality sets (bloom, shafts, bounce light) and stops stepping itself down', eco: 'runs one shader level less',
+    gpuNo: prismGpuNo, procWhat: 'every shader pass (the same as Settings > Graphics > Shader engine)',
+    apply: (k, proc) => { engFloor(PRISM, 'adapt', k); PRISM.procOverride = proc; },
+    stats: () => [['Path', PRISM.mode === 'gpu' ? 'GPU, WebGL ' + (PRISM.v2 ? 2 : 1) : PRISM.mode === 'cpu' ? 'CPU' : PRISM.mode], ['Level', ['color', 'bloom + sharpen', 'bounce + shafts', 'full'][PRISM.lvl] || '—'], ['Renderer', PRISM.renderer ? friendlyGpu(PRISM.renderer) : '—'], ['Temperature', (PRISM.temp || 0) + ' K']] },
+  TEXEL: { files: ['texel'], parts: ['procedural textures', 'supersampled sprites', 'ground blending', 'cloth, skin and grime', 'memory repair'],
+    hard: 'draws textures one level sharper and keeps them there', eco: 'draws textures one level softer',
+    apply: k => engFloor(TEXEL, 'adapt', k),
+    stats: () => [['Level', ['off', 'low', 'high', 'ultra'][TEXEL.lvl] || '—'], ['Sprites cached', typeof sprites !== 'undefined' ? sprites.size : 0], ['Players cached', TEXEL.players ? TEXEL.players.size : 0]] },
+  MIRROR: { files: ['mirror'], parts: ['water', 'wet streets', 'ice', 'car glass and paint', 'fresh blood', 'sun glitter'], procs: ['cpu', 'gpu'],
+    hard: 'keeps full reflections and stops stepping them down', eco: 'reflects only the sky and the lights',
+    gpuNo: viaPrism('Reflections'), procWhat: 'the reflection pass',
+    apply: (k, proc) => { engFloor(MIRROR, 'adapt', k); MIRROR.cpuOnly = proc === 'cpu'; },
+    stats: () => [['Path', MIRROR.on ? (MIRROR.gpu ? 'GPU' : 'CPU') : 'idle'], ['Level', ['off', 'sky and lights', 'full'][mirrorLevel()]]] },
+  GORE: { files: ['gore'], parts: ['blood by zombie type', 'wounds by gun', 'sprays and pools', 'drying and fading', 'footprints', 'glowing blood'],
+    hard: 'keeps one more level of blood detail and stops stepping it down', eco: 'draws one level less blood',
+    apply: k => engFloor(GORE, 'adapt', k),
+    stats: () => [['Stains', G.splats.length], ['Level', goreLevel()], ['Bad stains thrown out', GORE.fixed || 0]] },
+  MUZZLE: { files: ['muzzle'], parts: ['a fire for every gun', 'mod tints', 'sparks', 'smoke', 'brass and shells', 'flash light'],
+    hard: 'keeps half as much smoke and brass again (Max: twice as much) on the street', eco: 'keeps less than half the smoke and brass',
+    stats: () => [['Flames', MUZZLE.spr ? MUZZLE.spr.size : 0], ['Smoke', MUZZLE.smoke ? MUZZLE.smoke.length : 0], ['Casings', MUZZLE.brass ? MUZZLE.brass.length : 0]] },
+  GARAGE: { files: ['garage'], parts: ['22 vehicles', 'liveries', 'wrecks', 'headlights and hazards', 'reflective glass', 'crashed aircraft'],
+    hard: 'gives both headlight beams of every lit car shadows', eco: 'drops the beams\' shadows and the tail lights\' glow',
+    stats: () => [['Vehicles moved', SWDYN.size]] },
+  SKYWAY: { files: ['skyway'], parts: ['elevated highways', 'interchanges', 'collapsed spans', 'deck shadows', 'fading underneath'], effort: false,
+    effortWhy: 'The highways, their lamps and their shadows are built into each block\'s picture when the block is made, so there is nothing to run harder while you play (and almost no cost each frame).',
+    stats: () => [['Highway lines known', SKY.rows.size + SKY.cols.size]] },
+  TRACER: { files: ['tracer'], parts: ['a style for every gun', 'motion blur', 'glow', 'heat shimmer', 'tracer lights', 'impacts'],
+    hard: 'keeps trails, glows and lit rounds on even when the frame is busy (Max keeps everything)', eco: 'draws plainer rounds',
+    apply: k => engPerf(TRACER, k),
+    stats: () => [['Rounds', TRACER.drawn || 0], ['Lit', TRACER.lights || 0], ['Detail', TRACER.perf || 0]] },
+  AURA: { files: ['aura'], parts: ['glowing zombies as lights', 'their shadows', 'eyes at night', 'death flares'],
+    hard: 'keeps every glowing zombie lit and casting shadows (Max: as many as the lighting allows)', eco: 'lights fewer of them, without shadows',
+    apply: k => engPerf(AURA, k),
+    stats: () => [['Glowing', AURA.n || 0], ['With shadows', AURA.shadowed || 0], ['Eyes', AURA.eyes || 0]] },
+  SWARM: { files: ['swarm'], parts: ['hordes and droves', 'moving as one', 'crowd physics', 'pushing vehicles', 'encircling', 'hearing gunfire', 'levels of detail'],
+    hard: 'draws more of the crowd in full detail (like Crowd detail: High) and stops stepping detail down', eco: 'draws more of the crowd simplified (like Crowd detail: Low)',
+    apply: k => engFloor(SWARM, 'adapt', k),
+    stats: () => [['Alive', G.zs.length], ['Hordes', SWARM.hordes.length], ['Live cap', SWARM.capLive || SWARM.cap || 0], ['Self-adjust', SWARM.adapt || 0]] },
+  ANIMA: { files: ['anima', 'anilook'], parts: ['jointed rigs', '50 animations each', 'blending', 'hit reactions', 'deaths and bodies', 'cached crowd frames', 'pose shadows'],
+    hard: 'animates 5 more zombies with live joints (Max: 10 more) and stops stepping that down', eco: 'animates 5 fewer with live joints (the rest from cached pictures)',
+    apply: k => engFloor(ANIMA, 'adapt', k),
+    stats: () => [['Live rigs', ANIMA.live], ['Cached', ANIMA.cached], ['Bodies', ANIMA.corpses.length], ['Live cap', ANIMA.liveCap], ['Pictures stored', ANIMA.cache.size]] },
+  BALLISTICS: { files: ['ballistics'], parts: ['real rounds', 'drag and energy', 'swept rays', 'ricochets', 'hit regions', 'lethality', 'recoil'], effort: false,
+    effortWhy: 'How bullets fly and kill has to be the same on every device and for everyone in co-op (it decides who lives), so it is never made lighter or heavier.',
+    stats: () => [['Rounds', BAL.shots], ['Hits', BAL.hits], ['Kills', BAL.kills], ['Head kills', BAL.heads], ['Ricochets', BAL.ric], ['Passed through', BAL.pen || 0]] }
+};
+// hand each engine its part of the spec (the hub reads tune.effort, tune.procs and tune.apply)
+for (const name in ENG_SPEC) {
+  const s = ENG_SPEC[name];
+  if (CORE.by[name]) coreMeta(name, { tune: { effort: s.effort !== false, effortWhy: s.effortWhy, procs: s.procs || ['cpu'], procWhy: s.procWhy || (name + ' runs in JavaScript on the processor; it has no graphics-chip version, so the ecosystem keeps it there.'), gpuNo: s.gpuNo, apply: s.apply } });
+}
+// PRISM's processor is the same choice as Settings > Graphics > Shader engine
+function engProcGet(name) { if (name === 'PRISM') return SET.prism === 'gpu' || SET.prism === 'cpu' ? SET.prism : 'auto'; return coreTune(name).proc; }
+
+/* ---------- how intricate each engine is ---------- */
+function engIntricacy(name) {
+  const s = ENG_SPEC[name] || {}, e = CORE.by[name] || {}, src = typeof ENG_SRC !== 'undefined' ? ENG_SRC : {};
+  let lines = 0, fns = 0, com = 0;
+  for (const f of s.files || []) { const v = src[f]; if (v) { lines += v[0]; fns += v[1]; com += v[2]; } }
+  const parts = (s.parts || []).length, links = (e.needs || []).length + (e.covers || []).length + (e.helps ? Object.keys(e.helps).length : 0);
+  const raw = 1.8 * Math.log10(lines + 1) + 1.4 * Math.log10(fns + 1) + 0.25 * parts + 0.15 * links - 2;
+  const score = clamp(Math.round(raw * 10) / 10, 1, 10);
+  const word = score >= 8.5 ? 'Extremely intricate' : score >= 7 ? 'Highly intricate' : score >= 5 ? 'Intricate' : score >= 3 ? 'Involved' : 'Simple';
+  return { score: score, word: word, lines: lines, fns: fns, com: com, parts: parts, links: links };
+}
+
+/* ---------- the warning, then the room ---------- */
+function openEngineWarn() {
+  SFX.click(); const w = $('engWarn'); w.hidden = false;
+  try { SFX.refuse(); } catch (x) { }
+  setTimeout(() => { const b = $('engWarnBack'); if (b) b.focus(); }, 30);
+}
+function closeEngineWarn() { $('engWarn').hidden = true; }
+$('engWarnBack').addEventListener('click', () => { SFX.click(); closeEngineWarn(); });
+$('engWarnGo').addEventListener('click', () => { SFX.click(); closeEngineWarn(); openEngineRoom(); });
+function openEngineRoom() {
+  ENGR.open = true; $('engRoom').hidden = false; $('engRoom').scrollTop = 0;
+  engBuild(); engLive();
+  clearInterval(ENGR.iv); ENGR.iv = setInterval(() => { if (!ENGR.open || $('engRoom').hidden) { clearInterval(ENGR.iv); ENGR.open = false; return; } engLive(); }, 1000);
+}
+function closeEngineRoom() { ENGR.open = false; clearInterval(ENGR.iv); $('engRoom').hidden = true; if (!$('settings').hidden) renderSettings(true); }
+$('engClose').addEventListener('click', () => { SFX.click(); closeEngineRoom(); });
+
+function engSet(name, k, v) {
+  const all = Object.assign({}, SET.eng || {}), cur = Object.assign({}, all[name] || {});
+  if (k === 'proc' && name === 'PRISM') { setSetting('prism', v); }
+  else { cur[k] = v; if (cur.effort === 'auto') delete cur.effort; if (cur.proc === 'auto') delete cur.proc; if (Object.keys(cur).length) all[name] = cur; else delete all[name]; SET.eng = all; saveSettings(); }
+  CORE.slowS = 0;   // (the guard counts its 8 slow seconds from the change, not from before it)
+  try { coreTuneTick(performance.now()); } catch (x) { }
+  coreLog(name + ': ' + (k === 'proc' ? 'runs on ' + (v === 'auto' ? 'Auto' : v.toUpperCase()) : 'effort ' + EFF_NAMES[v]) + ' (set in the engine room)');
+  engCard(name, true); engLive();
+}
+function engResetAll() {
+  SET.eng = {}; if (SET.prism === 'gpu' || SET.prism === 'cpu') setSetting('prism', 'auto'); saveSettings();
+  try { coreTuneTick(performance.now()); } catch (x) { }
+  coreLog('Every engine back on Auto (engine room)'); toast('Engine room', 'Every engine is back on Auto', '#c86bff');
+  for (const n of ENGR.cards.keys()) engCard(n, true); engLive();
+}
+
+/* ---------- building the page ---------- */
+function engBuild() {
+  const top = $('engTop'), tools = $('engTools'), grid = $('engGrid');
+  top.textContent = ''; tools.textContent = ''; grid.textContent = ''; ENGR.cards.clear();
+  // the ecosystem at a glance
+  const meters = el('div', 'eng-meters');
+  for (const [id, k] of [['emFps', 'Frame rate'], ['emMs', 'Frame time'], ['emBudget', 'Engines use'], ['emHealth', 'Ecosystem']]) { const m = el('div', 'eng-meter'); m.append(el('small', null, k), el('b', null, '…')); m.lastChild.id = id; meters.append(m); }
+  const bar = el('div', 'eng-budget'); bar.id = 'engBudget'; bar.setAttribute('aria-hidden', 'true');
+  const legend = el('p', 'eng-legend'); legend.id = 'engLegend';
+  top.append(meters, bar, legend);
+  // filter, sort, reset
+  const seg = el('div', 'eng-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Show');
+  for (const [k, l] of [['all', 'All'], ['render', 'Render'], ['sim', 'Simulation'], ['world', 'World'], ['audio', 'Audio'], ['data', 'Data and network']]) {
+    const b = el('button', ENGR.filter === k ? 'on' : '', l); b.type = 'button'; b.setAttribute('aria-pressed', ENGR.filter === k);
+    b.addEventListener('click', () => { SFX.click(); ENGR.filter = k; seg.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); engOrder(); });
+    seg.append(b);
+  }
+  const sort = el('div', 'eng-seg small'); sort.setAttribute('role', 'group'); sort.setAttribute('aria-label', 'Sort by');
+  for (const [k, l] of [['cost', 'Cost'], ['intricacy', 'Intricacy'], ['name', 'Name']]) {
+    const b = el('button', ENGR.sort === k ? 'on' : '', l); b.type = 'button'; b.setAttribute('aria-pressed', ENGR.sort === k);
+    b.addEventListener('click', () => { SFX.click(); ENGR.sort = k; sort.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); engOrder(); });
+    sort.append(b);
+  }
+  const reset = el('button', 'btn small eng-reset', 'Everything back to Auto'); reset.type = 'button'; reset.addEventListener('click', () => { SFX.click(); engResetAll(); });
+  tools.append(seg, sort, reset);
+  for (const e of CORE.list) { const c = el('article', 'eng-card'); c.dataset.name = e.name; grid.append(c); ENGR.cards.set(e.name, c); engCard(e.name, true); }
+  engOrder();
+}
+function engOrder() {
+  const grid = $('engGrid'), list = Array.from(ENGR.cards.values());
+  const kindOk = c => { const e = CORE.by[c.dataset.name]; return ENGR.filter === 'all' || (ENGR.filter === 'data' ? (e.kind === 'data' || e.kind === 'net') : e.kind === ENGR.filter); };
+  list.sort((a, b) => ENGR.sort === 'name' ? a.dataset.name.localeCompare(b.dataset.name) : ENGR.sort === 'intricacy' ? engIntricacy(b.dataset.name).score - engIntricacy(a.dataset.name).score : (CORE.by[b.dataset.name].msAvg || 0) - (CORE.by[a.dataset.name].msAvg || 0));
+  for (const c of list) { c.hidden = !kindOk(c); grid.append(c); }
+}
+// one engine's card: built once, its numbers refreshed every second, its controls rebuilt when something changes
+function engCard(name, full) {
+  const c = ENGR.cards.get(name), e = CORE.by[name], s = ENG_SPEC[name] || {}; if (!c || !e) return;
+  if (full) {
+    c.textContent = '';
+    const head = el('header', 'ec-head');
+    const t = el('div', 'ec-title'); t.append(el('b', null, name), el('span', 'ec-kind', (KIND_NAMES[e.kind] || e.kind) + ' · v' + e.ver));
+    const cost = el('div', 'ec-cost'); cost.append(el('b', 'ec-ms', '…'), el('span', 'ec-share', ''));
+    const hb = el('span', 'ec-health', ''); head.append(t, hb, cost); c.append(head);
+    const spark = document.createElement('canvas'); spark.className = 'ec-spark'; spark.setAttribute('aria-hidden', 'true'); c.append(spark);
+    c.append(el('p', 'ec-does', e.does || ''));
+    const st = el('dl', 'ec-stats'); c.append(st);
+    const I = engIntricacy(name), ib = el('div', 'ec-intri');
+    const meter = el('div', 'ec-imeter'); const fill = el('i'); fill.style.width = (I.score * 10) + '%'; meter.append(fill);
+    const il = el('div', 'ec-itext'); il.append(el('b', null, 'How intricate: ' + I.score.toFixed(1) + ' / 10 · ' + I.word), el('span', null, (I.lines ? I.lines.toLocaleString() + ' lines of code · ' + I.fns + ' functions · ' : '') + I.parts + ' parts · linked to ' + I.links + ' engine' + (I.links === 1 ? '' : 's')));
+    ib.append(il, meter); c.append(ib);
+    // controls
+    const f = coreEff(name), want = coreTune(name), pw = engProcGet(name);
+    const effRow = el('div', 'ec-ctl'); effRow.append(el('span', 'ec-ctl-l', 'Runs harder'));
+    const es = el('div', 'ec-seg' + (f.locks.effort ? ' locked' : '')); es.setAttribute('role', 'group'); es.setAttribute('aria-label', name + ': how hard it runs');
+    for (const v of EFFORTS) { const b = el('button', (want.effort === v && !f.locks.effort ? 'on' : '') + ' e-' + v, EFF_NAMES[v]); b.type = 'button'; b.disabled = !!f.locks.effort; b.setAttribute('aria-pressed', want.effort === v && !f.locks.effort); b.addEventListener('click', () => { SFX.click(); engSet(name, 'effort', v); }); es.append(b); }
+    const el1 = el('button', 'lock' + (f.locks.effort ? ' on' : ''), 'Auto-lock'); el1.type = 'button'; el1.disabled = true; el1.title = f.locks.effort || 'Lights up when the ecosystem locks this setting'; es.append(el1);
+    effRow.append(es); c.append(effRow);
+    const prRow = el('div', 'ec-ctl'); prRow.append(el('span', 'ec-ctl-l', 'Runs on'));
+    const ps = el('div', 'ec-seg' + (f.locks.proc ? ' locked' : '')); ps.setAttribute('role', 'group'); ps.setAttribute('aria-label', name + ': what it runs on');
+    for (const [v, l] of [['cpu', 'CPU'], ['gpu', 'GPU'], ['auto', 'Auto']]) { const on = !f.locks.proc && pw === v; const b = el('button', (on ? 'on' : '') + ' p-' + v, l); b.type = 'button'; b.disabled = !!f.locks.proc; b.setAttribute('aria-pressed', on); b.addEventListener('click', () => { SFX.click(); engSet(name, 'proc', v); }); ps.append(b); }
+    const pl = el('button', 'lock' + (f.locks.proc ? ' on' : ''), 'Auto-lock'); pl.type = 'button'; pl.disabled = true; pl.title = f.locks.proc || 'Lights up when the ecosystem locks this setting'; ps.append(pl);
+    prRow.append(ps); c.append(prRow);
+    c.append(el('div', 'ec-msg'));
+    // details: its parts and who it works with
+    const det = document.createElement('details'); det.className = 'ec-det';
+    const sum = document.createElement('summary'); sum.textContent = 'Parts, links and history'; det.append(sum);
+    const pp = el('ul', 'ec-parts'); for (const p of s.parts || []) pp.append(el('li', null, p)); det.append(pp);
+    const links = [];
+    if (e.needs && e.needs.length) links.push('Needs ' + e.needs.join(', ') + ' (if one of them rests, ' + name + ' adapts).');
+    if (e.covers && e.covers.length) links.push('Covers for ' + e.covers.join(', ') + ' when ' + (e.covers.length > 1 ? 'they are' : 'it is') + ' down.');
+    if (e.helps && Object.keys(e.helps).length) links.push('Helps repair ' + Object.keys(e.helps).join(', ') + '.');
+    const by = CORE.list.filter(o => o.needs && o.needs.indexOf(name) >= 0).map(o => o.name); if (by.length) links.push(by.join(', ') + (by.length > 1 ? ' lean' : ' leans') + ' on ' + name + '.');
+    det.append(el('p', 'ec-links', links.join(' ') || name + ' works on its own and talks to the others through the hub\'s message bus.'));
+    const hist = el('p', 'ec-hist'); det.append(hist);
+    c.append(det);
+  }
+  engCardLive(name);
+}
+// the words under the controls: what the current choice does for this engine, and what the ecosystem is doing
+function engMessage(name) {
+  const e = CORE.by[name], s = ENG_SPEC[name] || {}, f = coreEff(name), want = coreTune(name), out = [];
+  if (f.locks.effort) out.push(['lock', 'Auto-lock (effort): ' + f.locks.effort]);
+  else {
+    const eff = want.effort;
+    out.push(['', eff === 'auto' ? 'Auto: the ecosystem decides how hard ' + name + ' runs, stepping it down when the frame runs late and back up when there is room.'
+      : eff === 'eco' ? 'Eco: ' + name + ' ' + (s.eco || 'runs lighter') + '. When the frame runs late, the ecosystem steps it down before any other engine.'
+      : eff === 'normal' ? 'Normal: ' + name + ' runs at the level your quality setting gives it, and is stepped down like any other engine when the frame runs late.'
+      : eff === 'hard' ? 'Hard: ' + name + ' ' + (s.hard || 'runs harder') + '. The ecosystem steps it down last, only after the others.'
+      : 'Max: ' + name + ' ' + (s.hard || 'runs as hard as it can') + ', as far as it goes. The ecosystem never steps it down on its own, but if the game stays well under its frame-rate target for 8 seconds while ' + name + ' is the costliest engine you tuned, it goes back to Auto for 5 minutes.']);
+  }
+  if (f.locks.proc) out.push(['lock', 'Auto-lock (processor): ' + f.locks.proc]);
+  else {
+    const pv = engProcGet(name), what = s.procWhat || name;
+    out.push(['', pv === 'gpu' ? 'GPU: ' + what + ' runs on the graphics chip, which is faster at this kind of work and leaves the processor for the game.' : pv === 'cpu' ? 'CPU: ' + what + ' runs on the processor (useful when the graphics chip is weak, hot or busy; it costs the processor more).' : 'Auto: ' + what + ' runs on the graphics chip when there is a real one, and on the processor otherwise.']);
+  }
+  const share = e.msAvg && CORE.fps ? e.msAvg / (1000 / CORE.fps) * 100 : 0;
+  out.push(['now', 'Right now: ' + (e.down ? 'resting' : String(coreCall(e, 'state', 'on'))) + (coreCall(e, 'level', '') ? ', ' + coreCall(e, 'level', '') : '') + (e.msAvg >= 0.01 ? ' · ' + e.msAvg.toFixed(2) + ' ms a frame (' + share.toFixed(share < 10 ? 1 : 0) + '% of the frame)' : ' · too cheap to measure') + (e.repairs ? ' · repaired ' + e.repairs + ' time' + (e.repairs === 1 ? '' : 's') : '') + (e.locks ? ' · put back on Auto ' + e.locks + ' time' + (e.locks === 1 ? '' : 's') : '') + '.']);
+  return out;
+}
+const HEALTH = { ok: ['Sound', 'ok'], mended: ['Mended', 'ok'], back: ['Back', 'ok'], mending: ['Mending', 'warn'], adapting: ['Adapting', 'warn'], degraded: ['Degraded', 'warn'], resting: ['Resting', 'bad'] };
+function engCardLive(name) {
+  const c = ENGR.cards.get(name), e = CORE.by[name], s = ENG_SPEC[name] || {}; if (!c || !e) return;
+  const fms = CORE.fps ? 1000 / CORE.fps : 16.7, share = e.msAvg ? e.msAvg / fms * 100 : 0;
+  const ms = c.querySelector('.ec-ms'); if (ms) ms.textContent = e.msAvg >= 0.01 ? e.msAvg.toFixed(2) + ' ms' : '< 0.01 ms';
+  const sh = c.querySelector('.ec-share'); if (sh) sh.textContent = share >= 0.1 ? share.toFixed(share < 10 ? 1 : 0) + '% of the frame' : 'of the frame';
+  const H = HEALTH[e.down ? 'resting' : e.health] || HEALTH.ok, hb = c.querySelector('.ec-health');
+  const locked = e.lockUntil > performance.now();
+  if (hb) { hb.textContent = locked ? 'Locked' : H[0]; hb.className = 'ec-health ' + (locked ? 'lock' : H[1]); }
+  c.classList.toggle('is-locked', locked || !!e.down);
+  c.classList.toggle('is-tuned', coreTune(name).effort !== 'auto' || engProcGet(name) !== 'auto');
+  // its own numbers
+  const st = c.querySelector('.ec-stats');
+  if (st) { let rows = []; try { rows = s.stats ? s.stats() : []; } catch (x) { rows = [['Numbers', 'not available']]; }
+    rows = rows.concat([['Errors', e.errs], ['Repairs', e.repairs]]);
+    if (st.children.length !== rows.length) { st.textContent = ''; for (const [k, v] of rows) { const d = el('div'); d.append(el('dt', null, k), el('dd', null, String(v))); st.append(d); } }
+    else rows.forEach(([k, v], i) => { const dd = st.children[i].lastChild, t = String(v); if (dd.textContent !== t) dd.textContent = t; }); }
+  // a minute of cost
+  const cv2 = c.querySelector('.ec-spark'); if (cv2) engSpark(cv2, e.hist || [], locked ? '#c86bff' : e.down ? '#ff3b4f' : share > 15 ? '#ffb35c' : '#f2cc3a');
+  // the words, and the locks (rebuild the controls if a lock came or went)
+  const f = coreEff(name), want = !!f.locks.effort + '|' + !!f.locks.proc + '|' + coreTune(name).effort + '|' + engProcGet(name);
+  if (c.dataset.ctl && c.dataset.ctl !== want) { c.dataset.ctl = want; engCard(name, true); return; }
+  c.dataset.ctl = want;
+  const msg = c.querySelector('.ec-msg');
+  if (msg) { const lines = engMessage(name), key = lines.map(l => l[1]).join('|'); if (msg.dataset.k !== key) { msg.dataset.k = key; msg.textContent = ''; for (const [cls, t] of lines) msg.append(el('p', cls, t)); } }
+  const hist = c.querySelector('.ec-hist');
+  if (hist) { const mine = CORE.log.filter(l => l.msg.indexOf(name) >= 0).slice(-3).reverse(); const t = mine.length ? 'Lately: ' + mine.map(l => new Date(l.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + l.msg).join(' · ') : 'Nothing has happened to ' + name + ' this session: no errors, no repairs, no locks.'; if (hist.textContent !== t) hist.textContent = t; }
+}
+function engSpark(cv2, h, col) {
+  const w = cv2.clientWidth || 200, hh = 26, dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (cv2.width !== Math.round(w * dpr)) { cv2.width = Math.round(w * dpr); cv2.height = Math.round(hh * dpr); }
+  const g = cv2.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, hh);
+  if (!h.length) return;
+  const mx = Math.max(0.5, ...h), step = w / 59;
+  g.beginPath(); for (let i = 0; i < h.length; i++) { const x = w - (h.length - 1 - i) * step, y = hh - 2 - h[i] / mx * (hh - 4); if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+  g.strokeStyle = col; g.lineWidth = 1.5; g.stroke();
+  g.lineTo(w, hh); g.lineTo(w - (h.length - 1) * step, hh); g.closePath(); g.globalAlpha = 0.18; g.fillStyle = col; g.fill(); g.globalAlpha = 1;
+}
+// every second: the ecosystem meters, the budget bar, every card, the log
+function engLive() {
+  if (!ENGR.open) return;
+  const fps = CORE.fps || PERF.fps || 0, fms = fps ? 1000 / fps : 0, tgt = targetFps();
+  const tot = CORE.list.reduce((a, e) => a + (e.msAvg || 0), 0);
+  const set = (id, v, cls) => { const x = $(id); if (x) { x.textContent = v; x.className = cls || ''; } };
+  set('emFps', fps ? Math.round(fps) + ' / ' + Math.round(tgt) + ' fps' : '…', fps && fps < tgt * 0.7 ? 'bad' : fps && fps < tgt * 0.9 ? 'warn' : 'ok');
+  set('emMs', fms ? fms.toFixed(1) + ' ms' : '…');
+  set('emBudget', tot.toFixed(1) + ' ms' + (fms ? ' · ' + Math.round(tot / fms * 100) + '%' : ''));
+  const down = CORE.list.filter(e => e.down).length, locked = CORE.list.filter(e => e.lockUntil > performance.now()).length, mending = CORE.list.filter(e => e.health === 'mending').length;
+  set('emHealth', down ? down + ' resting' : mending ? mending + ' mending' : locked ? locked + ' locked' : 'All ' + CORE.list.length + ' sound', down ? 'bad' : mending || locked ? 'warn' : 'ok');
+  // the budget bar: each engine's share of the frame, the costliest named
+  const bar = $('engBudget');
+  if (bar) {
+    const top = CORE.list.filter(e => e.msAvg > 0.02).sort((a, b) => b.msAvg - a.msAvg), whole = Math.max(fms || 16.7, tot);
+    bar.textContent = ''; const cols = ['#f2cc3a', '#ff8a3d', '#29e6ff', '#c86bff', '#7dff9a', '#ff5a7a', '#5aa8ff', '#e6b3ff'];
+    top.slice(0, 8).forEach((e, i) => { const s = el('i'); s.style.width = (e.msAvg / whole * 100).toFixed(2) + '%'; s.style.background = cols[i]; s.title = e.name + ' ' + e.msAvg.toFixed(2) + ' ms'; bar.append(s); });
+    const rest = top.slice(8).reduce((a, e) => a + e.msAvg, 0); if (rest > 0) { const s = el('i'); s.style.width = (rest / whole * 100).toFixed(2) + '%'; s.style.background = '#6b707a'; bar.append(s); }
+    const lg = $('engLegend'); if (lg) lg.textContent = top.length ? 'Costliest: ' + top.slice(0, 5).map(e => e.name + ' ' + e.msAvg.toFixed(1) + ' ms').join(' · ') + '. The rest of each frame is the game itself and the browser drawing it.' : 'Waiting for the first second of numbers.';
+  }
+  for (const n of ENGR.cards.keys()) engCardLive(n);
+  if (ENGR.sort === 'cost' && (ENGR.tick = (ENGR.tick || 0) + 1) % 5 === 0) engOrder();
+  // the ecosystem's log
+  const lg = $('engLog'), key = CORE.log.length ? CORE.log[CORE.log.length - 1].t + CORE.log[CORE.log.length - 1].msg : '';
+  if (lg && key !== ENGR.lastLog) {
+    ENGR.lastLog = key; lg.textContent = '';
+    lg.append(el('h3', null, 'Ecosystem log'));
+    const ul = el('ol'); const rows = CORE.log.slice(-14).reverse();
+    if (!rows.length) ul.append(el('li', null, 'Quiet: nothing has needed repairing, covering or locking this session.'));
+    for (const r of rows) { const li = el('li', /locked|Locked|back on Auto/.test(r.msg) ? 'lock' : /resting|error|failed/.test(r.msg) ? 'bad' : /repair|helped|sound again|back after/.test(r.msg) ? 'fix' : ''); li.append(el('time', null, new Date(r.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })), el('span', null, r.msg)); ul.append(li); }
+    lg.append(ul);
+  }
+}
+// a lock from the ecosystem while the room is shut still reaches the player
+coreOn('engineLocked', 'ENGINE ROOM', d => { if (!ENGR.open) toast('Engine room', d.name + ' was put back on Auto', '#c86bff'); });
 
 /* ================= loading screens =================
    One screen for every wait: starting the game, after the intro (watched or skipped), going into a run, and joining a
@@ -21540,10 +22738,10 @@ function padRumble(ms) {
 }
 
 /* ---------- menus with a controller (and arrow keys) ---------- */
-const LAYERS = ['settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'coop', 'acct', 'skull', 'upgrade', 'pause', 'over', 'title'];
+const LAYERS = ['engWarn', 'engRoom', 'settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'coop', 'acct', 'skull', 'upgrade', 'pause', 'over', 'title'];
 const shown = e => !!e && !e.hidden && e.getClientRects().length > 0;
-function sheetOpen() { return shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')) || shown($('coop')) || shown($('acct')); }
-function menuOpen() { if (typeof INTRO !== 'undefined' && INTRO.on) return false; return (G.mode !== 'play' && G.mode !== 'cine') || shown($('settings')) || shown($('radioPanel')); }
+function sheetOpen() { return shown($('engWarn')) || shown($('engRoom')) || shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')) || shown($('coop')) || shown($('acct')); }
+function menuOpen() { if (typeof INTRO !== 'undefined' && INTRO.on) return false; return (G.mode !== 'play' && G.mode !== 'cine') || shown($('settings')) || shown($('radioPanel')) || shown($('engRoom')) || shown($('engWarn')); }
 function menuLayer() { for (const id of LAYERS) { const e = $(id); if (shown(e)) return e; } return null; }
 function focusables(L) {
   return Array.from(L.querySelectorAll('button, input, select, a[href], [tabindex]:not([tabindex="-1"])'))
@@ -21964,8 +23162,30 @@ function ctrlRows() {
   rows.push([[keyLabel(firstBind('kb', 'dash'))], 'Dash'], [[keyLabel(firstBind('kb', 'air'))], 'A-10'], [[keyLabel(firstBind('kb', 'aim'))], 'Auto-aim'], [['Esc'], 'Pause']);
   return rows;
 }
+/* ---------- the main menu's status bar: the studio, the version, the engines, the wave timer, the clock ---------- */
+const WT_NAMES = { short: 'Short', normal: 'Normal', long: 'Long', off: 'Off' };
+function renderTitleBar() { try { titleBar(); } catch (e) { /* (at start-up some of what it reads is not there yet; the next second fills it) */ } }
+const statusTest = () => { try { return STATUS.test === ZC_VERSION && STATUS.stable !== ZC_VERSION; } catch (e) { return false; } };
+function titleBar() {
+  const B = $('mxBar'); if (!B) return;
+  const st = typeof coreStatus === 'function' ? coreStatus() : [], down = st.filter(e => e.state === 'resting').length, now = new Date();
+  const locked = typeof CORE !== 'undefined' ? CORE.list.filter(e => e.lockUntil > performance.now()).length : 0;
+  B.textContent = '';
+  const brand = el('div', 'mx-brand'); brand.append(el('b', null, 'DeclAIre Studios'), el('span', null, 'Zombie City 2.0')); B.append(brand);
+  const chips = el('div', 'mx-chips');
+  const chip = (k, v, cls) => { const c = el('span', 'mx-chip' + (cls ? ' ' + cls : '')); c.append(el('small', null, k), el('b', null, v)); chips.append(c); };
+  chip('Version', ZC_VERSION + (statusTest() ? ' · test' : ''));
+  chip('Engines', st.length + (down ? ' · ' + down + ' resting' : locked ? ' · ' + locked + ' locked' : ' · all sound'), down ? 'warn' : '');
+  chip('Wave timer', WT_NAMES[SET.waveTimer] || 'Normal');
+  chip('Network', navigator.onLine === false ? 'Offline' : 'Online', navigator.onLine === false ? 'warn' : 'ok');
+  B.append(chips);
+  const clk = el('div', 'mx-clock'); clk.append(el('b', null, String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')), el('span', null, now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))); B.append(clk);
+  const ps = $('playSub'); if (ps) { const t = typeof waveTime === 'function' ? waveTime(1) : 0; ps.textContent = 'Wave 1 · ' + (t ? fmtClock(t) + ' on the clock' : 'no wave timer') + ' · the first ' + (typeof ZR !== 'undefined' ? ZR.length : 50) + ' of 2.0'; }
+}
+setInterval(() => { if (G.mode === 'title' && !$('title').hidden) renderTitleBar(); }, 1000);
 function renderTitlePanel() {
   const P = $('titlePanel'); if (!P) return;
+  renderTitleBar();
   P.textContent = '';
   if (!P.dataset.once && G.mode === 'title' && $('intro').hidden) { P.dataset.once = '1'; P.classList.add('fresh'); setTimeout(() => P.classList.remove('fresh'), 1200); }   // the cards rise in once, not on every update
   const card = (cls, title, sub) => { const c = el('section', 'tp-card ' + cls), h = el('div', 'tp-head'); h.append(el('span', null, title)); if (sub) h.append(el('em', null, sub)); c.append(h); P.append(c); return c; };
@@ -21994,9 +23214,9 @@ function renderTitlePanel() {
   rows.forEach((r, i) => { const li = el('li', live && r.id === LB.uid ? 'me' : ''); li.append(el('span', 'rk', '#' + (i + 1)), nameEl(cleanTag(r.tag, r.id), r.id, 'span', 'tg'), el('span', 'sc', Number(r.score || 0).toLocaleString())); if (r.dev) li.append(devIcon(r.dev)); ol.append(li); });
   bd.append(ol, el('p', 'tp-note', live ? 'One board for phone, PC and controller.' : LB.status === 'loading' ? 'Connecting to the global board.' : LB.src === 'wix' ? 'No connection to the global board right now.' : 'The global board is not available on this page.'));
   // what's new
-  const n = card('tp-new', 'New in 1.9.82');
+  const n = card('tp-new', 'New in ' + ZC_VERSION, 'Zombie City 2.0');
   const nl = el('ul');
-  ['DeclAIre accounts: your progress saved to the cloud, on every device', 'One global board for the website, Android and Windows', 'A name filter that keeps the board clean (and has opinions)', 'Wi-Fi co-op for 2 to 4 players'].forEach(t => nl.append(el('li', null, t)));
+  ['Wave timers: beat the clock, or the next wave lands on top of you', 'A new HUD, menus and pause screen on every device', 'The engine room: every engine\'s live numbers, and which runs harder (Settings > Accessibility)', 'The first 50 rebuilt zombies, real guns and bullets'].forEach(t => nl.append(el('li', null, t)));
   n.append(nl);
 }
 
@@ -23916,7 +25136,7 @@ function netSnapshot() {
   }
   const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000]);
   const s = {
-    t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
+    t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, wt: [Math.round((G.waveT || 0) * 10), G.waveMax | 0, Math.round((G.breakT || 0) * 10), zLeft(), G.boss && !G.boss.dead ? 1 : 0], sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
     wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zd, zs: zst, zg: zg, zk: key ? 1 : 0, ax: ax, ay: ay, B: B, pl: pl,
     e: G.eshots.filter(q => !q.dead).slice(0, 160).map(q => [r1(q.x), r1(q.y), r1(q.vx), r1(q.vy), NET_SK.indexOf(q.k), q.r]),
     hz: G.haz.slice(0, 60).map(h => [NET_HK.indexOf(h.k), r1(h.x), r1(h.y), r1(h.r), Math.round(h.life * 10) / 10, h.max]),
@@ -23960,12 +25180,12 @@ function netClientRecv(m) {
       if (G.mode === 'upgrade' && NET.myPicked !== NET.myRound) netAutoPick();
       $('upGrid').classList.remove('waiting'); if (G.mode === 'upgrade') showOv(null);
       G.wave = m.w; G.mode = 'play'; NET.myRound = 0; netUpWait();
-      { const bw = m.w % 5 === 0 && !(typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF); SFX.waveStart(bw); banner('Wave ' + m.w, bw ? 'A boss is coming' : 'Hold the line'); }
+      { const bw = m.w % 5 === 0 && !(typeof ZR_BOSSES_OFF !== 'undefined' && ZR_BOSSES_OFF); if (m.up && SFX.timeUp) SFX.timeUp(); SFX.waveStart(bw); banner('Wave ' + m.w, m.up ? 'Time is up' : bw ? 'A boss is coming' : 'Hold the line'); G.breakT = 0; }
       break;
     // the wave is cleared and the next one is a few seconds off (the card rounds are switched off for now)
     case 'brk':
       if (!NET.started || !G.p || G.mode === 'over' || G.mode === 'title') break;
-      G.eshots = []; SFX.waveClear(); banner('Wave ' + (m.w | 0) + ' cleared', 'next wave in ' + ((m.s | 0) || 7) + ' seconds');
+      G.eshots = []; SFX.waveClear(); G.breakT = (m.s | 0) || 7; clearPop(m.w | 0, (m.w | 0) * 100, m.b | 0, m.l | 0);
       break;
     case 'over': if (NET.started) netFinish(m); break;
   }
@@ -24013,6 +25233,8 @@ const ZSTAT = ['burnT', 'poisonT', 'slowT', 'stun'];
 function netApply(s) {
   NET.md = s.md; NET.hold = s.md === 2 || s.md === 3 || s.md === 4 ? s.md : 0;
   G.wave = s.w; G.score = s.sc; G.kills = s.k; G.bestChain = Math.max(G.bestChain, s.bc || 0);
+  // the host's wave clock (a teammate's game counts it down between snapshots)
+  if (Array.isArray(s.wt)) { G.waveT = (+s.wt[0] || 0) / 10; G.waveMax = +s.wt[1] || 0; G.breakT = (+s.wt[2] || 0) / 10; G.zLeftN = +s.wt[3] || 0; G.clockHold = !!s.wt[4]; }
   if (s.ch > G.chain || (s.ch && s.ch < G.chain)) G.lastKill = G.time;
   G.chain = s.ch; G.air = s.air; G.warpT = s.warp ? 0.2 : 0;
   if (s.wx && WX.kind !== s.wx) WX.kind = s.wx; WX.t = 999;
@@ -24116,6 +25338,10 @@ function netYouRevive(hp) { const p = G.p; if (!p || !p.down) return; p.down = f
 // a teammate's game each frame: your own player moves and shoots; zombies follow the host
 function netClientUpdate(dt) {
   G.time += dt; if (G.hintT > 0) G.hintT -= dt; if (G.cineT > 0) G.cineT -= dt; DEV.useT[DEV.kind] += dt;
+  if (G.mode === 'play' || G.mode === 'pause') {
+    if (G.breakT > 0) { const t0 = G.breakT; G.breakT = Math.max(0, G.breakT - dt); waveCount(t0, G.breakT); }
+    else if (G.waveT > 0 && !G.clockHold) { const t0 = G.waveT; G.waveT = Math.max(0, G.waveT - dt); waveCount(t0, G.waveT); }
+  }
   const p = G.p;
   if (!NET.hold) updPlayer(dt);
   else if (p) { p.fireCd -= dt; }

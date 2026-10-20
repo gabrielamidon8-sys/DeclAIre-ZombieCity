@@ -1824,7 +1824,7 @@ button.lcd{cursor:pointer}
 .rm #title .mx-deck .mx-play::before,.rm .mx-chev{animation:none}
 
 /* ---------- run over ---------- */
-#over .panel{border:0;border-radius:0;clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));box-shadow:inset 0 0 0 1px rgba(255,59,79,.3), 0 24px 60px rgba(0,0,0,.6);position:relative}
+#over .panel{width:min(720px, 100%);border:0;border-radius:0;clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));box-shadow:inset 0 0 0 1px rgba(255,59,79,.3), 0 24px 60px rgba(0,0,0,.6);position:relative}
 #over .panel::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:repeating-linear-gradient(-45deg, var(--blood) 0 10px, #160407 10px 20px)}
 #over .stats{grid-template-columns:repeat(5, minmax(0, 1fr))}
 #over .stats div{border:0;border-left:3px solid var(--blood);background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.012))}
@@ -6637,7 +6637,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.980';
+const ZC_VERSION = '1.9.990';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
