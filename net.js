@@ -11,7 +11,9 @@ const NET = {
   hits: [], zfx: [], shots: [], kills: [], evs: [], blastsDone: new Set(), cardsAt: 0, picked: new Set(), found: [], shotSfx: new Map(),
   // 1.9.90: card rounds, ping, reconnects
   round: 0, roundDl: 0, acked: new Set(), cardsT: 0, myRound: 0, myPicked: 0, roundPicked: [],
-  marks: [], markAt: 0, rtt: 0, pings: new Map(), piT: 0, pgT: 0, lastRx: 0, key: '', target: null, recon: 0, reconT: 0, hostVer: ''
+  marks: [], markAt: 0, rtt: 0, pings: new Map(), piT: 0, pgT: 0, lastRx: 0, key: '', target: null, recon: 0, reconT: 0, hostVer: '',
+  // 1.9.970: compact snapshots for big crowds (what each zombie is, sent once; where it is, every time)
+  zsent: new Map(), zst: new Map(), snapN: 0
 };
 const NET_PORT = 47777, NET_MAX = 4;
 const NET_PICK_SECS = 30, NET_AWAY_SECS = 30, NET_RECON_SECS = 25;
@@ -59,7 +61,7 @@ function netReset() {
   if (NET.ws) { try { NET.ws.onclose = null; NET.ws.close(); } catch (e) { } }
   Object.assign(NET, { role: null, ws: null, me: 1, status: 'off', started: false, hold: 0, md: 0, local: null, finishing: false, hits: [], zfx: [], shots: [], kills: [], evs: [],
     round: 0, roundDl: 0, myRound: 0, myPicked: 0, roundPicked: [], rtt: 0, recon: 0, reconT: 0, target: null, hostVer: '', hostOk: false, hostNonce: '', lobbyRaw: [] });
-  NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.picked.clear(); NET.acked.clear(); NET.blastsDone.clear(); NET.pings.clear(); NET.marks = []; NET.lobby = [];
+  NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.zsent.clear(); NET.zst.clear(); NET.snapN = 0; NET.picked.clear(); NET.acked.clear(); NET.blastsDone.clear(); NET.pings.clear(); NET.marks = []; NET.lobby = [];
   $('app').classList.remove('coop'); netReconBanner(false);
 }
 
@@ -291,6 +293,7 @@ function netLobbyView(pl) {
   if (NET.hostOk && h) NET.hostName = ADMIN_TAG;
 }
 function netSendStart(to) {
+  NET.snapN = 0;   // the next snapshot is a full one, so whoever (re)joined knows every zombie at once
   hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, scale: SCL, wave: G.wave, wx: WX.kind, hour: Math.round(luxHourNow() * 100) / 100, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
 }
 // the host presses Start: a normal run, and everyone else starts in the same city
@@ -299,7 +302,7 @@ function netHostRun() {
   NET.started = true; if (window.ZCDesktop && window.ZCDesktop.lanInfo) window.ZCDesktop.lanInfo({ run: true });
   for (const peer of NET.peers.values()) { peer.p = null; }
   $('coop').hidden = true;
-  newRun();
+  newRun(); NET.zsent.clear();
   NET.local = G.p; NET.picked.clear();
   for (const peer of NET.peers.values()) { const p = netProxy(peer); const a = peer.slot * 1.7; p.x = p.tx = G.p.x + Math.cos(a) * 40; p.y = p.ty = G.p.y + Math.sin(a) * 40; }
   netSendStart('*'); netLobby();
@@ -477,11 +480,25 @@ function zFlags(z) {
 }
 const NUM = v => typeof v === 'number' && isFinite(v);
 function plainNums(o) { const r = {}; if (!o) return r; for (const k in o) { const v = o[k]; if (NUM(v)) r[k] = Math.round(v * 100) / 100; else if (typeof v === 'boolean') r[k] = v; else if (Array.isArray(v) && v.length < 40 && v.every(NUM)) r[k] = v.map(x => Math.round(x * 10) / 10); } return r; }
+// Zombies go out in two parts so hundreds fit: what each one is (its mutation, size, shield and kind) only when it is new
+// or changed, and every snapshot where it is (positions from the host, angle, health, status) as small whole numbers.
+// Zombies far from every player go out 5 times a second instead of 15, and every 2 seconds everything is sent again.
 function netSnapshot() {
   const r1 = v => Math.round(v);
-  NET.zmap.clear();
-  const zs = [];
-  for (const z of G.zs) { if (z.dead) continue; NET.zmap.set(z.nid, z); zs.push([z.nid, z.m.id, r1(z.x), r1(z.y), r1(z.ang * 100), r1(clamp(z.hp / z.maxHp, 0, 1) * 1000), zFlags(z), r1(z.r * 10), z.shield > 1 ? r1(z.shield / z.shieldMax * 100) : 0]); }
+  NET.zmap.clear(); NET.snapN++;
+  const key = NET.snapN % 30 === 1, all = key || NET.snapN % 3 === 0, ax = r1(G.p ? G.p.x : cam.x), ay = r1(G.p ? G.p.y : cam.y);
+  const hw = W / ZOOM / 2, far2 = (hw * hw + (H / ZOOM / 2) * (H / ZOOM / 2)) * 1.6, zd = [], zst = [], zg = [], sent = NET.zsent;
+  let prev = 0;
+  for (const z of G.zs) {
+    if (z.dead) continue; NET.zmap.set(z.nid, z);
+    const fl = zFlags(z), sh = z.shield > 1 ? r1(z.shield / z.shieldMax * 100) : 0, r10 = r1(z.r * 10), sig = z.m.id * 64 + (fl & 31) + r10 * 65536 + sh * 1e9;
+    const was = sent.get(z.nid);
+    if (was !== sig || key) { zst.push(z.nid, z.m.id, r10, sh, fl & 31); sent.set(z.nid, sig); }
+    if (!all && was === sig && !z.boss && netNearD2(z.x, z.y) > far2) continue;
+    zd.push(z.nid - prev, r1(z.x - ax), r1(z.y - ay), Math.round(((z.ang % TAU) + TAU) % TAU * 10), r1(clamp(z.hp / z.maxHp, 0, 1) * 100), fl >> 5);
+    prev = z.nid;
+  }
+  for (const id of Array.from(sent.keys())) if (!NET.zmap.has(id)) { zg.push(id); sent.delete(id); }
   const b = G.boss && !G.boss.dead ? G.boss : null; let B = null;
   if (b) {
     B = { id: b.nid, ab2: b.abs[1] || '' };
@@ -491,7 +508,7 @@ function netSnapshot() {
   const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000]);
   const s = {
     t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
-    wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zs, B: B, pl: pl,
+    wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zd, zs: zst, zg: zg, zk: key ? 1 : 0, ax: ax, ay: ay, B: B, pl: pl,
     e: G.eshots.filter(q => !q.dead).slice(0, 160).map(q => [r1(q.x), r1(q.y), r1(q.vx), r1(q.vy), NET_SK.indexOf(q.k), q.r]),
     hz: G.haz.slice(0, 60).map(h => [NET_HK.indexOf(h.k), r1(h.x), r1(h.y), r1(h.r), Math.round(h.life * 10) / 10, h.max]),
     pk: G.picks.filter(k => !k.dead).map(k => [r1(k.x), r1(k.y), Math.round(k.life * 10) / 10]),
@@ -500,6 +517,7 @@ function netSnapshot() {
   if (NET.kills.length) { s.kl = NET.kills; NET.kills = []; }
   if (NET.shots.length) { s.sh = NET.shots; NET.shots = []; }
   if (NET.evs.length) { s.ev = NET.evs; NET.evs = []; }
+  if (typeof swarmNetVeh === 'function' && SWDYN.size) { const vh = swarmNetVeh(key); if (vh.length) s.vh = vh; }   // vehicles the crowd moved
   hostSend('*', s);
 }
 
@@ -554,7 +572,7 @@ function netClientStart(m) {
   NET.started = true; NET.hostName = m.host ? cleanTag(m.host) : NET.hostName;
   $('coop').hidden = true;
   if (resume) { banner('Co-op', 'Back in ' + NET.hostName + "'s game"); return; }
-  NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear();
+  NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear(); NET.zst.clear();
   newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season, scale: m.scale == null ? 1 : m.scale }, wave: m.wave, at: { x: m.x, y: m.y } });
   WX.kind = m.wx || WX.kind; WX.t = 999;
   // the same hour of the day as the host (the sun, the shadows and the night come with it)
@@ -588,22 +606,31 @@ function netApply(s) {
   // the host's hour of the day: keeps the sun, the shadows and the night in step if this device fell behind (a pause, a slow frame)
   if (typeof s.hr === 'number' && isFinite(s.hr)) { const h0 = ((s.hr - G.time / 24) % 24 + 24) % 24, d = Math.abs(h0 - LUX.h0); if (Math.min(d, 24 - d) > 0.04) { LUX.h0 = h0; LUX.h0s = WORLD.seed; } }
   // zombies: move the ones we have toward where the host has them, make new ones, drop the gone ones
-  const seen = new Set();
-  for (const e of s.z) {
-    let z = NET.zmap.get(e[0]);
-    if (!z || z.dead) { z = netMakePuppet(e, s.B); if (!z) continue; }
-    seen.add(e[0]);
-    z.tx = e[2]; z.ty = e[3]; z.tang = e[4] / 100; z.hp = e[5]; const f = e[6];
+  const seen = s.zk ? new Set() : null, ax = s.ax || 0, ay = s.ay || 0, ZS = s.zs || [], ZD = s.z || [];
+  for (let i = 0; i + 4 < ZS.length; i += 5) {
+    NET.zst.set(ZS[i], [ZS[i + 1], ZS[i + 2], ZS[i + 3], ZS[i + 4]]);
+    const z = NET.zmap.get(ZS[i]); if (z && !z.dead) { z.r = ZS[i + 2] / 10; if (ZS[i + 3]) { z.shieldMax = z.shieldMax || 100; z.shield = ZS[i + 3] / 100 * z.shieldMax; } else z.shield = 0; }
+  }
+  let nid = 0;
+  for (let i = 0; i + 5 < ZD.length; i += 6) {
+    nid += ZD[i]; const st = NET.zst.get(nid); if (!st) continue;   // not introduced yet: it comes with the next full update
+    const x = ZD[i + 1] + ax, y = ZD[i + 2] + ay, f = st[3] | (ZD[i + 5] << 5);
+    let z = NET.zmap.get(nid);
+    if (!z || z.dead) { z = netMakePuppet([nid, st[0], x, y, ZD[i + 3] * 10, ZD[i + 4] * 10, f, st[1], st[2]], s.B); if (!z) continue; z.r = st[1] / 10; if (st[2]) { z.shieldMax = 100; z.shield = st[2]; } }
+    if (seen) seen.add(nid);
+    z.tx = x; z.ty = y; z.tang = ZD[i + 3] / 10; z.hp = ZD[i + 4] * 10;
     if (Math.hypot(z.tx - z.x, z.ty - z.y) > 260) { z.x = z.tx; z.y = z.ty; }
-    z.r = e[7] / 10; z.st.under = !!(f & 32); z.st.down = f & 64 ? 1 : 0; z.st.phased = !!(f & 128);
+    z.st.under = !!(f & 32); z.st.down = f & 64 ? 1 : 0; z.st.phased = !!(f & 128);
     z.frozen = f & 256 ? 1 : 0; z.stun = f & 256 ? 0.2 : 0; z.burnT = f & 512 ? 1 : 0; z.poisonT = f & 1024 ? 1 : 0; z.slowT = f & 2048 ? 0.2 : 0; z.buffT = f & 4096 ? 1 : 0;
     z.warn = f & 8192 ? 0.2 : 0; z.st.fuse = f & 16384 ? 0.3 : 0; z.st.surgeT = f & 32768 ? 1 : 0;
-    if (e[8]) { z.shieldMax = z.shieldMax || 100; z.shield = e[8] / 100 * z.shieldMax; } else z.shield = 0;
     z.kvx = z.kvy = 0; z.slowMul = 1; z.burnDps = z.poisonDps = 0;
     z.nb = [z.burnT, z.poisonT, z.slowT, z.stun];
   }
   for (const k of s.kl || []) { const z = NET.zmap.get(k[0]); if (z && !z.dead) netKillFx(z, k[1]); }
-  for (const z of G.zs) if (!z.dead && z.puppet && !seen.has(z.nid)) { z.dead = true; NET.zmap.delete(z.nid); }
+  // gone without a kill (an illusion fading, a bomber going off), and on a full update anything the host no longer has
+  for (const g of s.zg || []) { const z = NET.zmap.get(g); if (z && !z.dead) { z.dead = true; NET.zmap.delete(g); } NET.zst.delete(g); }
+  if (seen) for (const z of G.zs) if (!z.dead && z.puppet && !seen.has(z.nid)) { z.dead = true; NET.zmap.delete(z.nid); }
+  if (s.vh && typeof swarmVehNet === 'function') for (let i = 0; i + 2 < s.vh.length; i += 3) swarmVehNet(s.vh[i], s.vh[i + 1], s.vh[i + 2]);
   // the boss's moves and telegraphs
   if (s.B) {
     const z = NET.zmap.get(s.B.id);
@@ -633,6 +660,7 @@ function netApply(s) {
   }
   for (const id of Array.from(NET.others.keys())) if (!live.has(id)) NET.others.delete(id);
   for (const q of s.sh || []) if (q[0] !== NET.me) { netCosShot(q[0], q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8]); const o = NET.others.get(q[0]); if (o) o.flashT = 0.05; }
+  for (const e of s.ev || []) if (e[0] === 'horde' && typeof swarmHordeFx === 'function') swarmHordeFx(e[1], e[2], e[3]);
   for (const e of s.ev || []) if (e[0] === 'air' && e[5] !== NET.me) { launchStrafe(e[1], e[2], e[3], { mini: !!e[4], cos: true }); if (!e[4]) { SFX.radio(); SFX.a10Jet(2.8); banner('A-10 inbound', 'Danger close'); } }
 }
 // a puppet zombie the host says is dead: blood, the specimen log, and the boss's end
@@ -685,6 +713,7 @@ function netClientUpdate(dt) {
   for (const h of G.haz) h.life -= dt;
   for (const q of G.picks) q.life -= dt;
   buildGrid();
+  if (typeof swarmClient === 'function') swarmClient(dt);   // vehicles the host's crowd is pushing
   updBullets(dt); updDash(dt);
   NET.cosmetic = true;
   try { updJets(dt); netBlastsFx(dt); } finally { NET.cosmetic = false; }

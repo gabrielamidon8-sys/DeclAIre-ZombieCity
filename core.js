@@ -112,7 +112,7 @@ function coreLinks() {
   const lvl = (o, k, lo) => v => { o[k] = clamp(Math.round(+v) || 0, lo == null ? -2 : lo, 0); };
   const rest = o => ({ isolate: () => { o.offUntil = performance.now() + 60000; }, restore: () => { o.offUntil = 0; } });
   // the governor frees memory for anyone short of it; the loader warms the lighting and the sprites again
-  coreMeta('PERF', { helps: { TEXEL: mem, GORE: mem, MUZZLE: mem, TRACER: mem, AURA: mem, MIRROR: mem, SKYWAY: mem, GARAGE: mem, LUX: mem } });
+  coreMeta('PERF', { helps: { TEXEL: mem, GORE: mem, MUZZLE: mem, TRACER: mem, AURA: mem, MIRROR: mem, SKYWAY: mem, GARAGE: mem, LUX: mem, SWARM: () => { mem(); if (typeof swarmForget === 'function') swarmForget(); } } });
   coreMeta('LOADER', { helps: { LUX: () => { LUX.A = null; LUX.offUntil = 0; if (typeof luxWarm === 'function') luxWarm(); }, TEXEL: () => { if (typeof sprites !== 'undefined') sprites.clear(); } } });
   if (typeof LUX !== 'undefined') coreMeta('LUX', Object.assign({ ver: 3, needs: ['WORLD'], covers: ['PRISM', 'AURA'], save: () => LUX.adapt, load: lvl(LUX, 'adapt') }, rest(LUX), { restore: () => { LUX.offUntil = 0; LUX.A = null; } }));
   if (typeof PRISM !== 'undefined') coreMeta('PRISM', Object.assign({ ver: 3, needs: ['LUX'], save: () => PRISM.adapt, load: lvl(PRISM, 'adapt') }, rest(PRISM)));
@@ -120,7 +120,7 @@ function coreLinks() {
   if (typeof TEXEL !== 'undefined') coreMeta('TEXEL', Object.assign({ ver: 2, needs: ['MUTAGEN'], save: () => TEXEL.adapt, load: lvl(TEXEL, 'adapt') }, rest(TEXEL)));
   if (typeof MUZZLE !== 'undefined') coreMeta('MUZZLE', Object.assign({ needs: ['LUX'] }, rest(MUZZLE)));
   coreMeta('WORLD', { covers: ['GORE'] }); coreMeta('GARAGE', { needs: ['WORLD', 'LUX'] }); coreMeta('SKYWAY', { needs: ['WORLD', 'LUX'] });
-  coreMeta('NET', { needs: ['WORLD'] }); coreMeta('FLOW', { needs: ['WORLD'] });
+  coreMeta('NET', { needs: ['WORLD'] }); coreMeta('FLOW', { needs: ['WORLD'], covers: ['SWARM'] });
   // engines that lean on another hear when it goes down or comes back
   coreOn('engineDown', 'CORE', d => { for (const e of CORE.list) if (e.needs && e.needs.indexOf(d.name) >= 0 && e.health !== 'resting') e.health = 'adapting'; });
   coreOn('engineUp', 'CORE', d => { for (const e of CORE.list) if (e.needs && e.needs.indexOf(d.name) >= 0 && e.health === 'adapting') e.health = 'ok'; });

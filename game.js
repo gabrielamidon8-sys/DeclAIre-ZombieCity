@@ -38,6 +38,9 @@ function saveFound() { store.set('zc_found', Array.from(found)); }
 /* ================= canvas ================= */
 const cv = $('cv'), ctx = cv.getContext('2d');
 let W = 1, H = 1, DPR = 1, ZOOM = 1, SPR = 1, vignette = null;
+// shared with the crowd engine (swarm.js): vehicles the crowd has moved (the collision code finds them anywhere), how
+// many zombie pictures are in use this frame (the sprite cache keeps at least that many), the last thing collide() hit
+const SWDYN = new Map(), SWKEEP = { n: 0 }, COL = { r: null, nx: 0, ny: 0 };
 const sprites = new Map();
 function resize() {
   const r = cv.getBoundingClientRect();
@@ -60,7 +63,7 @@ function getSprite(m, r, plain) {
   const c = texelZombie(m, rq, plain, half, size);   // drawn, textured and sized by the texture engine
   s = { c: c, half: half, rq: rq };
   sprites.set(key, s);
-  if (sprites.size > Q.sprCap * 1.25) sprites.delete(sprites.keys().next().value);
+  if (sprites.size > Math.max(Q.sprCap, SWKEEP.n) * 1.25) sprites.delete(sprites.keys().next().value);
   return s;
 }
 
@@ -89,7 +92,7 @@ const CARS = ['#7b2f2b', '#2f4f6b', '#6b6b6b', '#c9c3b5', '#2d3a2c', '#8a6a2a', 
 function chunkRng(cx, cy, salt) { return Z.mulberry32(Z.hash32((cx * 73856093) ^ (cy * 19349663) ^ citySeed ^ salt)); }
 function getChunk(cx, cy) {
   const k = cx + ',' + cy; let c = chunks.get(k);
-  if (!c) { c = genChunk(cx, cy); chunks.set(k, c); }
+  if (!c) { c = genChunk(cx, cy); chunks.set(k, c); if (typeof swarmChunk === 'function') swarmChunk(c, k); }
   return c;
 }
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -140,20 +143,22 @@ function rectsNear(x, y, rad) {
       for (let n = 0; n < rs.length; n++) { const r = rs[n]; if (r._q === q) continue; r._q = q; if (x + rad > r.x && x - rad < r.x + r.w && y + rad > r.y && y - rad < r.y + r.h) tmpR.push(r); }
     }
   }
+  // vehicles the crowd has pushed can be anywhere, so they are checked wherever they ended up
+  if (SWDYN.size) for (const r of SWDYN.values()) { if (r._q === q) continue; r._q = q; if (x + rad > r.x && x - rad < r.x + r.w && y + rad > r.y && y - rad < r.y + r.h) tmpR.push(r); }
   return tmpR;
 }
 function collide(e, r, big) {
-  const rs = rectsNear(e.x, e.y, r); let hit = false;
+  const rs = rectsNear(e.x, e.y, r); let hit = false; COL.r = null;
   for (let i = 0; i < rs.length; i++) {
     const b = rs[i]; if (big && !SOLID[b.k]) continue;
     const nx = clamp(e.x, b.x, b.x + b.w), ny = clamp(e.y, b.y, b.y + b.h);
     const dx = e.x - nx, dy = e.y - ny, d2 = dx * dx + dy * dy;
     if (d2 < r * r) {
-      hit = true;
-      if (d2 > 1e-6) { const d = Math.sqrt(d2); e.x = nx + dx / d * r; e.y = ny + dy / d * r; }
+      hit = true; COL.r = b;
+      if (d2 > 1e-6) { const d = Math.sqrt(d2); COL.nx = dx / d; COL.ny = dy / d; e.x = nx + dx / d * r; e.y = ny + dy / d * r; }
       else {
         const l = e.x - b.x, rr = b.x + b.w - e.x, t = e.y - b.y, bt = b.y + b.h - e.y, m = Math.min(l, rr, t, bt);
-        if (m === l) e.x = b.x - r; else if (m === rr) e.x = b.x + b.w + r; else if (m === t) e.y = b.y - r; else e.y = b.y + b.h + r;
+        if (m === l) { e.x = b.x - r; COL.nx = -1; COL.ny = 0; } else if (m === rr) { e.x = b.x + b.w + r; COL.nx = 1; COL.ny = 0; } else if (m === t) { e.y = b.y - r; COL.nx = 0; COL.ny = -1; } else { e.y = b.y + b.h + r; COL.nx = 0; COL.ny = 1; }
       }
     }
   }
@@ -166,13 +171,16 @@ function blocked(x, y, r, big) {
 }
 
 /* ================= spatial grid ================= */
-const CELL = 64; const grid = new Map();
+// the crowd engine keeps one flat grid of every zombie (swarm.js); this plain one covers for it if it is resting
+const CELL = 64; const grid = new Map(); let gridSw = false;
 const gk = (cx, cy) => (cx + 32768) * 65536 + (cy + 32768);
 function buildGrid() {
-  grid.clear();
+  if (typeof swarmGrid === 'function' && swarmUp()) { try { swarmGrid(); gridSw = true; return; } catch (e) { swarmHurt(e, 'grid'); } }
+  gridSw = false; grid.clear();
   for (const z of G.zs) { if (z.dead) continue; const k = gk(Math.floor(z.x / CELL), Math.floor(z.y / CELL)); let a = grid.get(k); if (!a) { a = []; grid.set(k, a); } a.push(z); }
 }
 function near(x, y, rad, fn) {
+  if (gridSw) { swarmNear(x, y, rad, fn); return; }
   const x0 = Math.floor((x - rad) / CELL), x1 = Math.floor((x + rad) / CELL), y0 = Math.floor((y - rad) / CELL), y1 = Math.floor((y + rad) / CELL);
   for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) {
     const a = grid.get(gk(i, j)); if (!a) continue;
@@ -194,9 +202,11 @@ const FF_MAXN = 112, FF_MAXLEN = FF_MAXN * FF_MAXN;
 const SOLID = { b: 1, lm: 1, rub: 1, statue: 1, tank: 1, windmill: 1, rock: 1, pool: 1, pillar: 1, wreck: 1 };
 function newField(rad, big, name) { return { name: name, rad: rad, big: big, ox: 0, oy: 0, pcx: 1e9, pcy: 1e9, t: -9, ready: false, cache: new Map(), dist: new Float32Array(FF_MAXLEN), cost: new Float32Array(FF_MAXLEN), open: new Uint8Array(FF_MAXLEN), n: FF_N, cs: FF_CS }; }
 const FF = newField(15, false, 'small'), FFB = newField(30, false, 'big'), FFS = newField(56, true, 'boss');
+// a big horde does not walk round parked cars: it goes straight through and shoves them (the crowd engine's push field)
+const FFP = newField(15, true, 'push');
 const HI = new Int32Array(FF_MAXLEN * 8), HK = new Float32Array(FF_MAXLEN * 8), FD = [0, 0];
 const blockCache = FF.cache;
-function fieldsReset() { for (const F of [FF, FFB, FFS]) { F.ready = false; F.cache.clear(); } }
+function fieldsReset() { for (const F of [FF, FFB, FFS, FFP]) { F.ready = false; F.cache.clear(); } }
 function cellBlockedF(F, cx, cy) {
   const k = (cx + 60000) * 120000 + (cy + 60000), C = F.cache;
   let v = C.get(k);
@@ -247,7 +257,7 @@ function buildField(F) {
 }
 // which field a zombie follows: by how wide it is (and bosses in the real-world city shove through the small stuff)
 function zBig(z) { return z.boss && ZP > 1; }
-function fieldFor(z) { return zBig(z) ? FFS : z.r >= 16 ? FFB : FF; }
+function fieldFor(z) { return zBig(z) ? FFS : z.r >= 16 ? FFB : z.hd && FFP.ready && typeof swarmShoves === 'function' && swarmShoves(z) ? FFP : FF; }
 function flowDir(x, y, F) {
   F = F || FF;
   if (!F.ready) { if (F !== FF) return flowDir(x, y, FF); return null; }
@@ -627,13 +637,18 @@ function updZ(z, dt) {
     const zw = z.fly ? 0 : waterAt(z.x, z.y); z.inW = isWater(zw);
     let spd = z.speed * c.move * mul * (z.slowT > 0 ? (z.slowMul || 0.65) : 1) * (z.buffT > 0 ? 1.45 : 1) * G.zsMul * (G.warpT > 0 && !z.boss ? 0.32 : 1) * (z.boss ? (1 + waterSlow(zw)) / 2 : waterSlow(zw)) * WX.slow;
     let sx = 0, sy = 0, pk = 0;
-    if (!z.fly && !z.st.under) near(z.x, z.y, sp.pack ? 80 : z.r + 30, o => {
+    if (z.swF === frameNo) {
+      // the crowd engine has already worked out this zombie's neighbours: the shove of the bodies around it, and the
+      // stream it is part of (falling in with their heading, and faster together)
+      if (!z.fly && !z.st.under) { sx = z.sepX; sy = z.sepY; pk = z.pk; }
+      if (!z.fly && !lure) { const S = swarmSteer(z, ux, uy, d); ux = S.ux; uy = S.uy; spd *= S.k; }
+    } else if (!z.fly && !z.st.under) near(z.x, z.y, sp.pack ? 80 : z.r + 30, o => {
       if (o === z || o.dead || o.fly || o.st.under) return;
       const ex = z.x - o.x, ey = z.y - o.y, dd = ex * ex + ey * ey, rr = z.r + o.r;
       if (dd < 6400) pk++;
       if (dd < rr * rr && dd > 0.01) { const dl = Math.sqrt(dd), push = (rr - dl) / rr; sx += ex / dl * push; sy += ey / dl * push; }
     });
-    if (sp.pack && pk >= 2) spd *= 1.3;
+    if (sp.pack && pk >= 2) spd *= z.swF === frameNo ? 1.15 : 1.3;
     const sa = Math.abs(spd) + 40;
     tvx = ux * spd + sx * sa * 1.5; tvy = uy * spd + sy * sa * 1.5;
     const k = Math.min(1, dt * 9); z.vx += (tvx - z.vx) * k; z.vy += (tvy - z.vy) * k;
@@ -648,11 +663,14 @@ function updZ(z, dt) {
   const dec = Math.exp(-9 * dt); z.kvx *= dec; z.kvy *= dec;
   if (!z.fly && !z.st.under) {
     const big = zBig(z), hit = collide(z, z.r * 0.9, big);
+    // leaning into a parked car: part of the crowd's push on it (the crowd engine adds it up)
+    if (hit && COL.r && COL.r.k === 'car' && typeof swarmPress === 'function') swarmPress(z, COL.r, COL.nx, COL.ny, tvx, tvy);
     if (big) bossTrample(z, dt);
     if (hit && c.ov && z.st.charge > 0) { z.st.charge = 0; z.stun = 1.0; shakeIt(4); burst(z.x, z.y, 12, '#8c8270', 160, 5, 0.5); }
     if (!c.ov && c.move > 0) {
       const want = Math.hypot(tvx, tvy) * dt, got = Math.hypot(z.x - px, z.y - py);
       if (want > 0.4 && got < want * 0.35) z.stuckT += dt; else z.stuckT = Math.max(0, z.stuckT - dt * 0.5);
+      if (z.stuckT > 0.3 && typeof swarmPushing === 'function' && swarmPushing(z)) z.stuckT = 0;   // shoulder to shoulder with enough others to move it: keep pushing
       if (z.stuckT > 0.3 && z.detT <= 0) { z.detT = 1.1; z.detSide = Math.random() < 0.5 ? -1 : 1; z.stuckT = 0; z.stuckN = (z.stuckN || 0) + 1; if (z.stuckN >= 2) { z.noLosT = 3; z.los = false; z.stuckN = 0; } }
     }
   }
@@ -677,7 +695,7 @@ function bossTrample(z, dt) {
     const r = rs[i]; if (SOLID[r.k]) continue;
     const nx = clamp(z.x, r.x, r.x + r.w), ny = clamp(z.y, r.y, r.y + r.h), dx = z.x - nx, dy = z.y - ny;
     if (dx * dx + dy * dy > rr * rr) continue;
-    if (r.k === 'car') carHit(r);
+    if (r.k === 'car') { carHit(r); if (typeof swarmPress === 'function') { const dl = Math.hypot(dx, dy) || 1; swarmPress(z, r, dx / dl, dy / dl, z.vx, z.vy); } }
     burst(nx, ny, 6, r.k === 'car' ? '#9aa4ad' : r.k === 'fence' ? '#8a8f94' : '#6b5440', 150, 3, 0.45);
     const p = G.p; if (p && Math.hypot(p.x - z.x, p.y - z.y) < 700) shakeIt(1.2);
     z.vx *= 0.8; z.vy *= 0.8;
@@ -1059,6 +1077,7 @@ function startWave(n) {
   G.spawnTotal = G.spawnQ = Math.round((10 + n * 5) * (G.hordeMul || 1)); G.spawnT = 1.4;
   G.roamAt = n >= 3 && n % 5 !== 0 && Math.random() < Math.min(0.6, 0.22 + n * 0.025) ? Math.round(G.spawnTotal * rand(0.3, 0.7)) : -1;
   G.bossPending = n % 5 === 0;
+  if (typeof swarmWave === 'function') swarmWave(n);   // the hordes that come on top of the trickle
   SFX.waveStart(G.bossPending);
   const unk = feat.filter(m => !found.has(m.id)).length;
   banner('Wave ' + n, G.bossPending ? (n % 10 === 5 ? 'The Snatcher is coming' : 'An Alpha is coming') : unk ? unk + ' unidentified mutation' + (unk > 1 ? 's' : '') + ' sighted' : 'Hold the line');
@@ -1071,7 +1090,7 @@ function spawner(dt) {
   if (G.bossPending && G.spawnQ <= G.spawnTotal * 0.5 && !G.boss) { if (G.wave === 5 || G.wave % 25 === 0) spawnSnatcher(); else spawnRoster(pickRoster(G.wave, false), false); G.bossPending = false; G.spawnT = 1.5; return; }
   if (G.roamAt >= 0 && !G.boss && G.spawnQ <= G.roamAt) { G.roamAt = -1; spawnRoster(pickRoster(G.wave, true), true); G.spawnT = 1.2; return; }
   if (G.spawnQ <= 0) { G.spawnT = 0.3; return; }
-  if (G.zs.length >= Math.min(120, 24 + G.wave * 6)) { G.spawnT = 0.4; return; }
+  if (G.zs.length >= Math.min(typeof swarmCapLive === 'function' ? swarmCapLive() : 120, 24 + G.wave * 6)) { G.spawnT = 0.4; return; }
   const group = Math.min(G.spawnQ, 1 + Math.floor(Math.random() * Math.min(4, 1 + G.wave / 3)));
   const pos = spawnPos();
   for (let i = 0; i < group; i++) {
@@ -1488,6 +1507,7 @@ function render() {
   ctx.globalAlpha = 1;
   if (typeof muzzleWorld === 'function') muzzleWorld(vis, 'brass');
   drawHoles(vis);
+  if (SWDYN.size && typeof swarmVehDraw === 'function') swarmVehDraw(vis);   // vehicles the crowd has moved
   let tl = performance.now(); drawWorldUnder(vis); PERF.sec.life += performance.now() - tl;
   drawWindDebris(vis);
   drawAtmosGround(vis);
@@ -1517,10 +1537,12 @@ function render() {
     if (z.abs.indexOf('magnet') >= 0 && G.p && Math.hypot(G.p.x - z.x, G.p.y - z.y) < 290) { ctx.strokeStyle = 'rgba(200,80,80,0.25)'; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -G.time * 40; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(G.p.x, G.p.y); ctx.stroke(); ctx.setLineDash([]); }
   }
   if (vz) drawVizMobs(vz, vis);
-  // level of detail: zombies far from you, or part of a big crowd, skip their cosmetic overlays
-  let nv = 0; for (const z of G.zs) if (!z.dead && !z.boss && vis(z.x, z.y, z.r * 2.6)) LODQ[nv++] = z;
+  // level of detail: zombies far from you, or part of a big crowd, skip their cosmetic overlays (the crowd engine draws
+  // them; this is the plain way, if it is resting)
+  let swd = false; if (typeof swarmDraw === 'function' && swarmUp()) { try { swarmDraw(vis, hw, hh); swd = true; } catch (e) { ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - cam.x * s, DPR * (H / 2 + shy) - cam.y * s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; swarmHurt(e, 'draw'); } }
+  let nv = 0; if (!swd) for (const z of G.zs) if (!z.dead && !z.boss && vis(z.x, z.y, z.r * 2.6)) LODQ[nv++] = z;
   const fx = G.p && G.mode !== 'title' ? G.p.x : cam.x, fy = G.p && G.mode !== 'title' ? G.p.y : cam.y;
-  const nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, crowd = nv > 70 ? 1 : 0, ln = PERF.lodN; ln[0] = ln[1] = ln[2] = ln[3] = 0;
+  const nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, crowd = nv > 70 ? 1 : 0, ln = PERF.lodN; if (!swd) ln[0] = ln[1] = ln[2] = ln[3] = 0;
   for (let i = 0; i < nv; i++) {
     const z = LODQ[i], dx = z.x - fx, dy = z.y - fy, far = dx * dx + dy * dy > nr2, lod = Math.min(3, Q.lod + (far ? 1 + crowd : 0));
     ln[lod]++; drawZ(z, lod, far);
@@ -1734,7 +1756,11 @@ function drawZ(z, lod, far) {
   if ((z.wnd || z.charK || z.frostK) && lod < 2 && typeof goreWounds === 'function') goreWounds(ctx, z, z.r);
   if (z.flash > 0 && lod < 3) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * a; ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); ctx.globalCompositeOperation = 'source-over'; }
   ctx.restore(); ctx.globalAlpha = 1;
-  if (lod >= 3) { if (z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0)) lod = 2; else return; }
+  drawZOver(z, lod, far);
+}
+// what is drawn over a zombie's body: shields, fuses, burns, frost, aim lines, warnings and the health bar
+function drawZOver(z, lod, far) {
+  if (lod >= 3) { if (z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0)) lod = 2; else if (!(z.shield > 1) && !(z.st.aim > 0)) return; }
   if (z.shield > 1) { ctx.strokeStyle = 'rgba(110,180,255,' + (0.25 + 0.6 * z.shield / z.shieldMax) + ')'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.35, 0, TAU); ctx.stroke(); }
   if (z.abs.indexOf('bomber') >= 0) { const pul = z.st.fuse > 0 ? 1 : 0.5 + Math.sin(G.time * 6 + z.bob) * 0.5; ctx.fillStyle = 'rgba(255,80,40,' + (0.15 + 0.3 * pul) + ')'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (0.6 + (z.st.fuse > 0 ? (0.55 - z.st.fuse) * 2 : 0)), 0, TAU); ctx.fill(); }
   if (z.buffT > 0 && lod < 1) { ctx.strokeStyle = 'rgba(255,110,80,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 1.2, 0, TAU); ctx.stroke(); }
@@ -2013,19 +2039,25 @@ function update(dt) {
   if (host) netHostPre(dt);
   spawner(dt);
   buildGrid();
+  if (typeof swarmTick === 'function') swarmTick(dt);   // hordes coming in, the crowd moving as one, who thinks how often
   { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS), stale = F => !F.ready || F.n !== FF_N || Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2;
     if (stale(FF) || G.time - FF.t > 0.35) buildField(FF);
     // the wide fields only while something that big is chasing, and never both in the same frame
     else if (G.needFS && (stale(FFS) || G.time - FFS.t > 0.6)) buildField(FFS);
     else if (G.needFB && (stale(FFB) || G.time - FFB.t > 0.6)) buildField(FFB);
-    let nb = 0, ns = 0; for (const z of G.zs) { if (z.dead || z.fly) continue; if (zBig(z)) ns++; else if (z.r >= 16) nb++; } G.needFB = nb > 0; G.needFS = ns > 0; }
+    else if (G.needFP && (stale(FFP) || G.time - FFP.t > 0.6)) buildField(FFP);
+    let nb = 0, ns = 0, np = 0; for (const z of G.zs) { if (z.dead || z.fly) continue; if (zBig(z)) ns++; else if (z.r >= 16) nb++; else if (z.hd && typeof swarmShoves === 'function' && swarmShoves(z)) np++; } G.needFB = nb > 0; G.needFS = ns > 0; G.needFP = np > 0; }
   if (G.cineT > 0) G.cineT -= dt;
   let nf = 0; for (const z of G.zs) if (z.fly && !z.dead) nf++; G.nFly = nf;
   const fr = Math.max(W, H) / ZOOM * 0.75 + 220, far2 = fr * fr, px = G.p.x, py = G.p.y, me = G.p;
   for (let i = 0; i < G.zs.length; i++) {
     const z = G.zs[i]; if (z.dead) continue;
     if (host) G.p = netTarget(z);   // co-op: each zombie goes after the nearest standing player
-    if (Q.sim > 1 && !z.boss && !z.rb && !z.m.unique) {
+    // the crowd engine's level of detail: off screen a zombie thinks every second, third or fourth frame
+    if (z.swF === frameNo) {
+      const sl = z.simL | 0;
+      if (sl) { z.lodAcc = (z.lodAcc || 0) + dt; if (((frameNo + (z.nid | 0)) % (sl + 1)) !== 0 && z.lodAcc < 0.14) continue; const d = z.lodAcc; z.lodAcc = 0; updZ(z, d); continue; }
+    } else if (Q.sim > 1 && !z.boss && !z.rb && !z.m.unique) {
       const dx = z.x - G.p.x, dy = z.y - G.p.y;
       if (dx * dx + dy * dy > far2) {
         z.lodAcc = (z.lodAcc || 0) + dt;
@@ -2036,6 +2068,7 @@ function update(dt) {
     if (z.lodAcc) { const d = Math.min(0.15, z.lodAcc + dt); z.lodAcc = 0; updZ(z, d); } else updZ(z, dt);
   }
   G.p = me;
+  if (typeof swarmVehTick === 'function') swarmVehTick(dt);   // the crowd's push on parked vehicles
   updBullets(dt); updEshots(dt); updHaz(dt); updPicks(dt); updBlasts(dt); updJets(dt); updDash(dt); updAirFx(dt); updWorld(dt);
   catchUp(dt);
   if (host) netHostPost();
@@ -2045,7 +2078,7 @@ function update(dt) {
   const ct = host && G.p.down ? (netAlive()[0] || G.p) : G.p;   // down in co-op: the camera follows a teammate
   const k = Math.min(1, dt * 7); cam.x += (ct.x - cam.x) * k; cam.y += (ct.y - cam.y) * k;
   if (G.skullPending && G.mode === 'play') { openSkull(); return; }
-  if (G.mode === 'play' && G.spawnQ <= 0 && !G.bossPending && !G.zs.some(z => !z.illusion)) waveCleared();
+  if (G.mode === 'play' && G.spawnQ <= 0 && !G.bossPending && (typeof swarmDone !== 'function' || swarmDone()) && !G.zs.some(z => !z.illusion)) waveCleared();
 }
 // The city is big enough to explore now, so zombies left far behind (stuck around a block, or outrun) come back
 // in again just off screen after a few seconds, instead of leaving a wave that never ends.

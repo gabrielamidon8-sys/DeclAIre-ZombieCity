@@ -123,6 +123,7 @@ function worldBlast(x, y, R, src) {
   }
   for (const d of WD.act) { const e = Math.hypot(d.x - x, d.y - y); if (e < R * 1.6) touch(d, x, y, Math.min(1, 1.3 - e / (R * 1.6)), false); }
   for (const b of WD.birds) if (b.st === 0 && Math.hypot(b.x - x, b.y - y) < 520) flee(b, x, y);
+  if (typeof swarmVehBlast === 'function') swarmVehBlast(x, y, R);   // parked vehicles get shoved too
   const w = waterAt(x, y);
   if (isWater(w)) { burst(x, y, 22, '#cfe8f0', 260, 4, 0.7); ring(x, y, 10, R * 0.8, 0.6, '200,235,245', 4); }
 }

@@ -5,7 +5,7 @@
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
   quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: 100, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
-  decals: 'normal', bloodTime: '60', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
+  decals: 'normal', bloodTime: '60', crowd: 'auto', swarm: 'auto', swarmPush: true, life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
@@ -75,6 +75,7 @@ function setSetting(k, v) {
     case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
     case 'veg': case 'water': WSPR.clear(); break;
     case 'sun': for (const c of chunks.values()) c.stale = 1; WSPR.clear(); break;
+    case 'swarm': if (typeof swarmCaps === 'function') { SWARM.capLive = 0; swarmCaps(); } break;
     case 'texel': sprites.clear(); TEXEL.players.clear(); TEXEL.adapt = 0; TEXEL.offUntil = 0; break;
     case 'prism': PRISM.adapt = 0; PRISM.offUntil = 0; PRISM.errT.length = 0; break;
     case 'lux': WSPR.clear(); for (const c of chunks.values()) c.stale = 1; LUX.adapt = 0; LUX.offUntil = 0; LUX.errT.length = 0; LUX.A = null; break;
@@ -96,6 +97,7 @@ const SET_ROWS = [
   { id: 'quality', tab: 'graphics', basic: true, type: 'seg', label: 'Graphics quality', desc: 'Auto watches your frame rate and adjusts resolution and detail as you play.', opts: [['auto', 'Auto'], ['0', 'Low'], ['1', 'Medium'], ['2', 'High'], ['3', 'Ultra']] },
   { id: 'res', tab: 'graphics', type: 'seg', label: 'Resolution', desc: 'Lower draws fewer pixels, the biggest saving on a slow phone.', opts: [['auto', 'Auto'], ['100', '100%'], ['85', '85%'], ['72', '72%'], ['60', '60%'], ['50', '50%']] },
   { id: 'fps', tab: 'graphics', type: 'seg', label: 'Frame rate limit', desc: 'A lower limit saves battery and keeps the phone cooler.', opts: [[30, '30'], [45, '45'], [60, '60'], [90, '90'], [120, '120'], [0, 'Max']] },
+  { id: 'crowd', tab: 'graphics', type: 'seg', label: 'Crowd detail', desc: 'In a big crowd, zombies further from you are drawn simpler so hundreds stay smooth. High draws every one in full; Low simplifies more.', opts: [['auto', 'Auto'], ['high', 'High'], ['low', 'Low']] },
   { id: 'zoom', tab: 'graphics', type: 'slider', label: 'Camera zoom', desc: 'Zoom out to see more of the street.', min: 85, max: 115, step: 5, fmt: v => v + '%' },
   { tab: 'graphics', group: 'World' },
   { id: 'weather', tab: 'graphics', basic: true, type: 'seg', label: 'Weather effects', desc: 'Rain, snow, sand, ash, leaves and lightning.', opts: AUTO_LH },
@@ -150,6 +152,9 @@ const SET_ROWS = [
   { id: 'scale', tab: 'gameplay', basic: true, type: 'seg', label: 'World scale', desc: 'Real-world: people, zombies, cars and buildings in true proportion. Classic: the old, smaller city. Applies from the next run.', opts: [['real', 'Real-world'], ['classic', 'Classic']] },
   { id: 'world', tab: 'gameplay', type: 'seg', label: 'Map', desc: 'What the city is made of. Applies from the next run.', opts: [['mixed', 'Everything'], ['city', 'City only'], ['wild', 'More wilds']] },
   { id: 'seedMode', tab: 'gameplay', type: 'seg', label: 'Same map every run', desc: 'Keep the map from your last run so you can learn it.', opts: [['random', 'Off'], ['fixed', 'On']] },
+  { tab: 'gameplay', group: 'Hordes' },
+  { id: 'swarm', tab: 'gameplay', basic: true, type: 'seg', label: 'Horde size', desc: 'How big the hordes and droves get, and how many zombies can be alive at once. Auto follows what your device can draw (500 and more on most).', opts: [['auto', 'Auto'], ['small', 'Smaller'], ['big', 'Bigger'], ['huge', 'Huge']] },
+  { id: 'swarmPush', tab: 'gameplay', type: 'seg', label: 'Crowds push vehicles', desc: 'Enough zombies pressing together shove parked cars, vans, buses and semis out of the way (about 50 for a car, 460 for a semi).', opts: ON_OFF },
   { tab: 'gameplay', group: 'Screen' },
   { id: 'shake', tab: 'gameplay', basic: true, type: 'slider', label: 'Screen shake', desc: 'How hard explosions and hits shake the view.', min: 0, max: 150, step: 25, fmt: v => v ? v + '%' : 'Off' },
   { id: 'ftext', tab: 'gameplay', type: 'seg', label: 'Floating text', desc: 'Pickups, dodges and jams written above you.', opts: ON_OFF },

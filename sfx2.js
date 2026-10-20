@@ -435,6 +435,29 @@
     splash: function (v) { if (!ok() || !throttle('splash', 250)) return; play('splash', ac.currentTime, 0.7 * (v || 1), 0.9 + Math.random() * 0.2, sfxBus); },
     propHit: function (k) { if (!ok() || !throttle('prop' + k, 70)) return; play('p_' + k, ac.currentTime, 0.7, 0.9 + Math.random() * 0.2, sfxBus); },
     step: function (s) { if (!ok() || !throttle('step', 140)) return; play('st_' + s + (Math.random() < 0.5 ? 0 : 1), ac.currentTime, 0.75, 0.92 + Math.random() * 0.16, sfxBus); },
+    // a horde coming: the rumble of hundreds of feet and a rising chorus of moans from one side (bigger, louder, longer)
+    horde: function (pan, n) {
+      if (!ok() || !throttle('horde', 3000)) return;
+      var t = ac.currentTime + 0.05, k = Math.min(1, Math.log(1 + (n || 20)) / Math.log(400)), dur = 2.6 + k * 2.4, out = ac.createGain(); out.gain.value = 0.55 + k * 0.45;
+      if (ac.createStereoPanner) { var pn = ac.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, (pan || 0) * 0.8)); out.connect(pn); pn.connect(sfxBus); } else out.connect(sfxBus);
+      var src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(), am = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+      src.buffer = noiseBuf; src.loop = true; fl.type = 'lowpass'; fl.frequency.value = 170; fl.Q.value = 1;
+      lfo.type = 'triangle'; lfo.frequency.value = 5.5 + Math.random() * 2; lg.gain.value = 0.45; lfo.connect(lg); lg.connect(am.gain); am.gain.value = 0.6;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9 * (0.5 + k * 0.5), t + dur * 0.55); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(fl); fl.connect(am); am.connect(g); g.connect(out); src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.1); lfo.start(t); lfo.stop(t + dur + 0.1);
+      var F = [[420, 5], [780, 6], [2100, 8]], nv = Math.round(10 + k * 22);
+      for (var i = 0; i < nv; i++) { var tt = t + dur * (0.15 + Math.random() * 0.7), f = 64 + Math.random() * 80; voice(tt, f * 1.25, f * 0.72, 0.5 + Math.random() * 0.7, (0.03 + Math.random() * 0.035) * (0.6 + k * 0.4), F, out); }
+      setTimeout(function () { try { out.disconnect(); } catch (e) { } }, (dur + 1) * 1000);
+    },
+    // a vehicle being shoved across the road: tyres and steel scraping on asphalt
+    scrape: function (vol, pan) {
+      if (!ok() || !throttle('scrape', 300)) return;
+      var t = ac.currentTime, out = ac.createGain(); out.gain.value = Math.max(0, Math.min(1, vol || 0.5)) * 0.5;
+      if (ac.createStereoPanner) { var pn = ac.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, pan || 0)); out.connect(pn); pn.connect(sfxBus); } else out.connect(sfxBus);
+      noise(t, 0.38, 0.22, 'bandpass', 1400 + Math.random() * 900, 3, 900, out); noise(t, 0.3, 0.16, 'lowpass', 260, 1, 120, out);
+      if (Math.random() < 0.35) osc('triangle', 380 + Math.random() * 300, 300, t + 0.05, 0.25, 0.03, out);
+      setTimeout(function () { try { out.disconnect(); } catch (e) { } }, 900);
+    },
     carAlarm: function (hi, vol, pan) {
       if (!ok()) return; var t = ac.currentTime, g = ac.createGain(); g.gain.value = 0.06 * vol;
       if (ac.createStereoPanner) { var p = ac.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan || 0)); g.connect(p); p.connect(sfxBus); } else g.connect(sfxBus);
