@@ -1531,6 +1531,8 @@ function render() {
     if (z.st.wind > 0) { ctx.strokeStyle = 'rgba(255,70,60,' + (0.25 + (0.65 - z.st.wind) * 0.8) + ')'; ctx.lineWidth = z.r * 1.2; ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(z.x + z.st.cx * 300, z.y + z.st.cy * 300); ctx.stroke(); }
     if (z.snatch) drawSnatchZone(z);
     if (z.rb) drawBossTele(z);
+    // in a big crowd only the nearest two dozen show their danger auras (dozens of rings on top of each other say nothing)
+    if (z.swRkF >= frameNo - 1 && z.swRk > 24 && G.zs.length > 80) continue;
     // danger auras: on Low the faint fill is skipped and only the outline is drawn
     if (z.m.S.p.rad && !z.st.under && !z.st.down) { ctx.fillStyle = 'rgba(200,255,60,0.06)'; ctx.beginPath(); ctx.arc(z.x, z.y, 90, 0, TAU); if (!lowFx) ctx.fill(); ctx.strokeStyle = 'rgba(200,255,60,' + (lowFx ? 0.32 : 0.2) + ')'; ctx.lineWidth = 1.5; ctx.stroke(); }
     if (z.abs.indexOf('chiller') >= 0 && !z.st.under) { ctx.fillStyle = 'rgba(170,220,255,0.07)'; ctx.beginPath(); ctx.arc(z.x, z.y, 150, 0, TAU); if (!lowFx) ctx.fill(); ctx.strokeStyle = 'rgba(190,230,255,' + (lowFx ? 0.34 : 0.22) + ')'; ctx.lineWidth = 1.5; ctx.stroke(); }

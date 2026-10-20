@@ -203,7 +203,7 @@ function swarmWave(n) {
   if (n % 5 === 0) budget = Math.round(budget * 0.6);   // a boss wave keeps its eyes on the boss
   if (budget < 8) return;
   const parts = [];
-  if (budget >= 110 && n >= 12) { const main = Math.round(budget * 0.62); parts.push(main); let rest = budget - main; while (rest > 0) { const s = Math.min(rest, Math.max(20, Math.round(rest * 0.6))); parts.push(s); rest -= s; } }
+  if (budget >= 110 && n >= 12) { const main = Math.round(budget * 0.62); parts.push(main); let rest = budget - main; while (rest > 0) { let s = Math.min(rest, Math.max(24, Math.round(rest * 0.6))); if (rest - s < 12) s = rest; parts.push(s); rest -= s; } }
   else if (budget >= 40) { const a = Math.round(budget * 0.6); parts.push(a, budget - a); }
   else parts.push(budget);
   for (let i = parts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = parts[i]; parts[i] = parts[j]; parts[j] = t; }
@@ -231,8 +231,8 @@ function swarmLaunch(n) {
   const tgt = NET.role === 'host' && NET.started ? netAnchor() : G.p; if (!tgt || !G.pool.length) return null;
   const at = swarmEdge(tgt, null, n), kind = n >= 100 ? 'drove' : n >= 25 ? 'horde' : 'pack';
   // mostly one mutation, some more of its strain, a few strays
-  const okM = m => m.A.key !== 'splitter' && !m.unique;
-  const lead = pick((G.feat.length ? G.feat : G.pool).filter(okM).concat(G.pool.filter(okM)).slice(0, 40)) || G.pool[0];
+  const okM = m => m.A.key !== 'splitter' && !m.unique, okLead = m => okM(m) && m.A.key !== 'bomber' && m.A.key !== 'hive';
+  const fl = (G.feat.length ? G.feat : G.pool).filter(okLead), lead = pick(fl.length ? fl : G.pool.filter(okLead)) || G.pool[0];
   const kin = G.pool.filter(m => okM(m) && m.S.key === lead.S.key);
   const H = { id: ++SWARM.hid, kind: kind, n: n, queue: n, alive: 0, sp: 0, x: at.x, y: at.y, ang: at.a, cx: at.x, cy: at.y, state: 'march', surgeT: 0, pace: 60, lead: lead, kin: kin.length ? kin : [lead], t: 0, hit: false, rad: Math.max(60, Math.sqrt(n) * 15 * Math.max(1, SCL * 0.6)) };
   SWARM.hordes.push(H); SWARM.hb.set(H.id, H); SWARM.pending = Math.max(0, SWARM.pending - n);
@@ -258,7 +258,7 @@ function swarmMember(H) {
   const u = Math.random(), m = u < 0.7 ? H.lead : u < 0.92 ? pick(H.kin) : pick(G.pool);
   const z = spawnZombie(m || H.lead, x, y); if (!z) return;
   // one of many: a little weaker on its own, dangerous together
-  z.hd = H.id; z.hp *= 0.8; z.maxHp *= 0.8; z.dmg *= 0.85; z.ang = Math.atan2(H.cy - y, H.cx - x) + Math.PI;
+  z.hd = H.id; z.hp *= 0.8; z.maxHp *= 0.8; z.dmg *= 0.85; z.ang = H.ang + Math.PI;
   H.alive++; H.sp++;
 }
 function swarmSpawnTick(dt) {
@@ -405,7 +405,7 @@ function swarmVehMove(r, dx, dy) {
 // can the vehicle stand here? walls, other vehicles and deep water stop it; a player in the way is shoved if there is room
 function swarmVehFree(r, x, y) {
   const cx = x + r.w / 2, cy = y + r.h / 2, rs = rectsNear(cx, cy, Math.max(r.w, r.h) / 2 + 4);
-  for (let i = 0; i < rs.length; i++) { const b = rs[i]; if (b === r || b.low) continue; if (x < b.x + b.w && x + r.w > b.x && y < b.y + b.h && y + r.h > b.y) { SWARM.hitR = b; return false; } }
+  for (let i = 0; i < rs.length; i++) { const b = rs[i]; if (b === r) continue; if (x < b.x + b.w && x + r.w > b.x && y < b.y + b.h && y + r.h > b.y) { SWARM.hitR = b; return false; } }
   SWARM.hitR = null;
   if (waterAt(cx, cy) === 2) return false;
   const P = NET.role === 'host' && NET.started ? netPlayers() : (G.p ? [G.p] : []);
@@ -424,6 +424,7 @@ function swarmVehBump(r, sx, sy) {
   const b = SWARM.hitR, P = r.ph; if (!b || b.k !== 'car' || !P) return;
   const Q = b.ph || swarmVehInit(b);
   if (sx) Q.fx += Math.abs(P.lfx) * sx * 0.85; if (sy) Q.fy += Math.abs(P.lfy) * sy * 0.85;
+  SWARM.ext.add(b);   // it feels it next frame
 }
 // the first time a vehicle moves: it leaves the block's picture and is drawn live; the alarm goes off
 function swarmVehWake(r) {
@@ -432,6 +433,17 @@ function swarmVehWake(r) {
   const c = chunks.get(r.ck); if (c) c.stale = 1;
   if (typeof carHit === 'function') carHit(r);
   SWARM.stats.cars++; coreEmit('vehicle', { r: r });
+}
+// a moved vehicle that has stopped, far from the camera and still inside its own block, goes back into the block's
+// picture and its lookup buckets (so the live list stays short however many the hordes have shoved over a run)
+function swarmVehPark() {
+  for (const [vid, r] of Array.from(SWDYN.entries())) {
+    if ((r.ph && (r.ph.vx || r.ph.vy)) || (r.tx !== undefined && Math.hypot(r.tx - r.x, r.ty - r.y) > 0.5)) continue;
+    const c = chunks.get(r.ck); if (!c) continue;
+    if (Math.hypot(r.x + r.w / 2 - cam.x, r.y + r.h / 2 - cam.y) < CHS * 2.5) continue;
+    if (r.x < c.sx || r.y < c.sy || r.x + r.w > c.sx + CHS || r.y + r.h > c.sy + CHS) continue;
+    r.dyn = 0; r.spr = null; SWDYN.delete(vid); bucketRects(c); c.stale = 1;
+  }
 }
 // each block's vehicles get a name both players agree on; ones moved earlier are put back where the crowd left them
 function swarmChunk(c, key) {
@@ -456,6 +468,7 @@ function swarmVehNet(vid, x, y) {
   r.tx = x; r.ty = y; SWARM.moved.set(vid, [x, y]);
 }
 function swarmClient(dt) {
+  SWARM.usT -= dt; if (SWARM.usT <= 0) { SWARM.usT = 2; if (SWDYN.size) swarmVehPark(); }
   const k = Math.min(1, dt * 10);
   for (const r of SWDYN.values()) if (r.tx !== undefined) { r.x += (r.tx - r.x) * k; r.y += (r.ty - r.y) * k; }
 }
@@ -562,7 +575,7 @@ function swarmDraw(vis, hw, hh) {
   const tier = clamp(PERF.tier | 0, 0, 3); SWARM.budF = [2, 3, 5, 8][tier] + (strain ? 0 : 1); SWARM.budL = [6, 10, 16, 24][tier]; SWARM.keys.clear();
   const T = ctx.getTransform(), s = T.a, e = T.e, f = T.f, setT = () => ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f), FL = SWARM.fl, FS = SWARM.flS, OV = SWARM.ov, OL = SWARM.ovL; FL.length = 0; FS.length = 0; OV.length = 0; OL.length = 0;
   for (let i = 0; i < nv; i++) {
-    const z = V[i], far = z.swD > nr2;
+    const z = V[i], far = z.swD > nr2; z.swRk = i; z.swRkF = frameNo;
     let lod = Q.lod + (far ? 1 + crowd : 0);
     if (!hi) { if (mob && i > 60) lod++; if (strain >= 2 && i > 30) lod++; if (low) lod++; }
     lod = Math.min(3, lod); ln[lod]++;
@@ -600,7 +613,7 @@ function swarmTick(dt) {
   const t0 = performance.now();
   try {
     SWARM.capT -= dt; if (SWARM.capT <= 0) { SWARM.capT = 1; swarmCaps(); }
-    if (NET.role !== 'client') { swarmSpawnTick(dt); swarmHordes(dt); SWARM.usT -= dt; if (SWARM.usT <= 0) { SWARM.usT = 2; swarmUnstick(); } }
+    if (NET.role !== 'client') { swarmSpawnTick(dt); swarmHordes(dt); SWARM.usT -= dt; if (SWARM.usT <= 0) { SWARM.usT = 2; swarmUnstick(); if (SWDYN.size) swarmVehPark(); } }
     swarmCrowd(dt); swarmSimLod();
     if (G.zs.length > SWARM.stats.peak) SWARM.stats.peak = G.zs.length;
   } catch (e) { swarmHurt(e, 'crowd'); }
@@ -654,6 +667,10 @@ function swarmHurt(e, part) {
 function swarmReset() {
   SWARM.hordes.length = 0; SWARM.hb.clear(); SWARM.plan.length = 0; SWARM.pending = 0; SWARM.vDirty.clear();
   for (const r of SWDYN.values()) { if (r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; } r.dyn = 0; r.ph = null; r.spr = null; r.tx = undefined; const c = chunks.get(r.ck); if (c) c.stale = 1; }
+  for (const vid of SWARM.moved.keys()) {
+    const m = /^(-?\d+),(-?\d+):(\d+)$/.exec(vid), c = m && chunks.get(m[1] + ',' + m[2]), r = c && c.rects[+m[3]];
+    if (r && r.vid === vid && r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; r.dyn = 0; r.ph = null; r.spr = null; bucketRects(c); c.stale = 1; }
+  }
   SWDYN.clear(); SWARM.moved.clear(); SWARM.capLive = SWARM.cap;
   SWARM.stats.hordes = SWARM.stats.droves = SWARM.stats.cars = 0; SWARM.stats.peak = 0;
 }
@@ -670,3 +687,7 @@ coreAdd({
   load: v => { if (v) { SWARM.adapt = clamp(v.a | 0, -3, 0); SWARM.capLive = Math.round(SWARM.cap * clamp((v.c | 0) || 100, 40, 100) / 100); } },
   on: { run: () => swarmReset(), quality: () => { swarmCaps(); SWARM.good = 0; }, lowMemory: () => swarmForget() }
 });
+// what it does for the others: frees its hold on the zombie pictures when the texture engine needs to start over, and
+// draws only crowd pictures while the texture engine rests
+coreMeta('SWARM', { helps: { TEXEL: () => swarmForget() } });
+coreOn('engineDown', 'SWARM', d => { if (d && d.name === 'TEXEL') SWARM.partOff.full = performance.now() + 60000; });
