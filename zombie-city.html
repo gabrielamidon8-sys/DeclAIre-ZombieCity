@@ -18529,7 +18529,8 @@ function balCos(b, dt) {
   if (best) {
     b.x = sx + dx * bu; b.y = sy + dy * bu; b.dead = true; burst(b.x, b.y, 2, best.m.S.gore, 80, 3, 0.25);
     if (typeof goreHit === 'function') goreHit(best, b.vx, b.vy, 12, b);
-    if (best.m.v2) { const r = Math.random(); best.hitReg = r < 0.12 ? 'head' : r < 0.7 ? 'torso' : r < 0.85 ? (Math.random() < 0.5 ? 'armL' : 'armR') : (Math.random() < 0.5 ? 'legL' : 'legR'); best.hitP = 0.8; best.hitT = G.time; best.hitA = Math.atan2(b.vy, b.vx); }
+    // (only a flinch where nobody decides the hit: on the host the real hit, with its region, follows in the teammate's message)
+    if (best.m.v2 && NET.role !== 'host') { const r = Math.random(); best.hitReg = r < 0.12 ? 'head' : r < 0.7 ? 'torso' : r < 0.85 ? (Math.random() < 0.5 ? 'armL' : 'armR') : (Math.random() < 0.5 ? 'legL' : 'legR'); best.hitP = 0.8; best.hitT = G.time; best.hitA = Math.atan2(b.vy, b.vx); }
     return;
   }
   if (W.r) { b.x = sx + dx * tw; b.y = sy + dy * tw; b.dead = true; if (typeof tracerImpact === 'function') tracerImpact(b, W.r); return; }
