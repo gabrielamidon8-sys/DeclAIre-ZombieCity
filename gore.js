@@ -21,7 +21,7 @@
    there is room. A part that throws is switched off on its own for a minute while the rest keeps going; bad data is
    thrown out; if the whole engine fails the game falls back to plain stains. */
 const GORE = { pieces: [], spr: new Map(), cg: null, rgbs: new Map(), prof: new Map(), n: 0, made: 0, ms: 0, msAvg: 0, msT: 0, adapt: 0, perf: 0, good: 0, errT: [], offUntil: 0, budget: 0, gibs: [], featOff: {}, culled: 0, faded: 0, views: [], viewF: -99, fixed: 0 };
-const GORE_S = 96, GORE_H = 2, GORE_NV = 50;
+const GORE_S = 64, GORE_H = 2, GORE_NV = 50;   // sprites are small (a stain is rarely bigger than this on screen) and each stain keeps its own
 const GORE_FRESH = 14, GORE_FADE = 4;          // seconds glossy, seconds turning dry
 const GORE_V = { pool: GORE_NV, spray: GORE_NV, smear: GORE_NV, drop: 12, scorch: 8, zap: 8, husk: 6 };
 const GORE_A = { pool: 0.82, spray: 0.8, smear: 0.72, drop: 0.8, scorch: 0.62, zap: 0.7, husk: 0.75 };
@@ -238,7 +238,7 @@ function goreSprite(k, v, rgb, dry, visc) {
   }
   g.globalCompositeOperation = 'source-over';
   GORE.spr.set(key, c); GORE.made++;
-  const cap = PERF.tier >= 2 ? 96 : 48; while (GORE.spr.size > cap) GORE.spr.delete(GORE.spr.keys().next().value);
+  const cap = PERF.tier >= 2 ? 160 : 96; while (GORE.spr.size > cap) GORE.spr.delete(GORE.spr.keys().next().value);
   return c;
 }
 // draw one stain with the transform T (world -> canvas) already chosen: rotated to its direction, scaled by its size
@@ -548,12 +548,17 @@ function goreDraw(vis) {
       const out = clamp((life - t) / (life * 0.25), 0, 1);   // the last quarter of its life it fades out
       if (s.k === 'cloud') { goreCloud(s, t, T); continue; }
       const base = (s.al || GORE_A[s.k] || 0.8) * (1 - 0.28 * (s.dil || 0)) * out, gr = goreGrow(s, t);
-      if (s.k === 'scorch' || s.k === 'zap' || s.k === 'husk') { const sp = goreSprite(s.k, s.v, s.rgb, false, 1); if (sp) goreBlit(ctx, T, s, sp, base, 1); continue; }
-      let rgb = s.rgb;
-      if (s.fx === 'cool') rgb = goreMix(s.rgb, [44, 22, 16], clamp(t / 12, 0, 1));   // molten blood cools to black crust
+      if (s.k === 'scorch' || s.k === 'zap' || s.k === 'husk') { const sp = s.spF || (s.spF = goreSprite(s.k, s.v, s.rgb, false, 1)); if (sp) goreBlit(ctx, T, s, sp, base, 1); continue; }
+      // each stain keeps the pictures it uses (so a busy street never makes the cache throw away what is on screen)
       const f = clamp((t - GORE_FRESH) / GORE_FADE, 0, 1);
-      if (f < 1) { const sp = goreSprite(s.k, s.v, rgb, false, s.visc); if (sp) goreBlit(ctx, T, s, sp, base * (1 - f * 0.15), gr); }
-      if (f > 0) { const sp = goreSprite(s.k, s.v, rgb, true, s.visc); if (sp) goreBlit(ctx, T, s, sp, base * 0.82 * f, gr); }
+      if (s.fx === 'cool') {
+        // molten blood cools to black crust: the glowing picture fades into the crust picture
+        const c = clamp(t / 12, 0, 1), sp = s.spF || (s.spF = goreSprite(s.k, s.v, s.rgb, false, s.visc)), sc = s.spC || (s.spC = goreSprite(s.k, s.v, [40, 24, 16], true, s.visc));
+        if (sp && c < 1) goreBlit(ctx, T, s, sp, base * (1 - c), gr); if (sc && c > 0) goreBlit(ctx, T, s, sc, base * c, gr);
+      } else {
+        if (f < 1) { const sp = s.spF || (s.spF = goreSprite(s.k, s.v, s.rgb, false, s.visc)); if (sp) goreBlit(ctx, T, s, sp, base * (1 - f * 0.15), gr); }
+        if (f > 0) { const sp = s.spD || (s.spD = goreSprite(s.k, s.v, s.rgb, true, s.visc)); if (sp) goreBlit(ctx, T, s, sp, base * 0.82 * f, gr); }
+      }
       if (detail && t < GORE_FRESH && s.fx) goreTry('fx', () => goreFx(s, t, T, gr, base));
       // fresh blood is glossy: a small soft highlight (by day; at night the reflection engine mirrors the lamps in it)
       if (s.k === 'pool' && t < GORE_FRESH && night < 0.6) {
@@ -634,7 +639,7 @@ function goreEmissive(a) {
       const gk = g[3] * clamp(1 - t / Math.min(life, 25), 0, 1) * (s.fx === 'flicker' ? 0.6 + 0.4 * Math.random() : s.fx === 'pulse' ? 0.75 + 0.25 * Math.sin(now * 3 + s.v) : 1) * (s.fx === 'cool' ? clamp(1 - t / 10, 0, 1) : 1);
       if (gk < 0.02) continue;
       const R = s.r * GORE_H * 1.5; if (!vis2(s.x, s.y, R)) continue;
-      const sp = goreSprite(s.k, s.v, [g[0] & 248, g[1] & 248, g[2] & 248], false, s.visc); if (!sp) continue;
+      const sp = s.spG || (s.spG = goreSprite(s.k, s.v, [g[0] & 248, g[1] & 248, g[2] & 248], false, s.visc)); if (!sp) continue;
       goreBlit(ctx, T, s, sp, Math.min(1, gk * k0), goreGrow(s, t));
     }
     ctx.setTransform(T); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
@@ -660,7 +665,7 @@ function goreMirror(a, vis) {
     if (s.k !== 'pool' && s.k !== 'drop' && s.k !== 'smear') continue;
     const t = now - s.t0; if (t > GORE_FRESH) continue;
     const gr = goreGrow(s, t); if (!vis(s.x, s.y, s.r * gr * GORE_H)) continue;
-    const sp = goreSprite(s.k, s.v, s.rgb, false, s.visc); if (!sp) continue;
+    const sp = s.spF || (s.spF = goreSprite(s.k, s.v, s.rgb, false, s.visc)); if (!sp) continue;
     if (!T) T = a.getTransform();
     goreBlit(a, T, s, sp, (s.fx === 'mercury' ? 0.5 : 0.1) * (1 - t / GORE_FRESH), gr * 0.75); any = true;
   }
@@ -765,16 +770,18 @@ function goreCheck() {
 }
 function goreNotes() { const off = Object.keys(GORE.featOff).filter(f => GORE.featOff[f] > performance.now()); return off.length ? 'resting: ' + off.join(', ') : ''; }
 function goreRepair() {
-  GORE.spr.clear(); GORE.offUntil = 0; GORE.errT.length = 0; GORE.featOff = {};
+  goreForget(); GORE.offUntil = 0; GORE.errT.length = 0; GORE.featOff = {};
   G.splats = G.splats.filter(s => isFinite(s.x) && isFinite(s.y) && s.r > 0).slice(-goreCap(Math.max(1, goreLevel())));
   GORE.gibs.length = 0; GORE.pieces = GORE.pieces.filter(s => isFinite(s.x) && isFinite(s.y));
 }
+// stains hold on to their pictures; this lets go of them all (a memory squeeze, a repair, a step down)
+function goreForget() { GORE.spr.clear(); for (const L of [G.splats, GORE.pieces]) for (const s of L) s.spF = s.spD = s.spC = s.spG = null; }
 function goreReset() { GORE.gibs.length = 0; GORE.pieces.length = 0; GORE.views.length = 0; }
 function goreHurt(e, part) {
   const now = performance.now(); coreHurt('GORE', e); try { console.error(e); } catch (x) { }
   GORE.errT.push(now); while (GORE.errT.length && now - GORE.errT[0] > 10000) GORE.errT.shift();
-  if (GORE.errT.length >= 6) { GORE.offUntil = now + 60000; GORE.errT.length = 0; GORE.spr.clear(); coreRepaired('GORE', 'Blood paused for a minute after errors (plain stains meanwhile)'); }
-  else if (GORE.errT.length >= 4 && GORE.adapt > -2) { GORE.adapt--; GORE.spr.clear(); coreRepaired('GORE', 'Blood stepped down a level'); }
+  if (GORE.errT.length >= 6) { GORE.offUntil = now + 60000; GORE.errT.length = 0; goreForget(); coreRepaired('GORE', 'Blood paused for a minute after errors (plain stains meanwhile)'); }
+  else if (GORE.errT.length >= 4 && GORE.adapt > -2) { GORE.adapt--; goreForget(); coreRepaired('GORE', 'Blood stepped down a level'); }
   else if (part) coreRepaired('GORE', 'Blood: ' + part + ' switched off for a minute');
 }
 coreAdd({
@@ -785,5 +792,5 @@ coreAdd({
   canTrim: () => goreLevel() > 1, trim: () => { if (GORE.adapt <= -2) return false; GORE.adapt--; return true; }, boost: () => { if (GORE.adapt >= 0) return false; GORE.adapt++; return true; },
   check: goreCheck, notes: goreNotes, repair: goreRepair, isolate: () => { GORE.offUntil = performance.now() + 60000; }, restore: () => { GORE.offUntil = 0; },
   save: () => ({ a: GORE.adapt, p: GORE.perf }), load: v => { if (v) { GORE.adapt = clamp(v.a | 0, -2, 0); GORE.perf = clamp(v.p | 0, -2, 0); } },
-  on: { run: () => goreReset(), quality: () => { GORE.perf = 0; GORE.good = 0; }, lowMemory: d => { GORE.spr.clear(); if (d && d.level >= 1 && GORE.pieces.length > 20) GORE.pieces.splice(0, GORE.pieces.length - 20); } }
+  on: { run: () => goreReset(), quality: () => { GORE.perf = 0; GORE.good = 0; }, lowMemory: d => { goreForget(); if (d && d.level >= 1 && GORE.pieces.length > 20) GORE.pieces.splice(0, GORE.pieces.length - 20); } }
 });
