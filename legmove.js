@@ -55,7 +55,7 @@ function lgmBody(P, o) {
   const s = o.side || 'R', k = o.gain == null ? LGM.gain : o.gain; let lean = o.lean0 || 0, squat = 0, err = 0, shift = 0;
   const other = s === 'R' ? 'L' : 'R';
   // (the free arm hangs: a relaxed arm stays vertical as the trunk leans, it does not lean with it)
-  const pose = () => { lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgJadd(P, 'pelvis', 0, lean * 0.55, 0); lgJadd(P, 'spine', 0, lean * 0.25, 0); lgJadd(P, 'chest', 0, lean * 0.2, 0); lgJadd(P, 'neck', 0, -lean * 0.45, 0); if (!P.ik['hand' + other]) lgJadd(P, 'arm' + other, 0, -lean * 0.92, 0); };
+  const cr = o.crouch || 0, pose = () => { lgBase(P, { lean: 0.02, crouch: 0.03 + squat + cr }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat - cr; lgJadd(P, 'pelvis', 0, lean * 0.55, 0); lgJadd(P, 'spine', 0, lean * 0.25, 0); lgJadd(P, 'chest', 0, lean * 0.2, 0); lgJadd(P, 'neck', 0, -lean * 0.45, 0); if (!P.ik['hand' + other]) lgJadd(P, 'arm' + other, 0, -lean * 0.92, 0); };
   // the hips go back as the trunk goes forward (one step with the learned gain), so the centre of mass stays over the feet
   const balance = () => { const W = lgmSolve(P), e = lgmCOMerr(W, o.extra, P.root[3]); err = e.err; shift = -err * k * 2.2; P.t[LGB.pelvis * 3] += shift; return W; };
   if (o.target) squat = clamp((0.62 - o.target[2]) * 0.55, 0, 0.32);   // a low target bends the knees (below about 0.6 m the legs do the work)
@@ -92,9 +92,9 @@ function lgmGraspM(OW, gr) { return lgMul(lgM4(), OW, gr.S); }
 // the rest pose's hand (world) for an actor
 function lgmRestHand(root, s) { const P = lgPose(); lgPoseReset(P); P.root = root.slice(); lgBase(P, {}); const W = lgmSolve(P); return W.subarray(LGB['hand' + s] * 16, LGB['hand' + s] * 16 + 16).slice(); }
 // eyes and head toward a point: the eyes go first (the head follows 30 ms later and takes most of the turn)
-function lgmLook(P, W, target, k) {
+function lgmLook(P, W, target, k, o2) {
   if (!W) return; const hd = lgaP(W, 'head'), d = curV3.sub(target, hd), yaw = Math.atan2(d[1], d[0]) - P.root[3], pit = Math.atan2(-d[2], Math.hypot(d[0], d[1]));
-  const y = Math.atan2(Math.sin(yaw), Math.cos(yaw)); lgLookAt(P, clamp(y, -1.2, 1.2) * k, clamp(pit, -0.9, 0.7) * k, 0);
+  const y = Math.atan2(Math.sin(yaw), Math.cos(yaw)); lgLookAt(P, clamp(y, -1.2, 1.2) * k, clamp(pit - (o2 || 0), -0.9, 1.1) * k, 0);
 }
 /* ---------- reach to grasp, lift, carry, set down ---------- */
 // o: { key, at: [x, y, z] (where the thing stands), yaw, side, task, root: [x, y, z, yaw], lift: metres, carry: [x, y, z] (root space) }
@@ -106,13 +106,16 @@ function lgmReach(o) {
   const OI = lgInv(lgM4(), OW), appO = lgDir(OI, appW[0], appW[1], 0);
   const gr = lgoGrasp(key, { side: s, task: o.task, app: [appO[0], appO[1], 0], type: o.type });
   const H1 = lgmGraspM(OW, gr), H0 = lgmRestHand(root, s), p0 = [H0[12], H0[13], H0[14]], p1 = [H1[12], H1[13], H1[14]];
-  const D = curV3.len(curV3.sub(p1, p0)), w = lgmWidth(key, gr.type), MT = o.mt || lgmFitts(D, w), mga = lgmMGA(w), kOpen = lgmOpenFor(gr.g, mga, ps);
+  // (LEGEND v5: an effort quality changes the timing, the bell, the path and the body; neutral when not asked)
+  const E = typeof lgqEffort === 'function' ? lgqEffort(o.effort || 'neutral') : { mtK: 1, bell: LGM_BELL, lat: 0.02, crouch: 0, secureK: 1, peak: 0.42 };
+  const D = curV3.len(curV3.sub(p1, p0)), w = lgmWidth(key, gr.type), MT = (o.mt || lgmFitts(D, w)) * E.mtK, mga = lgmMGA(w), kOpen = lgmOpenFor(gr.g, mga, ps), BELL = E.bell;
   // the hand comes in along the direction the palm faces at the end (the last few centimetres straight onto the thing)
   const palmN = [H1[4] * ps, H1[5] * ps, H1[6] * ps], ctrl = curV3.sub(p1, curV3.mul(palmN, Math.min(0.14, D * 0.45))); ctrl[2] += 0.04;
+  { const dir = curV3.norm(curV3.sub(p1, p0)), side = curV3.norm(curV3.cross(dir, [0, 0, 1])); for (let i = 0; i < 3; i++) ctrl[i] += side[i] * E.lat * ps * -1; }
   const arc = lgmArc(p0, ctrl, p1);
-  const tEye = 0, tHand = 0.15, tTouch = tHand + MT, tSecure = tTouch + 0.12, liftT = o.lift ? 0.55 + 0.4 * Math.min(1, ob.kg / 3) : 0, tLift = tSecure + 0.08, tUp = tLift + liftT;
+  const tEye = 0, tHand = 0.15, tTouch = tHand + MT, tSecure = tTouch + 0.12 * E.secureK, liftT = o.lift ? 0.55 + 0.4 * Math.min(1, ob.kg / 3) : 0, tLift = tSecure + 0.08, tUp = tLift + liftT;
   const carry = o.carry || null, carryT = carry ? 0.7 : 0, tCarry = tUp + carryT, dur = (o.hold || 0.5) + (carry ? tCarry : tUp);
-  const pct = ob.kg / 80 * 100, beats = [{ t: tEye, name: 'eyes to the ' + ob.name.toLowerCase() }, { t: tHand, name: 'the reach starts' }, { t: tHand + MT * 0.42, name: 'peak speed' }, { t: tHand + MT * 0.7, name: 'widest opening' }, { t: tTouch, name: 'touch' }, { t: tSecure, name: 'the grip closes' }];
+  const pct = ob.kg / 80 * 100, beats = [{ t: tEye, name: 'eyes to the ' + ob.name.toLowerCase() }, { t: tHand, name: 'the reach starts' }, { t: tHand + MT * E.peak, name: 'peak speed' }, { t: tHand + MT * 0.7, name: 'widest opening' }, { t: tTouch, name: 'touch' }, { t: tSecure, name: 'the grip closes' }];
   if (o.lift) beats.push({ t: tLift, name: 'lift' }, { t: tUp, name: 'up' }); if (carry) beats.push({ t: tCarry, name: 'carried' });
   const upM = lgMul(lgM4(), lgTR(0, 0, o.lift || 0), H1);
   let carryM = null; if (carry) { const R = lgRootM({ root: root }), cp = lgPt(R, carry[0], carry[1] * ps, carry[2]); carryM = lgMul(lgM4(), lgTR(cp[0], cp[1], cp[2]), lgmTurn(H1, H1, 0)); carryM[12] = cp[0]; carryM[13] = cp[1]; carryM[14] = cp[2]; }
@@ -120,7 +123,7 @@ function lgmReach(o) {
   const handAt = t => {
     if (t <= tHand) return { M: H0, grip: LGM_RELAX, held: false, k: 0 };
     if (t <= tTouch) {
-      const tau = (t - tHand) / MT, sp = lgmS(LGM_BELL, tau), u = lgmArcU(arc, sp), p = lgmBez(p0, ctrl, p1, u), M = lgmTurn(H0, H1, clamp(sp / 0.8, 0, 1));
+      const tau = (t - tHand) / MT, sp = lgmS(BELL, tau), u = lgmArcU(arc, sp), p = lgmBez(p0, ctrl, p1, u), M = lgmTurn(H0, H1, clamp(sp / 0.8, 0, 1));
       M[12] = p[0]; M[13] = p[1]; M[14] = p[2];
       // the grip: opening to its widest at 70% of the reach, closing onto the thing at the touch
       const pre = lgmMix(gr.g, LGM_OPEN, kOpen), g = tau < 0.7 ? lgmMix(LGM_RELAX, pre, lgSS(0, 0.7, tau)) : lgmMix(pre, lgmMix(gr.g, LGM_OPEN, kOpen * 0.18), lgSS(0.7, 1, tau));
@@ -138,9 +141,9 @@ function lgmReach(o) {
     const OWt = held ? lgMul(lgM4(), h.M, lgInv(lgM4(), gr.S)) : OW;
     const tgt = [h.M[12], h.M[13], h.M[14]], R = lgRootM(P), Ri = lgInv(lgM4(), R), tl = lgPt(Ri, tgt[0], tgt[1], tgt[2]);
     // the body leans in proportion to how far along the reach is
-    const reachK = t <= tHand ? 0 : t <= tTouch ? lgmS(LGM_SYM, (t - tHand) / MT) : 1, relax = t > tUp ? 1 : 0;
+    const reachK = t <= tHand ? 0 : t <= tTouch ? lgmS(LGM_SYM, clamp((t - tHand) / MT / 0.8, 0, 1)) : 1;   // (the trunk finishes its lean a little before the hand arrives)
     P.ik['hand' + s] = { sp: 'world', p: tgt, M: h.M, pole: lgDir(R, -0.35, -0.75 * ps, -0.6) }; P.grip[s] = h.grip;
-    const body = lgmBody(P, { side: s, target: lgPt(R, tl[0], tl[1], tl[2]), extra: held ? [{ p: [OWt[12], OWt[13], OWt[14]], pct: pct }] : null });
+    const body = lgmBody(P, { side: s, target: lgPt(R, tl[0], tl[1], tl[2]), crouch: E.crouch, extra: held ? [{ p: [OWt[12], OWt[13], OWt[14]], pct: pct }] : null });
     // scale the lean by how far the reach has come (the body starts moving with the hand)
     if (reachK < 1) { const f = reachK; lgJadd(P, 'pelvis', 0, -body.lean * 0.55 * (1 - f), 0); lgJadd(P, 'spine', 0, -body.lean * 0.25 * (1 - f), 0); lgJadd(P, 'chest', 0, -body.lean * 0.2 * (1 - f), 0); P.t[LGB.pelvis * 3] *= f; P.t[LGB.pelvis * 3 + 2] = -0.03 - body.squat * f; }
     // a load leans the body away from it a little (a kilogram in the hand at arm's length moves the hips about a centimetre)
@@ -149,7 +152,7 @@ function lgmReach(o) {
     return { P: P, things: [{ key: key, M: OWt }], held: held, hand: h };
   };
   LGM.made++;
-  return lgmPerf({ kind: 'reach', dur: dur, beats: beats, gr: gr, MT: MT, D: D, w: w, mga: mga, kOpen: kOpen, t: { hand: tHand, touch: tTouch, secure: tSecure, lift: tLift, up: tUp, carry: tCarry }, OW: OW, H0: H0, H1: H1, side: s, at: at, key: key, pct: pct });
+  return lgmPerf({ kind: 'reach', dur: dur, beats: beats, gr: gr, MT: MT, E: E, D: D, w: w, mga: mga, kOpen: kOpen, t: { hand: tHand, touch: tTouch, secure: tSecure, lift: tLift, up: tUp, carry: tCarry }, OW: OW, H0: H0, H1: H1, side: s, at: at, key: key, pct: pct });
 }
 /* ---------- two hands: a heavy box from the floor, lifted with the legs ---------- */
 function lgmLiftBox(o) {

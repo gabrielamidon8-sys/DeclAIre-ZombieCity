@@ -22,7 +22,7 @@ const LGO = { made: 0, ms: 0 };
 // parts: ['cyl', centre, radius, half-height] (axis z) | ['box', centre, half-sizes, bevel] | ['sph', centre, radius] | ['cap', a, b, radius]
 // kg: weight; use: what it is for; pref: the grasp people use for it, by task
 const LGO_OBJ = {
-  mug: { name: 'Coffee mug', kg: 0.38, parts: [['cyl', [0, 0, 0.0475], 0.041, 0.0475], ['cap', [0.077, 0, 0.024], [0.077, 0, 0.073], 0.0075], ['cap', [0.039, 0, 0.078], [0.077, 0, 0.073], 0.0075], ['cap', [0.039, 0, 0.018], [0.077, 0, 0.024], 0.0075]], handle: { c: [0.077, 0, 0.048], axis: [0, 0, 1], r: 0.0075, h: 0.0245 }, col: '#e9e4d8', t: 'poly', pref: { carry: 'hook', drink: 'hook' } },
+  mug: { name: 'Coffee mug', kg: 0.38, parts: [['cyl', [0, 0, 0.0475], 0.041, 0.0475], ['cap', [0.077, 0, 0.024], [0.077, 0, 0.073], 0.0075], ['cap', [0.039, 0, 0.078], [0.077, 0, 0.073], 0.0075], ['cap', [0.039, 0, 0.018], [0.077, 0, 0.024], 0.0075]], handle: { c: [0.077, 0, 0.048], axis: [0, 0, 1], r: 0.0075, h: 0.0245 }, col: '#e9e4d8', t: 'glaze', pref: { carry: 'hook', drink: 'hook' } },
   bottle: { name: 'Water bottle (1 L)', kg: 1.05, parts: [['cyl', [0, 0, 0.105], 0.038, 0.105], ['cyl', [0, 0, 0.235], 0.015, 0.03]], col: '#7fb7d6', t: 'poly', pref: { carry: 'largeDiameter', pour: 'largeDiameter' } },
   can: { name: 'Soda can', kg: 0.37, parts: [['cyl', [0, 0, 0.061], 0.033, 0.061]], col: '#c8312b', t: 'metal', pref: { carry: 'mediumWrap', drink: 'mediumWrap' } },
   flashlight: { name: 'Flashlight', kg: 0.24, parts: [['cyl', [0, 0, 0.0], 0.0145, 0.075], ['cyl', [0, 0, 0.095], 0.021, 0.022]], axis: 'z', col: '#2c2f33', t: 'metal', pref: { carry: 'smallDiameter', point: 'smallDiameter' } },

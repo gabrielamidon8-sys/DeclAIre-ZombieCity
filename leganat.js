@@ -139,7 +139,9 @@ function lgaBadBones(out) { const bad = {}; for (const [n] of out) { const base 
 // range, the forearm is not turned past its range, the shoulder is comfortable and the elbow hangs: LEGEND searches the
 // circle for that place (staying near where the clip asked for it) and moves the elbow's pole there. A free hand (not
 // holding anything) is also turned back inside the wrist's range if the clip asked too much of it.
-LGA.on = true; LGA.armMs = 0; LGA.armN = 0; LGA.freeFix = 0;
+LGA.on = true; LGA.armMs = 0; LGA.armN = 0; LGA.freeFix = 0; LGA.body = true;
+// the closest distance between two segments (defined here for the arm search; LEGEND v5's checks use the same rule)
+function lgqSegDistA(p1, q1, p2, q2) { return lgqSegDist(p1, q1, p2, q2); }
 const LGA_WR = { flex: [-70, 80], dev: [-30, 20], pro: [-85, 85] };
 function lgaExc(v, lo, hi) { return v < lo ? lo - v : v > hi ? v - hi : 0; }
 function lgaArmPole(W, L, ia, ib, ic, T, ps, rootM, P, ch) {
@@ -220,6 +222,9 @@ function lgaArmSearch(W, L, ia, ib, ic, T, ps, rootM, free) {
   const q0 = curV3.cross(d, p0), R = T.R, hx = [R[0], R[1], R[2]], hy = [R[4], R[5], R[6]], hz = [R[8], R[9], R[10]];
   const C = PW, cx = [C[0], C[1], C[2]], cy = [C[4], C[5], C[6]], cz = [C[8], C[9], C[10]];   // (the collarbone's frame: the arm's parent)
   const tp = curV3.add(S, curV3.mul(d, dd)), out = ps > 0 ? -1 : 1;
+  // (LEGEND v5: the arm stays out of the body: the torso as a capsule from the pelvis to the neck, 12.5 cm thick, and the
+  // elbow end of the upper arm and the forearm 4 cm; the part of the upper arm by the shoulder lies against the side)
+  const tA = lgaP(W, 'pelvis'), tB = curV3.lerp(tA, lgaP(W, 'neck'), 0.8), hA = lgaP(W, 'head'), hB = lgaMark(W, 'headTop'), inBody = (e) => { const m = curV3.lerp(S, e, 0.55); return Math.max(0, 0.165 - lgqSegDistA(m, e, tA, tB), 0.162 - lgqSegDistA(e, tp, tA, tB), 0.125 - lgqSegDistA(m, e, hA, hB), 0.118 - lgqSegDistA(e, tp, hA, hB)); };
   const ev = (phi) => {
     const p = curV3.add(curV3.mul(p0, Math.cos(phi)), curV3.mul(q0, Math.sin(phi))), e = curV3.add(S, curV3.add(curV3.mul(d, a * ca), curV3.mul(p, a * sa)));
     const f = curV3.norm(curV3.sub(tp, e)), nf = [-f[0], -f[1], -f[2]], u = curV3.norm(curV3.sub(e, S));
@@ -232,7 +237,8 @@ function lgaArmSearch(W, L, ia, ib, ic, T, ps, rootM, free) {
     const wex = lgaExc(flex, LGA_WR.flex[0], LGA_WR.flex[1]) + lgaExc(dev, LGA_WR.dev[0], LGA_WR.dev[1]) + lgaExc(pro, LGA_WR.pro[0], LGA_WR.pro[1]), sex = lgaExc(ext, 0, 60) + lgaExc(cross, 0, 55);
     const exc = (free ? wex * 0.15 : wex) + sex * 1.5;
     const comfort = (flex / 80) * (flex / 80) * 0.6 + (dev / 25) * (dev / 25) * 0.6 + (pro / 90) * (pro / 90) * 0.5 + Math.max(0, e[2] - S[2]) / a * 0.8 + (phi / Math.PI) * (phi / Math.PI) * 1.2;
-    return { cost: exc * exc * 0.05 + exc * 0.5 + comfort, exc: exc, wex: wex, flex: flex, dev: dev, pro: pro, p: p, F: [xf, curV3.cross(nf, xf), nf] };
+    const body = LGA.body ? inBody(e) : 0;
+    return { cost: exc * exc * 0.05 + exc * 0.5 + (exc > 1.5 ? 20 : 0) + comfort + (body < 0.05 ? (body / 0.025) * (body / 0.025) * 2 : 8 + (body - 0.05) * 100), exc: exc, wex: wex, flex: flex, dev: dev, pro: pro, p: p, F: [xf, curV3.cross(nf, xf), nf], body: body };
   };
   let best = ev(0), bphi = 0;
   for (let i = -12; i <= 12; i++) { if (!i) continue; const phi = i * Math.PI / 13, r = ev(phi); if (r.cost < best.cost) { best = r; bphi = phi; } }
@@ -366,9 +372,27 @@ function lgaPostFix(P, L, W, rootM) {
       if (moved) { P.ik['foot' + s] = Object.assign({}, ik, { p: p }); any = true; }
     }
   }
+  // (LEGEND v5) an arm posed by hand that goes into the body (the trunk or the head) is turned out at the shoulder,
+  // a few degrees at a time, the way that frees it soonest
+  if (LGA.body) for (const s of ['L', 'R']) if (!P.ik['hand' + s] && lgaArmOut(P, L, W, rootM, s)) any = true;
   if (!any) return false;
   LGA.inFix = (LGA.inFix || 0) + 1; try { lgSolve(P, L, W, rootM); } finally { LGA.inFix--; }
   LGA.fkFix++; return true;
+}
+function lgaArmPen(W, s) {
+  const S = lgaP(W, 'arm' + s), E = lgaP(W, 'fore' + s), H = lgaP(W, 'hand' + s), tA = lgaP(W, 'pelvis'), tB = curV3.lerp(tA, lgaP(W, 'neck'), 0.8), hA = lgaP(W, 'head'), hB = lgaMark(W, 'headTop'), m = curV3.lerp(S, E, 0.55);
+  return Math.max(0, 0.165 - lgqSegDistA(m, E, tA, tB), 0.162 - lgqSegDistA(E, H, tA, tB), 0.125 - lgqSegDistA(m, E, hA, hB), 0.118 - lgqSegDistA(E, H, hA, hB));
+}
+function lgaArmOut(P, L, W, rootM, s) {
+  const ia = LGB['arm' + s], chain = [ia, LGB['fore' + s], LGB['hand' + s]], re = () => { for (const i of chain) { lgR9(L.R, i * 9, P.r[i * 3], P.r[i * 3 + 1], P.r[i * 3 + 2]); lgWorldOne(W, L, i, rootM); } };
+  let pen = lgaArmPen(W, s); if (pen < 0.012) return false;
+  const st = 0.05, moves = [[0, st], [0, -st], [1, st], [1, -st], [2, st], [2, -st]]; let changed = false;
+  for (let it = 0; it < 10 && pen > 0.008; it++) {
+    let best = null, bp = pen;
+    for (const [ax, v] of moves) { P.r[ia * 3 + ax] += v; re(); const q = lgaArmPen(W, s); if (q < bp - 1e-4) { bp = q; best = [ax, v]; } P.r[ia * 3 + ax] -= v; }
+    if (!best) break; P.r[ia * 3 + best[0]] += best[1]; pen = bp; changed = true;
+  }
+  re(); if (changed) LGA.armOut = (LGA.armOut || 0) + 1; return changed;
 }
 /* ---------- mass and balance ---------- */
 // The body as segments, each with its share of the body's mass and where along it its centre of mass lies (de Leva 1996,
@@ -386,6 +410,7 @@ function lgaMark(W, n) {
   switch (n) {
     case 'headTop': return at('head', 0.01, 0, 0.19);
     case 'hips': { const a = lgaP(W, 'thighL'), b = lgaP(W, 'thighR'); return curV3.lerp(a, b, 0.5); }
+    case 'chestTop': return curV3.lerp(lgaP(W, 'pelvis'), lgaP(W, 'neck'), 0.8);   // the top of the ribcage (the trunk narrows into the neck above it)
     case 'knuckleL': return at('handL', 0, 0, -0.092); case 'knuckleR': return at('handR', 0, 0, -0.092);
     case 'heelL': return at('footL', -0.06, 0, -0.07); case 'heelR': return at('footR', -0.06, 0, -0.07);
     case 'tipL': return at('toeL', 0.075, 0, -0.015); case 'tipR': return at('toeR', 0.075, 0, -0.015);
