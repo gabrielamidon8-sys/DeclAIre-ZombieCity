@@ -22666,6 +22666,8 @@ function armsNew(p, load) {
   p.weapon = W0; p.dashK = 'dodge';
   return p.arm;
 }
+// the moves that end on their own (a move still going long past its time is stuck); relaxed, ready and sprint last as long as they last
+const ARMS_TIMED = ['raise', 'lower', 'reload', 'swapOut', 'swapIn', 'sprintOut', 'dodge', 'inspect'];
 function armsSet(p, st, dur) { const a = p.arm; a.st = st; a.t = 0; a.dur = dur || 0; }
 // what the posture blends toward (0 relaxed .. 1 on target)
 function armsFocusGoal(a) {
@@ -22681,6 +22683,7 @@ function armsCanSprint(p) { const a = p.arm; return a && (a.st === 'relaxed' || 
 // every frame for the local player: input, timers, transitions, reload events
 function armsTick(p, dt, moving) {
   const a = p.arm; if (!a || !armsUp()) return;
+  const t0 = performance.now();
   try {
     const w = p.weapon, A = w.arms;
     a.t += dt; a.eng += dt; a.kick = Math.max(0, a.kick - dt * 6); a.camK = Math.max(0, a.camK - dt * 5);
@@ -22707,6 +22710,7 @@ function armsTick(p, dt, moving) {
       case 'dodge': if (!(p.dashT > 0)) armsSet(p, a.dodgeEnd || (a.eng < 1 ? 'raise' : 'relaxed'), a.dodgeEnd === 'raise' ? A.ready : 0); break;
     }
   } catch (e) { armsHurt(e); }
+  coreCost('ARMS', performance.now() - t0 + 0.001);   // (its heartbeat: CORE knows it is working)
 }
 // a shot wanted (target: the zombie, ang: the aim): true when a round actually left the gun
 function armsFire(p, target, ang, auto) {
@@ -23010,8 +23014,8 @@ coreDefine({ name: 'ARMS', kind: 'sim', ver: 1, does: 'The armorer: the ten rebu
   state: () => G.p && G.p.arm ? G.p.arm.st + ' · ' + G.p.weapon.name + ' ' + G.p.arm.mag[G.p.arm.slot] : 'ready',
   level: () => 'full', noLearn: '',
   alive: () => G.mode === 'play' && !!(G.p && G.p.arm), stallS: 8,
-  check: () => { const p = G.p; if (!p || !p.arm) return ''; const a = p.arm; if (ARMS_ST.indexOf(a.st) < 0) return 'its state went bad'; if (!(a.mag[0] >= 0 && a.mag[1] >= 0)) return 'a magazine count went bad'; if (a.dur && a.t > a.dur + 8 && a.st !== 'sprint') return 'stuck in ' + a.st; return ''; },
-  repair: () => { const p = G.p; if (p && p.arm) { const a = p.arm; if (ARMS_ST.indexOf(a.st) < 0 || (a.dur && a.t > a.dur + 8)) armsSet(p, 'relaxed'); for (let i = 0; i < 2; i++) if (!(a.mag[i] >= 0)) a.mag[i] = armsCap(a.w[i]); } ARMS.errT.length = 0; ARMS.offUntil = 0; },
+  check: () => { const p = G.p; if (!p || !p.arm) return ''; const a = p.arm; if (ARMS_ST.indexOf(a.st) < 0) return 'its state went bad'; if (!(a.mag[0] >= 0 && a.mag[1] >= 0)) return 'a magazine count went bad'; if (a.dur && a.t > a.dur + 8 && ARMS_TIMED.indexOf(a.st) >= 0) return 'stuck in ' + a.st; return ''; },
+  repair: () => { const p = G.p; if (p && p.arm) { const a = p.arm; if (ARMS_ST.indexOf(a.st) < 0 || (a.dur && a.t > a.dur + 8 && ARMS_TIMED.indexOf(a.st) >= 0)) armsSet(p, 'relaxed'); for (let i = 0; i < 2; i++) if (!(a.mag[i] >= 0)) a.mag[i] = armsCap(a.w[i]); } ARMS.errT.length = 0; ARMS.offUntil = 0; },
   reset: () => { if (G.p && G.p.arm) armsNew(G.p, armsLoad()); },
   selfTest: () => armsSelfTest(),
   learned: () => { const u = Object.entries(ARMS.uses).sort((a, b) => (b[1].r + b[1].s) - (a[1].r + a[1].s))[0]; return ARMS.fired ? ['You have fired ' + ARMS.fired + ' rounds this session, reloaded ' + ARMS.reloads + ' times (' + ARMS.tac + ' tactical, magazine kept) and rolled ' + ARMS.dodges + ' times.' + (u ? ' The gun you reload most: the ' + ARMS_BY[u[0]].name + '; its frames are warmed first.' : '')] : []; },
@@ -29594,7 +29598,7 @@ coreDefine({ name: 'VFXRAY', kind: 'render', ver: 2, does: 'The last pass: rain 
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[355,0,4,48630],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31092],"physics":[265,23,49,25142],"arms":[369,35,49,37537],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1132,118,170,127774],"legmodel":[428,23,91,51563],"leggun":[232,20,67,27735],"leganim":[447,21,53,56045],"legrun":[466,39,94,49576],"vfxray":[269,26,37,31771],"mimatic":[560,46,109,68872],"legidle":[338,19,67,44251],"legends":[330,33,46,39312],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[355,0,4,48630],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31092],"physics":[265,23,49,25142],"arms":[372,35,50,37953],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1132,118,170,127774],"legmodel":[428,23,91,51563],"leggun":[232,20,67,27735],"leganim":[447,21,53,56045],"legrun":[466,39,94,49576],"vfxray":[269,26,37,31771],"mimatic":[560,46,109,68872],"legidle":[338,19,67,44251],"legends":[330,33,46,39312],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };

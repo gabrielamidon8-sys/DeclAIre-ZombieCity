@@ -69,6 +69,8 @@ function armsNew(p, load) {
   p.weapon = W0; p.dashK = 'dodge';
   return p.arm;
 }
+// the moves that end on their own (a move still going long past its time is stuck); relaxed, ready and sprint last as long as they last
+const ARMS_TIMED = ['raise', 'lower', 'reload', 'swapOut', 'swapIn', 'sprintOut', 'dodge', 'inspect'];
 function armsSet(p, st, dur) { const a = p.arm; a.st = st; a.t = 0; a.dur = dur || 0; }
 // what the posture blends toward (0 relaxed .. 1 on target)
 function armsFocusGoal(a) {
@@ -84,6 +86,7 @@ function armsCanSprint(p) { const a = p.arm; return a && (a.st === 'relaxed' || 
 // every frame for the local player: input, timers, transitions, reload events
 function armsTick(p, dt, moving) {
   const a = p.arm; if (!a || !armsUp()) return;
+  const t0 = performance.now();
   try {
     const w = p.weapon, A = w.arms;
     a.t += dt; a.eng += dt; a.kick = Math.max(0, a.kick - dt * 6); a.camK = Math.max(0, a.camK - dt * 5);
@@ -110,6 +113,7 @@ function armsTick(p, dt, moving) {
       case 'dodge': if (!(p.dashT > 0)) armsSet(p, a.dodgeEnd || (a.eng < 1 ? 'raise' : 'relaxed'), a.dodgeEnd === 'raise' ? A.ready : 0); break;
     }
   } catch (e) { armsHurt(e); }
+  coreCost('ARMS', performance.now() - t0 + 0.001);   // (its heartbeat: CORE knows it is working)
 }
 // a shot wanted (target: the zombie, ang: the aim): true when a round actually left the gun
 function armsFire(p, target, ang, auto) {
@@ -413,8 +417,8 @@ coreDefine({ name: 'ARMS', kind: 'sim', ver: 1, does: 'The armorer: the ten rebu
   state: () => G.p && G.p.arm ? G.p.arm.st + ' · ' + G.p.weapon.name + ' ' + G.p.arm.mag[G.p.arm.slot] : 'ready',
   level: () => 'full', noLearn: '',
   alive: () => G.mode === 'play' && !!(G.p && G.p.arm), stallS: 8,
-  check: () => { const p = G.p; if (!p || !p.arm) return ''; const a = p.arm; if (ARMS_ST.indexOf(a.st) < 0) return 'its state went bad'; if (!(a.mag[0] >= 0 && a.mag[1] >= 0)) return 'a magazine count went bad'; if (a.dur && a.t > a.dur + 8 && a.st !== 'sprint') return 'stuck in ' + a.st; return ''; },
-  repair: () => { const p = G.p; if (p && p.arm) { const a = p.arm; if (ARMS_ST.indexOf(a.st) < 0 || (a.dur && a.t > a.dur + 8)) armsSet(p, 'relaxed'); for (let i = 0; i < 2; i++) if (!(a.mag[i] >= 0)) a.mag[i] = armsCap(a.w[i]); } ARMS.errT.length = 0; ARMS.offUntil = 0; },
+  check: () => { const p = G.p; if (!p || !p.arm) return ''; const a = p.arm; if (ARMS_ST.indexOf(a.st) < 0) return 'its state went bad'; if (!(a.mag[0] >= 0 && a.mag[1] >= 0)) return 'a magazine count went bad'; if (a.dur && a.t > a.dur + 8 && ARMS_TIMED.indexOf(a.st) >= 0) return 'stuck in ' + a.st; return ''; },
+  repair: () => { const p = G.p; if (p && p.arm) { const a = p.arm; if (ARMS_ST.indexOf(a.st) < 0 || (a.dur && a.t > a.dur + 8 && ARMS_TIMED.indexOf(a.st) >= 0)) armsSet(p, 'relaxed'); for (let i = 0; i < 2; i++) if (!(a.mag[i] >= 0)) a.mag[i] = armsCap(a.w[i]); } ARMS.errT.length = 0; ARMS.offUntil = 0; },
   reset: () => { if (G.p && G.p.arm) armsNew(G.p, armsLoad()); },
   selfTest: () => armsSelfTest(),
   learned: () => { const u = Object.entries(ARMS.uses).sort((a, b) => (b[1].r + b[1].s) - (a[1].r + a[1].s))[0]; return ARMS.fired ? ['You have fired ' + ARMS.fired + ' rounds this session, reloaded ' + ARMS.reloads + ' times (' + ARMS.tac + ' tactical, magazine kept) and rolled ' + ARMS.dodges + ' times.' + (u ? ' The gun you reload most: the ' + ARMS_BY[u[0]].name + '; its frames are warmed first.' : '')] : []; },
