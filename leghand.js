@@ -125,6 +125,7 @@ function lghHandPts(S, g, side) {
 // the fitted socket and grip for a hand on a prop (cached); null when it cannot be fitted
 function lghGet(prop, key, side, which, gripName, S0) {
   if (!LGH.on || !S0) return null;
+  if (!LGH.loaded) lghLoad();
   const k = prop + '|' + (key || '') + '|' + side + '|' + which + '|' + gripName; let r = LGH.fit.get(k); if (r !== undefined) return r;
   const t0 = performance.now(); r = null;
   try {
@@ -140,7 +141,44 @@ function lghGet(prop, key, side, which, gripName, S0) {
     LGH.fits++;
   } catch (e) { LGH.fails++; lgHurt(e); r = null; }
   LGH.ms += performance.now() - t0;
-  LGH.fit.set(k, r); return r;
+  LGH.fit.set(k, r); lghSaveSoon(); return r;
+}
+/* 1.9.994: the fits are kept on the device (each costs 30 to 90 ms), under a key made from everything they depend on:
+   the guns' and the knife's builders, the glove, the fitter and the hand-made sockets. Change any of them and the key
+   changes, and the fits are made again. They are warmed in the background for the guns you carry. */
+function lghVer() {
+  if (LGH.ver) return LGH.ver;
+  let s = JSON.stringify(LG_FINGERS) + lghFit + lghClose + lghPalm + lghCloud + (typeof lgOpHand === 'function' ? lgOpHand : '') + lgPistolFrame + lgARGrip + lgCurvedMag + lgOpKnife + JSON.stringify(LG_GRIPS);
+  for (const k in LG_GUN_DEF) { const D = LG_GUN_DEF[k]; s += k + D.mk + JSON.stringify(Object.assign({}, D, { mk: 0 })); }
+  for (const k of ['gripR', 'gripL', 'cgripR', 'cgripL', 'kgrip', 'kgripF']) if (LG_SOCK[k]) s += Array.from(LG_SOCK[k]).map(v => v.toFixed(5)).join(',');
+  let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return LGH.ver = (h >>> 0).toString(36) + '.' + s.length.toString(36);
+}
+function lghLoad() {
+  LGH.loaded = true; if (typeof store === 'undefined' || !LG_SOCK.cgripR) return;
+  try {
+    const d = store.get('zc_lghFit', null); if (!d || d.v !== lghVer() || !d.f) return;
+    let n = 0; for (const k in d.f) { const r = d.f[k]; if (LGH.fit.has(k)) continue; LGH.fit.set(k, r ? { S: new Float32Array(r.S), g: r.g, dy: r.dy } : null); n++; }
+    LGH.restored = n;
+  } catch (e) { }
+}
+function lghSaveSoon() { if (LGH.saveT || typeof store === 'undefined') return; LGH.saveT = setTimeout(lghSave, 1500); }
+function lghSave() {
+  LGH.saveT = 0;
+  try { const f = {}; let n = 0; for (const [k, r] of LGH.fit) { if (n++ > 160) break; f[k] = r ? { S: Array.from(r.S, v => +v.toFixed(5)), g: r.g, dy: +(+r.dy).toFixed(5) } : null; } store.set('zc_lghFit', { v: lghVer(), f: f }); } catch (e) { }
+}
+// the carried guns' grips (and the knife's), made a few at a time while nothing else needs the time
+function lghWarm(gp, gs) {
+  const jobs = [];
+  if (gp && LG_GUN_DEF[gp]) jobs.push(['carbine', gp, 'R', 'gripR', 'pistol'], ['carbine', gp, 'R', 'gripR', 'trigger'], ['carbine', gp, 'L', 'gripL', 'cup']);
+  if (gs && LG_GUN_DEF[gs]) jobs.push(['pistol', gs, 'R', 'gripR', 'pistol'], ['pistol', gs, 'R', 'gripR', 'trigger'], ['pistol', gs, 'L', 'gripL', 'support']);
+  jobs.push(['knife', null, 'R', LG_SOCK.kgripF ? 'kgripF' : 'kgrip', 'knife'], ['knife', null, 'L', 'kgrip', 'knife']);
+  const step = () => {
+    let done = 0;
+    while (jobs.length && done < 1) { const [p, k, sd, w, gn] = jobs.shift(), key = p + '|' + (k || '') + '|' + sd + '|' + w + '|' + gn; if (LGH.fit.has(key)) continue; lghGet(p, k, sd, w, gn, lghBaseSock(p, k, w)); done++; }
+    if (jobs.length) setTimeout(step, 50);
+  };
+  if (!LGH.loaded) lghLoad(); setTimeout(step, 30);
 }
 // the hand-made socket a fit starts from
 function lghBaseSock(prop, key, which) {
@@ -155,4 +193,4 @@ function lghGripName(prop, side, cur) {
   if (side === 'R') return cur === 'trigger' ? 'trigger' : 'pistol';
   return prop === 'pistol' ? 'support' : 'cup';
 }
-function lghReset() { LGH.fit.clear(); LGH.sock.clear(); }
+function lghReset() { LGH.fit.clear(); LGH.sock.clear(); LGH.ver = null; }

@@ -439,6 +439,8 @@ function lgsDeploy() {
 function lgsMenuTile() { const e = $('legendsEm'); if (!e) return; const c = LG_CLASS_BY[SET.legendClass] || LG_CLASSES[0]; e.textContent = (SET.legend === 'none' ? 'Off' : 'Operator · ' + c.name); }
 $('legendsBtn').addEventListener('click', () => { SFX.click(); openLegends(); });
 lgsMenuTile();
+// (1.9.994: the hands' grips on the carried guns, fitted in the background on the title screen, or read back from the device)
+setTimeout(() => { try { if (lgsArmsOn() && typeof lghWarm === 'function') { const L = armsLoad(); lghWarm(L.p, L.s); } } catch (e) { } }, 3500);
 
 /* ---------- LEGEND, MIMATIC and VFXRAY in the ecosystem ---------- */
 // the three draw the screen together on one renderer: the processor if any of them is set to it in the engine room

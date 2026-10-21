@@ -681,6 +681,7 @@ function mimStudioLoad(a) {
   a.gp = !a.seat && L ? L.p : null; a.gs = !a.seat && L ? L.s : null;
   a.m = lgModel(a.model, a.lod, a.cls + (a.seat ? '|idle' : L ? '|' + L.p + '|' + L.s : ''));
   if (a.player) { a.player.ctx.gun = a.gp; a.player.ctx.gp = a.gp; a.player.ctx.gs = a.gs; }
+  if ((a.gp || a.gs) && typeof lghWarm === 'function') lghWarm(a.gp, a.gs);
 }
 function mimHurt(e) {
   const now = performance.now(); coreHurt('MIMATIC', e); try { console.error(e); } catch (x) { }
