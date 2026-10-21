@@ -161,6 +161,24 @@
 .arms .hx-abil #reloadBtn{grid-area:reload;margin:0}
 .arms.lefty .hx-abil{grid-template-areas:"mark reload" "dash air"}
 .dev-touch #reloadBtn{width:58px;height:58px}
+/* 1.9.994: the knife, beside the A-10 (the chain lives in its glow) */
+#knifeBtn{display:none;position:relative;width:54px;height:54px;border:0;border-radius:50%;color:#efe6d2;background:radial-gradient(circle at 50% 40%, rgba(70,52,44,.92), rgba(9,12,16,.9) 66%);box-shadow:0 0 0 1px rgba(239,230,210,.32), 0 6px 16px rgba(0,0,0,.5)}
+#knifeBtn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#knifeBtn.chain{color:#fff;box-shadow:0 0 0 2px #e8dcc0, 0 0 18px rgba(255,90,80,.55)}
+.arms #knifeBtn{display:grid;place-items:center}
+.arms .hx-abil{grid-template-columns:auto auto auto;grid-template-areas:". reload mark" "knife air dash"}
+.arms .hx-abil #knifeBtn{grid-area:knife;margin:0}
+.arms.lefty .hx-abil{grid-template-areas:"mark reload ." "dash air knife"}
+.dev-touch #knifeBtn{width:66px;height:66px}
+#bladePop{position:absolute;left:50%;top:27%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none;text-align:center}
+#bladePop b{font-family:var(--f-display);font-weight:400;font-size:clamp(22px, 4.2vw, 40px);letter-spacing:.06em;color:#f3ead6;text-shadow:0 0 18px rgba(255,70,60,.55), 0 3px 18px #000}
+#bladePop span{font-family:var(--f-num);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#ff8d82;text-shadow:0 2px 10px #000}
+#bladePop em{font-style:normal;font-family:var(--f-num);font-size:13px;letter-spacing:.1em;color:#e8dcc0}
+#bladePop.in b{animation:bladein .38s cubic-bezier(.2, .9, .2, 1) both}
+#bladePop.in span,#bladePop.in em{animation:bladefade .5s .06s both}
+@keyframes bladein{0%{opacity:0;transform:scale(1.35);letter-spacing:.3em;filter:blur(3px)}100%{opacity:1;transform:none;filter:none}}
+@keyframes bladefade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.rm #bladePop b,.rm #bladePop span,.rm #bladePop em{animation:none}
 
 /* ---------- bottom left: the weapon ---------- */
 .hx-weapon{--wr:#a9adb5;position:absolute;left:max(16px, env(safe-area-inset-left, 0px));bottom:max(14px, env(safe-area-inset-bottom, 0px));display:flex;align-items:center;gap:10px;max-width:calc(100% - 210px);min-width:0;

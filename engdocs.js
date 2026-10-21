@@ -281,7 +281,7 @@ const ENG_DOCS = {
   ANIMA: {
     title: 'The Puppeteer',
     character: 'Gives each of the dead its own way of moving: 2,500 animations, and not one of them shared.',
-    does: 'Every 2.0 zombie is a jointed body seen from above with 50 animations of its own (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials), cross-fades that keep the feet in step, hit reactions layered on top, deaths from whatever pose it was in, bodies that stay a while; live joints near you, cached frames for the crowd, shadows shaped by each pose.',
+    does: 'Every 2.0 zombie is a jointed body seen from above with 60 animations of its own (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials, 10 knife kills), cross-fades that keep the feet in step, hit reactions layered on top, deaths from whatever pose it was in, bodies that stay a while; live joints near you, cached frames for the crowd, shadows shaped by each pose.',
     adapts: 'How many zombies get live joints (the rest use cached frames), stepped down when it takes too much of the frame and back up if CORE agrees.',
     repairs: 'Finds and resets broken poses and lost bodies; a self-test at start runs a handful of zombies through attacks, hit reactions and deaths and checks every joint comes out sound.',
     learns: 'What it costs by how many zombies it animates.',

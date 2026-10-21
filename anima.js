@@ -3,8 +3,8 @@
    elbow, each foot's stride and lift, a fall, a spin and so on); forward kinematics turns a pose into a skeleton in three
    dimensions (x forward, y to the right, z up, in units of the zombie's radius) and the look engine (anilook.js) draws it
    seen from above, things higher up drawn a little bigger, so a falling body really stretches out along the ground.
-   Each zombie has 50 animations of its own: 10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths and 6
-   specials. They are built from motion families shaped by the zombie's personality (its gait, how it holds its arms,
+   Each zombie has 60 animations of its own: 10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths and 6
+   specials, and (1.9.994) the knife's ten kills. They are built from motion families shaped by the zombie's personality (its gait, how it holds its arms,
    how it carries its head, its build, injuries, what it holds, and a seed that gives every zombie its own timing,
    amplitudes and quirks), so the Night Jogger's sprint, the Mail Carrier's march and the Rotter's one-armed drag share
    nothing but the names. Transitions cross-fade with the walk cycle's phase kept, attacks play on the upper body while
@@ -33,10 +33,12 @@ const AC = { walk: 0, walkFast: 1, run: 2, strafeL: 3, strafeR: 4, turn: 5, stum
   swipeR: 18, swipeL: 19, bite: 20, grab: 21, lunge: 22, slam: 23, headbutt: 24, shove: 25, combo: 26, signature: 27,
   hitHead: 28, hitFront: 29, hitBack: 30, hitArmL: 31, hitArmR: 32, hitLegL: 33, hitLegR: 34, stagger: 35,
   dieHead: 36, dieFwd: 37, dieBack: 38, dieSpin: 39, dieKnees: 40, dieCollapse: 41, dieBlast: 42, dieSide: 43,
-  emerge: 44, windup: 45, action: 46, recover: 47, roar: 48, getUp: 49 };
-const AC_N = 50;
+  emerge: 44, windup: 45, action: 46, recover: 47, roar: 48, getUp: 49,
+  // 1.9.994: the knife's ten kills (BLADE, knife.js): each combo its own death
+  kStick: 50, kNeck: 51, kPointBlank: 52, kThroat: 53, kHammer: 54, kPair: 55, kWhip: 56, kJaw: 57, kLunge: 58, kReaper: 59 };
+const AC_N = 60;
 const AC_KIND = []; const AC_GROUP = [];
-for (let i = 0; i < AC_N; i++) { AC_KIND[i] = i < 18 ? 'loop' : i < 28 ? 'once' : i < 35 ? 'add' : i === 35 ? 'once' : i < 44 ? 'death' : i === 45 || i === 46 ? 'hold' : 'once'; AC_GROUP[i] = i < 10 ? 'Moving' : i < 18 ? 'Idle' : i < 28 ? 'Attacks' : i < 36 ? 'Hit reactions' : i < 44 ? 'Deaths' : 'Specials'; }
+for (let i = 0; i < AC_N; i++) { AC_KIND[i] = i < 18 ? 'loop' : i < 28 ? 'once' : i < 35 ? 'add' : i === 35 ? 'once' : i < 44 ? 'death' : i >= 50 ? 'death' : i === 45 || i === 46 ? 'hold' : 'once'; AC_GROUP[i] = i < 10 ? 'Moving' : i < 18 ? 'Idle' : i < 28 ? 'Attacks' : i < 36 ? 'Hit reactions' : i < 44 ? 'Deaths' : i >= 50 ? 'Knife kills' : 'Specials'; }
 
 const ANIMA = {
   live: 0, liveCap: 14, cached: 0, made: 0, hits: 0, miss: 0, ms: 0, msAvg: 0, adapt: 0, good: 0, watchT: 0,
@@ -124,7 +126,8 @@ function animaNames(m) {
     'Right swipe', 'Left swipe', 'Bite', 'Grab', 'Lunge', 'Slam', 'Headbutt', 'Shove', 'Combo', sig,
     'Head hit', 'Body hit (front)', 'Body hit (back)', 'Left arm hit', 'Right arm hit', 'Left leg hit', 'Right leg hit', 'Stagger',
     'Head shot death', 'Falls forward', 'Falls backward', 'Spinning fall', 'Drops to its knees', 'Collapses', 'Blown off its feet', 'Falls sideways',
-    'Rise', ab[0], ab[1], 'Recover', 'Roar', 'Get back up'];
+    'Rise', ab[0], ab[1], 'Recover', 'Roar', 'Get back up',
+    'Knifed in the gut', 'Knifed in the neck', 'Shot point blank', 'Throat cut', 'Hammer stab', 'Two rounds point blank', 'Pistol-whipped', 'Knife under the jaw', 'Lunged through', 'Reaped'];
 }
 // clip lengths in seconds (loops: one cycle at walking pace, used for idles; the walk itself follows the ground)
 function animaDur(m, ci) {
@@ -135,6 +138,7 @@ function animaDur(m, ci) {
   if (ci < 35) return 0.42;
   if (ci === 35) return 0.8;
   if (ci < 44) return [1.25, 1.45, 1.4, 1.6, 1.9, 1.3, 1.5, 1.4][ci - 36];
+  if (ci >= 50) return [1.55, 1.7, 1.15, 1.75, 1.6, 1.3, 1.5, 1.65, 1.35, 1.8][ci - 50] || 1.5;
   return [1.3, 0.5, 0.6, 0.7, 1.6, 1.5][ci - 44];
 }
 function animaBuildAll(list) {
@@ -390,7 +394,7 @@ function animaEval(o, m, ci, u, t) {
   }
   if (ci < 28) { aAttack(o, m, ci, u, t); return; }
   if (ci < 36) { aHit(o, m, ci, u, t); return; }
-  if (ci < 44) { aDeath(o, m, ci, u, t); return; }
+  if (ci < 44 || ci >= 50) { aDeath(o, m, ci, u, t); return; }
   aSpecial(o, m, ci, u, t);
 }
 // attacks: a tell, the strike, the follow-through (only the upper body: the legs keep doing what they were)
@@ -562,7 +566,79 @@ function aDeath(o, m, ci, u, t) {
       o[AP.fall] = aFallK(u, 0.22, 0.6); o[AP.fallA] = s * (Math.PI / 2 + (R[35] - 0.5) * 0.4); splay(aSm(aSeg(u, 0.5, 0.85)) * 0.75); break;
     }
   }
+  if (ci >= 50) aDeathMelee(o, m, ci, u, t, s, splay);
   if (D.legless) { o[AP.fall] = Math.max(o[AP.fall], 0.8); o[AP.lean] = 0; o[AP.crouch] = 0; }
+}
+// 1.9.994: the knife's ten kills. Each starts with what the blow does to the body (where it went in, which way it was
+// going) and ends on the ground its own way; s is this zombie's side (which way it falls)
+function aDeathMelee(o, m, ci, u, t, s, splay) {
+  const R = m.an.rnd, S = (a, b) => aSm(aSeg(u, a, b));
+  switch (ci) {
+    case AC.kStick: {   // into the gut: it folds over the blade, hands to its belly, down to its knees and onto its face
+      const f = S(0, 0.12), kn = S(0.28, 0.55);
+      o[AP.hunch] = 0.9 * f; o[AP.lean] = 0.45 * f + 0.15 * kn; o[AP.headP] = -0.55 * f; o[AP.jaw] = 0.7 * f; o[AP.shake] = 0.35 * f * (1 - kn);
+      o[AP.alP] = -0.35 * f - 1.25 * (1 - f); o[AP.arP] = -0.4 * f - 1.25 * (1 - f); o[AP.alY] = o[AP.arY] = -0.25 * f + 0.32 * (1 - f); o[AP.alE] = o[AP.arE] = 1.7 * f;
+      o[AP.offX] = -0.15 * f; o[AP.crouch] = 0.35 * f + 0.85 * kn; o[AP.llS] = -0.5 * kn; o[AP.lrS] = -0.55 * kn;
+      o[AP.fall] = aFallK(u, 0.55, 0.85); o[AP.fallA] = (R[28] - 0.5) * 0.4; splay(S(0.7, 0.95) * 0.5); break;
+    }
+    case AC.kNeck: {   // at the neck: the head jerks away, both hands go up to it, a step back, the knees go, it falls sideways
+      const j = S(0, 0.08), st = S(0.1, 0.4), dn = S(0.42, 0.7);
+      o[AP.headR] = s * 0.75 * j; o[AP.headY] = s * 0.45 * j; o[AP.headP] = 0.35 * j; o[AP.jaw] = 0.9 * j;
+      o[AP.alP] = 0.25 * j - 1.25 * (1 - j); o[AP.arP] = 0.2 * j - 1.25 * (1 - j); o[AP.alE] = o[AP.arE] = 2.1 * j * (1 - dn * 0.6); o[AP.alY] = o[AP.arY] = -0.15 * j;
+      o[AP.offX] = -0.35 * st; o[AP.llS] = -0.35 * st; o[AP.shake] = 0.5 * j * (1 - dn); o[AP.crouch] = 0.6 * dn; o[AP.leanS] = s * 0.25 * dn;
+      o[AP.fall] = aFallK(u, 0.5, 0.82); o[AP.fallA] = s * (Math.PI / 2 + 0.2); splay(S(0.65, 0.95) * 0.7); break;
+    }
+    case AC.kPointBlank: {   // a round into the head from a foot away: it snaps back, arms flung up, thrown down on its back, a leg kicks
+      const sn = S(0, 0.05), bk = S(0, 0.35);
+      o[AP.headP] = 1.1 * sn - 0.25 * S(0.6, 1); o[AP.headR] = s * 0.35 * sn; o[AP.lean] = -0.5 * bk; o[AP.jaw] = 0.9;
+      o[AP.alP] = -1.25 + 1.9 * sn - 1.2 * S(0.35, 0.7); o[AP.arP] = -1.25 + 1.7 * sn - 1.1 * S(0.35, 0.7); o[AP.alY] = o[AP.arY] = 0.4 + 0.8 * sn;
+      o[AP.offX] = -1.1 * bk; o[AP.llL] = 0.45 * S(0.25, 0.45) * (1 - S(0.5, 0.7)); o[AP.llS] = 0.4 * S(0.25, 0.5);
+      o[AP.fall] = aFallK(u, 0.1, 0.48); o[AP.fallA] = Math.PI + s * 0.2; splay(S(0.45, 0.8)); break;
+    }
+    case AC.kThroat: {   // a cut across the throat: the head tips back, hands to it, it turns half round on its feet and drops
+      const c = S(0, 0.1), sp = S(0.12, 0.6), dn = S(0.45, 0.72);
+      o[AP.headP] = 0.6 * c; o[AP.jaw] = 0.8 * c; o[AP.alP] = 0.1 * c - 1.25 * (1 - c); o[AP.alE] = 2.0 * c; o[AP.arP] = -0.6 * c - 1.25 * (1 - c); o[AP.arE] = 1.2 * c; o[AP.alY] = -0.2 * c;
+      o[AP.spin] = s * 1.7 * sp; o[AP.twist] = -s * 0.4 * c * (1 - sp); o[AP.crouch] = 0.7 * dn; o[AP.shake] = 0.45 * c * (1 - dn);
+      o[AP.fall] = aFallK(u, 0.55, 0.85); o[AP.fallA] = 0.25 * s; splay(S(0.7, 0.95) * 0.6); break;
+    }
+    case AC.kHammer: {   // the overhand stab at the collar: driven straight down onto its knees, the head drops, then its face
+      const d = S(0, 0.18), tp = S(0.5, 0.64);
+      o[AP.crouch] = 1.3 * d; o[AP.llS] = -0.75 * d; o[AP.lrS] = -0.8 * d; o[AP.llL] = o[AP.lrL] = 0.1 * d; o[AP.hunch] = 0.5 * d; o[AP.headP] = -0.4 * d - 0.6 * tp; o[AP.headR] = s * 0.3 * d;
+      o[AP.alP] = -1.45; o[AP.arP] = -1.2 + 0.4 * d; o[AP.arE] = 1.0 * d; o[AP.jaw] = 0.7 * d; o[AP.shake] = 0.4 * d * (1 - tp); o[AP.lean] = 0.15 * d;
+      o[AP.fall] = aFallK(u, 0.55, 0.82); o[AP.fallA] = (R[31] - 0.5) * 0.3; splay(S(0.72, 0.95) * 0.55); break;
+    }
+    case AC.kPair: {   // two rounds into the chest: two jolts back, thrown flat, arms out
+      const j1 = S(0, 0.04) * (1 - S(0.06, 0.12)), j2 = S(0.1, 0.14), bk = S(0, 0.5);
+      o[AP.lean] = -0.25 * j1 - 0.45 * j2; o[AP.hunch] = -0.2 * j2; o[AP.headP] = 0.4 * j1 + 0.6 * j2; o[AP.jaw] = 0.7;
+      o[AP.alP] = -1.25 + 1.4 * j2; o[AP.arP] = -1.25 + 1.5 * j2; o[AP.alY] = o[AP.arY] = 0.5 + 0.7 * j2; o[AP.offX] = -1.4 * bk; o[AP.lrL] = 0.2 * j2 * (1 - S(0.4, 0.6));
+      o[AP.fall] = aFallK(u, 0.15, 0.55); o[AP.fallA] = Math.PI; splay(S(0.45, 0.8)); break;
+    }
+    case AC.kWhip: {   // the pistol to the temple: the head whips round, the body follows, it stumbles sideways and goes over
+      const w = S(0, 0.07), tw = S(0.03, 0.3), st = S(0.1, 0.55);
+      o[AP.headR] = s * 0.95 * w; o[AP.headY] = s * 0.75 * w; o[AP.jaw] = 0.8 * w; o[AP.twist] = s * 0.85 * tw; o[AP.leanS] = s * 0.45 * st;
+      o[AP.alY] = o[AP.arY] = 0.35 + 0.8 * tw; o[AP.alP] = o[AP.arP] = -1.25 + 0.7 * tw; o[AP.offY] = s * 0.9 * st; o[AP.llS] = 0.3 * st; o[AP.lrS] = -0.35 * st; o[AP.shake] = 0.3 * w;
+      o[AP.spin] = s * 0.6 * st; o[AP.fall] = aFallK(u, 0.42, 0.75); o[AP.fallA] = s * Math.PI / 2; splay(S(0.6, 0.9) * 0.8); break;
+    }
+    case AC.kJaw: {   // up under the jaw: lifted onto its toes, the head forced back, the arms gone limp, then straight down
+      const up = S(0, 0.12) * (1 - S(0.42, 0.55)), lp = S(0.1, 0.4), dn = S(0.48, 0.62);
+      o[AP.rise] = 0.12 * up; o[AP.headP] = 0.95 * S(0, 0.1) - 0.5 * dn; o[AP.jaw] = 0.2; o[AP.lean] = -0.15 * up;
+      o[AP.alP] = -1.25 + 0.5 * S(0, 0.08) * (1 - lp); o[AP.arP] = o[AP.alP]; o[AP.alE] = o[AP.arE] = 0.1 + 0.3 * (1 - lp); o[AP.shake] = 0.55 * up;
+      o[AP.crouch] = 1.2 * dn; o[AP.llS] = -0.6 * dn; o[AP.lrS] = -0.5 * dn;
+      o[AP.fall] = aFallK(u, 0.55, 0.8); o[AP.fallA] = (R[29] - 0.5) * 1.8; splay(S(0.68, 0.95) * 0.7); break;
+    }
+    case AC.kLunge: {   // the lunging thrust: driven back off its feet, sliding, reaching, down on its back
+      const d = S(0, 0.4), j = S(0, 0.06);
+      o[AP.offX] = -1.9 * d; o[AP.lean] = -0.5 * d; o[AP.hunch] = 0.4 * j; o[AP.headP] = -0.3 * j + 0.5 * d; o[AP.jaw] = 0.9 * j;
+      o[AP.alP] = 0.35 * d - 1.25 * (1 - d); o[AP.arP] = 0.25 * d - 1.25 * (1 - d); o[AP.alY] = o[AP.arY] = 0.3 + 0.4 * d; o[AP.llS] = -0.55 * d; o[AP.lrS] = 0.3 * d; o[AP.rise] = 0.05 * j;
+      o[AP.fall] = aFallK(u, 0.25, 0.62); o[AP.fallA] = Math.PI + (R[27] - 0.5) * 0.4; splay(S(0.55, 0.85)); break;
+    }
+    case AC.kReaper: {   // the spinning backhand cut: spun twice round, arms flung out, a limp head, sprawled
+      const sp = S(0, 0.6), c = S(0, 0.08);
+      o[AP.spin] = s * 4.4 * sp; o[AP.alY] = o[AP.arY] = 1.3 * c; o[AP.alP] = o[AP.arP] = -0.2 - 0.9 * S(0.45, 0.7); o[AP.headR] = s * 0.6 * c; o[AP.headP] = 0.45 * c; o[AP.jaw] = 0.8;
+      o[AP.crouch] = 0.5 * S(0.25, 0.5); o[AP.offY] = -s * 0.4 * sp; o[AP.leanS] = s * 0.3 * sp;
+      o[AP.fall] = aFallK(u, 0.42, 0.78); o[AP.fallA] = s * (Math.PI / 2 + (R[35] - 0.5) * 0.6); splay(S(0.6, 0.92)); break;
+    }
+  }
 }
 // the specials: rising, an ability's tell and its move, recovering, a roar, getting back up
 function aSpecial(o, m, ci, u, t) {
@@ -895,6 +971,7 @@ function animaDeathClip(z) {
   if (z.m.ad.legless) return r < 0.5 ? AC.dieFwd : AC.dieCollapse;
   if (src === 'blast' || src === 'a10' || src === 'car') return pw > 0.6 || r < 0.7 ? AC.dieBlast : AC.dieSpin;
   if (src === 'fire' || src === 'burn') return r < 0.6 ? AC.dieKnees : AC.dieCollapse;
+  if (src === 'melee' && z.meleeCi >= 50 && z.meleeCi < AC_N) return z.meleeCi;   // (the knife chose it: knife.js)
   if (src === 'dash' || src === 'melee') return r < 0.5 ? AC.dieSpin : AC.dieSide;
   if (reg === 'head') return pw > 1.3 && r < 0.4 ? AC.dieBack : r < 0.75 ? AC.dieHead : AC.dieCollapse;
   if (reg === 'legL' || reg === 'legR') return r < 0.5 ? AC.dieSide : AC.dieFwd;
@@ -910,7 +987,7 @@ function animaDeath(z, forceCi) {
   if (z.st && z.st.boomed) { if (typeof goreGib === 'function') for (let i = 0; i < 6; i++) goreGib(z.x, z.y, Math.random() * TAU, (120 + Math.random() * 160) * PK, 'flesh', [120, 120, 60], (3 + Math.random() * 3) * PK); return -1; }
   try {
     const A = animaState(z); A.upF = -1; animaTick(z, 0.0001, true);
-    const ci = forceCi >= 36 && forceCi < 44 ? forceCi : animaDeathClip(z), C = { m: z.m, x: z.x, y: z.y, ang: z.ang, r: z.r, ci: ci, t: 0, dur: z.m.adur[ci] * rand(0.92, 1.1), start: new Float32Array(A.pose), pose: new Float32Array(AN), done: false, life: 0, off: 0, seed: Math.random() * 100,
+    const ci = (forceCi >= 36 && forceCi < 44) || (forceCi >= 50 && forceCi < AC_N) ? forceCi : animaDeathClip(z), C = { m: z.m, x: z.x, y: z.y, ang: z.ang, r: z.r, ci: ci, t: 0, dur: z.m.adur[ci] * rand(0.92, 1.1), start: new Float32Array(A.pose), pose: new Float32Array(AN), done: false, life: 0, off: 0, seed: Math.random() * 100,
       vx: (z.vx || 0) * 0.35 + Math.cos(z.hitA || 0) * (z.hitP || 0.5) * 22, vy: (z.vy || 0) * 0.35 + Math.sin(z.hitA || 0) * (z.hitP || 0.5) * 22, burn: z.burnT > 0 || z.lastSrc === 'fire' ? 1 : 0, frost: z.frostK || 0, char: z.charK || 0, minion: !!z.minion, sever: z.sever | 0, spr: null };
     ANIMA.corpses.push(C); ANIMA.deadN++;
     const cap = ANIMA.corpseCap; if (ANIMA.corpses.length > cap) ANIMA.corpses.splice(0, ANIMA.corpses.length - cap);
@@ -1206,7 +1283,7 @@ const A_LT_PREV = { x: -0.6, y: -0.55, c: '255,240,215', k: 0.55, rim: 0.5 };
 
 coreAdd({
   name: 'ANIMA', kind: 'render', ver: 1, needs: ['TEXEL', 'PERF'], provides: ['zombieRig', 'zombieAnimation', 'corpses'],
-  does: 'Rig and animation engine for the 2.0 zombies: every zombie a jointed body (32-number poses, 3D forward kinematics seen from above) with 50 animations of its own (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials) shaped by its gait, arms, head, build and seed; cross-faded transitions that keep the walk in step, attacks on the upper body while the legs walk, hit reactions layered on top, deaths from whatever pose it was in, corpses that stay a while; live joints near you, cached frames for the crowd.',
+  does: 'Rig and animation engine for the 2.0 zombies: every zombie a jointed body (32-number poses, 3D forward kinematics seen from above) with 60 animations of its own (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials, 10 knife kills) shaped by its gait, arms, head, build and seed; cross-faded transitions that keep the walk in step, attacks on the upper body while the legs walk, hit reactions layered on top, deaths from whatever pose it was in, corpses that stay a while; live joints near you, cached frames for the crowd.',
   state: () => animaUp() ? 'on' : 'off',
   level: () => ANIMA.live + ' live, ' + ANIMA.cached + ' cached, ' + ANIMA.corpses.length + ' corpses, ' + ANIMA.cache.size + ' frames' + (ANIMA.adapt ? ', detail ' + ANIMA.adapt : ''),
   canTrim: () => ANIMA.adapt > -3, trim: () => { if (ANIMA.adapt <= -3) return false; ANIMA.adapt--; return true; }, boost: () => { if (ANIMA.adapt >= 0) return false; ANIMA.adapt++; return true; },
@@ -1224,7 +1301,7 @@ coreMeta('ANIMA', { ver: 2, lv: () => ANIMA.adapt + 3, adaptGet: () => ANIMA.ada
     const o = new Float32Array(AN), J = new Float32Array(NJ * 3); let n = 0, pass = 0, why = '';
     for (let i = 0; i < ZR.length; i += Math.max(1, Math.floor(ZR.length / 6))) {
       const m = ZR[i]; if (!m || !m.an) continue;
-      for (const ci of [0, 12, 24, 40]) {
+      for (const ci of [0, 12, 24, 40, 50 + (i % 10), 59]) {   // (and a knife kill or two, 1.9.994)
         n++;
         try { animaEval(o, m, ci, 0.37, 1.3); animaFK(m.ad, o, J); let ok = true; for (let k = 0; k < J.length; k++) if (!(J[k] === J[k])) { ok = false; break; } if (ok) pass++; else if (!why) why = m.name + ' came out of clip ' + ci + ' broken'; }
         catch (x) { if (!why) why = m.name + ': ' + String(x && x.message || x).slice(0, 60); }

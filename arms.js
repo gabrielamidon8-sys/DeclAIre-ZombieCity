@@ -23,7 +23,7 @@ var ARMS_ON = true;   // (a var: other files ask before this one has run)
 const ARMS = { ver: 1, fired: 0, reloads: 0, tac: 0, specials: 0, swaps: 0, dodges: 0, checks: 0, dry: 0, sprintS: 0, errT: [], offUntil: 0, hudK: '', uses: store.get('zc_armsUse', {}) };
 const ARMS_LIST = WEAPONS.filter(w => w.arms), ARMS_BY = {}; ARMS_LIST.forEach(w => { ARMS_BY[w.arms.key] = w; });
 const ARMS_PRI = ARMS_LIST.filter(w => w.slot === 'primary'), ARMS_SEC = ARMS_LIST.filter(w => w.slot === 'secondary');
-const ARMS_ST = ['relaxed', 'raise', 'ready', 'lower', 'reload', 'swapOut', 'swapIn', 'sprint', 'sprintOut', 'dodge', 'inspect'];
+const ARMS_ST = ['relaxed', 'raise', 'ready', 'lower', 'reload', 'swapOut', 'swapIn', 'sprint', 'sprintOut', 'dodge', 'inspect', 'knife'];   // (1.9.994: the knife, knife.js)
 function armsOn() { return ARMS_ON; }
 function armsUp() { return !(ARMS.offUntil && performance.now() < ARMS.offUntil); }
 // the loadout: a primary and a secondary (stored on the device and in the cloud save with the rest)
@@ -70,7 +70,7 @@ function armsNew(p, load) {
   return p.arm;
 }
 // the moves that end on their own (a move still going long past its time is stuck); relaxed, ready and sprint last as long as they last
-const ARMS_TIMED = ['raise', 'lower', 'reload', 'swapOut', 'swapIn', 'sprintOut', 'dodge', 'inspect'];
+const ARMS_TIMED = ['raise', 'lower', 'reload', 'swapOut', 'swapIn', 'sprintOut', 'dodge', 'inspect', 'knife'];
 function armsSet(p, st, dur) { const a = p.arm; a.st = st; a.t = 0; a.dur = dur || 0; }
 // what the posture blends toward (0 relaxed .. 1 on target)
 function armsFocusGoal(a) {
@@ -80,7 +80,7 @@ function armsFocusGoal(a) {
 function armsEngage(p) { if (p.arm) p.arm.eng = 0; }
 function armsSpeedMul(p) {
   const a = p.arm; if (!a) return 1;
-  switch (a.st) { case 'sprint': return 1.45; case 'ready': return 0.86; case 'raise': case 'sprintOut': return 0.9; case 'reload': return 0.88; case 'swapOut': case 'swapIn': return 0.95; case 'inspect': return 0.92; default: return 1; }
+  switch (a.st) { case 'knife': return p.kn && p.kn.lunge ? 0 : 0.45; case 'sprint': return 1.45; case 'ready': return 0.86; case 'raise': case 'sprintOut': return 0.9; case 'reload': return 0.88; case 'swapOut': case 'swapIn': return 0.95; case 'inspect': return 0.92; default: return 1; }
 }
 function armsCanSprint(p) { const a = p.arm; return a && (a.st === 'relaxed' || a.st === 'ready' || a.st === 'raise' || a.st === 'lower' || a.st === 'inspect' || a.st === 'sprintOut'); }
 // every frame for the local player: input, timers, transitions, reload events
@@ -111,6 +111,7 @@ function armsTick(p, dt, moving) {
       case 'swapOut': if (a.t >= a.dur) { a.slot = 1 - a.slot; p.weapon = a.w[a.slot]; recalc(p); updWeaponChip(); armsSet(p, 'swapIn', p.weapon.arms.draw); armsSnd('draw', p.weapon.slot === 'primary' ? 0.95 : 1.05); } break;
       case 'swapIn': if (a.t >= a.dur) armsSet(p, a.eng < 1.5 ? 'ready' : 'relaxed'); break;
       case 'dodge': if (!(p.dashT > 0)) armsSet(p, a.dodgeEnd || (a.eng < 1 ? 'raise' : 'relaxed'), a.dodgeEnd === 'raise' ? A.ready : 0); break;
+      case 'knife': if (typeof bladeTick === 'function') { try { bladeTick(p, dt); } catch (e) { bladeHurtE(e); bladeEnd(p); } } else armsSet(p, 'relaxed'); break;
     }
   } catch (e) { armsHurt(e); }
   coreCost('ARMS', performance.now() - t0 + 0.001);   // (its heartbeat: CORE knows it is working)
@@ -120,6 +121,7 @@ function armsFire(p, target, ang, auto) {
   const a = p.arm; if (!a) { fireWeapon(target, ang); return true; }
   const w = p.weapon, A = w.arms;
   armsEngage(p);
+  if (a.st === 'knife') { if (typeof bladeShot === 'function') bladeShot(p, target, auto); return false; }   // (in the chain: the point-blank shot, knife.js)
   if (a.st === 'sprint') { a.latch = false; G.touchSprint = false; armsSet(p, 'sprintOut', A.ready * 1.15); armsSnd('readyUp', 1); return false; }
   if (a.st === 'relaxed') { armsSet(p, 'raise', A.ready); armsSnd('readyUp', 1); return false; }
   if (a.st === 'lower') { const k = a.dur ? clamp(a.t / a.dur, 0, 1) : 1; armsSet(p, 'raise', A.ready); a.t = A.ready * (1 - k); return false; }
@@ -154,7 +156,7 @@ const ARMS_BEATS = {
 function armsReload(p) {
   const a = p.arm; if (!a) return false;
   const w = p.weapon, A = w.arms, cap = armsCap(w), n = a.mag[a.slot];
-  if (a.st === 'reload' || a.st === 'swapOut' || a.st === 'swapIn' || a.st === 'dodge') return false;
+  if (a.st === 'reload' || a.st === 'swapOut' || a.st === 'swapIn' || a.st === 'dodge' || a.st === 'knife') return false;
   if (a.st === 'sprint') { a.latch = false; G.touchSprint = false; }
   if (n >= cap || (A.reload.kind === 'tube' && n >= A.mag + 1)) {
     // full: a press check instead (a look at the chamber, the magazine tapped)
@@ -208,7 +210,7 @@ function armsPickup(p, w) {
 }
 function armsSwap(p) {
   const a = p.arm; if (!a || G.mode !== 'play') return false;
-  if (a.st === 'swapOut' || a.st === 'swapIn' || a.st === 'dodge') return false;
+  if (a.st === 'swapOut' || a.st === 'swapIn' || a.st === 'dodge' || a.st === 'knife') return false;
   if (a.st === 'sprint') { a.latch = false; }
   if (a.st === 'reload' && p.weapon.arms.reload.kind !== 'tube') a.rEv = 0;   // (the magazine in progress is lost; the tube keeps its shells)
   armsSet(p, 'swapOut', p.weapon.arms.holster); a.swSeq++; ARMS.swaps++;
@@ -221,6 +223,7 @@ function armsDodge(p) {
   let dx = p.ix, dy = p.iy; if (Math.abs(dx) + Math.abs(dy) < 0.05) { dx = -Math.cos(p.aim); dy = -Math.sin(p.aim); }   // standing still: a roll back, away from what he faces
   const l = Math.hypot(dx, dy) || 1; p.dashDx = dx / l; p.dashDy = dy / l;
   if (a.st === 'reload') { if (p.weapon.arms.reload.kind !== 'tube') a.rEv = 0; }
+  if (a.st === 'knife' && typeof bladeEnd === 'function') bladeEnd(p);   // (a roll out of the chain)
   a.dodgeEnd = a.st === 'ready' || a.st === 'raise' ? 'raise' : '';
   p.dashK = 'dodge'; armsSet(p, 'dodge'); dashStart(p); ARMS.dodges++;
   armsSnd('dodge', 1);
@@ -231,13 +234,13 @@ function armsUse(key, what) { const u = ARMS.uses[key] || (ARMS.uses[key] = { r:
 
 /* ---------- co-op: what a teammate's screen needs to draw your hands right ---------- */
 // [state, progress (percent), reload number, swap number, focus (tenths), reload kind: 0 dropped, 1 empty, 2 half-moon, 3 kept]
-function armsNetCode(p) { const a = p.arm; if (!a) return null; return [Math.max(0, ARMS_ST.indexOf(a.st)), a.dur ? Math.round(clamp(a.t / a.dur, 0, 1) * 100) : 0, a.rSeq & 255, a.swSeq & 255, Math.round(clamp(a.focus, 0, 1) * 10), a.rk === 'empty' || a.rk === 'port' ? 1 : a.rk === 'moon' ? 2 : a.keep ? 3 : 0]; }
+function armsNetCode(p) { const a = p.arm; if (!a) return null; return [Math.max(0, ARMS_ST.indexOf(a.st)), a.dur ? Math.round(clamp(a.t / a.dur, 0, 1) * 100) : 0, a.rSeq & 255, a.swSeq & 255, Math.round(clamp(a.focus, 0, 1) * 10), a.st === 'knife' && typeof BLADE_MV !== 'undefined' ? 10 + Math.max(0, BLADE_MV.indexOf(a.km)) : a.rk === 'empty' || a.rk === 'port' ? 1 : a.rk === 'moon' ? 2 : a.keep ? 3 : 0]; }   // (the knife: its move, 10 + index)
 // a teammate's arms on this screen (their posture, their reload, their magazines falling here too)
 function armsNetApply(o, c) {
   if (!Array.isArray(c) || !o || !o.weapon || !o.weapon.arms) return;
   const a = o.arm || (o.arm = { w: [o.weapon, o.weapon], slot: 0, mag: [0, 0], st: 'relaxed', t: 0, dur: 1, focus: 0, rSeq: -1, swSeq: -1, kick: 0, camK: 0, rk: '', keep: false, eng: 9 });
   const st = ARMS_ST[c[0] | 0] || 'relaxed', seq = c[2] | 0, kind = c[5] | 0;
-  a.w[a.slot] = o.weapon; a.keep = kind === 3; a.rk = kind === 1 ? 'empty' : kind === 2 ? 'moon' : 'tac';
+  a.w[a.slot] = o.weapon; a.keep = kind === 3; a.rk = kind === 1 ? 'empty' : kind === 2 ? 'moon' : 'tac'; a.km = kind >= 10 && typeof BLADE_MV !== 'undefined' ? BLADE_MV[kind - 10] || 'stab' : '';
   if (a.rSeq >= 0 && seq !== a.rSeq && st === 'reload' && !a.keep && G.mode === 'play') {
     try { const u = physU(), ca = Math.cos(o.aim || 0), sa = Math.sin(o.aim || 0); physMagDrop(o.weapon, o.x + ca * 0.32 * u - sa * 0.08 * u, o.y + sa * 0.32 * u + ca * 0.08 * u, o.aim || 0, 0, 0); } catch (e) { }
   }
@@ -262,6 +265,7 @@ function armsHud() {
   if (r) { r.style.setProperty('--rl', prog.toFixed(3)); r.classList.toggle('on', busy); }
   if (o) o.textContent = other.name + ' · ' + a.mag[1 - a.slot];
   if (rb) { rb.classList.toggle('low', low && !busy); rb.classList.toggle('busy', busy); }
+  const kb = $('knifeBtn'); if (kb) kb.classList.toggle('chain', a.st === 'knife');
 }
 // a phone: the reload button, and a tap on the gun swaps to the other one
 $('reloadBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (G.mode === 'play' && G.p && G.p.arm) armsReload(G.p); });

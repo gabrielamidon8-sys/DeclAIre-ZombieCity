@@ -155,8 +155,56 @@ const LGV_UP = {
     }
   },
   reload(P, k, ctx) { lgvTorso(P, 0.55, ctx.t, ctx.fam); (LGV_RL[ctx.kind] || LGV_RL.pistol)(P, k, ctx); },
-  dodge(P, k, ctx) { lgvRoll(P, k, ctx); }
+  dodge(P, k, ctx) { lgvRoll(P, k, ctx); },
+  // 1.9.994: the knife (BLADE, knife.js): the blade in the left hand in a reverse grip, the sidearm in the right; each
+  // move its own path for the blade (and for the gun on the shots and the whip), the hips and the chest behind it
+  knife(P, k, ctx) { lgvKnife(P, k, ctx.km || 'stab', ctx); }
 };
+// the knife's moves, chest space: [x forward, y left, z up]; the guard is the left fist by the chin, the blade down the forearm
+const LGV_KG = [0.26, 0.07, 0.24], LGV_KR = [0.2, -1.3, 0.4];
+function lgvKnife(P, k, mv, ctx) {
+  lgvTorso(P, 0.75, ctx.t || 0, 'p');
+  const K = (keys) => lgK(k, keys), G = LGV_KG, R = LGV_KR;
+  let hp = G, hr = R, yaw = 0, lean = 0, gun = [0.22, -0.13, 0.0, 0.25, 0.55, 0], one = true, rec = 0, whip = 0;
+  switch (mv) {
+    case 'stab': case 'lunge': {   // a short thrust out from the guard at the belly (the lunge: the whole body behind it)
+      const s = K([[0, 0], [0.32, 1, 'o3'], [0.6, 0.9], [1, 0, 'io']]), L = mv === 'lunge' ? 1.25 : 1;
+      hp = [lgLerp(G[0], 0.5 * L, s), lgLerp(G[1], 0.02, s), lgLerp(G[2], 0.06, s)]; hr = [lgLerp(R[0], 0.05, s), lgLerp(R[1], -0.55, s), lgLerp(R[2], 0.15, s)];
+      lean = 0.18 * s * L; yaw = -0.25 * s; break;
+    }
+    case 'neck': case 'hammer': {   // the hammer: up, then down at the neck (the collar for the hammer, from higher)
+      const hi = mv === 'hammer' ? 0.55 : 0.46, lo = mv === 'hammer' ? 0.04 : 0.2;
+      const z = K([[0, G[2]], [0.3, hi, 'o'], [0.38, hi], [0.52, lo, 'i3'], [0.64, lo - 0.02], [1, G[2], 'io']]), x = K([[0, G[0]], [0.3, 0.16], [0.52, 0.44, 'i3'], [1, G[0]]]);
+      hp = [x, K([[0, G[1]], [0.3, 0.12], [0.52, 0.02], [1, G[1]]]), z]; hr = [K([[0, 0.2], [0.3, 0.05], [0.52, -0.1], [1, 0.2]]), K([[0, -1.3], [0.3, -1.6], [0.52, -0.6, 'i3'], [1, -1.3]]), K([[0, 0.4], [0.3, 0.05], [1, 0.4]])];
+      lean = K([[0, 0], [0.3, -0.06], [0.52, 0.3, 'i3'], [1, 0]]); break;
+    }
+    case 'slash': case 'reaper': {   // edge out, across: the hips do the work (the reaper turns him right round)
+      const y = K([[0, G[1]], [0.25, 0.26, 'o'], [0.45, -0.24, 'i3'], [0.6, -0.28, 'o'], [1, G[1], 'io']]);
+      hp = [K([[0, G[0]], [0.25, 0.2], [0.45, 0.46, 'i3'], [0.6, 0.36], [1, G[0]]]), y, K([[0, G[2]], [0.25, 0.2], [0.45, 0.16], [1, G[2]]])];
+      hr = [0.2, K([[0, -1.3], [0.45, -0.4], [1, -1.3]]), K([[0, 0.4], [0.25, 1.2], [0.45, -0.6], [1, 0.4]])];
+      yaw = mv === 'reaper' ? K([[0, 0.5], [0.45, -1.0, 'i3'], [0.7, -1.2], [1, 0, 'io']]) : K([[0, 0], [0.25, 0.45, 'o'], [0.45, -0.55, 'i3'], [1, 0, 'io']]); break;
+    }
+    case 'jaw': {   // up from low under the jaw
+      const s = K([[0, 0], [0.25, -0.4, 'o'], [0.45, 1, 'o3'], [0.6, 0.95], [1, 0, 'io']]), sp = Math.max(0, s), sn = Math.max(0, -s);
+      hp = [lgLerp(G[0], 0.44, sp) - 0.06 * sn, G[1] - 0.04 * sp, lgLerp(G[2], 0.4, sp) - 0.22 * sn]; hr = [0.15, lgLerp(-1.3, -2.0, sp), lgLerp(0.4, 0.1, sp)]; lean = 0.12 * sp - 0.05 * sn; break;
+    }
+    case 'pb': case 'pair': {   // the knife back to the guard, the pistol punched out past it, one round (two for the pair)
+      const o = K([[0, 0], [0.18, 1, 'o3'], [0.8, 1], [1, 0.4]]);
+      gun = [lgLerp(0.22, 0.47, o), lgLerp(-0.13, -0.05, o), lgLerp(0.0, 0.28, o), lgLerp(0.25, -0.06, o), lgLerp(0.55, 0.0, o), 0];
+      rec = lgRecoil(k * 0.3, 0.06) + (mv === 'pair' ? lgRecoil(k * 0.36, 0.17) : 0); hp = [0.2, 0.12, 0.2]; ctx.trigger = o > 0.8; yaw = -0.08 * o; break;
+    }
+    case 'whip': {   // the frame of the empty pistol in a short arc to the temple
+      const s = K([[0, 0], [0.22, -0.3, 'o'], [0.42, 1, 'i3'], [0.55, 0.9], [1, 0]]), sp = Math.max(0, s);
+      gun = [lgLerp(0.25, 0.42, Math.abs(s)), lgLerp(-0.1, 0.06, sp), lgLerp(0.18, 0.3 - sp * 0.1, Math.abs(s)), lgLerp(0, 0.8, sp), lgLerp(0.0, 0.6, sp), lgLerp(0, 1.2, sp)];
+      yaw = -0.3 * sp + 0.15 * Math.max(0, -s); whip = 1; hp = [0.22, 0.1, 0.22]; break;
+    }
+  }
+  lgJadd(P, 'spine', 0, lean * 0.6, yaw * 0.5); lgJadd(P, 'chest', 0, lean * 0.4, yaw * 0.5); lgJadd(P, 'neck', 0, -lean * 0.5, -yaw * 0.6);
+  const v = lgvFix(ctx.fk || ctx.gun || '', gun.slice()); v[4] -= rec * 0.28; v[0] -= rec * 0.05;
+  P.pistol.at = 'aim'; P.pistol.sp = 'chest'; P.pistol.M = lgvGunM(v); P.ik.handR = { on: 'pistol', pole: whip ? [-0.4, -0.8, 0.1] : LG_POLE.Rt }; P.grip.R = ctx.trigger ? 'trigger' : 'pistol';
+  P.knife.at = 'handL'; P.grip.L = 'knife'; lgvHand(P, 'L', lgvAt(hp, hr[0], hr[1], hr[2]), [-0.4, 0.8, -0.2]);
+  P.carbine.at = 'back';
+}
 // a magazine riding in the support hand at the gun's well, inserted ins (0 seated .. 1 a magazine's length out)
 function lgvMagAt(v, ins, fam) { const dz = fam === 'c' ? -0.12 * ins : -0.09 * ins; return lgMul(lgM4(), lgvOnGun(v, null, dz), lgInv(lgM4(), lgSockFor(fam === 'c' ? 'carbine' : 'pistol', 'magHand'))); }
 function lgvSetMag(P, fam, m, ctx) { if (fam === 'c') P.carbine.mag = m; else P.pistol.mag = m; }
@@ -412,6 +460,7 @@ function lgvUpState(p, B) {
     case 'swapOut': return { st: 'swapOut', n: 8, i: Math.floor(k * 8), ctx: ctx };
     case 'swapIn': return { st: 'swapIn', n: 8, i: Math.floor(k * 8), ctx: ctx };
     case 'inspect': return { st: 'inspect', n: 8, i: Math.floor(k * 8), ctx: ctx };
+    case 'knife': { ctx.km = a.km || 'stab'; ctx.fam = 'p'; return { st: 'knife', n: 6, i: Math.floor(k * 6), ctx: ctx, sub: ctx.km }; }   // (1.9.994: the knife's moves)
   }
   return { st: 'relaxed', n: 6, i: breath, ctx: ctx };
 }
@@ -535,6 +584,14 @@ function lgvWarm(n) {
     else { const la = LG_ANIM_BY[st]; lgvLayer(kind, lgId, mk, st, i, cnt, px, () => { const r = lgvPaint(lgId, mk, P => { lgEvalClip(la, st === 'idle_ready' ? 0 : i / cnt * la.dur, P, { run: true, wc: 'r' }); P.pistol.at = 'holster'; }, LGV_M.legsH, LGV_BOX.legs, px, null); return r ? r.o : null; }); }
     made++;
   }
+  // 1.9.994: the knife's first moves with the sidearm (stick, two-step, the point-blank shot), so the first chain is not
+  // drawn from the nearest frame while its own are painted
+  const kc = { run: true, fam: 'p', gun: W1.arms.key, kind: W1.arms.reload.kind, rk: 'tac', keep: false, t: 0 };
+  for (const km of ['stab', 'neck', 'pb']) for (let i = 0; i < 6 && made < n; i++) {
+    const sk = 'knife' + 'p' + W1.arms.key + km, base = lgvBase('up', lgId, mk, sk, px); if (LG.sprites.has(base + i)) continue;
+    LG.spriteBudget = 1; const c2 = Object.assign({}, kc, { km: km });
+    lgvLayer('up', lgId, mk, sk, i, 6, px, () => lgvMakeUp(lgId, mk, 'knife', i, 6, c2, px)); made++;
+  }
   return made;
 }
 
@@ -570,6 +627,17 @@ lgvClip('p_reload', 'Pistol slide-lock reload', 1.85, false, 'The pistol pulled 
 lgvClip('p_draw', 'Draw', 0.62, false, 'From the holster: grip, clear, rotate at the hip, meet the support hand at the chest, press out.', 'swapIn', { fam: 'p' });
 lgvClip('ar_sling', 'Long gun to the sling', 0.5, false, 'The carbine up past the left shoulder and onto the sling across the back, the hands free for the pistol.', 'swapOut', {});
 lgvClip('ar_check', 'Press check', 1.3, false, 'A full gun and nobody close: the support hand eases the handle back an inch, a look at the brass, home.', 'inspect', {});
+// 1.9.994: the knife's ten combos (BLADE), as he does them in a run: the blade in the left hand, the sidearm in the right
+lgvClip('kn_stick', 'Knife: Stick', 0.62, false, 'Combo 1 (knife): a short thrust from the guard into the gut, the hips behind it.', 'knife', { km: 'stab', fam: 'p' });
+lgvClip('kn_two', 'Knife: Two-Step', 0.62, false, 'Combo 2 (knife, knife): the second one high, a hammer stab at the neck.', 'knife', { km: 'neck', fam: 'p' });
+lgvClip('kn_kks', 'Knife: Knife, Knife, Shot', 0.55, false, 'Combo 3: the knife back to the guard and the pistol punched out past it, one round point blank.', 'knife', { km: 'pb', fam: 'p' });
+lgvClip('kn_throat', 'Knife: Throat Line', 0.7, false, 'Combo 4 (after the shot, the knife): edge out, a cut across the throat, the hips doing the work.', 'knife', { km: 'slash', fam: 'p' });
+lgvClip('kn_hammer', 'Knife: Hammer Down', 0.72, false, 'Combo 5: the overhand stab from high at the collar.', 'knife', { km: 'hammer', fam: 'p' });
+lgvClip('kn_pair', 'Knife: Second Pair', 0.62, false, 'Combo 6: two rounds point blank into the chest.', 'knife', { km: 'pair', fam: 'p' });
+lgvClip('kn_whip', 'Knife: Pistol Whip', 0.68, false, 'Combo 7 (the pistol dry): the frame of the gun in a short arc to the temple.', 'knife', { km: 'whip', fam: 'p' });
+lgvClip('kn_jaw', 'Knife: Whip and Stick', 0.7, false, 'Combo 8 (after the whip, the knife): up from low under the jaw.', 'knife', { km: 'jaw', fam: 'p' });
+lgvClip('kn_lunge', 'Knife: Lunge', 0.72, false, 'Combo 9: a long dash into a thrust, the whole body behind the blade.', 'knife', { km: 'lunge', fam: 'p' });
+lgvClip('kn_reaper', 'Knife: Reaper', 0.85, false, 'Combo 10 (three of the dead, knife each): a spinning backhand cut that takes everything in reach.', 'knife', { km: 'reaper', fam: 'p' });
 // (the legend page's armory: the special reload of whichever gun he carries; not in the list of fifty)
 lgvClip('arm_special_c', 'Special reload', 3.2, false, 'The carried long gun\'s own reload, from empty.', 'reload', { slot: 'c', rk: 'empty' });
 lgvClip('arm_special_p', 'Special reload (sidearm)', 3.2, false, 'The carried sidearm\'s own reload, from empty.', 'reload', { slot: 'p', rk: 'empty' });

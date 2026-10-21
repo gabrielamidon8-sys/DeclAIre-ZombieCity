@@ -740,6 +740,8 @@ function onHitEffect(z) {
 function hurtZombie(z, dmg, o) {
   if (NET.role === 'client') { if (NET.cosmetic) return false; if (z.puppet) return netHit(z, dmg, o); }
   if (z.dead) return false;
+  // 1.9.994: the knife's hit carries the death it chose ("k" + ANIMA's melee death), from here or from a teammate
+  if (o && typeof o.src === 'string' && o.src.length === 3 && o.src[0] === 'k' && /^k\d\d$/.test(o.src)) { z.meleeCi = +o.src.slice(1); o.src = 'melee'; }
   if (z.st.under || z.st.down > 0) return 'pass';
   if (z.rb && !z.rb.ill) {
     if (z.rb.mutT > 0 || z.rb.hide) return 'pass';
@@ -1663,7 +1665,7 @@ function renderCodex2() {
   $('cxCount').textContent = have + ' / ' + ZR.length;
   $('cxSeries').hidden = true; $('cxStrains').hidden = true; $('cxStrainNote').hidden = true;
   const note = $('cxV2Note'); note.hidden = false;
-  note.textContent = 'Zombie City 2.0: the first ' + ZR.length + ' of the 1,000 zombies, rebuilt from the ground up, each with its own look, behaviour and 50 animations. The old mutations and the bosses are switched off until the rest are rebuilt.';
+  note.textContent = 'Zombie City 2.0: the first ' + ZR.length + ' of the 1,000 zombies, rebuilt from the ground up, each with its own look, behaviour and 60 animations. The old mutations and the bosses are switched off until the rest are rebuilt.';
   const rs = $('cxRarity'); rs.textContent = '';
   RARITY.forEach((r, i) => {
     const tot = ZR.filter(m => m.rarity === i).length; if (!tot) return; const h = ZR.filter(m => m.rarity === i && found.has(m.id)).length;
@@ -1713,7 +1715,7 @@ function openDetail2(m) {
   });
   const bal = $('dtBal'); bal.textContent = ''; bal.hidden = !show;
   if (show) { const b3 = document.createElement('b'); b3.textContent = 'Taking a bullet: '; bal.append(b3, balWords(m)); }
-  // its 50 animations: pick any to watch it (identified zombies only)
+  // its 60 animations: pick any to watch it (identified zombies only)
   const box = $('dtAnims'); box.textContent = ''; box.hidden = !show;
   if (show) {
     const top = document.createElement('div'); top.className = 'an-top'; const lab = document.createElement('span'); top.append(lab);
@@ -1889,6 +1891,7 @@ function render() {
   for (const q of G.parts) { ctx.globalAlpha = clamp(q.life / q.max, 0, 1); ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s); }
   ctx.globalAlpha = 1;
   for (const r of G.rings) { const t = r.t / r.life; ctx.strokeStyle = 'rgba(' + r.c + ',' + (1 - t) * 0.8 + ')'; ctx.lineWidth = r.w; ctx.beginPath(); ctx.arc(r.x, r.y, Math.max(0.5, r.r0 + (r.r1 - r.r0) * t), 0, TAU); ctx.stroke(); }
+  if (typeof bladeDraw === 'function') bladeDraw(ctx);   // (the knife's cuts in the air)
   tl = performance.now(); drawWorldOver(vis); PERF.sec.life += performance.now() - tl;
   drawSmoke(vis);
   drawJets();

@@ -13,10 +13,11 @@ const ACTIONS = [
   { id: 'sprint', label: 'Sprint (the gun comes down)', kb: ['ShiftLeft', ''], pad: ['b10', 'b6'] },
   { id: 'reload', label: 'Reload (with a full gun: check it)', kb: ['KeyR', ''], pad: ['b2', ''] },
   { id: 'swap', label: 'Swap primary and secondary', kb: ['KeyX', ''], pad: ['b1', ''] },
-  { id: 'air', label: 'A-10 airstrike', kb: ['KeyQ', 'KeyF'], pad: ['b3', 'b5'] },
+  { id: 'melee', label: 'Knife (again for the next one; fire in the chain: point blank)', kb: ['KeyV', ''], pad: ['b5', ''] },
+  { id: 'air', label: 'A-10 airstrike', kb: ['KeyQ', 'KeyF'], pad: ['b3', ''] },
   { id: 'free', label: 'Break free when grabbed', kb: ['KeyE', 'Enter'], pad: ['', ''] },
   { id: 'mark', label: 'Mark a spot for your team (co-op)', kb: ['KeyG', ''], pad: ['b4', ''] },
-  { id: 'aim', label: 'Auto-aim on or off', kb: ['KeyV', ''], pad: ['b11', ''] },
+  { id: 'aim', label: 'Auto-aim on or off', kb: ['KeyC', ''], pad: ['b11', ''] },
   { id: 'pause', label: 'Pause', kb: ['KeyP', ''], pad: ['b9', 'b8'] },
   { id: 'mute', label: 'Mute the radio', kb: ['KeyM', ''], pad: ['b13', ''] },
   { id: 'next', label: 'Next song', kb: ['KeyN', ''], pad: ['b15', ''] },
@@ -29,6 +30,9 @@ const BIND = (function () {
   // 1.9.993: the dash became the dodge roll and Shift became sprint; old default bindings move over (your own stay)
   const OLD = { kb: { dash: 'Space,ShiftLeft', free: 'KeyE,Enter' }, pad: { dash: 'b0,b6', free: 'b2,' } };
   for (const k of ['kb', 'pad']) if (saved[k]) for (const id in OLD[k]) if (Array.isArray(saved[k][id]) && saved[k][id].join(',') === OLD[k][id] && !saved.v993) delete saved[k][id];
+  // 1.9.994: V is the knife (auto-aim moves to C) and the right bumper is the knife (the A-10 keeps Y)
+  const OLD4 = { kb: { aim: 'KeyV,' }, pad: { air: 'b3,b5' } };
+  for (const k of ['kb', 'pad']) if (saved[k]) for (const id in OLD4[k]) if (Array.isArray(saved[k][id]) && saved[k][id].join(',') === OLD4[k][id] && !saved.v994) delete saved[k][id];
   for (const a of ACTIONS) for (const k of ['kb', 'pad']) {
     if (!a[k]) continue;
     const s = saved[k] && saved[k][a.id];
@@ -45,7 +49,7 @@ function remapBinds() {
   }
 }
 remapBinds();
-function saveBinds() { BIND.v993 = 1; store.set('zc_binds', BIND); remapBinds(); updGlyphs(); updDevUi(); }
+function saveBinds() { BIND.v993 = 1; BIND.v994 = 1; store.set('zc_binds', BIND); remapBinds(); updGlyphs(); updDevUi(); }
 
 /* ---------- names for keys and buttons ---------- */
 const KEY_NAMES = { Space: 'Space', ShiftLeft: 'L-Shift', ShiftRight: 'R-Shift', ControlLeft: 'L-Ctrl', ControlRight: 'R-Ctrl', AltLeft: 'L-Alt', AltRight: 'R-Alt', MetaLeft: 'L-Win', MetaRight: 'R-Win',
@@ -127,6 +131,7 @@ function doActions(A, repeat) {
   if (repeat) return used;
   if (has('reload') && play && G.p && G.p.arm) { armsReload(G.p); used = true; }
   if (has('swap') && play && G.p && G.p.arm) { armsSwap(G.p); used = true; }
+  if (has('melee') && play && G.p && G.p.arm && typeof bladeStart === 'function') { bladeStart(G.p); used = true; }
   if (has('sprint') && play && G.p && G.p.arm && DEV.kind === 'pad') { G.p.arm.latch = !G.p.arm.latch; used = true; }   // (a stick click latches the sprint until you stop)
   if (has('air') && play) { callAirstrike(); used = true; }
   if (has('aim') && play) { toggleAutoAim(); used = true; }
@@ -525,21 +530,21 @@ function ctrlLine() {
 }
 // the title screen hint
 function ctrlHintText() {
-  if (DEV.kind === 'touch') return 'Drag on the ' + (SET.lefty ? 'right' : 'left') + ' side to move. Your gun aims and fires on its own. Tap the other side to roll; hold the roll button to sprint. Reload with the reload button; tap your gun to swap.';
+  if (DEV.kind === 'touch') return 'Drag on the ' + (SET.lefty ? 'right' : 'left') + ' side to move. Your gun aims and fires on its own. Tap the other side to roll; hold the roll button to sprint. Reload with the reload button; tap your gun to swap. The knife button lunges and strikes; keep tapping it for the next one.';
   if (DEV.kind === 'pad') {
     const am = aimMode();
     const f = SET.firePad, fire = padLabel(firstBind('pad', 'fire'));
     return 'Left stick to move. ' + (am === 'auto' ? 'Your gun aims and fires on its own. ' : 'Right stick to aim' + (f === 'stick' ? ' and fire' : f === 'auto' ? ', it fires when the aim is on a zombie' : fire ? ', hold ' + fire + ' to fire' : '') + '. ')
-      + padLabel(firstBind('pad', 'dash')) + ' to roll, ' + padLabel(firstBind('pad', 'sprint')) + ' to sprint, ' + padLabel(firstBind('pad', 'reload')) + ' to reload, ' + padLabel(firstBind('pad', 'swap')) + ' to swap guns, ' + padLabel(firstBind('pad', 'air')) + ' for the A-10, ' + padLabel(firstBind('pad', 'pause')) + ' to pause.';
+      + padLabel(firstBind('pad', 'dash')) + ' to roll, ' + padLabel(firstBind('pad', 'sprint')) + ' to sprint, ' + padLabel(firstBind('pad', 'reload')) + ' to reload, ' + padLabel(firstBind('pad', 'swap')) + ' to swap guns, ' + padLabel(firstBind('pad', 'melee')) + ' for the knife, ' + padLabel(firstBind('pad', 'air')) + ' for the A-10, ' + padLabel(firstBind('pad', 'pause')) + ' to pause.';
   }
   const am = aimMode();
-  return 'Move with ' + moveKeys() + '. ' + (am === 'auto' ? 'Your gun aims and fires on its own. ' : ctrlLine().replace(' · ', ', ') + '. ') + kbList('dash', 1) + ' to roll, ' + kbList('sprint', 1) + ' to sprint, ' + kbList('reload', 1) + ' to reload, ' + kbList('swap', 1) + ' or the wheel to swap guns, ' + kbList('air', 1) + ' for the A-10, Esc to pause.';
+  return 'Move with ' + moveKeys() + '. ' + (am === 'auto' ? 'Your gun aims and fires on its own. ' : ctrlLine().replace(' · ', ', ') + '. ') + kbList('dash', 1) + ' to roll, ' + kbList('sprint', 1) + ' to sprint, ' + kbList('reload', 1) + ' to reload, ' + kbList('swap', 1) + ' or the wheel to swap guns, ' + kbList('melee', 1) + ' for the knife (fire in the chain: point blank), ' + kbList('air', 1) + ' for the A-10, Esc to pause.';
 }
 // the little key or button names on the HUD buttons
 function updGlyphs() {
   const k = DEV.kind, set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
-  if (k === 'pad') { set('dashKey', padLabel(firstBind('pad', 'dash'))); set('airKey', padLabel(firstBind('pad', 'air'))); set('pauseKey', padLabel(firstBind('pad', 'pause')) || padLabel('b9')); set('reloadKey', padLabel(firstBind('pad', 'reload'))); }
-  else { set('dashKey', keyLabel(firstBind('kb', 'dash'))); set('airKey', keyLabel(firstBind('kb', 'air'))); set('pauseKey', 'Esc'); set('reloadKey', keyLabel(firstBind('kb', 'reload'))); }
+  if (k === 'pad') { set('dashKey', padLabel(firstBind('pad', 'dash'))); set('airKey', padLabel(firstBind('pad', 'air'))); set('pauseKey', padLabel(firstBind('pad', 'pause')) || padLabel('b9')); set('reloadKey', padLabel(firstBind('pad', 'reload'))); set('knifeKey', padLabel(firstBind('pad', 'melee'))); }
+  else { set('dashKey', keyLabel(firstBind('kb', 'dash'))); set('airKey', keyLabel(firstBind('kb', 'air'))); set('pauseKey', 'Esc'); set('reloadKey', keyLabel(firstBind('kb', 'reload'))); set('knifeKey', keyLabel(firstBind('kb', 'melee'))); }
 }
 const DEV_SVG = {
   touch: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M10.5 18.5h3"/></svg>',
