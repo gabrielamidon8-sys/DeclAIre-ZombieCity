@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.993';
+const ZC_VERSION = '1.9.994';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -304,6 +304,18 @@ function fieldBuildLong(F) {
   }
   F.ready = true;
 }
+// the first look at a new area is spread over frames (a few hundred coarse cells a frame) so it never makes a hitch
+function fieldWarmLong(F, pcx, pcy) {
+  const n = FL_N, ox = pcx - (n >> 1), oy = pcy - (n >> 1), C = F.cache;
+  if (F.wk !== ox + ',' + oy) { F.wk = ox + ',' + oy; F.wi = 0; }
+  let left = 480;
+  while (F.wi < n * n) {
+    const i = F.wi % n, j = (F.wi / n) | 0, cx = ox + i, cy = oy + j;
+    if (C.get((cx + 60000) * 120000 + (cy + 60000)) === undefined) { cellBlockedL(F, cx, cy); if (--left <= 0) { F.wi++; return false; } }
+    F.wi++;
+  }
+  return true;
+}
 // keep the per-player and long-range fields up to date: at most one rebuilt a frame, the stalest first
 function fieldsCoop() {
   const host = NET.role === 'host' && NET.started, P = host ? netAlive() : (G.p ? [G.p] : []);
@@ -317,7 +329,7 @@ function fieldsCoop() {
   if (!job) for (const p of P) {
     let F = FFL.get(p); if (!F) { F = newField(15, false, 'long'); F.owner = p; FFL.set(p, F); }
     const cs = FF_CS * FL_K, pcx = Math.floor(p.x / cs), pcy = Math.floor(p.y / cs), st = !F.ready ? 99 : Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2 ? 50 : G.time - F.t;
-    if (st > 1.6 && st > age) { age = st; job = () => { const tb = performance.now(); try { fieldBuildLong(F); } finally { if (typeof coreCost === 'function') coreCost('FLOW', performance.now() - tb); } }; }
+    if (st > 1.6 && st > age) { age = st; job = () => { const tb = performance.now(); try { if (fieldWarmLong(F, pcx, pcy)) fieldBuildLong(F); } finally { if (typeof coreCost === 'function') coreCost('FLOW', performance.now() - tb); } }; }
   }
   if (job) job();
 }

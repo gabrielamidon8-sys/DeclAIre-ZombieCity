@@ -289,6 +289,17 @@ function lgsPlayAnim(id, quiet) {
    check on a long gun, a draw with a sidearm); the special reload plays on demand. On a phone the panel moves into the
    sheet under him. */
 const LGS_AR = { slot: 'primary', peek: null, peekT: 0, models: new Map(), q: [], pump: 0, mq: null, animT: 0 };
+// when a handling clip has played through on his body (not on the clock: a slow first frame must not cut it short), the next
+function lgsAfterClip(id, next, lead, endT) {
+  clearTimeout(LGS_AR.animT); const t0 = performance.now();
+  const poll = () => {
+    if (LGS.view !== 'detail' || LGS.anim !== id) return;
+    const a = MIM.actors[0], pl = a && a.player;
+    const done = !pl || !pl.a || pl.a.id !== id ? performance.now() - t0 > 600 : pl.done || pl.t >= (endT || pl.a.dur) - lead;
+    if (done || performance.now() - t0 > 9000) lgsPlayAnim(next, true); else LGS_AR.animT = setTimeout(poll, 90);
+  };
+  LGS_AR.animT = setTimeout(poll, 200);
+}
 function lgsArmsOn() { return typeof ARMS_ON !== 'undefined' && ARMS_ON && typeof ARMS_BY !== 'undefined'; }
 function lgsArmsBuild(D) {
   if (!lgsArmsOn()) return;
@@ -377,8 +388,8 @@ function lgsArmsPick(w) {
   const a = MIM.actors[0];
   if (a && MIM.scene === 'studio') { a.seat = false; mimStudioLoad(a); if (MIM.studio && MIM.studio.view !== 'arms' && typeof mimStudioView === 'function') { mimStudioView('arms'); lgsViews(); } }   // (three-quarters from his gun side: you see him take it)
   clearTimeout(LGS_AR.animT);
-  if (w.slot === 'primary') { lgsPlayAnim('ar_check', true); try { SFX.arms('chargeBack', 1, 0, 0.7); setTimeout(() => SFX.arms('chargeHome', 1, 0, 0.7), 380); } catch (e) { } LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === 'ar_check') lgsPlayAnim('idle_ready', true); }, 1450); }
-  else { lgsPlayAnim('p_draw', true); try { SFX.arms('draw', 1, 0, 0.7); setTimeout(() => SFX.arms('slideRack', 1, 0, 0.6), 520); } catch (e) { } LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === 'p_draw') lgsPlayAnim('aim_iso', true); }, 700); }
+  if (w.slot === 'primary') { lgsPlayAnim('ar_check', true); try { SFX.arms('chargeBack', 1, 0, 0.7); setTimeout(() => SFX.arms('chargeHome', 1, 0, 0.7), 380); } catch (e) { } lgsAfterClip('ar_check', 'idle_ready', 0.15); }
+  else { lgsPlayAnim('p_draw', true); try { SFX.arms('draw', 1, 0, 0.7); setTimeout(() => SFX.arms('slideRack', 1, 0, 0.6), 520); } catch (e) { } lgsAfterClip('p_draw', 'aim_iso', 0.1); }
   try { SFX.cine('uiSelect'); } catch (e) { }
   lgsArmsRender();
 }
@@ -386,7 +397,7 @@ function lgsArmsPick(w) {
 function lgsArmsSpecial(w) {
   clearTimeout(LGS_AR.animT);
   const id = w.slot === 'primary' ? 'arm_special_c' : 'arm_special_p'; lgsPlayAnim(id);
-  const R = w.arms.reload; LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === id) lgsPlayAnim(w.slot === 'primary' ? 'idle_ready' : 'aim_iso', true); }, (R.empty + 0.5) * 1000);
+  lgsAfterClip(id, w.slot === 'primary' ? 'idle_ready' : 'aim_iso', -0.4, Math.min(w.arms.reload.empty, 3.2));
 }
 /* the guns drawn from their own models on the processor: a picture per gun (side on), and the big one in view
    (three-quarters, lit by his class); painted a few at a time behind the screen's own frames */
@@ -400,7 +411,17 @@ function lgsGunModel(key, lod) {
   m.bb = b; LGS_AR.models.set(k, m); return m;
 }
 function lgsGunPaint(c, key, o) {
-  o = o || {}; const D = LG_GUN_DEF[key], m = lgsGunModel(key, o.hero ? 0 : 1); if (!m || !c || !D) return false;
+  o = o || {}; if (!c || !LG_GUN_DEF[key]) return false;
+  // (a picture once painted is kept: opening his page again, or coming back to a class, costs nothing)
+  const ck = [key, c.width, c.height, o.hero ? 1 : 0, (o.acc || []).map(v => v.toFixed(2)).join(','), o.yaw || 0, o.el || 0, o.fov || 0, o.pad || 0, o.lift || 0, o.ss || 2].join('|');
+  const P = LGS_AR.pics || (LGS_AR.pics = new Map()), hit = P.get(ck);
+  if (hit) { const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.drawImage(hit, 0, 0); c.dataset.done = '1'; return true; }
+  const ok = lgsGunPaint1(c, key, o);
+  if (ok) { try { const k = document.createElement('canvas'); k.width = c.width; k.height = c.height; k.getContext('2d').drawImage(c, 0, 0); P.set(ck, k); if (P.size > 64) P.delete(P.keys().next().value); } catch (e) { } }
+  return ok;
+}
+function lgsGunPaint1(c, key, o) {
+  const D = LG_GUN_DEF[key], m = lgsGunModel(key, o.hero ? 0 : 1); if (!m || !c || !D) return false;
   const W = new Float32Array(LG_NB_MAX * 16), I = lgM4(), hide = new Uint8Array(LG_NB_MAX);
   for (const n of D.fam === 'c' ? ['carbine', 'cmag'] : ['pistol', 'slide', 'mag']) W.set(I, LGB[n] * 16);
   if (key === 'm1014') hide[LGB.cmag] = 1;   // (the shell that rides his hand)
