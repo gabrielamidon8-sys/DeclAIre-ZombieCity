@@ -1703,6 +1703,12 @@ button.lcd{cursor:pointer}
   /* the A-10 sits above the dash, so the weapon has the width of the screen's bottom */
   .hx-abil,.lefty .hx-abil{grid-template-columns:auto;grid-template-areas:"mark" "air" "dash";gap:8px}
   .hx-weapon{max-width:calc(100% - 140px)}
+  /* 1.9.994: with the guns (reload, the knife, the A-10 and the roll) the buttons stand in two columns above the weapon
+     chip, so nothing sits on it and the joystick keeps its side */
+  .arms .hx-abil,.arms.lefty .hx-abil{bottom:calc(max(14px, env(safe-area-inset-bottom, 0px)) + 62px);grid-template-columns:auto auto;gap:8px 10px}
+  .arms .hx-abil{grid-template-areas:"reload mark" "knife air" "dash dash"}
+  .arms.lefty .hx-abil{grid-template-areas:"mark reload" "air knife" "dash dash"}
+  .arms .hx-weapon{max-width:calc(100% - 32px)}
 }
 @media (max-width:380px){
   .hx-cap{display:none}
@@ -7834,7 +7840,7 @@ function spawnZombie(m, x, y, o) {
     slowT: 0, buffT: 0, stuckT: 0, detT: 0, detSide: 1, stun: 0, growth: 1, shield: 0, shieldMax: 0, shieldCd: 0, mulB: 1, dead: false
   };
   // 1.9.994: no two alike: each one a little bigger or smaller and its own pace (the bosses and the swarms of flyers as they are)
-  if (!o.boss && !o.fly && !o.illusion && !(NET.role === 'client' && NET.spawning)) { z.r *= 0.93 + Math.random() * 0.14; z.speed *= 0.88 + Math.random() * 0.26; }
+  if (!o.boss && !o.fly && !o.illusion && !(NET.role === 'client' && NET.spawning)) { z.vr = 0.93 + Math.random() * 0.14; z.r *= z.vr; z.speed *= 0.88 + Math.random() * 0.26; }   // (vr kept: ANIMA bakes the kind's size and scales it, so the cached frames are still shared)
   z.baseR = z.r;
   // the 2.0 zombies: how bullets treat them (helmets, armour, a shield, a low body) and limbs that can be crippled
   if (m.v2) { z.T = m.T; z.legK = 0; z.armK = 0; z.abMul = 1; if (o.emerge) z.emT = G.time; }
@@ -9444,7 +9450,7 @@ function drawZ(z, lod, far) {
     if (ok) { drawZOver(z, lod, far); return; }
   }
   if (z.st.down > 0) {
-    const spr = getSprite(z.m, z.r, z.minion), k = z.r / spr.rq, hs = spr.half * k;
+    const spr = getSprite(z.m, z.r / (z.vr || 1), z.minion), k = z.r / spr.rq, hs = spr.half * k;
     ctx.save(); ctx.translate(z.x, z.y); ctx.rotate(z.ang + 1.3); ctx.globalAlpha = 0.5; ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); ctx.restore(); ctx.globalAlpha = 1;
     ctx.strokeStyle = 'rgba(230,220,190,' + (0.3 + Math.sin(G.time * 10) * 0.2) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (1.2 + (1.4 - z.st.down) * 0.4), 0, TAU); ctx.stroke();
     return;
@@ -9461,7 +9467,7 @@ function drawZ(z, lod, far) {
     ctx.fillStyle = '#d69b2a'; ctx.fillRect(z.x - 1, z.y - 1, 2, 2);
     return;
   }
-  const spr = getSprite(z.m, z.r, z.minion), k = z.r / spr.rq, hs = spr.half * k;
+  const spr = getSprite(z.m, z.r / (z.vr || 1), z.minion), k = z.r / spr.rq, hs = spr.half * k;
   let a = 1; if (z.illusion) a = 0.62 * Math.min(1, z.life); if (z.m.S.p.ghost) a *= 0.88; if (z.st.phased) a *= 0.25;
   if (z.m.S.p.camo && G.p && G.mode !== 'title') a *= clamp((300 - Math.hypot(G.p.x - z.x, G.p.y - z.y)) / 140, 0.1, 1);
   ctx.save(); ctx.translate(z.x, z.y);
@@ -10971,7 +10977,7 @@ const ENG_DOCS = {
   },
   ANIMA: {
     title: 'The Puppeteer',
-    character: 'Gives each of the dead its own way of moving: 2,500 animations, and not one of them shared.',
+    character: 'Gives each of the dead its own way of moving: 3,000 animations (since 1.9.994, with the ten knife kills), and not one of them shared.',
     does: 'Every 2.0 zombie is a jointed body seen from above with 60 animations of its own (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials, 10 knife kills), cross-fades that keep the feet in step, hit reactions layered on top, deaths from whatever pose it was in, bodies that stay a while; live joints near you, cached frames for the crowd, shadows shaped by each pose.',
     adapts: 'How many zombies get live joints (the rest use cached frames), stepped down when it takes too much of the frame and back up if CORE agrees.',
     repairs: 'Finds and resets broken poses and lost bodies; a self-test at start runs a handful of zombies through attacks, hit reactions, deaths and knife kills and checks every joint comes out sound.',
@@ -18906,7 +18912,7 @@ function swarmVehSprite(r) {
 /* ---------- drawing the crowd ---------- */
 // the crowd picture of a mutation: small, cropped to the body, made from its full picture when there is one
 function swarmLo(key, z, full) {
-  const rq = Math.max(3, Math.round(z.r)), half = rq * 2.4, kp = clamp(DPR * ZOOM * 0.62, 0.7, 2.2), S = Math.max(8, Math.ceil(half * 2 * kp));
+  const rq = Math.max(3, Math.round(z.r / (z.vr || 1))), half = rq * 2.4, kp = clamp(DPR * ZOOM * 0.62, 0.7, 2.2), S = Math.max(8, Math.ceil(half * 2 * kp));
   const t = document.createElement('canvas'); t.width = t.height = S;
   const g = t.getContext('2d', { willReadFrequently: true }); if (!g) return null;
   if (full && full.c) g.drawImage(full.c, 0, 0, S, S);
@@ -18925,7 +18931,7 @@ function swarmLo(key, z, full) {
 }
 // a stand-in for a zombie whose picture is not made yet: its strain's colours in a plain body shape
 function swarmImp(z) {
-  const rq = Math.max(3, Math.round(z.r / 2) * 2), key = z.m.S.key + '|' + rq; let s = SWARM.imp.get(key);
+  const rq = Math.max(3, Math.round(z.r / (z.vr || 1) / 2) * 2), key = z.m.S.key + '|' + rq; let s = SWARM.imp.get(key);
   if (!s) {
     const kp = clamp(DPR * ZOOM * 0.6, 0.7, 2), half = rq * 1.4, S = Math.max(6, Math.ceil(half * 2 * kp)), c = document.createElement('canvas'); c.width = c.height = S;
     const g = c.getContext('2d'), sk = z.m.S.skin || [120, 130, 110], cl = z.m.S.cloth || [60, 60, 60];
@@ -18944,13 +18950,13 @@ function swarmImp(z) {
 // which picture a zombie is drawn with: its full one near you (made a few per frame, nearest first), the crowd one
 // further out, a stand-in until either is ready; always cropped to the body
 function swarmSpr(z, tier) {
-  const rq = Math.max(3, Math.round(z.r)), key = z.m.id + '|' + rq + '|' + (z.minion ? 1 : 0);
+  const rb = z.r / (z.vr || 1), rq = Math.max(3, Math.round(rb)), key = z.m.id + '|' + rq + '|' + (z.minion ? 1 : 0);   // (1.9.994: the kind's size, so pictures are shared; each one is drawn at its own)
   if (z.swK !== key) { z.swK = key; z.sw0 = null; z.sw1 = null; }
   let lo = z.sw1 || (z.sw1 = SWARM.lo.get(key) || null);
   const kz = z.r / rq;
   if (tier === 0 && swarmOn('full')) {
     let full = z.sw0;
-    if (!full) { full = sprites.get(key) || null; if (!full && SWARM.budF > 0) { SWARM.budF--; full = getSprite(z.m, z.r, z.minion); SWARM.stats.made++; } if (full) z.sw0 = full; }
+    if (!full) { full = sprites.get(key) || null; if (!full && SWARM.budF > 0) { SWARM.budF--; full = getSprite(z.m, rb, z.minion); SWARM.stats.made++; } if (full) z.sw0 = full; }
     if (full) {
       SWARM.keys.add(key);
       if (!lo && SWARM.budL > 0) { SWARM.budL--; lo = z.sw1 = swarmLo(key, z, full); }
@@ -20390,7 +20396,7 @@ function aBake(m, pose, rq, kp, o, ext) {
 const A_FR = [12, 10, 8, 6];
 // the cached frame of a zombie's walk (or idle) for this moment
 function aFrame(z, A, lod, sev) {
-  const m = z.m, ci = A.base, q = lod >= 2 ? 1 : 0, F = A_FR[Math.min(3, lod)], rq = Math.max(3, Math.round(z.r / (q ? 2 : 1)) * (q ? 2 : 1));
+  const m = z.m, ci = A.base, q = lod >= 2 ? 1 : 0, F = A_FR[Math.min(3, lod)], rb = z.r / (z.vr || 1), rq = Math.max(3, Math.round(rb / (q ? 2 : 1)) * (q ? 2 : 1));   // (baked at the kind's size; each one's own size is the scale it is drawn at)
   const u = ci < 10 ? A.ph : ((G.time + A.t0) / m.adur[ci]) % 1, fi = Math.floor(u * F) % F;
   const key = 'f' + m.idx + '|' + ci + '|' + fi + '|' + F + '|' + rq + '|' + q + '|' + (z.minion ? 1 : 0) + (sev ? '|s' + sev : '');
   let sp = ANIMA.cache.get(key);
@@ -31018,7 +31024,7 @@ coreDefine({ name: 'VFXRAY', kind: 'render', ver: 2, does: 'The last pass: rain 
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[366,0,4,55168],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[649,66,110,55683],"roster":[149,8,36,36227],"anima":[1173,58,123,107070],"anilook":[445,31,64,61057],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31089],"physics":[265,23,49,25142],"arms":[378,36,51,38972],"knife":[236,19,39,22446],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1227,120,184,137424],"legmodel":[443,23,108,53998],"leggun":[379,28,100,49901],"leghand":[165,17,31,13178],"leganim":[447,21,53,56045],"legrun":[537,40,103,57985],"vfxray":[269,26,37,31771],"mimatic":[628,47,123,79779],"legidle":[339,19,67,44465],"legends":[479,46,65,53871],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83337],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[185,14,33,26793],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[78,7,5,5383]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[366,0,4,55210],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[649,66,110,55819],"roster":[149,8,36,36227],"anima":[1173,58,123,107174],"anilook":[445,31,64,61057],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31089],"physics":[265,23,49,25142],"arms":[378,36,51,38972],"knife":[236,19,39,22446],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1227,120,184,137424],"legmodel":[443,23,108,53998],"leggun":[379,28,100,49901],"leghand":[165,17,31,13178],"leganim":[447,21,53,56045],"legrun":[537,40,103,57985],"vfxray":[269,26,37,31771],"mimatic":[628,47,123,79779],"legidle":[339,19,67,44465],"legends":[479,46,65,53871],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83479],"intro":[660,32,55,48828],"sfx2":[447,76,53,43659],"cinesfx":[185,14,33,26793],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[78,7,5,5383]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };
@@ -34406,7 +34412,7 @@ function netApply(s) {
     nid += ZD[i]; const st = NET.zst.get(nid); if (!st) continue;   // not introduced yet: it comes with the next full update
     const x = ZD[i + 1] + ax, y = ZD[i + 2] + ay, f = st[3] | (ZD[i + 5] << 5);
     let z = NET.zmap.get(nid);
-    if (!z || z.dead) { z = netMakePuppet([nid, st[0], x, y, ZD[i + 3] * 10, ZD[i + 4] * 10, f, st[1], st[2]], s.B); if (!z) continue; z.r = st[1] / 10; if (st[2]) { z.shieldMax = 100; z.shield = st[2]; } }
+    if (!z || z.dead) { z = netMakePuppet([nid, st[0], x, y, ZD[i + 3] * 10, ZD[i + 4] * 10, f, st[1], st[2]], s.B); if (!z) continue; { const r0 = z.r; z.r = st[1] / 10; z.vr = r0 > 0 ? clamp(z.r / r0, 0.9, 1.1) : 1; } if (st[2]) { z.shieldMax = 100; z.shield = st[2]; } }   // (vr: the host's size for this one, so ANIMA shares the kind's frames)
     if (seen) seen.add(nid);
     netVel(z, x, y); z.tx = x; z.ty = y; z.tang = ZD[i + 3] / 10; z.hp = ZD[i + 4] * 10;
     if (Math.hypot(z.tx - z.x, z.ty - z.y) > 260) { z.x = z.tx; z.y = z.ty; z.nvx = z.nvy = 0; }
@@ -35588,7 +35594,7 @@ function introFinish(natural) {
   INTRO_EL.classList.add('out');
   loadRun('Into the city', [
     ['Waking the city', () => { if (!G.attractReady) initAttract(); G.attractReady = false; return chunkJobs(cam.x, cam.y); }],
-    ['Waking the dead', () => G.zs.filter(z => !z.dead).map(z => () => getSprite(z.m, z.r))],
+    ['Waking the dead', () => G.zs.filter(z => !z.dead).map(z => () => getSprite(z.m, z.r / (z.vr || 1)))],
     ['Opening the bunker', () => { refreshTitle(); }]
   ], { now: true }).then(() => {
     showOv('title');
