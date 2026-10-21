@@ -355,7 +355,7 @@ lgClip('knife_slash', 'Reverse-grip slash', 'Close quarters', 0.85, false, LG_SR
 lgClip('knife_stab', 'Hammer-fist stab', 'Close quarters', 0.95, false, LG_SRC.knife, 'Reverse grip, from high to low like a hammer: the fist goes up, the hips drop behind it, and it drives down.', (P, t, ctx, a) => {
   lgBase(P, { crouch: lgK(t, [[0, 0.08], [0.42, 0.06], [0.56, 0.2, 'i3'], [0.95, 0.08]]), lean: 0.2, stance: false }); lgFoot(P, 'L', 0.16, 0.12, 0, 0, 0.25, 0); lgFoot(P, 'R', -0.12, -0.15, 0, 0, -0.05, 0);
   const z = lgK(t, [[0, 0.24], [0.4, 0.5, 'o'], [0.47, 0.5], [0.56, -0.12, 'i3'], [0.66, -0.15], [0.95, 0.24, 'io']]), x = lgK(t, [[0, 0.26], [0.4, 0.16], [0.56, 0.42, 'i3'], [0.95, 0.26]]);
-  lgKnifeGuard(P, { p: [x, lgK(t, [[0, 0.07], [0.4, 0.12], [0.56, 0.02], [0.95, 0.07]]), z], r: [lgK(t, [[0, 0.2], [0.4, 0.4], [0.56, -0.1], [0.95, 0.2]]), lgK(t, [[0, -1.3], [0.4, -2.3], [0.56, -0.4, 'i3'], [0.95, -1.3]]), 0.4], pole: [-0.5, 0.9, 0.2] });
+  lgKnifeGuard(P, { p: [x, lgK(t, [[0, 0.07], [0.4, 0.12], [0.56, 0.02], [0.95, 0.07]]), z], r: [lgK(t, [[0, 0.2], [0.4, 0.05], [0.56, -0.1], [0.95, 0.2]]), lgK(t, [[0, -1.3], [0.4, -1.6], [0.56, -0.6, 'i3'], [0.95, -1.3]]), lgK(t, [[0, 0.4], [0.4, 0.05], [0.95, 0.4]])], pole: [-0.5, 0.9, 0.2] });
   lgSpine(P, lgK(t, [[0, 0.08], [0.4, -0.05], [0.56, 0.32, 'i3'], [0.95, 0.08]]), 0.08, 0); lgLookAt(P, 0, lgK(t, [[0, 0.1], [0.56, 0.4], [0.95, 0.1]]));
 }, [[0.53, 'stab']]);
 lgClip('hip_throw', 'Hip throw', 'Close quarters', 1.7, false, LG_SRC.ogoshi, 'Pull them off balance, step in and turn the hips under theirs, lift with the hips while bending forward and pulling down: they land at his feet.', (P, t, ctx, a) => {

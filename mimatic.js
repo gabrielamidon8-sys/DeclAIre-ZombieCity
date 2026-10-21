@@ -189,7 +189,7 @@ lgClip('c_mount', 'Knee mount and knife', 'Cinematic', 2.2, false, LG_SRC.knife,
   // the gun hand pins the chest; the knife hand goes to the sheath, then up and back for the strike
   P.pistol.at = 'handR'; P.grip.R = 'pistol'; lgHandTo(P, 'R', 'root', [lgLerp(0.3, 0.62, d), lgLerp(-0.15, -0.05, d), lgLerp(0.8, 0.34, d)], [lgLerp(0, 0.2, d), lgLerp(0.4, 1.5, d), 0.3], [-0.2, -0.9, 0.3]);
   if (t < 0.85) { const c = lgK(t, [[0, 0], [0.6, 1, 'io']]); lgHandTo(P, 'L', 'chest', [lgLerp(0.2, 0.2, c), lgLerp(0.2, -0.065, c), lgLerp(-0.3, -0.11, c)], [lgLerp(0, 1.4, c), lgLerp(0, -0.2, c), lgLerp(0, 1.5, c)], [-0.3, 0.8, -0.6]); P.grip.L = c > 0.85 ? 'knife' : 'open'; P.knife.at = t < 0.62 ? 'sheath' : 'handL'; }
-  else { P.knife.at = 'handL'; P.grip.L = 'knife'; lgHandTo(P, 'L', 'root', [lgLerp(0.4, 0.12, up), lgLerp(0.12, 0.22, up), lgLerp(0.75, 1.62, up)], [0.3, lgLerp(-1.3, -2.6, up), 0.3], [-0.6, 0.9, 0.1]); }
+  else { P.knife.at = 'handL'; P.grip.L = 'knife'; lgHandTo(P, 'L', 'root', [lgLerp(0.4, 0.12, up), lgLerp(0.12, 0.22, up), lgLerp(0.75, 1.62, up)], [0.05, lgLerp(-1.3, -1.5, up), lgLerp(0.3, 0.05, up)], [-0.6, 0.9, 0.1]); }   // (the fist up with the little finger down: the blade points down at it)
   P.mask = 1; P.glow = 1;
 }, [[0.45, 'knee'], [0.65, 'knifeOut']]);
 

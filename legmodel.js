@@ -141,8 +141,9 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
   LG_SOCK.holster = lgTR(0.005, -0.192, 0.035, 0, Math.PI / 2 + 0.12, 0);
   // knife space: blade along +x, spine +z. Sheath across the bottom of the carrier front (chest space), handle to the right
   LG_SOCK.sheath = lgBasis([0, 1, 0], [-1, 0, 0], [0, 0, 1], [0.205, 0.035, -0.105]);
-  // left hand, reverse grip: the blade leaves the little-finger side with the edge out
-  LG_SOCK.kgrip = lgBasis([0, 0, 1], [0, -1, 0], [1, 0, 0], [-0.045, 0.02, -0.02]);
+  // left hand, reverse grip (1.9.993, fixed: the handle lies across the palm in the closed fist, the blade leaves the
+  // little-finger side and lies back along the forearm, the edge out; it used to lie along the fingers, backwards)
+  LG_SOCK.kgrip = lgBasis([-0.75, 0, 0.66], [0, -1, 0], [0.66, 0, 0.75], [-0.004, -0.022, 0.063]);   // (held diagonally, heel of the palm to the index, as a real fist holds a handle)
   // carbine space: bore +x, origin over the pistol grip; on the back, muzzle up behind the left shoulder
   LG_SOCK.back = lgBasis([0, 0.5, 0.866], [0, 0.866, -0.5], [-1, 0, 0], [-0.205, -0.06, 0.02]);
   LG_SOCK.cgripR = lgBasis([0.42, 0, 0.906], [0, 1, 0], [-0.906, 0, 0.42], [-0.085, -0.032, -0.07]);
