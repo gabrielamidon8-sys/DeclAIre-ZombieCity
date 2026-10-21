@@ -1087,7 +1087,7 @@ function aBake(m, pose, rq, kp, o, ext) {
 const A_FR = [12, 10, 8, 6];
 // the cached frame of a zombie's walk (or idle) for this moment
 function aFrame(z, A, lod, sev) {
-  const m = z.m, ci = A.base, q = lod >= 2 ? 1 : 0, F = A_FR[Math.min(3, lod)], rq = Math.max(3, Math.round(z.r / (q ? 2 : 1)) * (q ? 2 : 1));
+  const m = z.m, ci = A.base, q = lod >= 2 ? 1 : 0, F = A_FR[Math.min(3, lod)], rb = z.r / (z.vr || 1), rq = Math.max(3, Math.round(rb / (q ? 2 : 1)) * (q ? 2 : 1));   // (baked at the kind's size; each one's own size is the scale it is drawn at)
   const u = ci < 10 ? A.ph : ((G.time + A.t0) / m.adur[ci]) % 1, fi = Math.floor(u * F) % F;
   const key = 'f' + m.idx + '|' + ci + '|' + fi + '|' + F + '|' + rq + '|' + q + '|' + (z.minion ? 1 : 0) + (sev ? '|s' + sev : '');
   let sp = ANIMA.cache.get(key);

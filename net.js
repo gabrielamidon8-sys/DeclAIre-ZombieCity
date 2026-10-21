@@ -646,7 +646,7 @@ function netApply(s) {
     nid += ZD[i]; const st = NET.zst.get(nid); if (!st) continue;   // not introduced yet: it comes with the next full update
     const x = ZD[i + 1] + ax, y = ZD[i + 2] + ay, f = st[3] | (ZD[i + 5] << 5);
     let z = NET.zmap.get(nid);
-    if (!z || z.dead) { z = netMakePuppet([nid, st[0], x, y, ZD[i + 3] * 10, ZD[i + 4] * 10, f, st[1], st[2]], s.B); if (!z) continue; z.r = st[1] / 10; if (st[2]) { z.shieldMax = 100; z.shield = st[2]; } }
+    if (!z || z.dead) { z = netMakePuppet([nid, st[0], x, y, ZD[i + 3] * 10, ZD[i + 4] * 10, f, st[1], st[2]], s.B); if (!z) continue; { const r0 = z.r; z.r = st[1] / 10; z.vr = r0 > 0 ? clamp(z.r / r0, 0.9, 1.1) : 1; } if (st[2]) { z.shieldMax = 100; z.shield = st[2]; } }   // (vr: the host's size for this one, so ANIMA shares the kind's frames)
     if (seen) seen.add(nid);
     netVel(z, x, y); z.tx = x; z.ty = y; z.tang = ZD[i + 3] / 10; z.hp = ZD[i + 4] * 10;
     if (Math.hypot(z.tx - z.x, z.ty - z.y) > 260) { z.x = z.tx; z.y = z.ty; z.nvx = z.nvy = 0; }

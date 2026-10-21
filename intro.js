@@ -691,7 +691,7 @@ function introFinish(natural) {
   INTRO_EL.classList.add('out');
   loadRun('Into the city', [
     ['Waking the city', () => { if (!G.attractReady) initAttract(); G.attractReady = false; return chunkJobs(cam.x, cam.y); }],
-    ['Waking the dead', () => G.zs.filter(z => !z.dead).map(z => () => getSprite(z.m, z.r))],
+    ['Waking the dead', () => G.zs.filter(z => !z.dead).map(z => () => getSprite(z.m, z.r / (z.vr || 1)))],
     ['Opening the bunker', () => { refreshTitle(); }]
   ], { now: true }).then(() => {
     showOv('title');

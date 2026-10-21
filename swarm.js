@@ -558,7 +558,7 @@ function swarmVehSprite(r) {
 /* ---------- drawing the crowd ---------- */
 // the crowd picture of a mutation: small, cropped to the body, made from its full picture when there is one
 function swarmLo(key, z, full) {
-  const rq = Math.max(3, Math.round(z.r)), half = rq * 2.4, kp = clamp(DPR * ZOOM * 0.62, 0.7, 2.2), S = Math.max(8, Math.ceil(half * 2 * kp));
+  const rq = Math.max(3, Math.round(z.r / (z.vr || 1))), half = rq * 2.4, kp = clamp(DPR * ZOOM * 0.62, 0.7, 2.2), S = Math.max(8, Math.ceil(half * 2 * kp));
   const t = document.createElement('canvas'); t.width = t.height = S;
   const g = t.getContext('2d', { willReadFrequently: true }); if (!g) return null;
   if (full && full.c) g.drawImage(full.c, 0, 0, S, S);
@@ -577,7 +577,7 @@ function swarmLo(key, z, full) {
 }
 // a stand-in for a zombie whose picture is not made yet: its strain's colours in a plain body shape
 function swarmImp(z) {
-  const rq = Math.max(3, Math.round(z.r / 2) * 2), key = z.m.S.key + '|' + rq; let s = SWARM.imp.get(key);
+  const rq = Math.max(3, Math.round(z.r / (z.vr || 1) / 2) * 2), key = z.m.S.key + '|' + rq; let s = SWARM.imp.get(key);
   if (!s) {
     const kp = clamp(DPR * ZOOM * 0.6, 0.7, 2), half = rq * 1.4, S = Math.max(6, Math.ceil(half * 2 * kp)), c = document.createElement('canvas'); c.width = c.height = S;
     const g = c.getContext('2d'), sk = z.m.S.skin || [120, 130, 110], cl = z.m.S.cloth || [60, 60, 60];
@@ -596,13 +596,13 @@ function swarmImp(z) {
 // which picture a zombie is drawn with: its full one near you (made a few per frame, nearest first), the crowd one
 // further out, a stand-in until either is ready; always cropped to the body
 function swarmSpr(z, tier) {
-  const rq = Math.max(3, Math.round(z.r)), key = z.m.id + '|' + rq + '|' + (z.minion ? 1 : 0);
+  const rb = z.r / (z.vr || 1), rq = Math.max(3, Math.round(rb)), key = z.m.id + '|' + rq + '|' + (z.minion ? 1 : 0);   // (1.9.994: the kind's size, so pictures are shared; each one is drawn at its own)
   if (z.swK !== key) { z.swK = key; z.sw0 = null; z.sw1 = null; }
   let lo = z.sw1 || (z.sw1 = SWARM.lo.get(key) || null);
   const kz = z.r / rq;
   if (tier === 0 && swarmOn('full')) {
     let full = z.sw0;
-    if (!full) { full = sprites.get(key) || null; if (!full && SWARM.budF > 0) { SWARM.budF--; full = getSprite(z.m, z.r, z.minion); SWARM.stats.made++; } if (full) z.sw0 = full; }
+    if (!full) { full = sprites.get(key) || null; if (!full && SWARM.budF > 0) { SWARM.budF--; full = getSprite(z.m, rb, z.minion); SWARM.stats.made++; } if (full) z.sw0 = full; }
     if (full) {
       SWARM.keys.add(key);
       if (!lo && SWARM.budL > 0) { SWARM.budL--; lo = z.sw1 = swarmLo(key, z, full); }

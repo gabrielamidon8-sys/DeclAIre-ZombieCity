@@ -502,7 +502,7 @@ function spawnZombie(m, x, y, o) {
     slowT: 0, buffT: 0, stuckT: 0, detT: 0, detSide: 1, stun: 0, growth: 1, shield: 0, shieldMax: 0, shieldCd: 0, mulB: 1, dead: false
   };
   // 1.9.994: no two alike: each one a little bigger or smaller and its own pace (the bosses and the swarms of flyers as they are)
-  if (!o.boss && !o.fly && !o.illusion && !(NET.role === 'client' && NET.spawning)) { z.r *= 0.93 + Math.random() * 0.14; z.speed *= 0.88 + Math.random() * 0.26; }
+  if (!o.boss && !o.fly && !o.illusion && !(NET.role === 'client' && NET.spawning)) { z.vr = 0.93 + Math.random() * 0.14; z.r *= z.vr; z.speed *= 0.88 + Math.random() * 0.26; }   // (vr kept: ANIMA bakes the kind's size and scales it, so the cached frames are still shared)
   z.baseR = z.r;
   // the 2.0 zombies: how bullets treat them (helmets, armour, a shield, a low body) and limbs that can be crippled
   if (m.v2) { z.T = m.T; z.legK = 0; z.armK = 0; z.abMul = 1; if (o.emerge) z.emT = G.time; }
@@ -2112,7 +2112,7 @@ function drawZ(z, lod, far) {
     if (ok) { drawZOver(z, lod, far); return; }
   }
   if (z.st.down > 0) {
-    const spr = getSprite(z.m, z.r, z.minion), k = z.r / spr.rq, hs = spr.half * k;
+    const spr = getSprite(z.m, z.r / (z.vr || 1), z.minion), k = z.r / spr.rq, hs = spr.half * k;
     ctx.save(); ctx.translate(z.x, z.y); ctx.rotate(z.ang + 1.3); ctx.globalAlpha = 0.5; ctx.drawImage(spr.c, -hs, -hs, hs * 2, hs * 2); ctx.restore(); ctx.globalAlpha = 1;
     ctx.strokeStyle = 'rgba(230,220,190,' + (0.3 + Math.sin(G.time * 10) * 0.2) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (1.2 + (1.4 - z.st.down) * 0.4), 0, TAU); ctx.stroke();
     return;
@@ -2129,7 +2129,7 @@ function drawZ(z, lod, far) {
     ctx.fillStyle = '#d69b2a'; ctx.fillRect(z.x - 1, z.y - 1, 2, 2);
     return;
   }
-  const spr = getSprite(z.m, z.r, z.minion), k = z.r / spr.rq, hs = spr.half * k;
+  const spr = getSprite(z.m, z.r / (z.vr || 1), z.minion), k = z.r / spr.rq, hs = spr.half * k;
   let a = 1; if (z.illusion) a = 0.62 * Math.min(1, z.life); if (z.m.S.p.ghost) a *= 0.88; if (z.st.phased) a *= 0.25;
   if (z.m.S.p.camo && G.p && G.mode !== 'title') a *= clamp((300 - Math.hypot(G.p.x - z.x, G.p.y - z.y)) / 140, 0.1, 1);
   ctx.save(); ctx.translate(z.x, z.y);
