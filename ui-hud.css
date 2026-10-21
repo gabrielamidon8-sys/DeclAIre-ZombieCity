@@ -151,6 +151,16 @@
 .dev-kbm #airBtn,.dev-pad #airBtn{width:56px;height:56px;bottom:auto}
 .lefty .hx-abil{right:auto;left:max(16px, env(safe-area-inset-left, 0px));grid-template-areas:"mark ." "dash air"}
 .lefty #dashBtn,.lefty #airBtn,.lefty #markBtn{left:auto;right:auto}
+/* 1.9.993: reload, beside the team marker (the dodge roll is the big button) */
+#reloadBtn{display:none;position:relative;width:50px;height:50px;border:0;border-radius:50%;color:#e8ecf0;background:radial-gradient(circle at 50% 40%, rgba(46,52,60,.92), rgba(9,12,16,.9) 66%);box-shadow:0 0 0 1px rgba(232,236,240,.28), 0 6px 16px rgba(0,0,0,.5)}
+#reloadBtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#reloadBtn.low{color:#ffb347;box-shadow:0 0 0 2px #ffb347, 0 0 16px rgba(255,179,71,.45)}
+#reloadBtn.busy{color:var(--muted)}
+.arms #reloadBtn{display:grid;place-items:center}
+.arms .hx-abil{grid-template-areas:"reload mark" "air dash"}
+.arms .hx-abil #reloadBtn{grid-area:reload;margin:0}
+.arms.lefty .hx-abil{grid-template-areas:"mark reload" "dash air"}
+.dev-touch #reloadBtn{width:58px;height:58px}
 
 /* ---------- bottom left: the weapon ---------- */
 .hx-weapon{--wr:#a9adb5;position:absolute;left:max(16px, env(safe-area-inset-left, 0px));bottom:max(14px, env(safe-area-inset-bottom, 0px));display:flex;align-items:center;gap:10px;max-width:calc(100% - 210px);min-width:0;
@@ -160,6 +170,21 @@
 .hx-wtxt small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--wr);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hx-wtxt span{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000}
 .lefty .hx-weapon{left:auto;right:max(16px, env(safe-area-inset-right, 0px));clip-path:polygon(12px 0, 100% 0, 100% 100%, 0 100%);padding:6px 10px 6px 18px;box-shadow:inset -3px 0 0 var(--wr)}
+/* the rounds in the gun, the reload filling along the bottom, the other gun under the name (tap to swap on a phone) */
+.hx-ammo{display:none;flex:none;align-items:baseline;gap:4px;margin-left:2px;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.arms .hx-ammo{display:flex}
+.hx-ammo b{font-size:27px;line-height:1;font-weight:700;color:#f2f4f6;text-shadow:0 1px 3px #000;min-width:2ch;text-align:right;transition:color .15s}
+.hx-ammo b.low{color:#ffb347}
+.hx-ammo b.out{color:#ff4d5e;animation:hxout .7s steps(2, jump-none) infinite}
+@keyframes hxout{50%{opacity:.35}}
+.hx-ammo em{font-style:normal;font-size:11px;color:var(--muted);letter-spacing:.04em;white-space:nowrap}
+.hx-other{display:none;font-style:normal;font-family:var(--f-num);font-size:9.5px;letter-spacing:.08em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arms .hx-other{display:block}
+.arms .hx-other::before{content:'⇄ ';opacity:.7}
+.hx-rl{position:absolute;left:0;right:12px;bottom:0;height:3px;background:color-mix(in srgb, var(--wr) 70%, #fff);transform-origin:left center;transform:scaleX(var(--rl, 0));opacity:0;transition:opacity .15s;pointer-events:none}
+.hx-rl.on{opacity:1}
+.dev-touch.arms .hx-weapon{pointer-events:auto;cursor:pointer;touch-action:none}
+.rm .hx-ammo b.out{animation:none}
 
 /* ---------- touch screens: bigger thumbs, the weapon up out of the joystick's way ---------- */
 .dev-touch #dashBtn{width:90px;height:90px}

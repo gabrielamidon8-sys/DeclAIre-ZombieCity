@@ -3,7 +3,10 @@
 const WEAPONS = ZW.buildWeapons(), CARDS = ZW.CARDS, WRAR = ZW.RAR;
 const guns = new Set(store.get('zc_guns', [0])); guns.add(0);
 function saveGuns() { store.set('zc_guns', Array.from(guns)); }
-function loadoutId() { const id = store.get('zc_loadout', 0); return guns.has(id) && WEAPONS[id] ? id : 0; }
+function loadoutId() {
+  if (ARMS_ON) { const k = (store.get('zc_arms', null) || {}).p, w = WEAPONS.find(x => x.arms && x.slot === 'primary' && x.arms.key === k) || WEAPONS.find(x => x.arms && x.slot === 'primary'); if (w) return w.id; }   // 1.9.993: the primary you carry
+  const id = store.get('zc_loadout', 0); return guns.has(id) && WEAPONS[id] ? id : 0;
+}
 
 function newCardStats() {
   return { dmg: 0, rof: 0, multi: 0, burst: 0, flame: 0, pierce: 0, blast: 0, range: 0, crit: 0, critDmg: 0, move: 0, regen: 0, taken: 0, dash: 0, killHeal: 0, lifesteal: 0, burn: 0, slow: 0, freeze: 0, shock: 0, splash: 0, poison: 0, bounce: 0, elite: 0, homing: 0, execute: 0, phoenix: 0, zspeed: 0, split: 0, score: 0, luck: 0, gravity: 0, horde: 0, healMul: 0, jam: 0, vision: 0, hpPerShot: 0, selfDps: 0, zhp: 0, bossHp: 0, thunder: 0, echo: 0, maxHpPct: 0 };
@@ -51,11 +54,11 @@ function fireWeapon(t, ang) {
   for (let i = 1; i < S.burst; i++) p.queue.push({ t: i * 0.07, mul: 1 });
   if (S.echo) p.queue.push({ t: 0.17, mul: 0.6 });
   if (S.jamEvery && p.shots % S.jamEvery === 0) { p.jamT = 1.2; SFX.jam(); G.texts.push({ x: p.x, y: p.y - 28, t: 0, life: 0.9, s: 'JAMMED', c: '#fff36b' }); }
-  SFX.shot(p.weapon.F.key, p.weapon.M.key);
+  if (p.weapon.arms) SFX.shot(p.weapon.arms.snd[0], p.weapon.M.key, p.weapon.arms.snd[1]); else SFX.shot(p.weapon.F.key, p.weapon.M.key);
   if (typeof swarmHear === 'function') swarmHear(p.x, p.y, p.weapon.F.key);   // hordes in earshot come running
 }
 function volley(a, mul) {
-  const p = G.p, S = p.S, w = p.weapon, n = S.pellets, kind = S.kind, cone = w.F.key === 'shotgun' || kind === 'flame';
+  const p = G.p, S = p.S, w = p.weapon, n = S.pellets, kind = S.kind, cone = w.F.key === 'shotgun' || kind === 'flame' || !!(w.arms && w.arms.pellets > 1);
   // the muzzle: the gun is drawn from 8 px in front of the player and is GUN_LEN long, pointing along p.aim
   // (if the barrel is poking into a wall, the shot starts from the player so a zombie pinned against the wall still gets hit)
   let md = (10 + (GUN_LEN[w.F.key] || 20)) * PK, mx = p.x + Math.cos(p.aim) * md, my = p.y + Math.sin(p.aim) * md;
@@ -75,7 +78,7 @@ function volley(a, mul) {
     G.bullets.push({
       x: mx, y: my, sx: p.x, sy: p.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
       dmg: S.dmg * mul * (crit ? S.critMul : 1) * (p.weakT > 0 ? 0.65 : 1) * dashDmgMul(p), crit: crit, pierce: S.pierce, bounce: S.bounce, split: S.split,
-      life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper', fk: w.F.key, mk: w.M.key
+      life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper' || w.F.key === 'mk17', fk: w.F.key, mk: w.M.key
     });
     if (typeof balArm === 'function') balArm(G.bullets[G.bullets.length - 1], p, w, S);   // a real round: real speed and energy
     if (typeof tracerTag === 'function') tracerTag(G.bullets[G.bullets.length - 1], p.shots + i);
@@ -375,6 +378,8 @@ function rollRarity(luck, boss) {
 }
 function rollWeaponCard(boss) {
   const p = G.p; let r = rollRarity(p.luck + (boss ? 1 : 0), boss); if (r === 5) r = 3;
+  // 1.9.993: a gun found in a run is one of the rebuilt ten you are not carrying; it takes its slot for the run
+  if (p.arm) { const carried = p.arm.w.map(x => x.id), pool = ARMS_LIST.filter(x => carried.indexOf(x.id) < 0), w = pick(pool.length ? pool : ARMS_LIST); return { type: 'weapon', w: w, r: w.rarity }; }
   let pool = WEAPONS.filter(w => w.rarity === r && w.id !== p.weapon.id); if (!pool.length) pool = WEAPONS.filter(w => w.id !== p.weapon.id);
   const locked = pool.filter(w => !guns.has(w.id));
   const w = locked.length && Math.random() < 0.7 ? pick(locked) : pick(pool);
@@ -384,6 +389,7 @@ function rollCards() {
   const p = G.p, boss = G.wave % 5 === 0, out = [], used = new Set();
   const wSlot = boss ? Math.floor(Math.random() * 3) : Math.random() < 0.22 ? Math.floor(Math.random() * 3) : -1;
   let dSlot = Math.random() < (boss ? 0.35 : 0.17) ? Math.floor(Math.random() * 3) : -1; if (dSlot === wSlot) dSlot = (dSlot + 1) % 3;
+  if (p.arm) dSlot = -1;   // (the dashes rest while the dodge roll stands in)
   for (let s = 0; s < 3; s++) {
     if (s === wSlot) { out.push(rollWeaponCard(boss)); continue; }
     if (s === dSlot) { out.push(rollDashCard(boss)); continue; }
@@ -398,6 +404,7 @@ function rollCards() {
   return out;
 }
 function paintWeapon(c, w, cw, ch, sil) {
+  if (w.arms) return armsPaint(c, w, cw, ch, sil);   // the rebuilt guns draw themselves (arms.js)
   const d = Math.min(window.devicePixelRatio || 1, 2); c.width = Math.round(cw * d); c.height = Math.round(ch * d);
   c.style.width = cw + 'px'; c.style.height = ch + 'px';
   const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, cw, ch);
@@ -422,15 +429,15 @@ function buildCard(ch, i, onPick) {
   b.append(el('span', 'gc-shine'), top, art, body);
   const li = (t, cls) => { const x = el('li', cls, t); ul.appendChild(x); };
   if (ch.type === 'weapon') {
-    const w = ch.w, cur = p.weapon;
-    top.querySelector('.gc-type').textContent = guns.has(w.id) ? 'Weapon' : 'New weapon';
+    const w = ch.w, cur = w.arms && p.arm ? p.arm.w[w.slot === 'primary' ? 0 : 1] : p.weapon;
+    top.querySelector('.gc-type').textContent = w.arms ? (w.slot === 'primary' ? 'Primary' : 'Secondary') : guns.has(w.id) ? 'Weapon' : 'New weapon';
     name.textContent = w.name; paintWeapon(art, w, 132, 66, false); art.classList.add('w');
     const cmp = (label, a, bv, fmt) => { const up = a >= bv; li((up ? '▲ ' : '▼ ') + label + ' ' + fmt(a), up ? 'good' : 'bad'); };
     cmp('Damage', w.dmg * w.pellets * w.burst, cur.dmg * cur.pellets * cur.burst, v => Math.round(v));
     cmp('Fire rate', w.rof, cur.rof, v => v.toFixed(1) + '/s');
     cmp('Range', w.range, cur.range, v => Math.round(v));
-    li(w.M.desc, 'meta');
-    notes.append(el('span', 'gc-react', 'Cards: ' + (w.F.reactText + (w.M.reactText ? ' ' + w.M.reactText : ''))));
+    if (w.arms) { li(w.arms.cal + ' · ' + w.arms.mag + (w.arms.chamber ? '+1' : '') + ' · replaces your ' + cur.name, 'meta'); notes.append(el('span', 'gc-react', 'Special reload: ' + w.arms.reload.special)); }
+    else { li(w.M.desc, 'meta'); notes.append(el('span', 'gc-react', 'Cards: ' + (w.F.reactText + (w.M.reactText ? ' ' + w.M.reactText : '')))); }
   } else if (ch.type === 'dash') {
     const d = ch.d, cur = dashDef(p);
     top.querySelector('.gc-type').textContent = dashes.has(d.id) ? 'Dash' : 'New dash';
@@ -506,6 +513,7 @@ function applyChoice(ch) {
 }
 function equipWeapon(w) {
   const p = G.p, isNew = !guns.has(w.id);
+  if (w.arms && p.arm) { armsPickup(p, w); return; }
   p.weapon = w; p.shots = 0; p.queue = []; guns.add(w.id); saveGuns(); recalc(p); updWeaponChip();
   if (isNew) { toast('New weapon unlocked · ' + WRAR[w.rarity].name, w.name, WRAR[w.rarity].color); SFX.unlock(); }
 }
@@ -513,7 +521,8 @@ function updWeaponChip() {
   const p = G.p; if (!p) return;
   paintWeapon($('wIcon'), p.weapon, 48, 22, false);
   const n = $('wName'), R = WRAR[p.weapon.rarity]; n.textContent = p.weapon.name; n.style.color = R.color;
-  const r = $('wRar'); if (r) r.textContent = (R.name || p.weapon.rarity) + ' · ' + (p.weapon.F && p.weapon.F.name ? p.weapon.F.name : '');
+  const r = $('wRar'); if (r) r.textContent = p.weapon.arms ? p.weapon.arms.cal : (R.name || p.weapon.rarity) + ' · ' + (p.weapon.F && p.weapon.F.name ? p.weapon.F.name : '');
+  if (p.arm) ARMS.hudK = '';
   $('wChip').style.setProperty('--wr', R.color);
 }
 
@@ -523,9 +532,9 @@ function renderBuild() {
   const w = p.weapon, S = p.S;
   paintWeapon($('bwIcon'), w, 120, 56, false);
   $('bwName').textContent = w.name; const r = $('bwRar'); r.textContent = WRAR[w.rarity].name + ' · ' + w.code; r.style.color = WRAR[w.rarity].color;
-  $('bwDesc').textContent = w.M.desc + ' ' + w.F.reactText;
+  $('bwDesc').textContent = w.arms ? w.arms.desc + ' Special reload: ' + w.arms.reload.special : w.M.desc + ' ' + w.F.reactText;
   const d = dashDef(p), bd = $('bDash'); bd.textContent = ''; const dc = el('canvas'); paintDash(dc, d, 46, false);
-  const dt = el('div'); const dn = el('b', null, 'Dash: ' + d.name); dn.style.color = d.hex; dt.append(dn, el('p', null, d.desc + ' Passive: ' + d.pas + '.')); bd.append(dc, dt);
+  const dt = el('div'); const dn = el('b', null, (d.quiet ? '' : 'Dash: ') + d.name); dn.style.color = d.hex; dt.append(dn, el('p', null, d.quiet ? d.desc : d.desc + ' Passive: ' + d.pas + '.')); bd.append(dc, dt);
   const st = $('bStats'); st.textContent = '';
   [['Damage', Math.round(S.dmg * S.pellets * S.burst)], ['Fire rate', S.rof.toFixed(1) + '/s'], ['Crit', Math.round(S.crit * 100) + '%'], ['Pierce', S.pierce], ['Range', Math.round(S.range)], ['Speed', Math.round(p.speed)]]
     .forEach(x => { const d = el('div'); d.append(el('dt', null, x[0]), el('dd', null, String(x[1]))); st.appendChild(d); });
@@ -544,6 +553,7 @@ function openArmory() { $('armory').hidden = false; $('armory').scrollTop = 0; r
 function closeArmory() { $('arDetail').hidden = true; $('armory').hidden = true; KEEP.stop(); refreshTitle(); }
 $('keeper').querySelector('.kp-poke').addEventListener('click', () => { SFX.init(); KEEP.poke(); });
 function renderArmory() {
+  if (ARMS_ON) { renderArmsArmory(); renderArmsSide(); return; }   // 1.9.993: the rebuilt ten (arms.js)
   $('arCount').textContent = guns.size + ' / 250';
   renderArmorySide();
   if (arFrame === 'dash') return renderDashArmory();
@@ -651,6 +661,7 @@ function openWeaponDetail(w) {
   d.hidden = false; d.scrollTop = 0;
 }
 $('awEquip').addEventListener('click', () => {
+  if (ARMS_ON && armsCur) { armsEquipCur(); return; }
   if (arCur && arCur.dash) { if (!dashes.has(arCur.dash.id)) return; store.set('zc_dash', arCur.dash.id); SFX.click(); openDashDetail(arCur.dash); renderArmory(); KEEP.approve(); return; }
   if (!arCur || !guns.has(arCur.id)) return; store.set('zc_loadout', arCur.id); SFX.click(); openWeaponDetail(arCur); renderArmory(); KEEP.approve();
 });

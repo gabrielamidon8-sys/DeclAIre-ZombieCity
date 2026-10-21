@@ -669,6 +669,7 @@ var SFX = (function () {
 
 /*__SFX2__*/
 /*__CINESFX__*/
+/*__ARMSFX__*/
   var api = {
     tick: function () { rPump(); flameTick(); },
     selfHeal: selfHeal, rebuild: rebuild, setQuality: setQuality,
@@ -1031,6 +1032,6 @@ var SFX = (function () {
     bossIntro: function () { if (!ok()) return; var t = ac.currentTime; drum(t, 44, 1); drum(t + 0.25, 40, 1); horn(t, [55, 82.4, 110], 2, 0.4); bell(t, 110, 0.1, 2.5); }
 
   };
-  Object.assign(api, api2, apiCine);
+  Object.assign(api, api2, apiCine, apiArms);
   return api;
 })();

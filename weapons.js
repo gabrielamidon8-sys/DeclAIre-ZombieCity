@@ -49,6 +49,76 @@ var ZW = (function () {
     { key: 'golden', name: 'Golden', tier: 4, color: '#ffcf3a', tags: ['luck'], dmg: 1.15, fx: { score: 0.5, luck: 1 }, desc: '+50% score, better card rarities, +15% damage.', react: { luck: 2, score: 2 }, reactText: 'Luck and score cards are doubled.' }
   ];
 
+  // ---------- 1.9.993: ARMS, the guns rebuilt ten at a time on real ones ----------
+  // The 250 frame-and-mod guns rest while they are rebuilt, ten at a time. The first ten: five primaries and five
+  // secondaries, each modelled on a real gun (military designations, real calibres, capacities, rates and muzzle
+  // velocities), with its own reload technique, a special reload, a recoil sized to its round, ready-up and draw times.
+  // base: the old frame the shared engines fall back on for a style (sound, flash, tracer, wounds); snd: the sound
+  // and its pitch. real: what the armory shows. reload: tac (rounds left, bolt forward), empty (bolt or slide to run),
+  // kind (the technique the animation and the sounds follow), special (its signature move).
+  var ARMS = [
+    { key: 'm4a1', slot: 'primary', name: 'M4A1', full: 'M4A1 Carbine', cls: 'carbine', base: 'rifle', snd: ['rifle', 1.0], mz: 'rifle', tier: 2,
+      cal: '5.56×45mm NATO', mag: 30, chamber: 1, auto: 1, rpm: 800, dmg: 12, pellets: 1, spread: 0.05, speed: 900, range: 520, pierce: 0, crit: 0.06, knock: 70, move: 0.97,
+      v: 900, g: 4.0, cd: 0.0011, kick: 0.016, rec: 2.4, max: 0.13, cam: 0.5, len: 26, ready: 0.24, draw: 0.62, holster: 0.5,
+      reload: { tac: 2.05, empty: 2.55, kind: 'ar', special: 'Speed reload: the empty drops free while the fresh one is already on its way; the support hand slaps the bolt catch to send the bolt home.' },
+      real: { barrel: '14.5 in (368 mm)', weight: '3.1 kg loaded', action: 'Gas, rotating bolt (direct impingement)', rate: '700–970 rounds/min', mv: '~900 m/s (M855)' },
+      eject: { a: 1.75, s: 4.2, up: 2.2, kind: 'case556' }, tags: ['rapid', 'precision'], desc: 'The carbine the Operator trusts: light, quick to the shoulder, thirty rounds of 5.56 and a bolt that locks back to tell you it is empty.' },
+    { key: 'ak74m', slot: 'primary', name: 'AK-74M', full: 'AK-74M Assault Rifle', cls: 'ak', base: 'rifle', snd: ['rifle', 0.9], mz: 'ak', tier: 2,
+      cal: '5.45×39mm', mag: 30, chamber: 1, auto: 1, rpm: 650, dmg: 12, pellets: 1, spread: 0.055, speed: 900, range: 520, pierce: 0, crit: 0.05, knock: 72, move: 0.96,
+      v: 900, g: 3.4, cd: 0.0012, kick: 0.017, rec: 2.5, max: 0.14, cam: 0.45, len: 27, ready: 0.27, draw: 0.66, holster: 0.52,
+      reload: { tac: 2.3, empty: 2.85, kind: 'ak', special: 'Strip and rock: the fresh magazine knocks the empty out of the well, hooks the front lip in and rocks back until it clicks; on empty the support hand reaches under to rack the charging handle.' },
+      real: { barrel: '415 mm (16.3 in)', weight: '3.4 kg', action: 'Gas, long-stroke piston, rotating bolt', rate: '600–650 rounds/min', mv: '~900 m/s (7N6)' },
+      eject: { a: 1.45, s: 5.2, up: 2.4, kind: 'case545' }, tags: ['rapid', 'damage'], desc: 'Long-stroke and stubborn. The muzzle brake keeps the 5.45 flat; the brass flies far and to the front.' },
+    { key: 'mk17', slot: 'primary', name: 'Mk 17', full: 'Mk 17 Battle Rifle', cls: 'scar', base: 'sniper', snd: ['sniper', 1.12], mz: 'battle', tier: 3,
+      cal: '7.62×51mm NATO', mag: 20, chamber: 1, auto: 1, rpm: 600, dmg: 20, pellets: 1, spread: 0.045, speed: 790, range: 640, pierce: 1, crit: 0.08, knock: 140, move: 0.93,
+      v: 790, g: 9.5, cd: 0.0009, kick: 0.045, rec: 1.9, max: 0.2, cam: 1.0, len: 29, ready: 0.31, draw: 0.72, holster: 0.58,
+      reload: { tac: 2.4, empty: 3.0, kind: 'scar', special: 'Heavy gun, clean hands: on empty the support hand works the reciprocating charging handle on the left of the receiver, the firing hand never leaves the grip.' },
+      real: { barrel: '16 in (406 mm)', weight: '3.6 kg', action: 'Gas, short-stroke piston, rotating bolt', rate: '~600 rounds/min', mv: '~790 m/s (M80)' },
+      eject: { a: 1.65, s: 4.6, up: 2.6, kind: 'case762' }, tags: ['damage', 'pierce'], desc: 'Full-power 7.62: it drops what it hits and keeps going into the next. Twenty rounds, a hard push into the shoulder.' },
+    { key: 'm1014', slot: 'primary', name: 'M1014', full: 'M1014 Combat Shotgun', cls: 'shotgun', base: 'shotgun', snd: ['shotgun', 1.0], mz: 'shotgun', tier: 2,
+      cal: '12 gauge 00 buckshot', mag: 7, chamber: 1, auto: 0, rpm: 240, dmg: 7, pellets: 9, spread: 0.42, speed: 400, range: 300, pierce: 0, crit: 0.03, knock: 170, move: 0.95,
+      v: 400, g: 3.5, cd: 0.0065, kick: 0.09, rec: 1.7, max: 0.16, cam: 1.25, len: 28, ready: 0.28, draw: 0.7, holster: 0.55, w: 6,
+      reload: { tac: 0.42, empty: 0.95, kind: 'tube', perShell: 0.42, special: 'Combat load: on empty one shell goes straight into the open port and the bolt release sends it home, then the tube is fed shell by shell; firing stops the reload.' },
+      real: { barrel: '18.5 in (470 mm)', weight: '3.8 kg', action: 'Gas, dual piston (ARGO), semi-automatic', rate: 'as fast as the trigger', mv: '~400 m/s per pellet' },
+      eject: { a: 1.6, s: 3.4, up: 2.0, kind: 'shell12' }, tags: ['spread', 'damage'], desc: 'Nine pellets of 00 buck a pull. It feeds one shell at a time, and the tube is never full long.' },
+    { key: 'pp19', slot: 'primary', name: 'PP-19', full: 'PP-19 Submachine Gun', cls: 'helix', base: 'smg', snd: ['smg', 0.92], mz: 'smg', tier: 2,
+      cal: '9×18mm Makarov', mag: 64, chamber: 1, auto: 1, rpm: 680, dmg: 8, pellets: 1, spread: 0.1, speed: 320, range: 360, pierce: 0, crit: 0.04, knock: 48, move: 1.02,
+      v: 320, g: 6.1, cd: 0.0019, kick: 0.012, rec: 2.2, max: 0.18, cam: 0.3, len: 22, ready: 0.22, draw: 0.55, holster: 0.45,
+      reload: { tac: 2.6, empty: 3.1, kind: 'helix', special: 'The helical change: thumb the paddle catch, swing the long magazine down off its front pins, hook the new one on and rotate it up until it locks under the barrel.' },
+      real: { barrel: '230 mm (9.1 in)', weight: '2.1 kg', action: 'Straight blowback, closed bolt', rate: '~680 rounds/min', mv: '~320 m/s' },
+      eject: { a: 1.8, s: 3.2, up: 1.8, kind: 'case9' }, tags: ['rapid', 'speed'], desc: 'Sixty-four rounds in a helix under the barrel. Light, quick and soft-shooting: it buys time.' },
+    { key: 'm17', slot: 'secondary', name: 'M17', full: 'M17 Pistol', cls: 'pistol', base: 'pistol', snd: ['pistol', 1.0], mz: 'pistol', tier: 1,
+      cal: '9×19mm NATO', mag: 17, chamber: 1, auto: 0, rpm: 300, dmg: 14, pellets: 1, spread: 0.04, speed: 365, range: 430, pierce: 0, crit: 0.06, knock: 90, move: 1.0,
+      v: 365, g: 8.0, cd: 0.0018, kick: 0.035, rec: 2.6, max: 0.16, cam: 0.35, len: 16, ready: 0.17, draw: 0.48, holster: 0.42,
+      reload: { tac: 1.45, empty: 1.85, kind: 'pistol', special: 'Slide lock reload: the empty falls while the fresh one is indexed; the support thumb drops the slide release and he is back on target.' },
+      real: { barrel: '120 mm (4.7 in)', weight: '834 g', action: 'Short recoil, striker-fired', rate: 'semi-automatic', mv: '~365 m/s' },
+      eject: { a: 1.7, s: 3.0, up: 2.0, kind: 'case9' }, tags: ['precision', 'crit'], desc: 'Seventeen rounds of 9 mm, an optic and a light. The Operator\'s sidearm.' },
+    { key: 'm9', slot: 'secondary', name: 'M9', full: 'M9 Pistol', cls: 'pistol', base: 'pistol', snd: ['pistol', 0.96], mz: 'pistol', tier: 1,
+      cal: '9×19mm NATO', mag: 15, chamber: 1, auto: 0, rpm: 300, dmg: 14, pellets: 1, spread: 0.042, speed: 381, range: 430, pierce: 0, crit: 0.06, knock: 90, move: 1.0,
+      v: 381, g: 8.0, cd: 0.0018, kick: 0.033, rec: 2.6, max: 0.16, cam: 0.35, len: 17, ready: 0.18, draw: 0.5, holster: 0.46,
+      reload: { tac: 1.55, empty: 1.95, kind: 'pistol', special: 'Overhand rack: on empty the support hand comes over the top and slingshots the slide; on the way back to the holster his thumb rides the decocker.' },
+      real: { barrel: '125 mm (4.9 in)', weight: '952 g', action: 'Short recoil, open slide, double/single action', rate: 'semi-automatic', mv: '~381 m/s' },
+      eject: { a: 1.75, s: 3.1, up: 2.0, kind: 'case9' }, tags: ['precision', 'speed'], desc: 'The open slide never chokes on a round. Double action first shot, single after.' },
+    { key: 'm1911', slot: 'secondary', name: 'M1911A1', full: 'M1911A1 Pistol', cls: 'pistol', base: 'pistol', snd: ['revolver', 1.18], mz: 'pistol45', tier: 2,
+      cal: '.45 ACP', mag: 7, chamber: 1, auto: 0, rpm: 240, dmg: 22, pellets: 1, spread: 0.04, speed: 253, range: 400, pierce: 0, crit: 0.1, knock: 130, move: 1.0,
+      v: 253, g: 14.9, cd: 0.002, kick: 0.055, rec: 2.2, max: 0.17, cam: 0.6, len: 16, ready: 0.18, draw: 0.5, holster: 0.44,
+      reload: { tac: 1.55, empty: 1.85, kind: 'p1911', special: 'Single-stack, slide stop: seven fat rounds, the empty kicked free by the thumb on the release, the slide stop pressed down to close it.' },
+      real: { barrel: '127 mm (5 in)', weight: '1.1 kg', action: 'Short recoil, single action', rate: 'semi-automatic', mv: '~253 m/s' },
+      eject: { a: 1.6, s: 3.2, up: 2.2, kind: 'case45' }, tags: ['damage', 'crit'], desc: 'Seven rounds of .45, each one a decision. Heavy, slow and final.' },
+    { key: 'm1917', slot: 'secondary', name: 'M1917', full: 'M1917 Revolver', cls: 'revolver', base: 'revolver', snd: ['revolver', 0.94], mz: 'revolver', tier: 2,
+      cal: '.45 ACP (half-moon clips)', mag: 6, chamber: 0, auto: 0, rpm: 180, dmg: 24, pellets: 1, spread: 0.035, speed: 232, range: 400, pierce: 0, crit: 0.14, knock: 140, move: 1.0,
+      v: 232, g: 14.9, cd: 0.002, kick: 0.06, rec: 2.0, max: 0.17, cam: 0.65, len: 19, ready: 0.2, draw: 0.55, holster: 0.48,
+      reload: { tac: 3.0, empty: 3.0, kind: 'moon', special: 'Half-moon clips: the cylinder swings out, the muzzle tips up, one stroke of the ejector throws the empties and their clips to the ground, then two fresh clips of three, and the cylinder snaps shut.' },
+      real: { barrel: '5.5 in (140 mm)', weight: '1.0–1.1 kg', action: 'Double/single action, swing-out cylinder', rate: 'double action', mv: '~232 m/s' },
+      eject: null, tags: ['crit', 'damage'], desc: 'A Great War revolver that takes pistol rounds in half-moon clips. Six shots, no brass in the street until he reloads.' },
+    { key: 'aps', slot: 'secondary', name: 'APS', full: 'APS Machine Pistol', cls: 'pistol', base: 'smg', snd: ['smg', 1.08], mz: 'pistolA', tier: 3,
+      cal: '9×18mm Makarov', mag: 20, chamber: 1, auto: 1, rpm: 750, dmg: 9, pellets: 1, spread: 0.07, speed: 340, range: 380, pierce: 0, crit: 0.05, knock: 60, move: 1.0,
+      v: 340, g: 6.1, cd: 0.0019, kick: 0.028, rec: 2.0, max: 0.24, cam: 0.4, len: 18, ready: 0.19, draw: 0.52, holster: 0.46,
+      reload: { tac: 1.65, empty: 2.05, kind: 'pistol', special: 'Selector on the slide: twenty rounds at 750 a minute is gone in under two seconds; the slide stop holds it open and the empty is stripped out by the heel of the hand.' },
+      real: { barrel: '140 mm (5.5 in)', weight: '1.22 kg', action: 'Straight blowback, select fire', rate: '~750 rounds/min', mv: '~340 m/s' },
+      eject: { a: 1.75, s: 2.8, up: 1.8, kind: 'case9' }, tags: ['rapid', 'speed'], desc: 'A pistol that fires like a submachine gun. Hard to hold on target: short bursts.' }
+  ];
+
   var RAR = [
     { name: 'Common', color: '#a9adb5' }, { name: 'Uncommon', color: '#7bc96a' }, { name: 'Rare', color: '#5aa8ff' },
     { name: 'Epic', color: '#bb7cff' }, { name: 'Legendary', color: '#ff8a3d' }, { name: 'Cursed', color: '#e0457b' },
@@ -73,8 +143,20 @@ var ZW = (function () {
           tags: F.tags.concat(M.tags.filter(function (t) { return F.tags.indexOf(t) < 0; }))
         };
         w.dps = w.dmg * w.pellets * w.burst * w.rof;
+        w.off = true;   // resting while the 250 are rebuilt ten at a time
         list.push(w);
       });
+    });
+    // the rebuilt guns, after the 250 (their ids are what co-op sends for a shot, so the old ones keep theirs)
+    ARMS.forEach(function (A, i) {
+      var F = { key: A.key, base: A.base, name: A.name, box: A.slot === 'primary' ? [-66, 66] : [-26, 46], tier: A.tier, dmg: A.dmg, rof: A.rpm / 60, pellets: A.pellets, spread: A.spread, speed: A.speed, range: A.range,
+        pierce: A.pierce, crit: A.crit, knock: A.knock, move: A.move, tags: A.tags, desc: A.desc, react: {}, reactText: '', arms: A };
+      var M = MODS[0], id = list.length;
+      var w = { id: id, num: id + 1, code: 'ZC-' + A.key.toUpperCase(), F: F, M: M, name: A.name, tier: A.tier, rarity: weaponRarity(A.tier + 1),
+        dmg: A.dmg, rof: A.rpm / 60, pellets: A.pellets, burst: 1, spread: A.spread, speed: A.speed, range: A.range, pierce: A.pierce, crit: A.crit, critMul: 2.2,
+        knock: A.knock, move: A.move, blast: 0, kind: 'bullet', fx: {}, color: '#ffd678', tags: A.tags.slice(), arms: A, slot: A.slot };
+      w.dps = w.dmg * w.pellets * w.rof;
+      list.push(w);
     });
     return list;
   }
@@ -265,7 +347,7 @@ var ZW = (function () {
     g.restore();
   }
 
-  var api = { FRAMES: FRAMES, MODS: MODS, RAR: RAR, CARDS: CARDS, FORBIDDEN: FORBIDDEN, STAT: STAT, buildWeapons: buildWeapons, cardEffects: cardEffects, fmtLine: fmtLine, drawWeapon: drawWeapon, drawCardIcon: drawCardIcon };
+  var api = { ARMS: ARMS, FRAMES: FRAMES, MODS: MODS, RAR: RAR, CARDS: CARDS, FORBIDDEN: FORBIDDEN, STAT: STAT, buildWeapons: buildWeapons, cardEffects: cardEffects, fmtLine: fmtLine, drawWeapon: drawWeapon, drawCardIcon: drawCardIcon };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   return api;
 })();

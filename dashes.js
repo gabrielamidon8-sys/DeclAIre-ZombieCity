@@ -105,12 +105,14 @@ function dashStart(p) {
   p.dashT = d.dur; p.dashDur = d.dur; p.iframe = Math.max(p.iframe, d.ifr);
   let cd = p.dashCd * d.cd; if (d.boss2 && G.boss && !G.boss.dead) cd *= 0.5;
   p.dashCdT = cd; p.dashCdMax = cd;
+  if (d.quiet) return;   // (the dodge roll: no ring, no trail; ARMS plays its sound)
   dRing(p.x, p.y, 34, d.rgb, 3, 0.3);
   if (d.start) d.start(p, d);
   SFX.dashKind(d.ico);
 }
 function dashVel(p, dt) {
   const d = dashDef(p);
+  if (d.quiet) return d.spd * (d.prof ? d.prof(clamp(1 - p.dashT / (p.dashDur || 1), 0, 1)) : 1);   // the roll: a push, then it bleeds off
   if (d.drop) dLine(d.spd * dt, d.trail, () => d.drop(p));
   if (d.tick) d.tick(p, dt);
   if (d.hit) near(p.x, p.y, p.r + 50, o => { if (o.dead || o.st.under || o.illusion || p.dashHit.has(o)) return; if (Math.hypot(o.x - p.x, o.y - p.y) < p.r + o.r + 8) { p.dashHit.add(o); d.hit(p, o); } });
@@ -130,8 +132,9 @@ function equipDash(d, fromCard) {
 }
 function updDashBtn() {
   const p = G.p, b = $('dashBtn'); if (!b) return; const d = dashDef(p);
-  b.style.setProperty('--dash', d.hex); b.setAttribute('aria-label', 'Dash: ' + d.name);
-  const n = b.querySelector('.dname'); if (n) n.textContent = d.short;
+  b.style.setProperty('--dash', d.hex); b.setAttribute('aria-label', d.quiet ? 'Dodge roll (hold to sprint)' : 'Dash: ' + d.name);
+  const n = b.querySelector('.dname'); if (n) n.textContent = d.quiet ? 'Hold: sprint' : d.short;
+  const t = b.querySelector('b'); if (t) t.textContent = d.quiet ? 'Roll' : 'Dash';
 }
 
 // every frame: buffs wear off, zones do their work, the decoy and time warp count down

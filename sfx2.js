@@ -129,7 +129,7 @@
     while (GV.length > 8) { var o = GV.shift(), tt = ac.currentTime; try { o.g.gain.cancelScheduledValues(tt); o.g.gain.setValueAtTime(o.g.gain.value, tt); o.g.gain.linearRampToValueAtTime(0.0001, tt + 0.04); o.s.stop(tt + 0.05); } catch (e) { } }
   }
   var lastGun = { k: '', n: 0, mod: 0 };
-  function gunShot(kind, mod) {
+  function gunShot(kind, mod, rate) {
     if (!ok()) return;
     if (kind === 'flamer') { flameOn(); return; }
     var k = GUNS.indexOf(kind) >= 0 ? kind : 'pistol', fast = k === 'smg' || k === 'lmg';
@@ -137,9 +137,9 @@
     var t = ac.currentTime, n = (lastGun.n + 1 + (Math.random() < 0.5 ? 1 : 0)) % 3; lastGun.n = n;
     var name = 'g_' + k + n;
     if (!BANK[name]) { gunRound(t, k, Math.random, gunBus); return; }
-    gunVoice(name, t, fast ? 0.85 : 1, 0.96 + Math.random() * 0.08, gunBus);
+    gunVoice(name, t, fast ? 0.85 : 1, (0.96 + Math.random() * 0.08) * (rate || 1), gunBus);
     // casings land a moment later (most of the time, and not for every round of a stream)
-    if (k !== 'launcher' && k !== 'revolver' && Math.random() < (fast ? 0.35 : 0.75)) {
+    if (k !== 'launcher' && k !== 'revolver' && !(typeof PHY !== 'undefined' && physUp()) && Math.random() < (fast ? 0.35 : 0.75)) {
       var cs = BANK[(k === 'shotgun' ? 'shell' : 'case') + Math.floor(Math.random() * 3)];
       if (cs) { var s = ac.createBufferSource(), g = ac.createGain(); s.buffer = cs; s.playbackRate.value = 0.94 + Math.random() * 0.12; g.gain.value = 0.9; s.connect(g); g.connect(gunBus); s.start(t + 0.18 + Math.random() * 0.15); s.onended = function () { try { g.disconnect(); } catch (e) { } }; }
     }

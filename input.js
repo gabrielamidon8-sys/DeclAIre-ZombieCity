@@ -9,9 +9,12 @@ const ACTIONS = [
   { id: 'left', label: 'Move left', kb: ['KeyA', 'ArrowLeft'], pad: null },
   { id: 'right', label: 'Move right', kb: ['KeyD', 'ArrowRight'], pad: null },
   { id: 'fire', label: 'Fire', kb: ['Mouse0', ''], pad: ['b7', ''] },
-  { id: 'dash', label: 'Dash', kb: ['Space', 'ShiftLeft'], pad: ['b0', 'b6'] },
+  { id: 'dash', label: 'Dodge roll (hold to sprint out of it)', kb: ['Space', ''], pad: ['b0', ''] },
+  { id: 'sprint', label: 'Sprint (the gun comes down)', kb: ['ShiftLeft', ''], pad: ['b10', 'b6'] },
+  { id: 'reload', label: 'Reload (with a full gun: check it)', kb: ['KeyR', ''], pad: ['b2', ''] },
+  { id: 'swap', label: 'Swap primary and secondary', kb: ['KeyX', ''], pad: ['b1', ''] },
   { id: 'air', label: 'A-10 airstrike', kb: ['KeyQ', 'KeyF'], pad: ['b3', 'b5'] },
-  { id: 'free', label: 'Break free when grabbed', kb: ['KeyE', 'Enter'], pad: ['b2', ''] },
+  { id: 'free', label: 'Break free when grabbed', kb: ['KeyE', 'Enter'], pad: ['', ''] },
   { id: 'mark', label: 'Mark a spot for your team (co-op)', kb: ['KeyG', ''], pad: ['b4', ''] },
   { id: 'aim', label: 'Auto-aim on or off', kb: ['KeyV', ''], pad: ['b11', ''] },
   { id: 'pause', label: 'Pause', kb: ['KeyP', ''], pad: ['b9', 'b8'] },
@@ -23,6 +26,9 @@ const ACTIONS = [
 const NO_ACTS = [];
 const BIND = (function () {
   const saved = store.get('zc_binds', null) || {}, b = { kb: {}, pad: {} };
+  // 1.9.993: the dash became the dodge roll and Shift became sprint; old default bindings move over (your own stay)
+  const OLD = { kb: { dash: 'Space,ShiftLeft', free: 'KeyE,Enter' }, pad: { dash: 'b0,b6', free: 'b2,' } };
+  for (const k of ['kb', 'pad']) if (saved[k]) for (const id in OLD[k]) if (Array.isArray(saved[k][id]) && saved[k][id].join(',') === OLD[k][id] && !saved.v993) delete saved[k][id];
   for (const a of ACTIONS) for (const k of ['kb', 'pad']) {
     if (!a[k]) continue;
     const s = saved[k] && saved[k][a.id];
@@ -39,7 +45,7 @@ function remapBinds() {
   }
 }
 remapBinds();
-function saveBinds() { store.set('zc_binds', BIND); remapBinds(); updGlyphs(); updDevUi(); }
+function saveBinds() { BIND.v993 = 1; store.set('zc_binds', BIND); remapBinds(); updGlyphs(); updDevUi(); }
 
 /* ---------- names for keys and buttons ---------- */
 const KEY_NAMES = { Space: 'Space', ShiftLeft: 'L-Shift', ShiftRight: 'R-Shift', ControlLeft: 'L-Ctrl', ControlRight: 'R-Ctrl', AltLeft: 'L-Alt', AltRight: 'R-Alt', MetaLeft: 'L-Win', MetaRight: 'R-Win',
@@ -117,8 +123,11 @@ function doActions(A, repeat) {
   const has = id => A.indexOf(id) >= 0, play = G.mode === 'play' && !menuOpen();
   if (play && G.grab && (has('free') || has('dash') || has('fire'))) { qteHit(); return true; }
   let used = false;
-  if (has('dash') && play) { tryDash(); used = true; }
+  if (has('dash') && play && !(repeat && G.p && G.p.arm)) { tryDash(); used = true; }   // (held, the roll does not repeat: he sprints out of it)
   if (repeat) return used;
+  if (has('reload') && play && G.p && G.p.arm) { armsReload(G.p); used = true; }
+  if (has('swap') && play && G.p && G.p.arm) { armsSwap(G.p); used = true; }
+  if (has('sprint') && play && G.p && G.p.arm && DEV.kind === 'pad') { G.p.arm.latch = !G.p.arm.latch; used = true; }   // (a stick click latches the sprint until you stop)
   if (has('air') && play) { callAirstrike(); used = true; }
   if (has('aim') && play) { toggleAutoAim(); used = true; }
   if (has('mark') && play && NET.started) { netMark(); used = true; }
@@ -181,6 +190,8 @@ cv.addEventListener('mousedown', e => {
 });
 window.addEventListener('mouseup', e => { DEV.keys['Mouse' + e.button] = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
+// the mouse wheel swaps guns in a run
+cv.addEventListener('wheel', e => { if (G.mode !== 'play' || menuOpen() || !G.p || !G.p.arm || Math.abs(e.deltaY) < 4) return; e.preventDefault(); const t = performance.now(); if (t - (DEV.wheelT || 0) < 260) return; DEV.wheelT = t; armsSwap(G.p); }, { passive: false });
 
 /* ---------- controller ---------- */
 function padKind(id) { id = String(id || ''); return /xbox|xinput|045e/i.test(id) ? 'xbox' : /054c|playstation|dualsense|dualshock|wireless controller/i.test(id) ? 'ps' : /057e|nintendo|switch|pro controller|joy-con/i.test(id) ? 'nin' : 'xbox'; }
@@ -514,21 +525,21 @@ function ctrlLine() {
 }
 // the title screen hint
 function ctrlHintText() {
-  if (DEV.kind === 'touch') return 'Drag on the ' + (SET.lefty ? 'right' : 'left') + ' side to move. Your gun aims and fires on its own. Tap the other side to dash.';
+  if (DEV.kind === 'touch') return 'Drag on the ' + (SET.lefty ? 'right' : 'left') + ' side to move. Your gun aims and fires on its own. Tap the other side to roll; hold the roll button to sprint. Reload with the reload button; tap your gun to swap.';
   if (DEV.kind === 'pad') {
     const am = aimMode();
     const f = SET.firePad, fire = padLabel(firstBind('pad', 'fire'));
     return 'Left stick to move. ' + (am === 'auto' ? 'Your gun aims and fires on its own. ' : 'Right stick to aim' + (f === 'stick' ? ' and fire' : f === 'auto' ? ', it fires when the aim is on a zombie' : fire ? ', hold ' + fire + ' to fire' : '') + '. ')
-      + padLabel(firstBind('pad', 'dash')) + ' to dash, ' + padLabel(firstBind('pad', 'air')) + ' for the A-10, ' + padLabel(firstBind('pad', 'pause')) + ' to pause.';
+      + padLabel(firstBind('pad', 'dash')) + ' to roll, ' + padLabel(firstBind('pad', 'sprint')) + ' to sprint, ' + padLabel(firstBind('pad', 'reload')) + ' to reload, ' + padLabel(firstBind('pad', 'swap')) + ' to swap guns, ' + padLabel(firstBind('pad', 'air')) + ' for the A-10, ' + padLabel(firstBind('pad', 'pause')) + ' to pause.';
   }
   const am = aimMode();
-  return 'Move with ' + moveKeys() + '. ' + (am === 'auto' ? 'Your gun aims and fires on its own. ' : ctrlLine().replace(' · ', ', ') + '. ') + kbList('dash', 1) + ' to dash, ' + kbList('air', 1) + ' for the A-10, Esc to pause.';
+  return 'Move with ' + moveKeys() + '. ' + (am === 'auto' ? 'Your gun aims and fires on its own. ' : ctrlLine().replace(' · ', ', ') + '. ') + kbList('dash', 1) + ' to roll, ' + kbList('sprint', 1) + ' to sprint, ' + kbList('reload', 1) + ' to reload, ' + kbList('swap', 1) + ' or the wheel to swap guns, ' + kbList('air', 1) + ' for the A-10, Esc to pause.';
 }
 // the little key or button names on the HUD buttons
 function updGlyphs() {
   const k = DEV.kind, set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
-  if (k === 'pad') { set('dashKey', padLabel(firstBind('pad', 'dash'))); set('airKey', padLabel(firstBind('pad', 'air'))); set('pauseKey', padLabel(firstBind('pad', 'pause')) || padLabel('b9')); }
-  else { set('dashKey', keyLabel(firstBind('kb', 'dash'))); set('airKey', keyLabel(firstBind('kb', 'air'))); set('pauseKey', 'Esc'); }
+  if (k === 'pad') { set('dashKey', padLabel(firstBind('pad', 'dash'))); set('airKey', padLabel(firstBind('pad', 'air'))); set('pauseKey', padLabel(firstBind('pad', 'pause')) || padLabel('b9')); set('reloadKey', padLabel(firstBind('pad', 'reload'))); }
+  else { set('dashKey', keyLabel(firstBind('kb', 'dash'))); set('airKey', keyLabel(firstBind('kb', 'air'))); set('pauseKey', 'Esc'); set('reloadKey', keyLabel(firstBind('kb', 'reload'))); }
 }
 const DEV_SVG = {
   touch: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M10.5 18.5h3"/></svg>',

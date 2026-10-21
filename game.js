@@ -312,6 +312,7 @@ function newPlayer() {
     shots: 0, queue: [], cards: {}, cs: newCardStats(), weapon: WEAPONS[loadoutId()], taken: 1, healMul: 1, scoreMul: 1, luck: 0, vision: 0,
     dashK: dashLoadout(), dashCdMax: 2.4, dashDur: 0.18, db: { rofT: 0, dmgT: 0, stealthT: 0, critNext: 0 }, ghosts: [], wk: 0, ivx: 0, ivy: 0
   };
+  if (ARMS_ON) armsNew(p);   // 1.9.993: a primary and a secondary, rebuilt on real guns, and the dodge roll (arms.js)
   recalc(p);
   return p;
 }
@@ -370,12 +371,14 @@ function joyMove(xy) {
 }
 function endJoy(e) { if (e.pointerId === joy.id) { joy.id = null; joy.active = false; joy.dx = joy.dy = 0; } }
 cv.addEventListener('pointerup', endJoy); cv.addEventListener('pointercancel', endJoy);
-$('dashBtn').addEventListener('pointerdown', e => { e.preventDefault(); tryDash(); });
+$('dashBtn').addEventListener('pointerdown', e => { e.preventDefault(); tryDash(); G.touchSprint = true; });   // tap: roll; hold: roll, then sprint
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('dashBtn').addEventListener(ev, () => { G.touchSprint = false; });
 $('pauseBtn').addEventListener('click', () => pauseGame());
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.mode === 'play') pauseGame(); });
 
 function tryDash() {
   const p = G.p; if (G.mode !== 'play' || !p || p.dashCdT > 0 || p.frozenT > 0 || G.grab) return;
+  if (p.arm) { armsDodge(p); return; }   // the dash button is the dodge roll now
   let dx = p.ix, dy = p.iy; if (Math.abs(dx) + Math.abs(dy) < 0.05) { dx = Math.cos(p.aim); dy = Math.sin(p.aim); }
   const l = Math.hypot(dx, dy) || 1; p.dashDx = dx / l; p.dashDy = dy / l;
   dashStart(p);
@@ -965,7 +968,8 @@ function hurtPlayer(a) {
   const p = G.p; if (G.mode !== 'play' || !p) return false;
   if (p.remote) return netHurtProxy(p, a);
   if (p.down) return false;
-  if (p.iframe > 0 || p.dashT > 0 || G.grab) return false;
+  if (p.iframe > 0 || (p.dashT > 0 && !dashDef(p).quiet) || G.grab) return false;   // (a dodge roll is untouchable only for its first part)
+  if (p.arm) armsEngage(p);
   if (dashDodge(p)) { p.iframe = 0.25; G.texts.push({ x: p.x, y: p.y - 26, t: 0, life: 0.6, s: 'dodge', c: dashDef(p).hex }); return false; }
   p.hp -= a * p.taken; p.iframe = 0.3; G.hurtFlash = 0.35; shakeIt(6); SFX.hurt(); buzz(22);
   burst(p.x, p.y, 8, '#9e1c22', 140, 4, 0.5);
@@ -994,13 +998,14 @@ function updPlayer(dt) {
   let vx, vy;
   if (p.dashT > 0) { const sp = dashVel(p, dt); p.dashT -= dt; vx = p.dashDx * sp; vy = p.dashDy * sp; if (p.dashT <= 0) dashEnd(p); }
   else if (p.frozenT > 0 || p.rootT > 0) { vx = 0; vy = 0; }
-  else { const s = p.speed * (p.slowT > 0 ? p.slowMul : 1) * waterSlow(p.wk) * WX.slow; vx = ix * s; vy = iy * s; }
+  else { const s = p.speed * (p.slowT > 0 ? p.slowMul : 1) * waterSlow(p.wk) * WX.slow * (p.arm ? armsSpeedMul(p) : 1); vx = ix * s; vy = iy * s; }
   // on ice your feet keep sliding the way you were going
   if (p.wk === 4 && p.dashT <= 0) { const k = Math.min(1, dt * 2.2); p.ivx += (vx - p.ivx) * k; p.ivy += (vy - p.ivy) * k; vx = p.ivx; vy = p.ivy; } else { p.ivx = vx; p.ivy = vy; }
   vx += p.extX + p.kvx; vy += p.extY + p.kvy; p.extX = 0; p.extY = 0;
   const kd = Math.exp(-7 * dt); p.kvx *= kd; p.kvy *= kd;
   p.x += vx * dt; p.y += vy * dt; collide(p, p.r); p.wk = waterAt(p.x, p.y);
-  if (l > 0.1) p.walk += dt * 10;
+  if (l > 0.1) p.walk += dt * 10 * (p.arm && p.arm.st === 'sprint' ? 1.3 : 1);
+  if (p.arm) armsTick(p, dt, l > 0.1);   // ready up and down, sprint, reloads, swaps (arms.js)
   // Aiming. On a phone (and with Auto-aim on PC or a controller) the gun locks onto the nearest zombie and fires by
   // itself. With a mouse or a controller you aim yourself: the mouse, or the right stick, with an optional nudge
   // onto targets (assist), and you fire with the button, the stick or "on target".
@@ -1021,7 +1026,8 @@ function updPlayer(dt) {
   if (am === 'auto') {
     if (best) p.aim = angLerp(p.aim, Math.atan2(best.y - p.y, best.x - p.x), Math.min(1, dt * 18));
     else if (l > 0.1) p.aim = angLerp(p.aim, Math.atan2(iy, ix), Math.min(1, dt * 10));
-    if (best && p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0) { fireWeapon(best); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
+    if (p.arm) { if (best) { armsEngage(p); if (p.arm.st !== 'sprint') armsFire(p, best, null, true); } }   // (sprinting: the gun stays down)
+    else if (best && p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0) { fireWeapon(best); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
     return;
   }
   let ang = aimInput(p);
@@ -1031,7 +1037,8 @@ function updPlayer(dt) {
   }
   if (ang != null && am === 'assist') { const t = coneTarget(p, ang, 0.2); if (t) ang = angLerp(ang, Math.atan2(t.y - p.y, t.x - p.x), 0.6); }
   if (ang != null) p.aim = DEV.kind === 'kbm' && am === 'manual' ? ang : angLerp(p.aim, ang, Math.min(1, dt * (DEV.kind === 'kbm' ? 30 : 22)));
-  if (p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0 && wantFire(p)) { fireWeapon(coneTarget(p, p.aim, 0.25), p.aim); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
+  if (p.arm) { if (wantFire(p)) armsFire(p, coneTarget(p, p.aim, 0.25), p.aim); }
+  else if (p.fireCd <= 0 && p.jamT <= 0 && p.frozenT <= 0 && wantFire(p)) { fireWeapon(coneTarget(p, p.aim, 0.25), p.aim); p.fireCd = 1 / (p.S.rof * dashRofMul(p)); }
 }
 /* ================= projectiles, hazards ================= */
 function pointInRect(x, y) { const rs = rectsNear(x, y, 0.5); for (let i = 0; i < rs.length; i++) { const r = rs[i]; if (!r.low && x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return r; } return null; }
@@ -1093,6 +1100,7 @@ function updFx(dt) {
   for (const q of G.parts) { q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; const dr = Math.exp(-4 * dt); q.vx *= dr; q.vy *= dr; if (q.bl && q.life <= 0) goreLand(q); }
   if (typeof goreTick === 'function') goreTick(dt);
   if (typeof muzzleTick === 'function') muzzleTick(dt);
+  if (typeof physStep === 'function') physStep(dt);   // brass and magazines in the street (PHYSICS)
   if (typeof tracerTick === 'function') tracerTick(dt);
   G.parts = G.parts.filter(q => q.life > 0);
   for (const r of G.rings) r.t += dt; G.rings = G.rings.filter(r => r.t < r.life);
@@ -1429,8 +1437,10 @@ function refreshTitle() {
   if ($('bossCount')) $('bossCount').textContent = bossSeen.size + '/' + ZB.ROSTER.length;
   $('seasonName').textContent = SEASON_NAME; $('seasonLeft').textContent = seasonLeft();
   $('foundCount').textContent = typeof ZR_ONLY !== 'undefined' && ZR_ONLY && ZR.length ? ZR.filter(m => found.has(m.id)).length + '/' + ZR.length : found.size + '/1000';
-  $('gunCount').textContent = guns.size + '/250';
-  const lw = WEAPONS[loadoutId()], ll = $('loadLine'); ll.textContent = ''; const lb = document.createElement('b'); lb.textContent = lw.name; lb.style.color = WRAR[lw.rarity].color; ll.append('Starting weapon: ', lb);
+  $('gunCount').textContent = ARMS_ON ? '10 rebuilt' : guns.size + '/250';
+  const lw = WEAPONS[loadoutId()], ll = $('loadLine'); ll.textContent = ''; const lb = document.createElement('b'); lb.textContent = lw.name; lb.style.color = WRAR[lw.rarity].color;
+  if (ARMS_ON) { const sb = document.createElement('b'); sb.textContent = armsSecondary().name; sb.style.color = WRAR[armsSecondary().rarity].color; ll.append('Carrying: ', lb, ' and ', sb); }
+  else ll.append('Starting weapon: ', lb);
   const loc = store.get('zc_lb_' + SEASON, []);
   const bl = $('bestLine'); bl.textContent = '';
   if (loc.length) { bl.append('Your best this season: '); const b = document.createElement('b'); b.textContent = loc[0].score.toLocaleString() + ' (wave ' + loc[0].wave + ')'; bl.append(b); }
@@ -1789,6 +1799,7 @@ function render() {
   }
   ctx.globalAlpha = 1;
   if (typeof muzzleWorld === 'function') muzzleWorld(vis, 'brass');
+  if (typeof physDraw === 'function') physDraw(vis);
   drawHoles(vis);
   if (SWDYN.size && typeof swarmVehDraw === 'function') swarmVehDraw(vis);   // vehicles the crowd has moved
   let tl = performance.now(); drawWorldUnder(vis); PERF.sec.life += performance.now() - tl;
@@ -2374,6 +2385,7 @@ function updHud() {
   const ak = (G.air || 0) + G.mode; if (hc.air !== ak) { hc.air = ak; updAirBtn(); }
   const cd = p.dashCdT > 0 ? 1 - p.dashCdT / (p.dashCdMax || p.dashCd) : 1, ck = Math.round(cd * 40);
   if (hc.cd !== ck) { hc.cd = ck; const db = $('dashBtn'); db.style.setProperty('--cd', cd.toFixed(3)); db.classList.toggle('cool', cd < 1); }
+  if (p.arm) armsHud();   // the rounds in the gun, the reload, the other gun
 }
 
 // the height of the top bar, for what hangs under it (the radio, the boss bar, the song ticker)

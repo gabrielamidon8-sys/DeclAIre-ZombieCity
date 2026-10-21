@@ -98,6 +98,8 @@ function muzzleShot(o, w, a, x, y) {
   if (o) { o.mfv = (Math.random() * 4) | 0; o.mfk = fk; o.mft = tint; }
   const L = P.light, lc = fk === 'flamer' ? '255,150,60' : tint ? Math.round(255 * 0.6 + tint[0] * 0.4) + ',' + Math.round(214 * 0.6 + tint[1] * 0.4) + ',' + Math.round(140 * 0.6 + tint[2] * 0.4) : '255,214,140';
   luxFlash(x, y, L[0] * (0.55 + 0.45 * SCL), lc, L[1] * (SET.flash ? 0.55 : 1), L[2], { shade: true });
+  // 1.9.993: the rebuilt guns throw real brass through PHYSICS, from the ejection port (behind the muzzle, over the hand)
+  if (w && w.arms && typeof physEject === 'function') { const pl = (GUN_LEN[fk] || 20) * PK * 0.8; physEject(w, x - Math.cos(a) * pl, y - Math.sin(a) * pl, a); }
   if (!muzzleOn()) return;
   MUZZLE.shots++;
   const ca = Math.cos(a), sa = Math.sin(a), q = Q.burst || 0.6;

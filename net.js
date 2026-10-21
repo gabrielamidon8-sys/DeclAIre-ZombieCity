@@ -235,6 +235,7 @@ function netHostRecv(str) {
       const wasDown = p.down; p.down = !!m.dn; if (p.down && !wasDown) { p.rv = 0; burst(p.x, p.y, 30, '#9e1c22', 200, 6, 0.8); toast('Co-op', peer.name + ' is down. Stand next to them to revive.', peer.col); }
       p.dashT = m.d ? 0.1 : 0; p.dashK = m.dk || p.dashK; if (m.w != null && WEAPONS[m.w]) p.weapon = WEAPONS[m.w];
       if (Math.hypot(p.tx - p.x, p.ty - p.y) > 220) { p.x = p.tx; p.y = p.ty; }
+      if (m.ar) armsNetApply(p, m.ar);   // their ready, reload and sprint, and their magazines falling here (arms.js)
       break;
     }
     case 'sh': if (typeof swarmHear === 'function' && WEAPONS[m.w]) swarmHear(+m.x || 0, +m.y || 0, WEAPONS[m.w].F.key); netCosShot(from, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp); NET.shots.push([from, m.x, m.y, m.a, m.w, m.n, m.s, m.r, m.sp]); if (peer.p) peer.p.flashT = 0.05; break;
@@ -522,7 +523,7 @@ function netSnapshot() {
     if (b.rb) { const rb = b.rb; B.rb = { d: rb.def.id, f: rb.form, s: rb.state, mv: rb.mv, t: Math.round(rb.t * 100) / 100, mut: Math.round(rb.mutT * 100) / 100, hide: !!rb.hide, al: rb.alpha, sh: rb.shieldT > 0 ? 1 : 0, roam: !!rb.roam, D: plainNums(rb.d), seg: rb.seg ? rb.seg.map(s => [r1(s[0]), r1(s[1])]) : null }; }
     if (b.snatch) B.sn = plainNums(b.snatch), B.sn.state = b.snatch.state;
   }
-  const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000]);
+  const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000, p.arm ? armsNetCode(p) : 0]);
   const s = {
     t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, wt: [Math.round((G.waveT || 0) * 10), G.waveMax | 0, Math.round((G.breakT || 0) * 10), zLeft(), G.boss && !G.boss.dead ? 1 : 0], sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
     wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zd, zs: zst, zg: zg, zk: key ? 1 : 0, ax: ax, ay: ay, B: B, pl: pl,
@@ -682,6 +683,7 @@ function netApply(s) {
     if (!o) { o = { id: id, x: q[1], y: q[2], r: 12, aim: 0, walk: 0, iframe: 0, dashT: 0, dashK: 'sprint', db: { stealthT: 0 }, flashT: 0, frozenT: 0, rootT: 0, jamT: 0, weapon: WEAPONS[0], col: netCol(id) }; NET.others.set(id, o); }
     const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.acct = info ? info.acct : undefined; o.col = info && info.col ? info.col : netCol(id); { const lg = netLegendOk(info && info.lg, info && info.lc); o.lg = lg[0]; o.lc = lg[1]; }
     netVel(o, q[1], q[2]); o.tx = q[1]; o.ty = q[2]; o.aim = q[3] / 100; o.hp = q[4]; o.maxHp = q[5]; o.down = !!q[6]; o.dashT = q[7] ? 0.1 : 0; o.weapon = WEAPONS[q[8]] || o.weapon; o.rv = q[9] / 100 * 2.4; o.dashK = q[10] || 'sprint'; o.walk = q[11] / 10;
+    if (q[12]) armsNetApply(o, q[12]);
     if (Math.hypot(o.tx - o.x, o.ty - o.y) > 260) { o.x = o.tx; o.y = o.ty; }
   }
   for (const id of Array.from(NET.others.keys())) if (!live.has(id)) NET.others.delete(id);
@@ -806,7 +808,7 @@ function netTickClient(rdt) {
   if (NET.zfx.length) { netSend({ t: 'zf', f: NET.zfx }); NET.zfx = []; }
   if (NET.sendT <= 0) {
     NET.sendT = 1 / 20; const p = G.p;
-    netSend({ t: 'p', x: Math.round(p.x), y: Math.round(p.y), a: Math.round(p.aim * 100) / 100, hp: Math.round(p.hp), mh: Math.round(p.maxHp), dn: p.down ? 1 : 0, d: p.dashT > 0 ? 1 : 0, dk: p.dashK, w: p.weapon.id, wk: Math.round(p.walk * 10) / 10 });
+    netSend({ t: 'p', x: Math.round(p.x), y: Math.round(p.y), a: Math.round(p.aim * 100) / 100, hp: Math.round(p.hp), mh: Math.round(p.maxHp), dn: p.down ? 1 : 0, d: p.dashT > 0 ? 1 : 0, dk: p.dashK, w: p.weapon.id, wk: Math.round(p.walk * 10) / 10, ar: p.arm ? armsNetCode(p) : undefined });
   }
 }
 // called every frame from the game loop, whatever the screen
