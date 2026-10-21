@@ -1064,6 +1064,8 @@ function lgCam() { return { eye: [2, 0, 1.4], tgt: [0, 0, 1], up: [0, 0, 1], fov
 function lgCamUpd(c, asp) {
   c.asp = asp; lgLook(c.V, c.eye, c.tgt, c.up, c.roll);
   if (c.ortho) { const h = c.ortho, w = h * asp; lgOrtho(c.P, -w, w, -h, h, c.near, c.far); } else lgPersp(c.P, c.fov, asp, c.near, c.far);
+  // an off-centre lens: the picture's centre moved (in screen halves), so a subject can sit in the part of the screen a panel leaves free
+  if (c.shift && !c.ortho) { c.P[8] -= c.shift[0]; c.P[9] -= c.shift[1]; }
   lgMul(c.VP, c.P, c.V); return c;
 }
 

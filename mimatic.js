@@ -489,6 +489,7 @@ function mimCue(c, rt) {
 
 /* ---------- drawing ---------- */
 function mimRender(w, h, rt, st) {
+  MIM.w = w; MIM.h = h;
   const scene = MIM.scene, q = MIMQ[mimLevel()], vq = vfxQ();
   // the camera of this moment
   const cam = MIM.cam; let look = { eye: [0, -3, 1.5], tgt: [0, 0, 1], fov: 0.7, roll: 0, shake: 0, mb: 0, punch: 0, flare: 0.4 };
@@ -497,7 +498,7 @@ function mimRender(w, h, rt, st) {
   else if (scene === 'studio') look = mimStudioCam(rt);
   if (!MIM.reduce && look.shake) mimShake(rt, look.shake, look.eye);
   if (!MIM.reduce && look.punch) { const p = look.punch; look.fov *= 1 - 0.06 * p; look.eye[2] += Math.sin(rt * 70) * 0.01 * p; }
-  cam.eye = look.eye; cam.tgt = look.tgt; cam.fov = look.fov; cam.roll = look.roll || 0; cam.near = 0.05; cam.far = 150; cam.up = look.up || [0, 0, 1];
+  cam.eye = look.eye; cam.tgt = look.tgt; cam.fov = look.fov; cam.roll = look.roll || 0; cam.near = 0.05; cam.far = 150; cam.up = look.up || [0, 0, 1]; cam.shift = look.shift || null;
   // the lights of this moment
   let S;
   if (scene === 'studio') S = mimStudioLights();
@@ -557,14 +558,17 @@ function mimStudioCam(rt) {
   const s = MIM.studio, a = MIM.actors[0];
   // auto: front for a beat, then the tilt to the game's view (straight down) over two seconds
   let yaw = s.yaw, pitch = s.pitch, dist = s.dist;
-  const goal = s.view === 'top' ? { yaw: Math.PI, pitch: 1.48, dist: 3.3 } : s.view === 'front' ? { yaw: 0, pitch: 0.1, dist: 3.3 } : null;
+  const goal = s.view === 'top' ? { yaw: Math.PI, pitch: 1.48, dist: 2.7 } : s.view === 'front' ? { yaw: 0, pitch: 0.1, dist: 3.3 } : null;
   if (goal && s.from) { const k = lgE.s(clamp((rt - s.tTilt) / 2.0, 0, 1)); yaw = lgLerp(s.from.yaw, goal.yaw, k); pitch = lgLerp(s.from.pitch, goal.pitch, k); dist = lgLerp(s.from.dist, goal.dist, k); if (k >= 1) { s.yaw = goal.yaw; s.pitch = goal.pitch; s.dist = goal.dist; } }
   else if (goal && !s.from) { yaw = goal.yaw; pitch = goal.pitch; dist = goal.dist; }
   s.cur = { yaw: yaw, pitch: pitch, dist: dist };
+  // the free part of the stage (beside or above the panel): the lens shifts to it, and pulls back if it is short or narrow
+  const F = MIM.free, asp = (MIM.w || 16) / (MIM.h || 9);
+  if (F) { const need = Math.max(1 / Math.max(0.3, F.kh), (asp * F.kw) < 0.55 ? 0.55 / Math.max(0.15, asp * F.kw) : 1); dist *= clamp(need, 1, 2.6); }
   const c = [0, 0, lgLerp(0.94, 0.9, clamp(pitch / 1.5, 0, 1))], cp = Math.cos(pitch), sp = Math.sin(pitch);
   // the camera's up turns smoothly with the orbit; straight down from behind, he faces up the screen as in a run
   const up = [-Math.cos(yaw) * sp, -Math.sin(yaw) * sp, cp];
-  return { eye: [c[0] + Math.cos(yaw) * cp * dist, c[1] + Math.sin(yaw) * cp * dist, c[2] + sp * dist], tgt: c, fov: 0.62, roll: 0, shake: 0, up: up, flare: 0.3 };
+  return { eye: [c[0] + Math.cos(yaw) * cp * dist, c[1] + Math.sin(yaw) * cp * dist, c[2] + sp * dist], tgt: c, fov: 0.62, roll: 0, shake: 0, up: up, flare: 0.3, shift: F ? [F.sx, F.sy] : null };
 }
 function mimStudioView(v) { const s = MIM.studio; s.held = true; s.from = s.cur ? Object.assign({}, s.cur) : { yaw: s.yaw, pitch: s.pitch, dist: s.dist }; s.tTilt = MIM.rt; s.view = v; s.auto = false; if (v === 'orbit') { s.yaw = s.from.yaw; s.pitch = s.from.pitch; s.dist = s.from.dist; s.from = null; } }
 function mimStudioDrag(dx, dy) { const s = MIM.studio; if (s.view !== 'orbit') { mimStudioView('orbit'); } s.yaw -= dx * 0.008; s.pitch = clamp(s.pitch + dy * 0.006, -0.15, 1.55); }

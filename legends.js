@@ -19,6 +19,21 @@ function legendFrame(rdt) {
   // real time, not the game's clamped step: on a slow device the cinematic skips frames to stay with its score
   const now = performance.now(), real = LGS.lastT && now - LGS.lastT < 1000 ? Math.min(0.25, (now - LGS.lastT) / 1000) : Math.min(rdt, 0.05); LGS.lastT = now;
   mimFrame(real, w, h);
+  // on his page the model stands in the part of the stage the side panel leaves free (to its left on a wide screen,
+  // above it on a phone held upright): the lens is shifted there and pulled back to fit
+  MIM.free = null;
+  if (LGS.view === 'detail') {
+    const sd = document.querySelector('#lgDetail .lg-side'), top = document.querySelector('#legends .lg-top');
+    if (sd && r.width > 0 && r.height > 0) {
+      const q = sd.getBoundingClientRect(), tb = top ? top.getBoundingClientRect().bottom - r.top : 0;
+      let x0 = 0, x1 = r.width, y0 = Math.max(0, tb), y1 = r.height;
+      if (q.top - r.top > r.height * 0.25) y1 = Math.min(y1, q.top - r.top); else if (q.left - r.left > r.width * 0.3) x1 = Math.min(x1, q.left - r.left);
+      const fw = Math.max(1, x1 - x0), fh = Math.max(1, y1 - y0);
+      MIM.free = { sx: ((x0 + x1) / 2 / r.width - 0.5) * 2, sy: -((y0 + y1) / 2 / r.height - 0.5) * 2, kh: fh / r.height, kw: fw / r.width };
+    }
+  }
+  // the view buttons follow the camera (the automatic tilt to top-down included)
+  if (LGS.view === 'detail' && MIM.studio.view !== LGS.shownV) { LGS.shownV = MIM.studio.view; lgsViews(); }
   lgsGovern(real);
 }
 // the screen's own governor (PERF only watches the city): when the cinematic runs slow, the effects step down first,
@@ -27,7 +42,7 @@ const LGS_GOV = { ft: 16.7, slow: 0, fast: 0, t0: 0, steps: 0 };
 function lgsGovern(rdt) {
   const G2 = LGS_GOV, now = performance.now();
   if (!G2.t0) G2.t0 = now;
-  if (now - G2.t0 < 1500 || LG.atlasBusy || !(rdt > 0)) return;   // the fade and the texture painting are not the cinematic's fault
+  if (now - G2.t0 < 1500 || LG.atlasBusy || !(rdt > 0) || LGS.noGov) return;   // the fade and the texture painting are not the cinematic's fault
   G2.ft += (Math.min(rdt, 0.1) * 1000 - G2.ft) * 0.08;
   if (G2.ft > 24) { G2.slow += rdt; G2.fast = 0; } else if (G2.ft < 14.5) { G2.fast += rdt; G2.slow = 0; } else { G2.slow = Math.max(0, G2.slow - rdt); G2.fast = Math.max(0, G2.fast - rdt); }
   const order = [['VFXRAY', VX], ['MIMATIC', MIM], ['LEGEND', LG]], floor = { VFXRAY: -3, MIMATIC: -3, LEGEND: -2 };
