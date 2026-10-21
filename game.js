@@ -1280,6 +1280,7 @@ function newRun(o) {
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
   DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
+  GCAM.z.x = 1; GCAM.z.v = 0; GCAM.ox.x = GCAM.oy.x = GCAM.ox.v = GCAM.oy.v = 0; GCAM.k = GCAM.kv = 0; GCAM.lastK = 0;
   worldReset();
   $('toasts').textContent = '';
   wxReset();
@@ -1751,7 +1752,7 @@ function spawnAttract(anywhere) {
   return false;
 }
 function updAttract(dt) {
-  cam.x += 26 * dt; cam.y += 8 * dt;
+  cam.x += 26 * dt; cam.y += 8 * dt; gcamTick(dt, null);
   const hw = W / ZOOM / 2, hh = H / ZOOM / 2;
   for (const z of G.zs) {
     z.flash = Math.max(0, z.flash - dt);
@@ -1770,10 +1771,10 @@ function updAttract(dt) {
 /* ================= render ================= */
 const LODQ = [];
 function render() {
-  let shx = 0, shy = 0; if (G.shake > 0.1) { shx = rand(-0.5, 0.5) * G.shake; shy = rand(-0.5, 0.5) * G.shake; }
-  const s = DPR * ZOOM;
-  ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - cam.x * s, DPR * (H / 2 + shy) - cam.y * s);
-  const hw = W / 2 / ZOOM, hh = H / 2 / ZOOM, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake;
+  const SH = gcamShake(LODQ.sh || (LODQ.sh = [0, 0])), shx = SH[0], shy = SH[1];   // (smooth, layered: no random jitter)
+  const zm = gcamZoom(), s = DPR * zm, kcx = cam.x + GCAM.kx, kcy = cam.y + GCAM.ky;
+  ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - kcx * s, DPR * (H / 2 + shy) - kcy * s);
+  const hw = W / 2 / zm, hh = H / 2 / zm, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake;
   coreFrame(x0, y0, x1, y1, G.rdt || 0.016);   // the shared frame every engine reads from
   // the city tiles cover every pixel, so the frame is never cleared first (one less full-screen fill per frame)
   let rebuild = 1; WORLD.rf = 0; const twb = performance.now();
@@ -2283,7 +2284,7 @@ function drawScreenFx() {
   }
   if (p && p.hp < p.maxHp * 0.3 && G.mode === 'play') { ctx.fillStyle = 'rgba(150,15,20,' + (0.08 + Math.sin(G.time * 5) * 0.06) + ')'; ctx.fillRect(0, 0, W, H); }
   if (G.boss && !G.boss.dead && p) {
-    const sx = (G.boss.x - cam.x) * ZOOM + W / 2, sy = (G.boss.y - cam.y) * ZOOM + H / 2;
+    const sx = (G.boss.x - cam.x) * gcamZoom() + W / 2, sy = (G.boss.y - cam.y) * gcamZoom() + H / 2;
     if (sx < 0 || sx > W || sy < 0 || sy > H) {
       const a = Math.atan2(sy - H / 2, sx - W / 2), ex = clamp(sx, 28, W - 28), ey = clamp(sy, 90, H - 110);
       ctx.save(); ctx.translate(ex, ey); ctx.rotate(a); ctx.fillStyle = '#e5484d'; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.restore();
@@ -2442,7 +2443,8 @@ function update(dt) {
   updFx(dt);
   if (G.boss && G.boss.dead) G.boss = null;
   const ct = host && G.p.down ? (netAlive()[0] || G.p) : G.p;   // down in co-op: the camera follows a teammate
-  const k = Math.min(1, dt * 7); cam.x += (ct.x - cam.x) * k; cam.y += (ct.y - cam.y) * k;
+  gcamTick(dt, ct === G.p ? G.p : null);   // MIMATIC directs the run's camera: lead room, focus, recoil (gamecam.js)
+  const k = Math.min(1, dt * 7); cam.x += (ct.x + GCAM.ox.x - cam.x) * k; cam.y += (ct.y + GCAM.oy.x - cam.y) * k;
   if (G.skullPending && G.mode === 'play') { openSkull(); return; }
   if (G.mode === 'play' && breakTick(dt)) return;
   if (G.mode === 'play' && waveTick(dt)) return;

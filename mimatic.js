@@ -20,6 +20,8 @@
 
 /* ---------- the alley set ---------- */
 const MIM_DOOR = 50, MIM_LID = 51;   // the set's moving pieces (extra "bones")
+// 1.9.993: more moving pieces -- the neon (it flickers), two bottles and two cans (PHYSICS throws them), two newspapers
+const MIM_NEON = 57, MIM_PROPS = [58, 59, 60, 61], MIM_PAPER = [62, 63];
 function mimStrokes(B, mat, segs, r) { lgMat(B, mat); for (const s of segs) lgTube(B, s, r, { segs: 5 }); }
 LG_MAKERS.alley = function (B) {
   const hi = B.lod < 2, top = B.lod === 0;
@@ -69,11 +71,12 @@ LG_MAKERS.alley = function (B) {
   lgMat(B, M.card); lgBox(B, 12.2, 2.35, 0.22, 0.3, 0.25, 0.22, 0.01); lgBox(B, 12.3, 2.3, 0.56, 0.22, 0.2, 0.12, 0.01); lgBox(B, 1.0, -2.4, 0.2, 0.28, 0.24, 0.2, 0.01);
   lgMat(B, M.wood); lgBox(B, 5.5, -2.62, 0.6, 0.55, 0.06, 0.6, 0.01);
   lgMat(B, M.poster);
-  const post = (x, y, z, q, sz) => { const sg = y > 0 ? -1 : 1; lgDecal(B, [x, y + sg * 0.012, z], [sg > 0 ? sz : -sz, 0, 0], [0, 0, sz], lgQuarterUV(q), { lift: 0 }); };
+  const post = (x, y, z, q, sz) => { const sg = y > 0 ? -1 : 1; lgDecal(B, [x, y + sg * 0.012, z], [sg > 0 ? -sz : sz, 0, 0], [0, 0, sz], lgQuarterUV(q), { lift: 0 }); };   // (1.9.993: they read the right way round now)
   post(1.5, 2.8, 1.6, 1, 0.4); post(2.3, 2.8, 1.5, 3, 0.32); post(5.2, -2.8, 1.9, 1, 0.42); post(11.8, 2.8, 2.0, 0, 0.9); post(-4, -2.8, 1.4, 2, 0.5); post(14.5, -2.8, 1.6, 3, 0.36);
   // neon: a sign of a bowl and chopsticks, and OPEN, on the right wall
   { const x0 = 11.0, y = -2.68, z0 = 3.2, L = [];
     const arc = []; for (let i = 0; i <= 14; i++) { const a = Math.PI + i / 14 * Math.PI; arc.push([x0 + Math.cos(a) * 0.45, y, z0 + 0.5 + Math.sin(a) * 0.35]); } L.push(arc); L.push([[x0 - 0.5, y, z0 + 0.5], [x0 + 0.5, y, z0 + 0.5]]);
+    lgBone(B, MIM_NEON);
     mimStrokes(B, M.neonP, L, 0.018);
     mimStrokes(B, M.neonC, [[[x0 - 0.1, y, z0 + 0.65], [x0 + 0.55, y, z0 + 1.15]], [[x0 + 0.05, y, z0 + 0.62], [x0 + 0.65, y, z0 + 1.05]]], 0.015);
     const lx = x0 - 0.62, lz = z0 - 0.25, s = 0.26, g = 0.32, Ls = [];
@@ -81,8 +84,15 @@ LG_MAKERS.alley = function (B) {
     Ls.push([[lx + g, y, lz], [lx + g, y, lz + s], [lx + g + s * 0.7, y, lz + s], [lx + g + s * 0.7, y, lz + s * 0.5], [lx + g, y, lz + s * 0.5]]);
     Ls.push([[lx + g * 2 + s * 0.7, y, lz], [lx + g * 2, y, lz], [lx + g * 2, y, lz + s], [lx + g * 2 + s * 0.7, y, lz + s]]); Ls.push([[lx + g * 2, y, lz + s * 0.5], [lx + g * 2 + s * 0.55, y, lz + s * 0.5]]);
     Ls.push([[lx + g * 3, y, lz], [lx + g * 3, y, lz + s], [lx + g * 3 + s * 0.7, y, lz], [lx + g * 3 + s * 0.7, y, lz + s]]);
-    mimStrokes(B, M.neonC, Ls, 0.012);
+    mimStrokes(B, M.neonC, Ls, 0.012); lgBone(B, 'root');
     lgMat(B, M.steel); lgBox(B, x0, -2.76, z0 + 0.4, 0.75, 0.02, 0.6, 0.01); }
+  // the loose things PHYSICS moves: two bottles and a can by the kitchen door, a can in his path; two newspapers
+  { const glass = lgMtl({ c: '#2f5a33', r: 0.06, m: 0.2, w: 0 }), glass2 = lgMtl({ c: '#5a3a1a', r: 0.06, m: 0.2, w: 0 }), tin = lgMtl({ c: '#b8bcc0', t: LT.metal, r: 0.25, m: 0.85, w: 0.05, k: 0.2 }), lbl = lgMtl({ c: '#a3261d', r: 0.5 });
+    const bottle = (b, mat) => { lgBone(B, b); lgMat(B, mat); lgLathe(B, [[0.0, -0.12], [0.032, -0.12], [0.033, 0.03], [0.014, 0.075], [0.012, 0.12], [0.0, 0.12]], { segs: 12 }); };
+    const can = (b) => { lgBone(B, b); lgMat(B, tin); lgLathe(B, [[0.0, -0.06], [0.031, -0.06], [0.033, -0.052], [0.033, 0.052], [0.029, 0.06], [0.0, 0.06]], { segs: 12 }); lgMat(B, lbl); lgLathe(B, [[0.0335, -0.035], [0.0335, 0.04]], { segs: 12 }); };
+    bottle(MIM_PROPS[0], glass); bottle(MIM_PROPS[1], glass2); can(MIM_PROPS[2]); can(MIM_PROPS[3]);
+    const paper = lgMtl({ c: '#cfc8b8', t: LT.twill, r: 0.95, w: 0.9, k: 0.3 }); for (const b of MIM_PAPER) { lgBone(B, b); lgMat(B, paper); lgBox(B, 0, 0, 0, 0.2, 0.14, 0.002, 0); }
+    lgBone(B, 'root'); }
   // overhead cables
   if (hi) { lgMat(B, M.cable); for (const [x, s] of [[0.5, 0.4], [6.8, 0.6], [14, 0.5]]) { const pts = []; for (let i = 0; i <= 12; i++) { const k = i / 12; pts.push([x + k * 0.6, -2.8 + k * 5.6, 5.5 - Math.sin(k * Math.PI) * s]); } lgTube(B, pts, 0.012, { segs: 4 }); } }
   // the streetlight at the mouth of the alley
@@ -295,8 +305,8 @@ function mimHideCarbine() { const h = new Uint8Array(LG_NB_MAX); h[LGB.carbine] 
 function mimAlley(cls, S) {
   S = S || (t => t); const q = MIMQ[mimLevel()], acc = lgHex(LG_CLASS_BY[cls].col);
   const op = mimActor({ model: 'operator', cls: cls, lod: q.lod, acc: acc, hide: mimHideCarbine(),
-    track: [[0, 'walk_tac', 0, 0], [2.75, 'mask_tap', 0, 0.3], [4.3, 'c_alert', 0, 0.25], [6.3, 'c_fire', 0, 0.12], [7.25, 'c_throw', 0, 0.12], [8.75, 'c_mount', 0, 0.3]],
-    root: [[0, 0.1, 0.12, 0, 0], [2.7, 3.0, 0.12, 0, 0, 'l'], [3.0, 3.05, 0.1, 0, 0, 'o'], [6.3, 3.05, 0.1, 0, 0], [6.55, 3.05, 0.1, 0, -0.08], [7.3, 3.05, 0.08, 0, 0.0], [7.55, 3.2, 0.05, 0, Math.PI, 'io'], [8.75, 3.2, 0.05, 0, Math.PI], [9.3, 2.95, 0.1, 0, Math.PI, 'io']] });
+    track: [[0, 'walk_tac', 0, 0], [2.75, 'mask_tap', 0, 0.45], [4.3, 'c_alert', 0, 0.35], [6.3, 'c_fire', 0, 0.16], [7.25, 'c_throw', 0, 0.2], [8.75, 'c_mount', 0, 0.42]],
+    root: [[0, 0.1, 0.12, 0, 0], [2.45, 2.75, 0.12, 0, 0, 'l'], [3.05, 3.05, 0.1, 0, 0, 'o'], [6.3, 3.05, 0.1, 0, 0], [6.55, 3.05, 0.1, 0, -0.08], [7.3, 3.05, 0.08, 0, 0.0], [7.55, 3.2, 0.05, 0, Math.PI, 'io'], [8.75, 3.2, 0.05, 0, Math.PI], [9.3, 2.95, 0.1, 0, Math.PI, 'io']] });
   const z1 = mimActor({ model: 'zombie', cls: 'cook', lod: Math.max(1, q.lod), show: [4.55, 1e9],
     track: [[0, 'z_burst', 0, 0], [4.95, 'z_rush', 0, 0.15], [6.55, 'z_hs', 0, 0.04]],
     root: [[0, 7.5, -2.55, 0, Math.PI / 2], [4.55, 7.5, -2.55, 0, Math.PI / 2], [4.95, 7.2, -1.8, 0, 2.3, 'o'], [6.55, 5.05, -0.5, 0, 2.9, 'l'], [7.5, 5.75, -0.62, 0, 2.9, 'o']] });
@@ -358,7 +368,7 @@ function mimDirectOperator() {
   const warp = mimWarp([[0, 1], [7.88, 1], [8.0, 0.62], [8.22, 0.62], [8.34, 1], [10.15, 1], [10.6, 0.12], [10.66, 0.0], [20, 0]], 14.2);
   // cues (real time): score sections, hits, effects
   const cues = [
-    [0, 'score'], [0, 'fadeIn'], [2.95, 'maskInsert'], [4.62, 'doorBang'], [4.66, 'zScream1'], [5.0, 'zScream2'], [5.25, 'whip'], [6.6, 'shotHit'],
+    [0, 'score'], [0, 'fadeIn'], [0.4, 'carPass'], [1.6, 'sirenFar'], [2.95, 'maskInsert'], [4.62, 'doorBang'], [4.66, 'zScream1'], [5.0, 'zScream2'], [5.25, 'whip'], [6.6, 'shotHit'],
     [7.22, 'grab'], [8.33, 'landHit'], [10.2, 'slowmo'], [10.65, 'freeze'], [10.7, 'lightning'], [11.35, 'title'], [12.6, 'resolve'], [13.15, 'fadeOut'], [14.2, 'end']
   ];
   return { shots: shots, warp: warp, cues: cues, dur: 14.2 };
@@ -395,6 +405,7 @@ function mimStart(name, o) {
     MIM.cues = []; MIM.dur = 1e9; MIM.warp = null;
   }
   if (name === 'alley') mimAlleyProps(0);
+  if (name === 'alley' || name === 'lineup' || name === 'hub') { MIM.phys = mimAlleyPhys(); MIM.neonNext = null; mimAlleyPhysTick(0, 0); } else MIM.phys = null;
   for (const a of MIM.actors) { a.m = lgModel(a.model, a.lod, a.cls); a.lastSt = 0; }
   coreEmit('cinematic', { scene: name, cls: MIM.cls });
   return true;
@@ -426,9 +437,11 @@ function mimFrame(rdt, w, h) {
     }
     if (MIM.scene === 'stoop') { lgiTick(rdt); if (Math.random() < 0.6) vfxSteam([3.6, -1.2, 0.03], rdt); }
     if (MIM.scene === 'studio') { const sd = MIM.studio; if (sd.auto && sd.view === 'front' && rt > 1.6 && !sd.held) { sd.view = 'top'; sd.tTilt = rt; sd.from = { yaw: sd.yaw, pitch: sd.pitch, dist: sd.dist }; } }
+    if (MIM.phys) mimAlleyPhysTick(st, Math.max(0, dst));
     if (MIM.scene === 'alley') { mimAlleyProps(st); if (MIM.pendingSplash && rt >= MIM.pendingSplash) { MIM.pendingSplash = 0; vfxSplash([5.65, -0.6], 1.1); mimSfx('bodySplash'); } }
     vfxTick(Math.max(0, dst));
     if (MIM.scene === 'alley' && Math.random() < 0.5) vfxSteam([12, -1.5, 0.05], Math.max(0, dst));
+    if ((MIM.scene === 'alley' || MIM.scene === 'lineup' || MIM.scene === 'hub') && Math.random() < 0.35) { vfxSteam([2.2, 2.45, 0.05], Math.max(0, dst) * 0.7); vfxSteam([16, 0.9, 0.03], Math.max(0, dst) * 0.6); }
     // lightning in the line-up, now and then
     if ((MIM.scene === 'lineup' || MIM.scene === 'hub') && rt > MIM.nextBolt) { MIM.nextBolt = rt + 9 + Math.random() * 8; vfxLightning(rt, [26 + Math.random() * 6, -8 + Math.random() * 16, 30], [24, -6 + Math.random() * 12, 6]); mimSfx('thunderFar'); }
     if (!MIM.noRender) mimRender(w, h, rt, st);
@@ -446,6 +459,7 @@ function mimActorEvalFull(a, st) {
   const r = mimRootAt(a, st); a.rootX = null; a.root4 = r;
   lgEvalClip(clip, st - seg[0] + (seg[2] || 0), a.P, a.ctx);
   if (a.custom) a.custom(st, a); if (a.customPost) a.customPost(st, a);
+  mimWeight(a, r, st);
   const rootM = lgM4(); lgRot(rootM, 0, 0, r[3]); rootM[12] = a.rootX != null ? a.rootX : r[0]; rootM[13] = r[1]; rootM[14] = r[2];
   if (a.P.root[3] || a.P.root[0]) { const m2 = lgM4(); lgRot(m2, 0, 0, a.P.root[3]); m2[12] = a.P.root[0]; lgMul(rootM, rootM, m2); }
   lgSolve(a.P, a.L, a.W, rootM);
@@ -457,6 +471,49 @@ function mimActorEvalFull(a, st) {
     const pv = tr[i - 1], pc = LG_ANIM_BY[pv[1]];
     if (pc) { lgEvalClip(pc, st - pv[0] + (pv[2] || 0), a.P2, a.ctx); lgSolve(a.P2, a.L2, a.W2, rootM); const k = (st - seg[0]) / fade; lgBlendL(a.L2, a.L, k * k * (3 - 2 * k), a.L); lgWorldAll(a.W, a.L, rootM); }
   }
+}
+// 1.9.993: weight. A body is not a point sliding on a path: when the hips speed up the upper body lags, when they stop
+// it carries on and swings back, a turn twists the shoulders after the hips while the head holds steady against it.
+// Springs (PHYSICS) driven by each actor's own acceleration and turn rate, in scene time (they slow and freeze with it)
+function mimWeight(a, r, st) {
+  const S = a.sec || (a.sec = { x: r[0], y: r[1], yaw: r[3], vx: 0, vy: 0, vyaw: 0, st: st, lf: { x: 0, v: 0 }, ls: { x: 0, v: 0 }, tw: { x: 0, v: 0 } });
+  const dt = st - S.st; S.st = st;
+  if (dt > 1e-4 && dt < 0.2) {
+    const vx = (r[0] - S.x) / dt, vy = (r[1] - S.y) / dt, vyaw = angD(r[3], S.yaw) / dt, ax = (vx - S.vx) / dt, ay = (vy - S.vy) / dt, c = Math.cos(r[3]), s = Math.sin(r[3]);
+    const af = ax * c + ay * s, as = -ax * s + ay * c;
+    physWobble(S.lf, clamp(-af * 0.02, -0.14, 0.14), 70, 0.45, dt); physWobble(S.ls, clamp(as * 0.015, -0.1, 0.1), 70, 0.45, dt); physWobble(S.tw, clamp(-vyaw * 0.06, -0.25, 0.25), 90, 0.55, dt);
+    S.vx = vx; S.vy = vy; S.vyaw = vyaw;
+  } else if (dt < 0 || dt >= 0.2) { S.vx = S.vy = S.vyaw = 0; }
+  S.x = r[0]; S.y = r[1]; S.yaw = r[3];
+  const P = a.P; lgJadd(P, 'spine', S.ls.x * 0.4, S.lf.x * 0.5, S.tw.x * 0.4); lgJadd(P, 'chest', S.ls.x * 0.4, S.lf.x * 0.4, S.tw.x * 0.4); lgJadd(P, 'neck', -S.ls.x * 0.3, -S.lf.x * 0.5, -S.tw.x * 0.7); lgJadd(P, 'head', 0, -S.lf.x * 0.3, -S.tw.x * 0.3);
+}
+// 1.9.993: the loose things in the alley, in PHYSICS's 3D world: bottles and a can by the kitchen door (the door sends
+// them flying), a can in his path (his boot sends it skittering), two newspapers the wind drags along
+function mimAlleyPhys() {
+  const Wd = phy3New({ boxes: [{ min: [-20, 2.8, 0], max: [30, 3.6, 10] }, { min: [-20, -3.6, 0], max: [30, -2.8, 10] }, { min: [8.65, 1.4, 0], max: [10.55, 2.6, 1.12] }, { min: [-20, 2.44, 0], max: [30, 2.8, 0.08] }, { min: [-20, -2.8, 0], max: [30, -2.44, 0.08] }] });
+  const hit = (b, v) => { if (MIM.scene === 'alley' && v > 0.6) mimSfx(b.glass ? 'glassClink' : 'canBounce', 0.9 + Math.random() * 0.25); };
+  const P = [phy3Add(Wd, { s: 'cyl', r: 0.033, h: 0.24, p: [7.42, -2.5, 0.2], e: 0.3, mu: 0.5, rr: 0.05, onHit: hit, glass: true }), phy3Add(Wd, { s: 'cyl', r: 0.033, h: 0.24, p: [7.62, -2.42, 0.2], e: 0.3, mu: 0.5, rr: 0.05, onHit: hit, glass: true }),
+    phy3Add(Wd, { s: 'cyl', r: 0.033, h: 0.12, p: [7.9, -2.48, 0.14], e: 0.35, mu: 0.4, rr: 0.035, onHit: hit }), phy3Add(Wd, { s: 'cyl', r: 0.033, h: 0.12, p: [1.55, 0.34, 0.034], r3: [Math.PI / 2, 0, 0.4], e: 0.35, mu: 0.4, rr: 0.035, onHit: hit })];
+  for (const b of P) { b.rest = true; }
+  return { w: Wd, P: P, door: false, kick: false };
+}
+function mimAlleyPhysTick(st, dst) {
+  const A = MIM.phys; if (!A) return;
+  // the door hits the bottles (scene time 4.62), his boot finds the can (1.45)
+  if (!A.door && st >= 4.62) { A.door = true; A.P.slice(0, 3).forEach((b, i) => { b.rest = false; b.v = [0.3 + i * 0.4 + Math.random() * 0.3, 3.2 + Math.random() * 1.6, 1.2 + Math.random()]; b.w = [6 + Math.random() * 8, Math.random() * 6, Math.random() * 4]; }); mimSfx('glassClink', 1.1); }
+  if (!A.kick && st >= 1.45) { A.kick = true; const b = A.P[3]; b.rest = false; b.v = [2.4, 0.45, 0.7]; b.w = [0, 18, 2]; b.rollSign = 1; mimSfx('canKick', 1.2); }
+  if (dst > 0) phy3Step(A.w, Math.min(0.1, dst));
+  A.P.forEach((b, i) => MIM.setW.set(phy3Mat(b), MIM_PROPS[i] * 16));
+  // the papers: dragged by the wind, lifting and flapping now and then
+  MIM_PAPER.forEach((bn, i) => { const t = st + i * 3.7, x = 13 - ((t * 0.55) % 16), y = (i ? -1.4 : 1.2) + Math.sin(t * 0.7 + i) * 0.4, z = 0.012 + Math.max(0, Math.sin(t * 1.3 + i * 2)) * 0.18 * (0.5 + 0.5 * Math.sin(t * 0.31)); MIM.setW.set(lgMul(lgM4(), lgTR(x, y, z, Math.sin(t * 2.1 + i) * 0.5 * (z > 0.05 ? 1 : 0.1), Math.sin(t * 1.7) * 0.3 * (z > 0.05 ? 1 : 0.1), t * 0.4 + i), lgM4()), bn * 16); });
+}
+// the neon stutters now and then (its light with it)
+function mimNeon(rt) {
+  if (MIM.neonNext == null) MIM.neonNext = rt + 2 + Math.random() * 4;
+  if (rt > MIM.neonNext + 0.55) MIM.neonNext = rt + 3 + Math.random() * 6;
+  const on = rt < MIM.neonNext || (Math.sin(rt * 61) > -0.1 && Math.sin(rt * 17) > 0.2) ? 1 : 0;
+  if (MIM.setW) MIM.setW.set(on ? lgM4() : LG_HIDE, MIM_NEON * 16);
+  return on;
 }
 // the set's moving pieces: the kitchen door bangs open, the dumpster lid lifts
 function mimAlleyProps(st) {
@@ -520,7 +577,11 @@ function mimRender(w, h, rt, st) {
   else { const L = mimAlleyLights(); S = Object.assign({}, L); }
   S.cam = cam; S.time = st;
   const fl = vfxFlashAt(rt), freeze = scene === 'alley' ? lgW(rt, 10.62, 11.6) : 0;
+  // the alley lives: the neon stutters, a car's lights sweep across the mouth of the alley now and then
+  const neon = scene === 'alley' || scene === 'lineup' || scene === 'hub' ? mimNeon(rt) : 1;
   if (fl > 0) { S.flash = { dir: [0.35, 0.25, 1], col: [3.2 * fl, 3.4 * fl, 4.2 * fl] }; S.sky = S.sky.map((v, i) => v + [0.35, 0.4, 0.55][i] * fl); }
+  if (S.pts && neon < 1) { S.pts = S.pts.slice(); S.pts[1] = Object.assign({}, S.pts[1], { col: [0.08, 0.02, 0.06] }); }
+  if (S.pts && scene !== 'studio' && scene !== 'stoop') { const cy = scene === 'alley' ? (rt < 0.3 || rt > 3.2 ? null : lgLerp(-10, 10, (rt - 0.3) / 2.9)) : (((rt + 4) % 17) < 3 ? lgLerp(-10, 10, ((rt + 4) % 17) / 3) : null); if (cy != null) { S.pts = S.pts.slice(); S.pts[2] = { p: [-13, cy, 0.8], r: 6.5, col: [1.3, 1.2, 1.0].map(v => v * clamp(1.6 - Math.abs(cy) / 8, 0, 1)) }; } }
   if (S.pts && scene !== 'studio' && scene !== 'stoop' && MIM.actors[0] && MIM.actors[0].W) { const P0 = mimBone(MIM.actors[0], 'chest'); S.pts = S.pts.slice(); S.pts[3] = { p: [P0[0] - 1.2, P0[1] - 1.5, P0[2] + 1.4], r: 4.2, col: [0.55, 0.85, 1.2] }; }
   if (MIM.flashUntil && rt < MIM.flashUntil && S.pts) { S.pts = S.pts.slice(); S.pts[3] = { p: MIM.flashP, r: 6.5, col: [2.6, 1.7, 0.75] }; }
   S.desat = freeze * 0.7; S.sat = 1 - freeze * 0.15;

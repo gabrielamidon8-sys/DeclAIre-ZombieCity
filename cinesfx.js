@@ -172,6 +172,9 @@
       case 'startle': o = cOut(0.22, 0, 0.04); noise(t, 0.12, 0.2, 'bandpass', 900, 1, 1600, o); break;
       case 'sheathIn': o = cOut(0.32, -0.1, 0.1); noise(t, 0.25, 0.2, 'bandpass', 3000, 3, 2000, o); noise(t + 0.24, 0.02, 0.4, 'bandpass', 1800, 4, null, o); break;
       case 'siren': o = cOut(0.06, -0.6, 0.6); (function () { var g2 = ac.createOscillator(), gg = ac.createGain(); g2.type = 'triangle'; g2.frequency.setValueAtTime(650, t); for (var k2 = 0; k2 < 6; k2++) { g2.frequency.linearRampToValueAtTime(950, t + k2 * 0.9 + 0.45); g2.frequency.linearRampToValueAtTime(650, t + k2 * 0.9 + 0.9); } gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(0.06, t + 1); gg.gain.linearRampToValueAtTime(0, t + 5.4); g2.connect(gg); gg.connect(o); g2.start(t); g2.stop(t + 5.5); })(); break;
+      case 'glassClink': o = cOut(0.3, (Math.random() - 0.5) * 0.8, 0.3); [[1, 0.12], [2.7, 0.07], [5.1, 0.03]].forEach(function (p) { osc('sine', F(2300) * p[0], F(2300) * p[0], t, R(0.4) / p[0], p[1], o, 0.001); }); noise(t, 0.01, 0.3, 'highpass', 4000, 1, null, o); break;
+      case 'carPass': o = cOut(0.14, -0.5, 0.4); noise(t, 2.6, 0.18, 'bandpass', 300, 0.8, 900, o); noise(t + 0.8, 1.6, 0.08, 'bandpass', 1400, 1, 500, o); break;
+      case 'sirenFar': cineFx('siren', r, who); break;
       case 'flick': o = cOut(0.25, 0.2, 0.15); for (i = 0; i < 4; i++) noise(t + 0.25 + i * 0.12 * (1 + i * 0.3), 0.012, 0.3 / (i + 1), 'bandpass', 2600, 5, null, o); break;
     }
   }

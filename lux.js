@@ -208,13 +208,20 @@ function luxGather(x0, y0, x1, y1, dt) {
   if (p && G.mode !== 'title' && !p.down && night > 0.04) {
     const aim = p.aim, rr = 6 * PK;
     luxPush(p.x, p.y, 120 * PK + 30, 255, 232, 190, 0.5 * night, false, 3, null, 1.5);
-    luxPush(p.x + Math.cos(aim) * rr, p.y + Math.sin(aim) * rr, 330 * (0.55 + 0.45 * SCL), 255, 242, 222, 0.95 * night, true, 3, { a: aim, h: 0.46, beam: 1 }, 1.2);
+    // 1.9.993: the light is on the gun: it starts at the muzzle and points where the gun really points (LEGEND v2 says
+    // where that is); relaxed, the gun is low, so the beam is short and wide on the ground ahead; engaged, it throws
+    // long and tight; a reload or a swap drops it; sprinting it swings across with the carried gun
+    const A = p.arm, f = A ? (A.focus || 0) : 1, ga = p.lgAim != null ? p.lgAim : aim, st = A ? A.st : '';
+    let ox = p.x + Math.cos(aim) * rr, oy = p.y + Math.sin(aim) * rr;
+    if (p.lgMx != null && A) { const c = Math.cos(aim), s = Math.sin(aim); ox = p.x + (c * p.lgMx - s * p.lgMy) * PK; oy = p.y + (s * p.lgMx + c * p.lgMy) * PK; }
+    const low = st === 'reload' || st === 'swapOut' || st === 'swapIn' ? 0.5 : st === 'sprint' ? 0.75 : 1, reach = 330 * (0.55 + 0.45 * SCL) * (A ? 0.7 + 0.42 * f : 1);
+    luxPush(ox, oy, reach, 255, 244, 228, 0.95 * night * low, true, 3, { a: ga, h: A ? 0.6 - 0.25 * f : 0.46, beam: 1 }, 1.2);
   }
   if (NET.started) {
     const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values());
     for (const q of each) if (q && !q.down && night > 0.04 && q.x > x0 - m && q.x < x1 + m && q.y > y0 - m && q.y < y1 + m) {
       luxPush(q.x, q.y, 110, 255, 232, 190, 0.45 * night, false, 1, null, 1.5);
-      if (q.aim != null) luxPush(q.x + Math.cos(q.aim) * 6, q.y + Math.sin(q.aim) * 6, 420, 255, 242, 222, 0.7 * night, true, 1, { a: q.aim, h: 0.44, beam: 1 }, 1.2);
+      if (q.aim != null) { const qa = q.lgAim != null ? q.lgAim : q.aim, qf = q.arm ? (q.arm.focus || 0) : 1; luxPush(q.x + Math.cos(q.aim) * 6, q.y + Math.sin(q.aim) * 6, 420 * (q.arm ? 0.7 + 0.42 * qf : 1), 255, 242, 222, 0.7 * night, true, 1, { a: qa, h: q.arm ? 0.6 - 0.25 * qf : 0.44, beam: 1 }, 1.2); }
     }
   }
 }

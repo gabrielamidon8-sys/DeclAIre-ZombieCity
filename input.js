@@ -369,7 +369,7 @@ function moveInput() {
 function aimInput(p) {
   if (DEV.kind === 'kbm') {
     if (!DEV.mIn) return null;
-    const wx = cam.x + (DEV.mx - W / 2) / ZOOM, wy = cam.y + (DEV.my - H / 2) / ZOOM;
+    const z = gcamZoom(), wx = cam.x + GCAM.kx + (DEV.mx - W / 2) / z, wy = cam.y + GCAM.ky + (DEV.my - H / 2) / z;
     if (Math.abs(wx - p.x) + Math.abs(wy - p.y) < 3) return null;
     return Math.atan2(wy - p.y, wx - p.x);
   }
@@ -414,14 +414,14 @@ function drawAim() {
   }
   const am = aimMode(); if (am === 'auto' || SET.xhair === 'off') return;
   const col = XCOL[SET.xhairColor] || XCOL.yellow, sz = SET.xhairSize / 100;
-  const px = (p.x - cam.x) * ZOOM + W / 2, py = (p.y - cam.y) * ZOOM + H / 2, ca = Math.cos(p.aim), sa = Math.sin(p.aim);
+  const Z = gcamZoom(), px = (p.x - cam.x - GCAM.kx) * Z + W / 2, py = (p.y - cam.y - GCAM.ky) * Z + H / 2, ca = Math.cos(p.aim), sa = Math.sin(p.aim);
   let x, y, hot;
   if (k === 'kbm') {
     x = DEV.mx; y = DEV.my;
-    const wx = cam.x + (x - W / 2) / ZOOM, wy = cam.y + (y - H / 2) / ZOOM;
+    const wx = cam.x + GCAM.kx + (x - W / 2) / Z, wy = cam.y + GCAM.ky + (y - H / 2) / Z;
     hot = G.zs.some(z => !z.dead && !z.st.under && Math.hypot(z.x - wx, z.y - wy) < z.r + 6);
   } else {
-    const d = clamp(p.S.range * ZOOM * 0.5, 90, 190); x = px + ca * d; y = py + sa * d;
+    const d = clamp(p.S.range * Z * 0.5, 90, 190); x = px + ca * d; y = py + sa * d;
     hot = !!coneTarget(p, p.aim, 0.05);
     ctx.save(); ctx.strokeStyle = hexA(col, 0.22); ctx.setLineDash([3, 7]); ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(px + ca * 30, py + sa * 30); ctx.lineTo(x - ca * 14 * sz, y - sa * 14 * sz); ctx.stroke(); ctx.restore();

@@ -760,7 +760,8 @@ function netClientUpdate(dt) {
   updFx(dt);
   if (G.boss && G.boss.dead) G.boss = null;
   const t = p && p.down ? (Array.from(NET.others.values()).find(o => !o.down) || p) : p;
-  if (t) { const c = Math.min(1, dt * 7); cam.x += (t.x - cam.x) * c; cam.y += (t.y - cam.y) * c; }
+  gcamTick(dt, t === G.p ? G.p : null);
+  if (t) { const c = Math.min(1, dt * 7); cam.x += (t.x + GCAM.ox.x - cam.x) * c; cam.y += (t.y + GCAM.oy.x - cam.y) * c; }
 }
 // boss blasts land on a teammate's screen too (the damage was the host's call)
 function netBlastsFx(dt) {
@@ -912,7 +913,7 @@ function netMark() {
   if (!NET.started || !G.p || G.mode !== 'play') return;
   const now = performance.now(); if (now - NET.markAt < 1000) return; NET.markAt = now;
   let x = G.p.x, y = G.p.y;
-  if (DEV.kind !== 'touch' && aimMode() !== 'auto' && DEV.mIn) { x = cam.x + (DEV.mx - W / 2) / ZOOM; y = cam.y + (DEV.my - H / 2) / ZOOM; }
+  if (DEV.kind !== 'touch' && aimMode() !== 'auto' && DEV.mIn) { x = cam.x + GCAM.kx + (DEV.mx - W / 2) / gcamZoom(); y = cam.y + GCAM.ky + (DEV.my - H / 2) / gcamZoom(); }
   x = Math.round(x); y = Math.round(y);
   if (NET.role === 'host') { netAddMark(1, x, y); hostSend('*', { t: 'mk', id: 1, x: x, y: y }); }
   else { netAddMark(NET.me, x, y); netSend({ t: 'mk', x: x, y: y }); }
@@ -952,7 +953,7 @@ function netDrawPointers() {
   const cx = W / 2, cy = H / 2, pad = 34, me = G.p;
   ctx.save(); ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textBaseline = 'middle';
   for (const o of list) {
-    const sx = (o.x - cam.x) * ZOOM + cx, sy = (o.y - cam.y) * ZOOM + cy;
+    const sx = (o.x - cam.x) * gcamZoom() + cx, sy = (o.y - cam.y) * gcamZoom() + cy;
     if (sx > 8 && sx < W - 8 && sy > 8 && sy < H - 8) continue;   // on screen: the name tag shows where they are
     const dx = sx - cx, dy = sy - cy, k = Math.min((cx - pad) / Math.abs(dx || 1e-6), (cy - pad) / Math.abs(dy || 1e-6));
     const px = cx + dx * k, py = cy + dy * k, a = Math.atan2(dy, dx);

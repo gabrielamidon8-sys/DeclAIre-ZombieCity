@@ -240,7 +240,7 @@ const LGV_RL = {
   moon(P, k, ctx) {
     const U = LGV_POST.pUp, D = LGV_POST.pDown, L = LGV_POST.pLow;
     const v = k < 0.12 ? lgvPost(L, U, k / 0.12) : k < 0.3 ? U : k < 0.38 ? lgvPost(U, D, (k - 0.3) / 0.08) : k < 0.86 ? D : lgvPost(D, L, (k - 0.86) / 0.14);
-    const rod = lgvOnGun(v, lgvAt([0.12, 0.0, -0.03], 0, -Math.PI / 2, 0)), cyl = lgMul(lgvOnGun(v, null, 0), lgInv(lgM4(), lgSockFor('pistol', 'magHand'))), BE = LGV_KIT.belt();
+    const rod = lgvOnGun(v, lgvAt([0.12, 0.0, -0.03], 0, -Math.PI / 2, 0)), cyl = lgMul(lgM4(), lgvOnGun(v, null, 0), lgInv(lgM4(), lgSockFor('pistol', 'magHand'))), BE = LGV_KIT.belt();
     const keys = [[0.05, null], [0.16, rod], [0.24, rod], [0.32, BE], [0.42, BE], [0.5, cyl], [0.54, BE], [0.62, BE], [0.68, cyl], [0.8, cyl], [0.9, null]];
     lgvRelMag(P, v, keys, k, ctx, k < 0.22 ? 'in' : k < 0.3 ? (ctx.run ? 'out' : { drop: (k - 0.22) * 3 }) : k < 0.42 ? 'out' : k < 0.5 ? 'hand' : k < 0.62 ? 'hand' : k < 0.68 ? 'hand' : 'in', 'p', 0);
     ctx.look = lgPulse(k, 0.08, 0.85);
@@ -367,7 +367,8 @@ function lgvPaint(lgId, mk, f, hide, box, px, centre) {
   const g = tc.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, Sw, Sh);
   // screen x = world x (forward), screen down = world right (-y)
   const VP = lgM4(); lgOrtho(VP, cx + box[0] * U, cx + box[1] * U, cy - box[3] * U, cy - box[2] * U, -5, 5);
-  const Lg = { key: [-0.25, 0.35, 0.9, 1.15, 1.1, 1.02], rim: [-0.6, -0.4, 0.3, 0.25, 0.28, 0.32], sky: [0.34, 0.36, 0.42], gnd: [0.1, 0.1, 0.1], acc: lgHex((LG_CLASS_BY[mk.cls] || LG_CLASSES[0]).col), glow: 1, view: [0, 0, 1] };
+  // the run's light on him (1.9.993, retuned): a brighter, warmer key from above-front, a cool rim that cuts his outline out of the street at night, a little more sky
+  const Lg = { key: [-0.3, 0.3, 0.9, 1.38, 1.3, 1.18], rim: [-0.7, -0.45, 0.35, 0.5, 0.58, 0.72], sky: [0.4, 0.42, 0.5], gnd: [0.12, 0.11, 0.1], acc: lgHex((LG_CLASS_BY[mk.cls] || LG_CLASSES[0]).col), glow: 1.15, view: [0, 0, 1] };
   { const k = Lg.key, l = Math.hypot(k[0], k[1], k[2]); k[0] /= l; k[1] /= l; k[2] /= l; }
   lg2D(g, m, W, VP, Sw, Sh, Lg, { grow: 0.5 * ss, hide: hm });
   const out = c.getContext('2d'); out.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in out) out.imageSmoothingQuality = 'high'; out.drawImage(tc, 0, 0, Sw, Sh, 0, 0, w, h);

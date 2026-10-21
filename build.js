@@ -10,7 +10,7 @@ const introMusic = '';
 // A new engine is one more file in this list plus a coreDefine() call inside it: the hub, the engine room, the tests,
 // the docs and "how intricate is it" all pick it up from there.
 const MODULES = ['core', 'learn', 'engdocs', 'world', 'garage', 'skyway', 'life', 'weather', 'lux', 'prism', 'mirror', 'texel', 'gore', 'muzzle', 'tracer', 'aura', 'swarm', 'roster', 'anima', 'anilook',
-  'ballistics', 'arsenal', 'dashes', 'physics', 'arms', 'keeper', 'bossai', 'perf', 'settings', 'legend', 'legmodel', 'leggun', 'leganim', 'legrun', 'vfxray', 'mimatic', 'legidle', 'legends', 'engroom', 'loader', 'input', 'profile', 'maint', 'account', 'net', 'intro'];
+  'ballistics', 'arsenal', 'dashes', 'physics', 'arms', 'gamecam', 'keeper', 'bossai', 'perf', 'settings', 'legend', 'legmodel', 'leggun', 'leganim', 'legrun', 'vfxray', 'mimatic', 'legidle', 'legends', 'engroom', 'loader', 'input', 'profile', 'maint', 'account', 'net', 'intro'];
 let game = (rd('filterdata.js') + '\n' + rd('filter.js') + '\n' + rd('acct-core.js') + '\n' + rd('game.js')).replace('/*__ARSENAL__*/', () => MODULES.map(m => m === 'intro' ? rd('intro.js').replace('/*__INTROMUSIC__*/', () => introMusic) : rd(m + '.js')).join('\n'));
 // the engine room's "how intricate is it": each engine's own source, counted (lines of code, functions, comment lines, bytes)
 {

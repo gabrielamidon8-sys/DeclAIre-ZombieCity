@@ -30,7 +30,7 @@ LG_MAKERS.stoop = function (B) {
     brick: lgMtl({ c: '#ffffff', t: LT.brick, r: 0.9, w: 0.75, n: 1.3, k: 1.3 }), shutter: lgMtl({ c: '#5f646a', t: LT.metal, r: 0.78, m: 0.25, w: 0.2, n: 0.8, k: 0.5 }),
     rust: lgMtl({ c: '#ffffff', t: LT.rust, r: 0.6, w: 0.25, n: 1, k: 0.8 }), steel: lgMtl({ c: '#3a3d40', t: LT.metal, r: 0.4, m: 0.7, w: 0.1, k: 0.5 }),
     wood: lgMtl({ c: '#6b4f33', t: LT.twill, r: 0.8, w: 0.7, k: 0.5 }), woodDk: lgMtl({ c: '#4a3524', t: LT.twill, r: 0.8, w: 0.7, k: 0.5 }),
-    tin: lgMtl({ c: '#4d5a52', t: LT.metal, r: 0.45, m: 0.6, w: 0.1, k: 0.4 }), bulb: lgMtl({ c: '#ffd9a0', e: 3.2, r: 0.2 }), glassD: lgMtl({ c: '#0b1016', r: 0.06, m: 0.3, w: 0 }),
+    tin: lgMtl({ c: '#4d5a52', t: LT.metal, r: 0.45, m: 0.6, w: 0.1, k: 0.4 }), bulb: lgMtl({ c: '#ffd9a0', e: 1.7, r: 0.2 }), glassD: lgMtl({ c: '#0b1016', r: 0.06, m: 0.3, w: 0 }),
     lit: lgMtl({ c: '#ffb768', e: 1.2, r: 0.3 }), neonDead: lgMtl({ c: '#3a1e30', r: 0.4, m: 0.2 }), neonOn: lgMtl({ c: '#ff3db4', e: 2.2, r: 0.3 }),
     poster: lgMtl({ c: [1, 1, 1], t: LT.poster, r: 0.85, w: 0.9, k: 1, s: 4 }), red: lgMtl({ c: '#8a1d17', t: LT.metal, r: 0.45, m: 0.4, w: 0.2, k: 0.4 }),
     bag: lgMtl({ c: '#0e0f10', r: 0.15, w: 0.1 }), paper: lgMtl({ c: '#cfc8b8', t: LT.twill, r: 0.95, w: 0.9, k: 0.3 }), yellow: lgMtl({ c: '#c9a227', t: LT.asphalt, r: 0.8, w: 0.4, k: 1 }),
