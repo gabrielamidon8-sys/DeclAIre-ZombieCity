@@ -291,9 +291,9 @@ function erfA(x) { const s = x < 0 ? -1 : 1; x = Math.abs(x); const t = 1 / (1 +
 function lgmRun(perf, fps) {
   fps = fps || 120; const n = Math.ceil(perf.dur * fps) + 1, frames = []; let Wprev = null;
   for (let i = 0; i < n; i++) {
-    const t = i / fps, r = perf.at(t, Wprev && Wprev[0]), Ps = r.Ps || [r.P], Ws = Ps.map(P => lgmSolve(P));
-    // a second pass so the look and the balance see the solved body
-    const r2 = perf.at(t, Ws[0]), Ps2 = r2.Ps || [r2.P], Ws2 = Ps2.map(P => lgmSolve(P));
+    const t = i / fps, r = perf.at(t, Wprev && Wprev[0]), Ps = r.Ps || [r.P], Ws = r.Ws || Ps.map(P => lgmSolve(P));
+    // a second pass so the look and the balance see the solved body (a performance that solves itself gives its bones)
+    const r2 = perf.selfSolved ? r : perf.at(t, Ws[0]), Ps2 = r2.Ps || [r2.P], Ws2 = r2.Ws || Ps2.map(P => lgmSolve(P));
     frames.push({ t: t, W: Ws2, things: r2.things.map(x => ({ key: x.key, M: x.M.slice() })), r: r2 }); Wprev = Ws2;
   }
   return { fps: fps, frames: frames, perf: perf };
