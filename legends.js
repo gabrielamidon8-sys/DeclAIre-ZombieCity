@@ -388,7 +388,7 @@ function lgsArmsPick(w) {
   const a = MIM.actors[0];
   if (a && MIM.scene === 'studio') { a.seat = false; mimStudioLoad(a); if (MIM.studio && MIM.studio.view !== 'arms' && typeof mimStudioView === 'function') { mimStudioView('arms'); lgsViews(); } }   // (three-quarters from his gun side: you see him take it)
   clearTimeout(LGS_AR.animT);
-  if (w.slot === 'primary') { lgsPlayAnim('ar_check', true); try { SFX.arms('chargeBack', 1, 0, 0.7); setTimeout(() => SFX.arms('chargeHome', 1, 0, 0.7), 380); } catch (e) { } lgsAfterClip('ar_check', 'idle_ready', 0.15); }
+  if (w.slot === 'primary') { lgsPlayAnim('ar_check', true); try { SFX.arms('chargeBack', 1, 0, 0.7); setTimeout(() => SFX.arms('chargeHome', 1, 0, 0.7), 380); } catch (e) { } lgsAfterClip('ar_check', 'rifle_low', 0.15); }
   else { lgsPlayAnim('p_draw', true); try { SFX.arms('draw', 1, 0, 0.7); setTimeout(() => SFX.arms('slideRack', 1, 0, 0.6), 520); } catch (e) { } lgsAfterClip('p_draw', 'aim_iso', 0.1); }
   try { SFX.cine('uiSelect'); } catch (e) { }
   lgsArmsRender();
@@ -397,7 +397,7 @@ function lgsArmsPick(w) {
 function lgsArmsSpecial(w) {
   clearTimeout(LGS_AR.animT);
   const id = w.slot === 'primary' ? 'arm_special_c' : 'arm_special_p'; lgsPlayAnim(id);
-  lgsAfterClip(id, w.slot === 'primary' ? 'idle_ready' : 'aim_iso', -0.4, Math.min(w.arms.reload.empty, 3.2));
+  lgsAfterClip(id, w.slot === 'primary' ? 'rifle_low' : 'aim_iso', -0.4, Math.min(w.arms.reload.empty, 3.2));
 }
 /* the guns drawn from their own models on the processor: a picture per gun (side on), and the big one in view
    (three-quarters, lit by his class); painted a few at a time behind the screen's own frames */
