@@ -366,3 +366,15 @@ function lgmLearnThrow(dist, n, o) {
   LGM.relT = b; LGM.aim = aim; LGM.throwCurve = curve; LGM.throwDist = dist;
   return { rel: b, aim: aim, curve: curve, tries: tries, last: fb };
 }
+/* ---------- a performance with time round it ---------- */
+// before it starts and after it ends the people hold their first and last poses, breathing, the one speaking now and then
+// turning a little toward the other (so a scene can open on a moment of talk and close on a look)
+function lgmHold(pf, pre, post) {
+  pre = pre || 0; post = post || 0;
+  const at = (t, W0) => {
+    const tt = clamp(t - pre, 0, pf.dur), r = pf.at(tt, W0), Ps = r.Ps || [r.P], idle = t < pre ? t : t > pre + pf.dur ? t - pre - pf.dur : -1;
+    if (idle >= 0) Ps.forEach((P, a) => { lgBreath(P, t + a * 1.3, 1, 4.2); lgJadd(P, 'neck', 0, Math.sin(t * 1.7 + a) * 0.03, Math.sin(t * 0.9 + a * 2) * 0.05); lgJadd(P, 'head', 0, Math.sin(t * 2.3 + a) * 0.02, 0); });
+    return Object.assign({}, r, { Ps: r.Ps ? Ps : undefined, P: r.Ps ? undefined : Ps[0] });
+  };
+  return lgmPerf(Object.assign({}, pf, { dur: pre + pf.dur + post, at: at, beats: pf.beats.map(b => ({ t: b.t + pre, name: b.name })), pre: pre, inner: pf }));
+}
