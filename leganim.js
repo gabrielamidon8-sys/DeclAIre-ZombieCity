@@ -68,7 +68,7 @@ function lgAimM(x, y, z, yaw, pitch, cant) { const M = lgRot(lgM4(), 0, 0, yaw |
 const LG_POST = {
   low: [0.4, -0.035, -0.14, 0.0, 0.62, 0], high: [0.21, -0.035, 0.08, 0.0, 0.04, 0], sul: [0.15, -0.02, -0.04, 0.0, 1.38, 0.0], iso: [0.53, -0.01, 0.32, 0.0, 0.0, 0.0],
   car: [0.3, 0.0, 0.22, 0.0, 0.0, -0.75], cmp: [0.36, -0.035, 0.2, 0.0, 0.0, 0.0], hip: [0.27, -0.14, -0.04, 0.04, 0.05, 0.0], workspace: [0.27, -0.01, 0.1, 0.25, -0.15, -0.55],
-  rlow: [0.36, -0.12, 0.16, 0.0, 0.55, 0.0], raim: [0.41, -0.1, 0.32, 0.0, 0.0, 0.0], rwork: [0.35, -0.06, 0.18, 0.3, 0.1, -0.7]
+  rlow: [0.36, -0.135, 0.16, 0.0, 0.55, 0.0], raim: [0.41, -0.125, 0.32, 0.0, 0.0, 0.0], rwork: [0.35, -0.06, 0.18, 0.3, 0.1, -0.7]
 };
 const LG_POLE = { R: [-0.35, -0.75, -0.6], L: [-0.35, 0.75, -0.6], Rt: [-0.1, -0.35, -1], Lt: [-0.1, 0.35, -1], Rw: [0.05, -0.85, -0.5], Lw: [0.05, 0.85, -0.5] };
 function lgPost(name) { return LG_POST[name]; }
@@ -391,8 +391,9 @@ lgClip('pistol_whip', 'Pistol strike', 'Close quarters', 0.85, false, LG_SRC.mer
   const s = lgK(t, [[0, 0], [0.18, -0.3, 'o'], [0.34, 1, 'i3'], [0.45, 0.9], [0.85, 0]]);
   lgPelvis(P, 0, 0, -0.08, 0, 0.05, 0.15 + s * 0.3); lgSpine(P, 0.06 + s * 0.08, s * 0.25, 0);
   const v = [lgLerp(0.25, 0.42, Math.abs(s)), lgLerp(-0.1, 0.06, Math.max(0, s)), lgLerp(0.18, 0.3 - Math.max(0, s) * 0.1, Math.abs(s)), lgLerp(0, 0.8, Math.max(0, s)), lgLerp(0.0, 0.6, Math.max(0, s)), lgLerp(0, 1.2, Math.max(0, s))];
-  if (t < 0.7) lgPistolAt(P, v, { one: true, poleR: [-0.4, -0.8, 0.1] }); else lgPistolAt(P, lgPostMix(v, 'high', lgW(t, 0.7, 0.85)), { poleR: LG_POLE.Rt, poleL: LG_POLE.Lt });
-  if (t < 0.7) { lgHandTo(P, 'L', 'chest', [0.22, 0.08, 0.2], [0.2, -1.2, 0.3], [-0.4, 0.8, -0.2]); P.grip.L = 'fist'; }
+  // (1.9.995: the support hand comes back to the gun once the gun is back near level, so its wrist can take it)
+  if (t < 0.78) lgPistolAt(P, t < 0.7 ? v : lgPostMix(v, 'high', lgW(t, 0.7, 0.85)), { one: true, poleR: [-0.4, -0.8, 0.1] }); else lgPistolAt(P, lgPostMix(v, 'high', lgW(t, 0.7, 0.85)), { poleR: LG_POLE.Rt, poleL: LG_POLE.Lt });
+  if (t < 0.78) { lgHandTo(P, 'L', 'chest', [0.22, 0.08, 0.2], [0.2, -1.2, 0.3], [-0.4, 0.8, -0.2]); P.grip.L = 'fist'; }
   lgLookAt(P, 0, 0.04);
 }, [[0.33, 'hit']]);
 lgClip('front_kick', 'Front kick', 'Close quarters', 1.0, false, LG_SRC.merc, 'Knee up, snap the boot out from the hip into a midsection, pull it back and plant it. The pistol stays at high ready.', (P, t, ctx, a) => {
@@ -480,7 +481,7 @@ lgClip('down', 'Going down', 'Down', 1.5, false, LG_SRC.merc, 'Hurt badly: down 
   lgFoot(P, 'R', lgLerp(0.0, -0.28, k1) + 0.45 * k2, lgLerp(-0.13, -0.12, k1) - 0.05 * k2, 0, lgLerp(0, 1.0, k1) - 0.9 * k2, -0.1 + 0.5 * k2, 0);
   lgSpine(P, 0.2 * k1 - 0.3 * k2, 0.2 * k2, 0.35 * k2); lgLookAt(P, -0.2 * k2, 0.2 * k1 - 0.1 * k2, -0.3 * k2);
   const v = LG_POST.hip.slice(); v[2] += 0.1 * k2; v[0] += 0.08 * k2; lgPistolAt(P, v, { one: true, poleR: [-0.5, -0.6, -0.3] });
-  lgArm(P, 'L', lgLerp(0.06, -0.4, k1) + 0.5 * k2, 0.1 + 0.55 * k2, 0, lgLerp(0.2, 0.3, k1) + 1.0 * k2, -0.6 * k2); P.ik.handL = null; P.grip.L = 'open';
+  lgArm(P, 'L', lgLerp(0.06, -0.4, k1) + 0.5 * k2, 0.1 + 0.55 * k2, 0, lgLerp(0.2, 0.3, k1) + 1.0 * k2, -0.15 * k2, 0.45 * k2); P.ik.handL = null; P.grip.L = 'open';   // (1.9.995: the palm pressed flat bends the wrist back, not sideways)
 }, [[0.45, 'thud'], [1.05, 'thud'], [0.2, 'grunt']]);
 lgClip('revive', 'Revived', 'Down', 1.7, false, LG_SRC.merc, 'Back up: a push off the elbow, a knee under him, a stagger, and back to the gun.', (P, t, ctx, a) => {
   const k = 1 - lgK(t, [[0, 0], [0.7, 0.55, 'io'], [1.3, 1, 'io'], [1.7, 1]]);
@@ -490,7 +491,7 @@ lgClip('revive', 'Revived', 'Down', 1.7, false, LG_SRC.merc, 'Back up: a push of
   lgFoot(P, 'R', lgLerp(0.06, -0.28, k1) + 0.45 * k2, -0.13 - 0.05 * k2, 0, lgLerp(0, 1.0, k1) - 0.9 * k2, -0.1 + 0.5 * k2, 0);
   lgSpine(P, 0.2 * k1 - 0.3 * k2 + 0.1 * (1 - k), 0.2 * k2, 0.35 * k2); lgLookAt(P, -0.2 * k2, 0.1, -0.3 * k2);
   lgPistolAt(P, lgPostMix('hip', 'high', 1 - k1), { one: k > 0.3, poleR: [-0.5, -0.6, -0.3], poleL: LG_POLE.Lt });
-  if (k > 0.3) { lgArm(P, 'L', -0.4 * k1 + 0.5 * k2, 0.1 + 0.55 * k2, 0, 0.3 * k1 + 1.0 * k2, -0.6 * k2); P.ik.handL = null; P.grip.L = 'open'; }
+  if (k > 0.3) { lgArm(P, 'L', -0.4 * k1 + 0.5 * k2, 0.1 + 0.55 * k2, 0, 0.3 * k1 + 1.0 * k2, -0.15 * k2, 0.45 * k2); P.ik.handL = null; P.grip.L = 'open'; }
 }, [[0.3, 'grunt'], [0.9, 'stepR'], [1.3, 'stepL']]);
 lgClip('death_back', 'Falls back', 'Down', 1.4, false, LG_SRC.merc, 'Shot through: the knees go, he falls back, arms out, and the rain keeps falling on him.', (P, t, ctx, a) => {
   const k = lgK(t, [[0, 0], [0.25, 0.15, 'i'], [0.9, 1, 'i3'], [1.0, 0.97, 'o'], [1.4, 1]]);

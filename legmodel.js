@@ -368,11 +368,11 @@ function lgOpArm(B, K, s) {
   lgBone(B, 'fore' + s); lgMat(B, M.camo);
   // the elbow (a ball the upper arm's end turns round), a forearm that narrows to the wrist, oval in section
   lgSphere(B, 0, 0, 0, 0.045, 0.045, 0.046, { segs: 14, rings: 8 });
-  lgLimb(B, 0.255, [[0, 0.045], [0.2, 0.0465], [0.55, 0.0405], [0.85, 0.0345], [1, 0.0335]], { segs: 14, rings: 9, sx: 1.1, wr: (a, z) => z > -0.06 ? Math.sin(a * 5 - z * 80) * 0.04 : z < -0.2 ? Math.sin(a * 6 + z * 120) * 0.035 : 0 });
+  lgLimb(B, 0.27, [[0, 0.045], [0.2, 0.0465], [0.55, 0.0405], [0.85, 0.0345], [1, 0.0335]], { segs: 14, rings: 9, sx: 1.1, wr: (a, z) => z > -0.06 ? Math.sin(a * 5 - z * 80) * 0.04 : z < -0.2 ? Math.sin(a * 6 + z * 120) * 0.035 : 0 });
   // the elbow pad: a rubber cap on a padded base, strapped on
   lgMat(B, M.cord); lgSphere(B, -0.026, 0, -0.004, 0.026, 0.04, 0.042, { segs: 12, rings: 7, t0: Math.PI / 2, t1: Math.PI * 1.5 });
   lgMat(B, M.rubber); lgSphere(B, -0.04, 0, -0.004, 0.014, 0.03, 0.032, { segs: 10, rings: 6, t0: Math.PI / 2, t1: Math.PI * 1.5 });
-  lgMat(B, M.camo); lgLathe(B, [[0.034, -0.258], [0.0365, -0.25], [0.0365, -0.232], [0.034, -0.226]], { segs: 14, sx: 1.08 });
+  lgMat(B, M.camo); lgLathe(B, [[0.034, -0.273], [0.0365, -0.265], [0.0365, -0.247], [0.034, -0.241]], { segs: 14, sx: 1.08 });
   if (hi) { lgMat(B, M.web); lgBox(B, 0.03, sg * 0.0, -0.243, 0.012, 0.024, 0.008, 0.004); }
   if (s === 'L') { lgMat(B, M.poly); lgBox(B, 0.0, 0.04, -0.215, 0.019, 0.008, 0.017, 0.005); lgMat(B, M.visor); lgBox(B, 0.0, 0.0485, -0.215, 0.014, 0.0012, 0.012, 0.003); }
   if (s === 'R' && K.cls === 'engineer') { lgMat(B, M.polyHi); lgBox(B, 0.0, -0.042, -0.15, 0.026, 0.008, 0.04, 0.005); lgMat(B, M.glowSoft); lgBox(B, 0.0, -0.0505, -0.15, 0.021, 0.001, 0.034, 0.0); }
@@ -544,7 +544,7 @@ LG_MAKERS.zombie = function (B, key) {
   for (const s of ['L', 'R']) {
     const sg = s === 'L' ? 1 : -1;
     lgBone(B, 'arm' + s); lgMat(B, d.top === 'chef' ? M.white : M.top); lgLimb(B, 0.28, [[0, 0.055], [0.3, 0.05], [1, 0.042]], { segs: 12, rings: 7, wr: (a, z) => z < -0.22 ? torn(a, z, sg * 2) * 0.12 : 0 });
-    lgBone(B, 'fore' + s); lgMat(B, M.skin); lgLimb(B, 0.255, [[0, 0.04], [0.3, 0.04], [1, 0.03]], { segs: 10, rings: 7 });
+    lgBone(B, 'fore' + s); lgMat(B, M.skin); lgLimb(B, 0.27, [[0, 0.04], [0.3, 0.04], [1, 0.03]], { segs: 10, rings: 7 });
     if (hi && s === 'L') { lgMat(B, M.blood); lgSphere(B, 0.03, 0.02, -0.12, 0.012, 0.02, 0.03, { segs: 8, rings: 5 }); }
     lgBone(B, 'hand' + s); lgMat(B, M.skin); lgBox(B, 0, 0, -0.048, 0.038, 0.014, 0.048, 0.012);
     for (const f of ['idx', 'fin', 'thb']) { lgBone(B, f + s); const xo = f === 'fin' ? [0.002, -0.016, -0.031] : [0]; for (const x of xo) lgLimb(B, f === 'thb' ? 0.04 : 0.042, [[0, 0.0095], [1, 0.0085]], { ox: x, segs: 6, rings: 3 }); lgBone(B, f + '2' + s); for (const x of xo) lgLimb(B, 0.036, [[0, 0.0085], [1, 0.006]], { ox: x, segs: 6, rings: 3 }); }

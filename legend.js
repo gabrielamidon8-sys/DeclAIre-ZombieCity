@@ -357,6 +357,8 @@ function lgAtlasSample(at, tile, u, v, o) {
 
 /* ---------- the skeleton ---------- */
 // x forward, y left, z up, metres. Limbs hang down (-z) from their joint at rest; the spine and head go up (+z).
+// 1.9.995 (LEGEND v3): the forearm measured against adult men (de Leva 1996: 0.155 of stature, Drillis and Contini: 0.146)
+// was 9 per cent short; it is 0.27 m now (0.149 of the Operator's 1.81 m).
 // [name, parent, offset from the parent's joint]
 // 1.9.994: a real hand. Five fingers of three bones each (the thumb's metacarpal, then two phalanges), knuckles arched
 // across the back of the hand, the thumb on the palm side of the wrist. Hand space: -z runs wrist to fingertips, +x is the
@@ -371,9 +373,9 @@ function lgHandBones(s, d) {
 }
 const LG_SKEL = [
   ['root', null, 0, 0, 0], ['pelvis', 'root', 0, 0, 0.98], ['spine', 'pelvis', 0, 0, 0.1], ['chest', 'spine', 0, 0, 0.2], ['neck', 'chest', -0.01, 0, 0.25], ['head', 'neck', 0.015, 0, 0.09],
-  ['clavL', 'chest', -0.005, 0.035, 0.2], ['armL', 'clavL', -0.012, 0.155, -0.01], ['foreL', 'armL', 0, 0, -0.285], ['handL', 'foreL', 0, 0, -0.255],
+  ['clavL', 'chest', -0.005, 0.035, 0.2], ['armL', 'clavL', -0.012, 0.155, -0.01], ['foreL', 'armL', 0, 0, -0.285], ['handL', 'foreL', 0, 0, -0.27],
   ...lgHandBones('L', 1),
-  ['clavR', 'chest', -0.005, -0.035, 0.2], ['armR', 'clavR', -0.012, -0.155, -0.01], ['foreR', 'armR', 0, 0, -0.285], ['handR', 'foreR', 0, 0, -0.255],
+  ['clavR', 'chest', -0.005, -0.035, 0.2], ['armR', 'clavR', -0.012, -0.155, -0.01], ['foreR', 'armR', 0, 0, -0.285], ['handR', 'foreR', 0, 0, -0.27],
   ...lgHandBones('R', -1),
   ['thighL', 'pelvis', 0, 0.095, -0.045], ['shinL', 'thighL', 0, 0, -0.43], ['footL', 'shinL', 0, 0, -0.42], ['toeL', 'footL', 0.135, 0, -0.055],
   ['thighR', 'pelvis', 0, -0.095, -0.045], ['shinR', 'thighR', 0, 0, -0.43], ['footR', 'shinR', 0, 0, -0.42], ['toeR', 'footR', 0.135, 0, -0.055],
@@ -445,12 +447,14 @@ function lgIKresolve(W, tg, rootM, out) {
 }
 const LG_IKO = { p: [0, 0, 0], R: lgM4(), pole: [1, 0, 0], hasR: false };
 // two-bone reach: upper a, lower b, end c; bend +1 for knees (the joint points forward), -1 for elbows (back)
-function lgIK2(W, L, ia, ib, ic, T, bend, rootM) {
+function lgIK2(W, L, ia, ib, ic, T, bend, rootM, o) {
   const pa = LG_PAR[ia], PW = pa < 0 ? rootM : W.subarray(pa * 16, pa * 16 + 16);
   const S = lgPt(PW, LG_OFF[ia * 3] + L.T[ia * 3], LG_OFF[ia * 3 + 1] + L.T[ia * 3 + 1], LG_OFF[ia * 3 + 2] + L.T[ia * 3 + 2]);
   const a = Math.hypot(LG_OFF[ib * 3], LG_OFF[ib * 3 + 1], LG_OFF[ib * 3 + 2]), b = Math.hypot(LG_OFF[ic * 3], LG_OFF[ic * 3 + 1], LG_OFF[ic * 3 + 2]);
   let dx = T.p[0] - S[0], dy = T.p[1] - S[1], dz = T.p[2] - S[2], d = Math.hypot(dx, dy, dz) || 1e-6; dx /= d; dy /= d; dz /= d;
-  const dd = clamp(d, Math.abs(a - b) + 1e-4, a + b - 1e-4);
+  // 1.9.995 (LEGEND v3): a joint cannot fold past its range (elbow 150 degrees, knee 155): the reach stops short instead
+  const minA = o && o.maxFlex ? Math.PI - o.maxFlex : 0, dmin = minA ? Math.sqrt(a * a + b * b - 2 * a * b * Math.cos(minA)) : Math.abs(a - b) + 1e-4;
+  const dd = clamp(d, dmin, a + b - 1e-4);
   // the pole, made square to the reach
   let px = T.pole[0], py = T.pole[1], pz = T.pole[2]; const pd = px * dx + py * dy + pz * dz; px -= dx * pd; py -= dy * pd; pz -= dz * pd;
   let pl = Math.hypot(px, py, pz); if (pl < 1e-5) { px = -dy; py = dx; pz = 0; pl = Math.hypot(px, py, pz) || 1; } px /= pl; py /= pl; pz /= pl;
@@ -465,6 +469,14 @@ function lgIK2(W, L, ia, ib, ic, T, bend, rootM) {
     return out;
   };
   const Ra = frame(ex - S[0], ey - S[1], ez - S[2], new Float32Array(9)), Rb = frame(tx - ex, ty - ey, tz - ez, new Float32Array(9));
+  // 1.9.995 (LEGEND v3): the forearm takes part of the hand's turn (the radius rolls round the ulna), so the wrist does not
+  // twist alone: the forearm's frame turns about its own axis toward the hand's by o.twist of the angle between them
+  if (o && o.twist && T.hasR) {
+    const R = T.R, zx = Rb[6], zy = Rb[7], zz = Rb[8]; let hx = R[0], hy = R[1], hz = R[2]; const hd = hx * zx + hy * zy + hz * zz; hx -= zx * hd; hy -= zy * hd; hz -= zz * hd;
+    const hl = Math.hypot(hx, hy, hz);
+    if (hl > 1e-4) { hx /= hl; hy /= hl; hz /= hl; const cx = Rb[0], cy = Rb[1], cz = Rb[2], sn = (cy * hz - cz * hy) * zx + (cz * hx - cx * hz) * zy + (cx * hy - cy * hx) * zz, cs = cx * hx + cy * hy + cz * hz, tw = Math.atan2(sn, cs) * o.twist, c1 = Math.cos(tw), s1 = Math.sin(tw);
+      const X = [Rb[0], Rb[1], Rb[2]], Y = [Rb[3], Rb[4], Rb[5]]; for (let k = 0; k < 3; k++) { Rb[k] = X[k] * c1 + Y[k] * s1; Rb[3 + k] = Y[k] * c1 - X[k] * s1; } }
+  }
   // local = parentWorld^T * world (rotation parts)
   const loc = (PW3, Rw, i) => { const o = L.R, k = i * 9; for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) o[k + c * 3 + r] = PW3[r * 4] * Rw[c * 3] + PW3[r * 4 + 1] * Rw[c * 3 + 1] + PW3[r * 4 + 2] * Rw[c * 3 + 2]; };
   loc(PW, Ra, ia); lgWorldOne(W, L, ia, rootM);
@@ -494,6 +506,7 @@ function lgReach(W, L, ia, ib, ic, T, rootM) {
     lgWorldOne(W, L, ci, rootM);
   }
 }
+const LG_IK_ARM = { maxFlex: 150 * Math.PI / 180, twist: 0.5 }, LG_IK_LEG = { maxFlex: 155 * Math.PI / 180 };
 const LG_CHAINS = { handL: ['armL', 'foreL', 'handL', -1], handR: ['armR', 'foreR', 'handR', -1], footL: ['thighL', 'shinL', 'footL', 1], footR: ['thighR', 'shinR', 'footR', 1] };
 const LG_CHAIN_AT = {}; for (const k in LG_CHAINS) LG_CHAIN_AT[LGB[LG_CHAINS[k][0]]] = k;
 // the order bones are solved in: root, pelvis, the legs, then the rest as the skeleton lists them (each parent first)
@@ -516,19 +529,25 @@ function lgSolve(P, L, W, rootM) {
       const tgt = lgIKresolve(W, lgIKtarget(P, ch, W, rootM), rootM, LG_IKO);
       if (!tgt.pole || P.ik[ch].pole == null) { const dp = ch[0] === 'f' ? [1, 0, 0.05] : [-0.3, ch === 'handL' ? 0.6 : -0.6, -0.75]; lgDir(rootM, dp[0], dp[1], dp[2], tgt.pole); }
       if (ch === 'handR' || ch === 'handL') lgReach(W, L, ia, ib, ic, tgt, rootM);
-      lgIK2(W, L, ia, ib, ic, tgt, c[3], rootM);
+      // 1.9.995 (LEGEND v3, leganat.js): the elbow where the wrist and shoulder stay in range; the forearm shares the turn
+      const arm = ch === 'handR' || ch === 'handL';
+      if (arm && typeof lgaArmPole === 'function') lgaArmPole(W, L, ia, ib, ic, tgt, ch === 'handR' ? 1 : -1, rootM, P, ch);
+      lgIK2(W, L, ia, ib, ic, tgt, c[3], rootM, arm ? LG_IK_ARM : LG_IK_LEG);
+      if (!arm && typeof lgaAnkle === 'function') lgaAnkle(W, L, ia, ib, ic, ch === 'footR' ? 1 : -1, rootM);
       lgWorldOne(W, L, ic, rootM);
       k += 2; continue;
     }
     lgWorldOne(W, L, i, rootM);
   }
+  // 1.9.995 (LEGEND v3): joints a clip posed by hand brought back inside their ranges (solved again once if any were out)
+  if (typeof lgaPostFix === 'function' && lgaPostFix(P, L, W, rootM)) return W;
   lgPropsLate(P, L, W, rootM);
   lgMaskApply(P, L, W, rootM);
   return W;
 }
 function lgGripApplyL(P, L) {
   for (const side of ['L', 'R']) {
-    let g = LG_GRIPS[P.grip[side]] || LG_GRIPS.relax; const s = side === 'L' ? -1 : 1;
+    let g = P.grip[side] && typeof P.grip[side] === 'object' ? P.grip[side] : LG_GRIPS[P.grip[side]] || LG_GRIPS.relax; const s = side === 'L' ? -1 : 1;   // (1.9.995: a grip can be a fitted one, made for a thing in the hand)
     // 1.9.994: a hand holding something closes on that thing (leghand.js), unless the clip opens it
     if (typeof lghGet === 'function' && LGH.on && LGH_HOLD[P.grip[side]]) {
       const ik = P.ik['hand' + side], hand = 'hand' + side;

@@ -151,6 +151,7 @@ function lghVer() {
   let s = JSON.stringify(LG_FINGERS) + lghFit + lghClose + lghPalm + lghCloud + (typeof lgOpHand === 'function' ? lgOpHand : '') + lgPistolFrame + lgARGrip + lgCurvedMag + lgOpKnife + JSON.stringify(LG_GRIPS);
   for (const k in LG_GUN_DEF) { const D = LG_GUN_DEF[k]; s += k + D.mk + JSON.stringify(Object.assign({}, D, { mk: 0 })); }
   for (const k of ['gripR', 'gripL', 'cgripR', 'cgripL', 'kgrip', 'kgripF']) if (LG_SOCK[k]) s += Array.from(LG_SOCK[k]).map(v => v.toFixed(5)).join(',');
+  if (typeof LGA !== 'undefined' && LGA.grip) s += JSON.stringify(LGA.grip) + lgaSockAdj;
   let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return LGH.ver = (h >>> 0).toString(36) + '.' + s.length.toString(36);
 }

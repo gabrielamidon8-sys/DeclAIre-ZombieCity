@@ -461,6 +461,11 @@ function lgSockFor(prop, which) {
   return lgSockBase(prop, which, k);
 }
 function lgSockBase(prop, which, k) {
+  const S = lgSockBase0(prop, which, k);
+  // 1.9.995 (LEGEND v3): a support hand's grip as LEGEND learned it, so the wrist stays inside its range (leganat.js)
+  return S && typeof lgaSockAdj === 'function' && (which === 'gripL' || which === 'gripR') ? lgaSockAdj(prop + '|' + which.slice(-1), S) : S;
+}
+function lgSockBase0(prop, which, k) {
   const S = k ? lgGunSock(k) : null;
   if (S && S[which]) return S[which];
   if (prop === 'carbine') return which === 'gripR' ? LG_SOCK.cgripR : which === 'gripL' ? LG_SOCK.cgripL : which === 'magHand' ? LG_SOCK.cmagHand : which === 'muz' ? LG_SOCK.muzC : null;
