@@ -238,6 +238,12 @@
   /* the A-10 sits above the dash, so the weapon has the width of the screen's bottom */
   .hx-abil,.lefty .hx-abil{grid-template-columns:auto;grid-template-areas:"mark" "air" "dash";gap:8px}
   .hx-weapon{max-width:calc(100% - 140px)}
+  /* 1.9.994: with the guns (reload, the knife, the A-10 and the roll) the buttons stand in two columns above the weapon
+     chip, so nothing sits on it and the joystick keeps its side */
+  .arms .hx-abil,.arms.lefty .hx-abil{bottom:calc(max(14px, env(safe-area-inset-bottom, 0px)) + 62px);grid-template-columns:auto auto;gap:8px 10px}
+  .arms .hx-abil{grid-template-areas:"reload mark" "knife air" "dash dash"}
+  .arms.lefty .hx-abil{grid-template-areas:"mark reload" "air knife" "dash dash"}
+  .arms .hx-weapon{max-width:calc(100% - 32px)}
 }
 @media (max-width:380px){
   .hx-cap{display:none}
