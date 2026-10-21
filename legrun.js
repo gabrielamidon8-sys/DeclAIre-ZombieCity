@@ -25,7 +25,7 @@
    - It learns. After each frame it checks its own work: a hand that missed its grip on a gun by more than a few
      millimetres moves that gun's posture in for the next frames (until it reaches); each walk is measured for how far
      a planted foot really travels in a cycle, and the steps are paced by that, so the feet do not slide. */
-const LGV = { on: true, made: 0, ms: 0, miss: {}, fix: {}, tries: {}, stride: {}, learnt: 0, bodies: new WeakMap() };
+const LGV = { on: true, made: 0, ms: 0, miss: {}, fix: {}, tries: {}, first: {}, stuck: {}, stride: {}, learnt: 0, bodies: new WeakMap() };
 // which bones each layer shows
 const LGV_LEGS = ['root', 'pelvis', 'thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'];
 const LGV_HEAD = ['head', 'mBrow', 'mCheekL', 'mCheekR', 'mJawL', 'mJawR', 'mChin', 'mVisor'];
@@ -85,7 +85,7 @@ function lgvTorso(P, focus, t, fam) {
 function lgvC(ctx) { return ctx.fam === 'c'; }
 // the long gun in a posture v with both hands on (the support hand blended to a free target by kL)
 function lgvRifle(P, v, ctx, free, kL) {
-  const g = ctx.gun || '', vv = lgvFix(g, v);
+  const g = ctx.fk || ctx.gun || '', vv = lgvFix(g, v);
   P.carbine.at = 'aim'; P.carbine.sp = 'chest'; P.carbine.M = lgvGunM(vv);
   P.ik.handR = { on: 'carbine', pole: [-0.2, -0.8, -0.6] }; P.grip.R = ctx.trigger ? 'trigger' : 'pistol';
   if (free && kL > 0) { const on = lgvOnGun(vv, lgSockFor('carbine', 'gripL')); lgvHand(P, 'L', lgvMix(on, free, kL)); P.grip.L = kL > 0.6 ? (ctx.gripL || 'cup') : 'cup'; }
@@ -94,7 +94,7 @@ function lgvRifle(P, v, ctx, free, kL) {
   return vv;
 }
 function lgvPistol(P, v, ctx, free, kL) {
-  const g = ctx.gun || '', vv = lgvFix(g, v);
+  const g = ctx.fk || ctx.gun || '', vv = lgvFix(g, v);
   P.pistol.at = 'aim'; P.pistol.sp = 'chest'; P.pistol.M = lgvGunM(vv);
   P.ik.handR = { on: 'pistol', pole: LG_POLE.Rt }; P.grip.R = ctx.trigger ? 'trigger' : 'pistol';
   if (free && kL > 0) { const on = lgvOnGun(vv, lgSockFor('pistol', 'gripL')); lgvHand(P, 'L', lgvMix(on, free, kL), LG_POLE.Lt); P.grip.L = kL > 0.6 ? (ctx.gripL || 'cup') : 'support'; }
@@ -359,7 +359,7 @@ function lgvPaint(lgId, mk, f, hide, box, px, centre) {
   if (!LG_SPR.L) { LG_SPR.L = lgLocalNew(); LG_SPR.W = lgWorldNew(); }
   lgGunSet(mk.gp, mk.gs);
   const P = lgPose(); f(P); P.root[0] = P.root[1] = P.root[2] = P.root[3] = 0;
-  const W = lgSolve(P, LG_SPR.L, LG_SPR.W, lgRootM(P)), hm = typeof hide === 'function' ? hide(P) : hide;
+  const W = lgSolve(P, LG_SPR.L, LG_SPR.W, lgRootM(P)), hm = typeof hide === 'function' ? hide(P) : hide; lgGunSet(null, null);   // (back to the generic guns for everyone else)
   const cx = centre != null ? W[centre * 16 + 12] : 0, cy = centre != null ? W[centre * 16 + 13] : 0, U = LG_UNIT;
   const bw = box[1] - box[0], bh = box[3] - box[2], w = Math.max(4, Math.ceil(bw * px)), h = Math.max(4, Math.ceil(bh * px)), ss = LG.lvl >= 2 ? (Math.max(w, h) < 48 ? 2 : 1.5) : 1, Sw = Math.ceil(w * ss), Sh = Math.ceil(h * ss);
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -374,7 +374,7 @@ function lgvPaint(lgId, mk, f, hide, box, px, centre) {
   const out = c.getContext('2d'); out.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in out) out.imageSmoothingQuality = 'high'; out.drawImage(tc, 0, 0, Sw, Sh, 0, 0, w, h);
   const o = { c: c, box: box, cx: cx / U, cy: -cy / U };
   const dt = performance.now() - t0; LGV.made++; LGV.ms += dt; LG.spriteMade++; LG.spriteMs += dt; coreCost('LEGEND', dt);
-  return { o: o, W: W, P: P };
+  return { o: o, W: W, P: P, gp: mk.gp, gs: mk.gs };
 }
 // one frame, any layer, cached; the key says everything it depends on
 function lgvGet(key, make) {
@@ -417,23 +417,41 @@ function lgvUpState(p, B) {
 }
 // what a frame's pose solved to: the muzzle and the head in sprite units; how far the hands were from their grips
 function lgvMeasure(r, fam, gun) {
+  lgGunSet(r.gp, r.gs); try { return lgvMeasure1(r, fam, gun); } finally { lgGunSet(null, null); }   // (this frame's guns and their sockets, then back)
+}
+function lgvMeasure1(r, fam, gun) {
   const W = r.W, P = r.P, o = r.o;
   const mi = fam === 'p' ? LGB.pistol : LGB.carbine, mo = lgSockFor(fam === 'p' ? 'pistol' : 'carbine', 'muz'), MW = W.subarray(mi * 16, mi * 16 + 16), mz = lgPt(MW, mo[0], mo[1], mo[2]);
   o.mx = mz[0] / LG_UNIT; o.my = -mz[1] / LG_UNIT;
   const h = LGB.head * 16; o.hx = W[h + 12] / LG_UNIT; o.hy = -W[h + 13] / LG_UNIT;
-  // learning: the support hand on the gun -- did it get there?
+  // learning: the support hand on the gun -- did it get there? (gun is 'm4a1:ready': each gun in each posture)
   if (gun && P.ik.handL && P.ik.handL.on) {
     const PM = W.subarray(LGB[P.ik.handL.on] * 16, LGB[P.ik.handL.on] * 16 + 16), S = lgSockFor(P.ik.handL.on, 'gripL'), Gm = lgMul(lgM4(), PM, S), hl = LGB.handL * 16;
     const miss = Math.hypot(W[hl + 12] - Gm[12], W[hl + 13] - Gm[13], W[hl + 14] - Gm[14]);
     LGV.miss[gun] = miss;
-    if (miss > 0.006 && (LGV.tries[gun] || 0) < 6) {
-      // bring that gun in toward the shoulder by most of the miss, and paint its frames again
-      const f = LGV.fix[gun] || (LGV.fix[gun] = [0, 0, 0]); f[0] -= miss * 0.8; f[2] -= miss * 0.25; LGV.tries[gun] = (LGV.tries[gun] || 0) + 1; LGV.learnt++;
-      for (const key of Array.from(LG.sprites.keys())) if (key.indexOf('|v2|up|') > 0 && key.indexOf('|' + gun) > 0) LG.sprites.delete(key);
+    const tries = LGV.tries[gun] || 0;
+    if (miss > 0.006 && tries < 5 && !LGV.stuck[gun]) {
+      if (!tries) LGV.first[gun] = miss;
+      const parts = gun.split(':'), drop = () => { for (const key of Array.from(LG.sprites.keys())) if (key.indexOf('|v2|up|') > 0 && key.indexOf('|' + parts[1] + fam + parts[0]) > 0) LG.sprites.delete(key); };
+      if (tries >= 2 && miss > LGV.first[gun] * 0.7) {
+        // it tried and the hand is no closer: that posture's miss is not about where the gun sits; put it back as it was
+        delete LGV.fix[gun]; LGV.stuck[gun] = 1; drop();
+      } else {
+        // bring that gun in toward the shoulder by most of the miss, and paint that posture again
+        const f = LGV.fix[gun] || (LGV.fix[gun] = [0, 0, 0]); f[0] -= miss * 0.8; f[2] -= miss * 0.25; LGV.tries[gun] = tries + 1; LGV.learnt++; drop();
+      }
+      lgvFixSave();
     }
   }
   return o;
 }
+// what it learnt about the grips is kept on the device (a new version of the gun models starts it over)
+const LGV_FIXV = 1;
+function lgvFixLoad() {
+  if (LGV.loaded) return; LGV.loaded = 1;
+  try { const s = typeof store !== 'undefined' ? store.get('zc_lgvFix', null) : null; if (s && s.v === LGV_FIXV) { Object.assign(LGV.fix, s.fix || {}); Object.assign(LGV.stuck, s.stuck || {}); Object.assign(LGV.tries, s.tries || {}); } } catch (x) { }
+}
+function lgvFixSave() { clearTimeout(LGV.saveT); LGV.saveT = setTimeout(() => { try { store.set('zc_lgvFix', { v: LGV_FIXV, fix: LGV.fix, stuck: LGV.stuck, tries: LGV.tries }); } catch (x) { } }, 2000); }
 // each walk measured once: how far a planted foot travels in a cycle (so the steps are paced and the feet do not slide)
 function lgvLearnStride(clip) {
   if (LGV.stride[clip] || !LG_ANIM_BY[clip]) return;
@@ -449,14 +467,16 @@ function lgvLearnStride(clip) {
 }
 function lgvMakeUp(lgId, mk, st, i, n, ctx0, px) {
   const ctx = Object.assign({}, ctx0), k = st === 'sprint' ? i / n : (i + 0.5) / n; ctx.t = st === 'relaxed' || st === 'ready' ? i / n * 4 : 0;
+  if (ctx.gun) ctx.fk = ctx.gun + ':' + st;
   const f = P => { (LGV_UP[st] || LGV_UP.relaxed)(P, k, ctx); P.mask = 1; };
   const r = lgvPaint(lgId, mk, f, P => P.pistol.at === 'holster' ? LGV_M.upperNoP : LGV_M.upper, LGV_BOX.up, px, null);
   if (!r) return null;
-  const o = lgvMeasure(r, ctx.fam, ctx.gun); o.look = ctx.look || 0; return o;
+  const o = lgvMeasure(r, ctx.fam, ctx.fk || ''); o.look = ctx.look || 0; return o;
 }
 /* ---------- drawing the survivor ---------- */
 function lgvDraw(p, ctx2) {
   if (!LGV.on || !LG_ANIM_BY.idle_ready || !LG_MAKERS.operator || typeof lgSockFor !== 'function') return null;
+  if (!LGV.loaded) lgvFixLoad();
   const lgId = p === G.p ? (SET.legend || 'operator') : (p.lg || 'operator'); if (lgId === 'none') return null;
   const B = lgvStep(p, lgvBody(p)), mk = lgvModelKey(p), px = SPR * PK * (LGV.pxMul || 1), aim = p.aim || 0, U = lgvUpState(p, B), fam = U.ctx.fam;
   const img = (s, b) => ctx2.drawImage(s.c, b[0], b[2], b[1] - b[0], b[3] - b[2]);
@@ -517,3 +537,29 @@ function lgvWarm(n) {
   }
   return made;
 }
+
+/* ---------- the ARMS moves in the Legends viewer (category Arms): the same choreography, standing in the studio ---------- */
+// (with the studio's generic carbine and pistol; in a run each gun has its own model and grips)
+function lgvClip(id, name, dur, loop, desc, st, ctx0, legs) {
+  lgClip(id, name, 'Arms', dur, loop, 'ARMS handling references (README > what was studied)', desc, (P, t, ctx, a) => {
+    const k = loop ? (t / dur) % 1 : clamp(t / dur, 0, 1), c = Object.assign({ run: false, fam: 'c', gun: null, kind: 'ar', rk: 'tac', keep: false, t: t }, ctx0);
+    if (st === 'dodge') { lgvRoll(P, k, c); return; }
+    (LGV_UP[st] || LGV_UP.relaxed)(P, k, c);
+    if (legs === 'run') lgGait(P, k, { stride: 2.9, st: 0.38, lift: 0.22, crouch: 0.08, bob: 0.05, lean: 0.25, heel: 1, run: true });
+    else lgStance(P, 0.13, 0.12, 0.14);
+    P.mask = 1; P.glow = 1;
+  });
+}
+lgvClip('ar_relaxed', 'Low ready', 4, true, 'Relaxed: stock in the shoulder pocket, the muzzle down and forward, the shoulders up, breathing; the eyes do the work.', 'relaxed', {});
+lgvClip('ar_raise', 'Ready up', 0.5, false, 'The gun comes up from low ready to the eye in its ready time; the shoulders roll forward, the knees soften: the focused posture.', 'raise', {});
+lgvClip('ar_ready', 'On target', 3, true, 'Shouldered, cheek on the stock, elbows down, the weight forward; the muzzle barely moves with the breath.', 'ready', { trigger: true });
+lgvClip('ar_sprint', 'Sprint carry', 0.56, true, 'Sprinting with a long gun: off target, carried across the body muzzle-down with both hands; it cannot fire until it comes back up.', 'sprint', {}, 'run');
+lgvClip('ar_speed', 'Speed reload', 2.55, false, 'On empty: the magazine falls free as the hand goes to the placard, the fresh one seated with a tug, the palm slaps the bolt catch.', 'reload', { rk: 'empty' });
+lgvClip('ar_tac', 'Tactical reload', 2.05, false, 'With nothing close and rounds left: the partial magazine stripped and stowed in the dump pouch, a fresh one in; thirty plus one.', 'reload', { keep: true });
+lgvClip('ak_rock', 'AK hook and rock', 2.85, false, 'The fresh magazine knocks the empty out, hooks at the front lip and rocks back until it clicks; on empty, the hand under the gun racks the handle.', 'reload', { kind: 'ak', rk: 'empty' });
+lgvClip('scar_rack', 'Side-handle reload', 3.0, false, 'A battle rifle on empty: magazine out, fresh one in, then the support hand finds the reciprocating handle on the left and runs it.', 'reload', { kind: 'scar', rk: 'empty' });
+lgvClip('p_reload', 'Pistol slide-lock reload', 1.85, false, 'The pistol pulled into the workspace, the empty drops, a fresh one from the belt seated with a slap, the slide released overhand.', 'reload', { fam: 'p', kind: 'pistol', rk: 'empty' });
+lgvClip('p_draw', 'Draw', 0.62, false, 'From the holster: grip, clear, rotate at the hip, meet the support hand at the chest, press out.', 'swapIn', { fam: 'p' });
+lgvClip('ar_sling', 'Long gun to the sling', 0.5, false, 'The carbine up past the left shoulder and onto the sling across the back, the hands free for the pistol.', 'swapOut', {});
+lgvClip('ar_check', 'Press check', 1.3, false, 'A full gun and nobody close: the support hand eases the handle back an inch, a look at the brass, home.', 'inspect', {});
+lgvClip('dodge_roll', 'Dodge roll', 0.46, false, 'Down over the shoulder in a tuck with the gun held in tight, and up into a crouch facing the same way; untouchable for its first part.', 'dodge', {});

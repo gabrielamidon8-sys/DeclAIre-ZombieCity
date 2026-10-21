@@ -515,6 +515,24 @@ function mimNeon(rt) {
   if (MIM.setW) MIM.setW.set(on ? lgM4() : LG_HIDE, MIM_NEON * 16);
   return on;
 }
+// 1.9.993: MIMATIC checks its own framing as it plays. Where the subject's head lands on screen in each shot: off the
+// edge, or with no headroom, or jammed against a side with no lead room -- and corrects that shot next time (a little
+// wider, the target moved), remembering it on the device. The rules are the ones the director frames by (thirds,
+// headroom over the eyes, lead room toward where a subject faces).
+function mimLearnLoad() { if (!MIM.learn) MIM.learn = (typeof store !== 'undefined' && store.get('zc_mimLearn', null)) || {}; return MIM.learn; }
+function mimLearnApply(i, look) { const L = mimLearnLoad()[i]; if (!L) return; look.fov = clamp(look.fov * (1 + (L.w || 0)), 0.35, 1.2); if (look.tgt) look.tgt[2] += L.u || 0; }
+function mimLearnFrame(i, cam, w, h) {
+  const op = MIM.actors[0]; if (i == null || i < 0 || !op || !op.W || !cam.VP || MIM.reduce) return;
+  const Hh = mimBone(op, 'head'), V = cam.VP, x = V[0] * Hh[0] + V[4] * Hh[1] + V[8] * Hh[2] + V[12], y = V[1] * Hh[0] + V[5] * Hh[1] + V[9] * Hh[2] + V[13], ww = V[3] * Hh[0] + V[7] * Hh[1] + V[11] * Hh[2] + V[15];
+  if (!(ww > 0.05)) return;
+  const nx = x / ww, ny = y / ww, L = mimLearnLoad(), e = L[i] || (L[i] = { w: 0, u: 0, n: 0 });
+  // count only this shot's own subject shots (the inserts frame the head on purpose, the throw frames the bodies)
+  const shot = MIM.shots[i]; if (!shot || shot.tech.indexOf('insert') >= 0) return;
+  e.n++; let changed = false;
+  if ((Math.abs(nx) > 1.02 || ny > 1.02) && e.w < 0.18) { e.w += 0.01; changed = true; }
+  if (ny > 0.92 && ny <= 1.02 && e.u < 0.3) { e.u += 0.01; changed = true; }
+  if (changed) { MIM.learnt = (MIM.learnt || 0) + 1; clearTimeout(MIM.learnSave); MIM.learnSave = setTimeout(() => { try { store.set('zc_mimLearn', MIM.learn); } catch (x) { } }, 1500); }
+}
 // the set's moving pieces: the kitchen door bangs open, the dumpster lid lifts
 function mimAlleyProps(st) {
   const W = MIM.setW, d = lgK(st, [[0, 0], [4.6, 0], [4.72, 1.75, 'o3'], [4.9, 1.45, 'io'], [5.3, 1.6]]), dm = lgTR(7.0, -2.72, 0.05, 0, 0, d); W.set(dm, MIM_DOOR * 16);
@@ -563,7 +581,7 @@ function mimRender(w, h, rt, st) {
   const scene = MIM.scene, q = MIMQ[mimLevel()], vq = vfxQ();
   // the camera of this moment
   const cam = MIM.cam; let look = { eye: [0, -3, 1.5], tgt: [0, 0, 1], fov: 0.7, roll: 0, shake: 0, mb: 0, punch: 0, flare: 0.4 };
-  if (scene === 'alley') { let i = 0; while (i < MIM.shots.length - 1 && MIM.shots[i + 1].t0 <= rt) i++; if (i !== MIM.shot) { MIM.shot = i; } look = Object.assign(look, MIM.shots[i].cam(rt, st)); }
+  if (scene === 'alley') { let i = 0; while (i < MIM.shots.length - 1 && MIM.shots[i + 1].t0 <= rt) i++; if (i !== MIM.shot) { MIM.shot = i; } look = Object.assign(look, MIM.shots[i].cam(rt, st)); mimLearnApply(i, look); }
   else if (scene === 'lineup' || scene === 'hub') { const k = Math.sin(rt * 0.07), far = scene === 'hub'; look = { eye: [far ? -3.2 : -1.2 + k * 0.4, k * 0.9, far ? 2.3 : 1.55 + Math.sin(rt * 0.11) * 0.1], tgt: [6.2, k * 0.25, far ? 1.3 : 1.2], fov: far ? 0.62 : 0.74, roll: 0, shake: 0.12, mb: 0, flare: 0.5 }; if (MIM.focus != null) { const y = (2 - MIM.focus) * 1.18; look.tgt[1] = lgLerp(look.tgt[1], y, 0.3); } }
   else if (scene === 'studio') look = mimStudioCam(rt);
   else if (scene === 'stoop') look = lgiCam(rt);
@@ -593,6 +611,7 @@ function mimRender(w, h, rt, st) {
   S.refl = { on: vq.refl > 0, z: 0, scale: vq.refl };
   if (scene === 'lineup' || scene === 'hub') { S.key = { dir: [-0.6, 0.0, 0.8], col: [0.18, 0.2, 0.28] }; }
   MIM.S = S;
+  if (scene === 'alley') mimLearnFrame(MIM.shot, cam, w, h);
   if (MIM.mode === 'gl') {
     const k = q.scale * (MIM.scale || 1), rw = Math.max(64, Math.round(w * k)), rh = Math.max(64, Math.round(h * k)), gl = LGR.gl;
     const f = lgFBO('mimScene', rw, rh, true);
@@ -609,7 +628,7 @@ function mimRender(w, h, rt, st) {
     const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.6, 14.2)) * 0.12 + freeze * 0.03 : scene === 'stoop' ? 0.085 * lgW(rt, 0, 1.2) : 0.0;
     const fade = scene === 'alley' ? Math.max(1 - lgW(rt, 0, 0.9), lgW(rt, 13.15, 14.0)) : (scene === 'studio' ? 1 - lgW(rt, 0, 0.5) : 1 - lgW(rt, 0, 1.2));
     const stp = scene === 'stoop';
-    const post = { bloom: 3, bloomK: scene === 'studio' ? 0.4 : stp ? 0.8 : 0.62, th: stp ? 0.5 : 0.58, streak: (look.flare || 0.4) * (scene === 'studio' ? 0.4 : 1), ca: scene === 'alley' ? 0.55 + (look.ca || 0) : stp ? 0.5 : 0.3, grain: scene === 'studio' ? 0.025 : stp ? 0.06 : 0.045, vig: scene === 'studio' ? 0.45 : stp ? 0.78 : 0.62, bars: bars, fade: fade, flash: Math.max(fl * 0.3 * (SET.flash ? 0.35 : 1), scene === 'alley' ? lgPulse(rt, 10.64, 10.78) * 0.6 * (SET.flash ? 0.3 : 1) : 0), mb: look.mb || 0, sat: stp ? 0.92 : 1.05 - freeze * 0.1, expo: 1.0 + fl * 0.25, lift: stp ? [0.004, 0.014, 0.022] : [0.008, 0.012, 0.02], gain: stp ? [1.08, 0.99, 0.9] : [1.03, 1.0, 0.97] };
+    const post = { bloom: 3, bloomK: scene === 'studio' ? 0.4 : stp ? 0.8 : 0.62, th: stp ? 0.5 : 0.58, streak: (look.flare || 0.4) * (scene === 'studio' ? 0.4 : 1), ca: scene === 'alley' ? 0.55 + (look.ca || 0) : stp ? 0.5 : 0.3, grain: scene === 'studio' ? 0.025 : stp ? 0.06 : 0.045, vig: scene === 'studio' ? 0.45 : stp ? 0.78 : 0.62, bars: bars, fade: fade, flash: Math.max(fl * 0.3 * (SET.flash ? 0.35 : 1), scene === 'alley' ? lgPulse(rt, 10.64, 10.78) * 0.6 * (SET.flash ? 0.3 : 1) : 0), mb: look.mb || 0, hal: stp ? 0.32 : scene === 'alley' ? 0.2 : scene === 'studio' ? 0.06 : 0.14, tone: scene === 'studio' ? 0.35 : 0.65, shd: scene === 'studio' ? [0, 0, 0] : [-0.004, 0.006, 0.018], hil: scene === 'studio' ? [0, 0, 0] : [0.02, 0.008, -0.012], sat: stp ? 0.92 : 1.05 - freeze * 0.1, expo: 1.0 + fl * 0.25, lift: stp ? [0.004, 0.014, 0.022] : [0.008, 0.012, 0.02], gain: stp ? [1.08, 0.99, 0.9] : [1.03, 1.0, 0.97] };
     vx0 = performance.now(); vfxPost(f, w, h, post, rt); VX.msF += performance.now() - vx0;
   } else {
     const c = MIM.cv2; if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }

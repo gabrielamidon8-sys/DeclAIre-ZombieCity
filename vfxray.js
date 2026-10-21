@@ -77,14 +77,16 @@ const VX_SP_FS = VX_HEAD + 'varying vec2 vU; varying vec4 vCol; varying float vK
 const VX_Q_VS = 'attribute vec2 aP; varying vec2 v; void main() { v = aP * 0.5 + 0.5; gl_Position = vec4(aP, 0.0, 1.0); }';
 const VX_BRIGHT = VX_HEAD + 'varying vec2 v; uniform sampler2D uS; uniform float uTh; uniform vec2 uPx; void main() { vec3 c = (texture2D(uS, v + uPx).rgb + texture2D(uS, v - uPx).rgb + texture2D(uS, v + vec2(uPx.x, -uPx.y)).rgb + texture2D(uS, v - vec2(uPx.x, -uPx.y)).rgb) * 0.25; float l = max(c.r, max(c.g, c.b)); float k = clamp((l - uTh) / (1.0 - uTh), 0.0, 1.0); gl_FragColor = vec4(c * k * k, 1.0); }';
 const VX_BLUR = VX_HEAD + 'varying vec2 v; uniform sampler2D uS; uniform vec2 uD; void main() { vec3 c = texture2D(uS, v).rgb * 0.227; c += (texture2D(uS, v + uD * 1.385).rgb + texture2D(uS, v - uD * 1.385).rgb) * 0.316; c += (texture2D(uS, v + uD * 3.231).rgb + texture2D(uS, v - uD * 3.231).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }';
-const VX_POST = VX_HEAD + 'varying vec2 v; uniform sampler2D uS, uB1, uB2, uB3, uSt, uPv; uniform vec2 uRes; uniform float uTime, uGrain, uVig, uCA, uBars, uFade, uFlash, uMB, uBK, uSK, uSat, uExpo, uPvOn; uniform vec3 uLift, uGain, uFlashC, uBW;\n' +
+const VX_POST = VX_HEAD + 'varying vec2 v; uniform sampler2D uS, uB1, uB2, uB3, uSt, uPv; uniform vec2 uRes; uniform float uTime, uGrain, uVig, uCA, uBars, uFade, uFlash, uMB, uBK, uSK, uSat, uExpo, uPvOn, uHal, uTone; uniform vec3 uLift, uGain, uFlashC, uBW, uShd, uHil;\n' +
   'float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }\n' +
   'void main() { vec2 uv = v; vec2 d = uv - 0.5; float r2 = dot(d, d);\n' +
   ' vec3 c; if (uCA > 0.0) { vec2 o = d * r2 * uCA * 0.02; c = vec3(texture2D(uS, uv + o).r, texture2D(uS, uv).g, texture2D(uS, uv - o).b); } else c = texture2D(uS, uv).rgb;\n' +
   ' if (uPvOn > 0.5) c = mix(c, texture2D(uPv, uv).rgb, uMB);\n' +
   ' vec3 bl = texture2D(uB1, uv).rgb * uBW.x + texture2D(uB2, uv).rgb * uBW.y + texture2D(uB3, uv).rgb * uBW.z; c += bl * uBK;\n' +
   ' c += texture2D(uSt, uv).rgb * vec3(0.55, 0.75, 1.25) * uSK;\n' +
-  ' c *= uExpo; float g = dot(c, vec3(0.2126, 0.7152, 0.0722)); c = mix(vec3(g), c, uSat); c = uLift + c * uGain;\n' +
+  ' vec3 hb = texture2D(uB2, uv).rgb + texture2D(uB3, uv).rgb; c += hb * vec3(1.0, 0.32, 0.12) * uHal;\n' +
+  ' c *= uExpo; c = mix(c, c * (1.0 + c / 6.0) / (1.0 + c), uTone);\n' +
+  ' float g = dot(c, vec3(0.2126, 0.7152, 0.0722)); c = mix(vec3(g), c, uSat); c += uShd * (1.0 - smoothstep(0.0, 0.45, g)) + uHil * smoothstep(0.35, 1.0, g); c = uLift + c * uGain;\n' +
   ' c *= 1.0 - uVig * smoothstep(0.12, 0.62, r2 * 1.6);\n' +
   ' c += (hash(uv * uRes + fract(uTime * 13.7) * 91.0) - 0.5) * uGrain;\n' +
   ' c = mix(c, uFlashC, uFlash); c *= 1.0 - uFade;\n' +
@@ -130,7 +132,9 @@ function vfxLightsU(gl, U, S) {
 // R: { on, center, box: [x,y,z], fall, wind: [x,y], shutter, width, dim, splash: { center, area: [x,y], z } }
 function vfxRain(S, R, st) {
   const gl = LGR.gl, q = vfxQ(); if (!R || !R.on || !VX.ok) return;
-  const n = Math.round(q.rain * (R.density == null ? 1 : R.density)); if (n !== VX.rainN && n > 0) vfxRainBuild(n);
+  // 1.9.993: VFXRAY learns its own cost here: when the effects run heavy it thins the rain a step (and the next time it
+  // starts from that), when there is room it brings it back (VX.rainK, kept on the device)
+  const n = Math.round(q.rain * (R.density == null ? 1 : R.density) * vfxRainK()); if (n !== VX.rainN && n > 0) vfxRainBuild(n);
   gl.enable(gl.DEPTH_TEST); gl.depthMask(false); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
   const P = VX.P.rain, U = P.u; gl.useProgram(P.p);
   gl.uniformMatrix4fv(U.uVP, false, S.cam.VP); gl.uniform3fv(U.uCam, S.cam.eye); gl.uniform3fv(U.uCen, R.center); gl.uniform3fv(U.uBox, R.box || [14, 14, 9]);
@@ -257,6 +261,9 @@ function vfxPost(src, w, h, o, tm) {
     gl.uniform3fv(U.uBW, lv >= 3 ? [0.5, 0.8, 1.1] : lv === 2 ? [0.7, 1.5, 0] : lv === 1 ? [1.6, 0, 0] : [0, 0, 0]);
     gl.uniform1f(U.uBK, lv > 0 ? (o.bloomK == null ? 0.55 : o.bloomK) * (b[0] ? 1 : 0) : 0); gl.uniform1f(U.uSK, st ? (o.streak || 0) : 0);
     gl.uniform1f(U.uSat, o.sat == null ? 1 : o.sat); gl.uniform1f(U.uExpo, o.expo == null ? 1 : o.expo); gl.uniform3fv(U.uLift, o.lift || [0, 0, 0]); gl.uniform3fv(U.uGain, o.gain || [1, 1, 1]);
+    // 1.9.993: film halation (a warm fringe round the bright things, from the widest bloom), a soft filmic shoulder, and
+    // a split tone (cool shadows, warm highlights)
+    if (U.uHal) gl.uniform1f(U.uHal, lv > 1 ? (o.hal || 0) : 0); if (U.uTone) gl.uniform1f(U.uTone, o.tone || 0); if (U.uShd) gl.uniform3fv(U.uShd, o.shd || [0, 0, 0]); if (U.uHil) gl.uniform3fv(U.uHil, o.hil || [0, 0, 0]);
   });
   if (out) {
     // keep this frame for motion blur, and show it
@@ -291,4 +298,13 @@ function vfxHurt(e) {
   const now = performance.now(); coreHurt('VFXRAY', e); try { console.error(e); } catch (x) { }
   VX.errT.push(now); while (VX.errT.length && now - VX.errT[0] > 10000) VX.errT.shift();
   if (VX.errT.length >= 5) { VX.offUntil = now + 60000; VX.errT.length = 0; coreRepaired('VFXRAY', 'Effects: plain picture for a minute after errors'); }
+}
+function vfxRainK() {
+  if (VX.rainK == null) { VX.rainK = clamp(+((typeof store !== 'undefined' && store.get('zc_vxRain', 1)) || 1), 0.4, 1); VX.rainKT = 0; }
+  const now = performance.now(); if (now - (VX.rainKT || 0) > 2500 && VX.frames > 30) {
+    VX.rainKT = now; const was = VX.rainK;
+    if (VX.msAvg > 6.5 && VX.rainK > 0.4) VX.rainK = Math.max(0.4, VX.rainK - 0.1); else if (VX.msAvg < 3 && VX.rainK < 1) VX.rainK = Math.min(1, VX.rainK + 0.05);
+    if (was !== VX.rainK) { VX.learnt = (VX.learnt || 0) + 1; try { if (typeof store !== 'undefined') store.set('zc_vxRain', +VX.rainK.toFixed(2)); } catch (e) { } }
+  }
+  return VX.rainK;
 }
