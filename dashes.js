@@ -133,7 +133,7 @@ function equipDash(d, fromCard) {
 function updDashBtn() {
   const p = G.p, b = $('dashBtn'); if (!b) return; const d = dashDef(p);
   b.style.setProperty('--dash', d.hex); b.setAttribute('aria-label', d.quiet ? 'Dodge roll (hold to sprint)' : 'Dash: ' + d.name);
-  const n = b.querySelector('.dname'); if (n) n.textContent = d.quiet ? 'Hold: sprint' : d.short;
+  const n = b.querySelector('.dname'); if (n) n.textContent = d.quiet ? 'Hold: run' : d.short;
   const t = b.querySelector('b'); if (t) t.textContent = d.quiet ? 'Roll' : 'Dash';
 }
 

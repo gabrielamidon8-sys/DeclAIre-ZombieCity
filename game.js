@@ -2295,7 +2295,7 @@ function drawScreenFx() {
   else if (G.mode === 'play' && DEV.kind === 'touch' && G.hintT > 0 && SET.hints) {
     const a = clamp(G.hintT, 0, 1), hx = SET.lefty ? W - 96 : 96;
     drawJoy(hx, H - 130, 56, Math.cos(G.time * 2.4) * 22, Math.sin(G.time * 2.4) * 22, a * 0.7);
-    ctx.globalAlpha = a * 0.85; ctx.fillStyle = '#ebe5d6'; ctx.font = "11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 130 + 56 + 18); ctx.globalAlpha = 1;
+    ctx.globalAlpha = a * 0.85; ctx.fillStyle = '#ebe5d6'; ctx.font = "11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 130 - 56 - 10);   // (above the ring: below it sits the weapon chip) ctx.globalAlpha = 1;
   }
 }
 // the touch joystick: a glass disc with a ticked rim, the push direction lit on the rim, and a glowing thumb knob

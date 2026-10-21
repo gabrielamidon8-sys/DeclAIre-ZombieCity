@@ -395,8 +395,9 @@ function lgiLights() {
 // the framing: the subject on a third (the rule of thirds), the third away from the card the player is hovering, so the
 // card never covers him; with no card he sits a little right of centre, looking into the street
 function lgiFrameY(D) {
-  const f = !D || D.avoid == null ? 0.56 : D.avoid < 0.45 ? 0.69 : D.avoid > 0.55 ? 0.31 : 0.29;
-  return -(f - 0.5) * 2 * 2.5;   // (screen right is +y here; 2.5 m is half the frame's width at his distance)
+  const asp = MIM.asp || 16 / 9, f = !D || D.avoid == null ? 0.56 : D.avoid < 0.45 ? 0.69 : D.avoid > 0.55 ? 0.31 : 0.29;
+  if (asp < 1.1) return 0;   // (a phone held upright: the frame is too narrow for thirds, he stays in the middle and the card sits below him)
+  return -(f - 0.5) * 2 * 1.42 * asp;   // (screen right is +y here; 1.42 m is half the frame's height at his distance)
 }
 function lgiCam(rt) {
   const D = LGI.scene, A = MIM.actors[0], c = A && A.W ? mimBone(A, 'chest') : [0, 0, 0.9];
@@ -404,5 +405,5 @@ function lgiCam(rt) {
   const fy = D && D.fy ? D.fy.x : 0;
   const al = D && A.player && A.player.a && A.player.a.id === 'sit_alert', alert = al ? lgPulse(A.player.t, 1.1, 5.2) : 0, look = al ? lgPulse(A.player.t, 0.0, 1.6) : 0, side = (D && D.canSide) || 1;
   const dr = Math.sin(rt * 0.09) * 0.35, push = alert * 0.9;
-  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
+  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert) - ((MIM.asp || 2) < 1.1 ? 0.5 : 0)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
 }

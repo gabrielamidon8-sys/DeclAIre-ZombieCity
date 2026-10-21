@@ -414,6 +414,7 @@ function mimStop() { MIM.playing = false; MIM.scene = null; MIM.actors = []; vfx
 // one frame: advance, pose, direct, draw
 function mimFrame(rdt, w, h) {
   if (!MIM.playing || !MIM.scene) return;
+  if (w > 0 && h > 0) MIM.asp = w / h;   // (the stoop frames by it: a phone held upright is a narrow frame)
   if (MIM.offUntil && performance.now() < MIM.offUntil) return;
   const t0 = performance.now(); VX.msF = 0;
   try {

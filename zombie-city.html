@@ -2929,7 +2929,7 @@ button.lcd{cursor:pointer}
     <div class="lg-select" id="lgSelect" hidden>
       <p class="lg-hint" id="lgHint"><span class="lg-hint-m">Hover a face to find him off duty. Click to open him.</span><span class="lg-hint-t">Tap a face to find him off duty, tap again to open him.</span></p>
       <div class="lg-classes" id="lgClasses"></div>
-      <div class="lg-foot"><span>Hover a face to sit with him a while. More legends are classified.</span><button type="button" class="btn small ghost" id="lgWatchAll">Watch the cinematic</button></div>
+      <div class="lg-foot"><span><span class="lg-hint-m">Hover a face to sit with him a while.</span><span class="lg-hint-t">Tap a face to sit with him a while.</span> More legends are classified.</span><button type="button" class="btn small ghost" id="lgWatchAll">Watch the cinematic</button></div>
     </div>
     <div class="lg-detail" id="lgDetail" hidden></div>
     <div class="lg-title" id="lgTitle" hidden aria-live="polite"><p class="lg-t-eye">Base legend · <span class="lg-t-cls">Attack</span></p><h2 class="lg-t-name">OPERATOR</h2><p class="lg-t-line">Walks in first. Leaves last.</p></div>
@@ -9536,7 +9536,7 @@ function drawScreenFx() {
   else if (G.mode === 'play' && DEV.kind === 'touch' && G.hintT > 0 && SET.hints) {
     const a = clamp(G.hintT, 0, 1), hx = SET.lefty ? W - 96 : 96;
     drawJoy(hx, H - 130, 56, Math.cos(G.time * 2.4) * 22, Math.sin(G.time * 2.4) * 22, a * 0.7);
-    ctx.globalAlpha = a * 0.85; ctx.fillStyle = '#ebe5d6'; ctx.font = "11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 130 + 56 + 18); ctx.globalAlpha = 1;
+    ctx.globalAlpha = a * 0.85; ctx.fillStyle = '#ebe5d6'; ctx.font = "11px 'Share Tech Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('DRAG TO MOVE', hx, H - 130 - 56 - 10);   // (above the ring: below it sits the weapon chip) ctx.globalAlpha = 1;
   }
 }
 // the touch joystick: a glass disc with a ticked rim, the push direction lit on the rim, and a glowing thumb knob
@@ -22144,7 +22144,7 @@ function equipDash(d, fromCard) {
 function updDashBtn() {
   const p = G.p, b = $('dashBtn'); if (!b) return; const d = dashDef(p);
   b.style.setProperty('--dash', d.hex); b.setAttribute('aria-label', d.quiet ? 'Dodge roll (hold to sprint)' : 'Dash: ' + d.name);
-  const n = b.querySelector('.dname'); if (n) n.textContent = d.quiet ? 'Hold: sprint' : d.short;
+  const n = b.querySelector('.dname'); if (n) n.textContent = d.quiet ? 'Hold: run' : d.short;
   const t = b.querySelector('b'); if (t) t.textContent = d.quiet ? 'Roll' : 'Dash';
 }
 
@@ -28533,6 +28533,7 @@ function mimStop() { MIM.playing = false; MIM.scene = null; MIM.actors = []; vfx
 // one frame: advance, pose, direct, draw
 function mimFrame(rdt, w, h) {
   if (!MIM.playing || !MIM.scene) return;
+  if (w > 0 && h > 0) MIM.asp = w / h;   // (the stoop frames by it: a phone held upright is a narrow frame)
   if (MIM.offUntil && performance.now() < MIM.offUntil) return;
   const t0 = performance.now(); VX.msF = 0;
   try {
@@ -29195,8 +29196,9 @@ function lgiLights() {
 // the framing: the subject on a third (the rule of thirds), the third away from the card the player is hovering, so the
 // card never covers him; with no card he sits a little right of centre, looking into the street
 function lgiFrameY(D) {
-  const f = !D || D.avoid == null ? 0.56 : D.avoid < 0.45 ? 0.69 : D.avoid > 0.55 ? 0.31 : 0.29;
-  return -(f - 0.5) * 2 * 2.5;   // (screen right is +y here; 2.5 m is half the frame's width at his distance)
+  const asp = MIM.asp || 16 / 9, f = !D || D.avoid == null ? 0.56 : D.avoid < 0.45 ? 0.69 : D.avoid > 0.55 ? 0.31 : 0.29;
+  if (asp < 1.1) return 0;   // (a phone held upright: the frame is too narrow for thirds, he stays in the middle and the card sits below him)
+  return -(f - 0.5) * 2 * 1.42 * asp;   // (screen right is +y here; 1.42 m is half the frame's height at his distance)
 }
 function lgiCam(rt) {
   const D = LGI.scene, A = MIM.actors[0], c = A && A.W ? mimBone(A, 'chest') : [0, 0, 0.9];
@@ -29204,7 +29206,7 @@ function lgiCam(rt) {
   const fy = D && D.fy ? D.fy.x : 0;
   const al = D && A.player && A.player.a && A.player.a.id === 'sit_alert', alert = al ? lgPulse(A.player.t, 1.1, 5.2) : 0, look = al ? lgPulse(A.player.t, 0.0, 1.6) : 0, side = (D && D.canSide) || 1;
   const dr = Math.sin(rt * 0.09) * 0.35, push = alert * 0.9;
-  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
+  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert) - ((MIM.asp || 2) < 1.1 ? 0.5 : 0)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
 }
 
 /* ================= the Legends screen (v1), and LEGEND / MIMATIC / VFXRAY joining the ecosystem =================
@@ -29598,7 +29600,7 @@ coreDefine({ name: 'VFXRAY', kind: 'render', ver: 2, does: 'The last pass: rain 
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[355,0,4,48630],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31092],"physics":[265,23,49,25142],"arms":[372,35,50,37953],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1132,118,170,127774],"legmodel":[428,23,91,51563],"leggun":[232,20,67,27735],"leganim":[447,21,53,56045],"legrun":[466,39,94,49576],"vfxray":[269,26,37,31771],"mimatic":[560,46,109,68872],"legidle":[338,19,67,44251],"legends":[330,33,46,39312],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[355,0,4,48630],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31089],"physics":[265,23,49,25142],"arms":[372,35,50,37953],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1132,118,170,127774],"legmodel":[428,23,91,51563],"leggun":[232,20,67,27735],"leganim":[447,21,53,56045],"legrun":[466,39,94,49576],"vfxray":[269,26,37,31771],"mimatic":[561,46,109,68981],"legidle":[339,19,67,44463],"legends":[330,33,46,39312],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };
