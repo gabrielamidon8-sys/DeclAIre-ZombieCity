@@ -159,8 +159,12 @@ function netPlayers() {
 }
 function netAlive() { return netPlayers().filter(p => !p.down); }
 function netTarget(z) {
-  let best = null, bd = Infinity;
-  for (const p of netPlayers()) { if (p.down) continue; const d = (p.x - z.x) * (p.x - z.x) + (p.y - z.y) * (p.y - z.y); if (d < bd) { bd = d; best = p; } }
+  let best = null, bd = Infinity, cd = Infinity; const cur = z && z.tgtP && !z.tgtP.down ? z.tgtP : null;
+  for (const p of netPlayers()) { if (p.down) continue; const d = (p.x - z.x) * (p.x - z.x) + (p.y - z.y) * (p.y - z.y); if (p === cur) cd = d; if (d < bd) { bd = d; best = p; } }
+  // 1.9.994: it goes for whoever is closest, and keeps after the one it chose until another is clearly closer (a fifth
+  // nearer), so it does not dither between two players standing near each other
+  if (cur && cd < Infinity && best !== cur && bd > cd * 0.64) best = cur;
+  if (z) z.tgtP = best;
   return best || NET.local || G.p;
 }
 function netNearD2(x, y) { let bd = Infinity; for (const p of netPlayers()) { const d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y); if (d < bd) bd = d; } return bd; }

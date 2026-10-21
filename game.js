@@ -204,9 +204,13 @@ function newField(rad, big, name) { return { name: name, rad: rad, big: big, ox:
 const FF = newField(15, false, 'small'), FFB = newField(30, false, 'big'), FFS = newField(56, true, 'boss');
 // a big horde does not walk round parked cars: it goes straight through and shoves them (the crowd engine's push field)
 const FFP = newField(15, true, 'push');
+// 1.9.994: co-op: a field for each standing player (a zombie follows the field of the one it is after, so players far
+// apart each have the whole field round them); and a coarse long-range field (four cells in one, about 130 m round each
+// player) for the far ones the fine field does not reach: whatever happens they always know the way
+const FFC = new Map(), FFL = new Map(), FL_K = 4, FL_N = 64;
 const HI = new Int32Array(FF_MAXLEN * 8), HK = new Float32Array(FF_MAXLEN * 8), FD = [0, 0];
 const blockCache = FF.cache;
-function fieldsReset() { for (const F of [FF, FFB, FFS, FFP]) { F.ready = false; F.cache.clear(); } }
+function fieldsReset() { for (const F of [FF, FFB, FFS, FFP]) { F.ready = false; F.cache.clear(); } FFC.clear(); FFL.clear(); }
 function cellBlockedF(F, cx, cy) {
   const k = (cx + 60000) * 120000 + (cy + 60000), C = F.cache;
   let v = C.get(k);
@@ -220,9 +224,9 @@ function buildField(F) {
   try { fieldBuild(F); } finally { const ms = performance.now() - tb; if (typeof coreCost === 'function') { coreCost('FLOW', ms); flowLearn(ms); } }
 }
 function fieldBuild(F) {
-  let p = G.p; const n = FF_N; F.n = n; F.cs = FF_CS;
-  // co-op: the field is centred between the players and flows to whichever is nearest
-  const srcs = NET.role === 'host' && NET.started ? netAlive() : null;
+  let p = F.owner || G.p; const n = FF_N; F.n = n; F.cs = FF_CS;
+  // co-op: the shared field is centred between the players and flows to whichever is nearest (a player's own field: to them)
+  const srcs = !F.owner && NET.role === 'host' && NET.started ? netAlive() : null;
   if (srcs && srcs.length > 1) { let sx = 0, sy = 0; for (const q of srcs) { sx += q.x; sy += q.y; } p = { x: sx / srcs.length, y: sy / srcs.length }; }
   const pcx = Math.floor(p.x / FF_CS), pcy = Math.floor(p.y / FF_CS);
   F.ox = pcx - (n >> 1); F.oy = pcy - (n >> 1); F.pcx = pcx; F.pcy = pcy; F.t = G.time;
@@ -261,7 +265,62 @@ function fieldBuild(F) {
 }
 // which field a zombie follows: by how wide it is (and bosses in the real-world city shove through the small stuff)
 function zBig(z) { return z.boss && ZP > 1; }
-function fieldFor(z) { return zBig(z) ? FFS : z.r >= 16 ? FFB : z.hd && typeof swarmShoves === 'function' && swarmShoves(z) && FFP.ready ? FFP : FF; }
+function fieldFor(z) {
+  if (zBig(z)) return FFS; if (z.r >= 16) return FFB;
+  if (z.hd && typeof swarmShoves === 'function' && swarmShoves(z) && FFP.ready) return FFP;
+  if (FFC.size && z.tgtP) { const F = FFC.get(z.tgtP); if (F && F.ready) return F; }   // (co-op: the field of the one it is after)
+  return FF;
+}
+// the coarse field toward a player: a cell is closed only when most of it is (a street narrower than a cell stays open)
+function fieldLongFor(z) { const F = FFL.get((FFC.size && z.tgtP) || G.p) || FFL.get(G.p); return F && F.ready ? F : null; }
+function cellBlockedL(F, cx, cy) {
+  const k = (cx + 60000) * 120000 + (cy + 60000), C = F.cache; let v = C.get(k);
+  if (v === undefined) {
+    const cs = FF_CS * FL_K, x0 = cx * cs, y0 = cy * cs; let b = 0;
+    for (const [u, w] of [[0.5, 0.5], [0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.8, 0.8], [0.5, 0.15], [0.5, 0.85], [0.15, 0.5], [0.85, 0.5]]) if (blocked(x0 + u * cs, y0 + w * cs, 12, false)) b++;
+    v = b >= 7 ? 1 : 0; if (C.size > 80000) C.clear(); C.set(k, v);
+  }
+  return v;
+}
+function fieldBuildLong(F) {
+  const p = F.owner || G.p, n = FL_N, cs = FF_CS * FL_K; F.n = n; F.cs = cs;
+  const pcx = Math.floor(p.x / cs), pcy = Math.floor(p.y / cs);
+  F.ox = pcx - (n >> 1); F.oy = pcy - (n >> 1); F.pcx = pcx; F.pcy = pcy; F.t = G.time;
+  const dist = F.dist, open = F.open;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const id = j * n + i; open[id] = cellBlockedL(F, F.ox + i, F.oy + j) ? 0 : 1; dist[id] = 1e9; }
+  const start = (n >> 1) * n + (n >> 1); open[start] = 1; dist[start] = 0;
+  let hs = 0; const push = (id, k) => { let i = hs++; HI[i] = id; HK[i] = k; while (i > 0) { const pa = (i - 1) >> 1; if (HK[pa] <= HK[i]) break; const ti = HI[pa], tk = HK[pa]; HI[pa] = HI[i]; HK[pa] = HK[i]; HI[i] = ti; HK[i] = tk; i = pa; } };
+  push(start, 0);
+  while (hs > 0) {
+    const id = HI[0], k = HK[0]; hs--;
+    if (hs > 0) { HI[0] = HI[hs]; HK[0] = HK[hs]; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let mm = i; if (l < hs && HK[l] < HK[mm]) mm = l; if (r < hs && HK[r] < HK[mm]) mm = r; if (mm === i) break; const ti = HI[mm], tk = HK[mm]; HI[mm] = HI[i]; HK[mm] = HK[i]; HI[i] = ti; HK[i] = tk; i = mm; } }
+    if (k > dist[id]) continue;
+    const ci = id % n, cj = (id / n) | 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue; const ii = ci + di, jj = cj + dj; if (ii < 0 || jj < 0 || ii >= n || jj >= n) continue;
+      const nid = jj * n + ii; if (!open[nid]) continue; if (di && dj && (!open[cj * n + ii] || !open[jj * n + ci])) continue;
+      const nd = k + (di && dj ? 1.414 : 1); if (nd < dist[nid] && hs < HI.length) { dist[nid] = nd; push(nid, nd); }
+    }
+  }
+  F.ready = true;
+}
+// keep the per-player and long-range fields up to date: at most one rebuilt a frame, the stalest first
+function fieldsCoop() {
+  const host = NET.role === 'host' && NET.started, P = host ? netAlive() : (G.p ? [G.p] : []);
+  for (const M of [FFC, FFL]) for (const k of [...M.keys()]) if (P.indexOf(k) < 0) M.delete(k);
+  let job = null, age = -1;
+  if (host && P.length > 1) for (const p of P) {
+    let F = FFC.get(p); if (!F) { F = newField(15, false, 'player'); F.owner = p; F.cache = FF.cache; FFC.set(p, F); }
+    const pcx = Math.floor(p.x / FF_CS), pcy = Math.floor(p.y / FF_CS), st = !F.ready || F.n !== FF_N || Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2 ? 99 : G.time - F.t;
+    if (st > flowIv() && st > age) { age = st; job = () => buildField(F); }
+  } else FFC.clear();
+  if (!job) for (const p of P) {
+    let F = FFL.get(p); if (!F) { F = newField(15, false, 'long'); F.owner = p; FFL.set(p, F); }
+    const cs = FF_CS * FL_K, pcx = Math.floor(p.x / cs), pcy = Math.floor(p.y / cs), st = !F.ready ? 99 : Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2 ? 50 : G.time - F.t;
+    if (st > 1.6 && st > age) { age = st; job = () => { const tb = performance.now(); try { fieldBuildLong(F); } finally { if (typeof coreCost === 'function') coreCost('FLOW', performance.now() - tb); } }; }
+  }
+  if (job) job();
+}
 function flowDir(x, y, F) {
   F = F || FF;
   if (!F.ready) { if (F !== FF) return flowDir(x, y, FF); return null; }
@@ -430,6 +489,8 @@ function spawnZombie(m, x, y, o) {
     dr: m.S.p.dr || 0, dodge: m.S.p.dodge || 0, kb: m.S.p.kb == null ? 1 : m.S.p.kb, reach: m.S.p.reach || 0,
     slowT: 0, buffT: 0, stuckT: 0, detT: 0, detSide: 1, stun: 0, growth: 1, shield: 0, shieldMax: 0, shieldCd: 0, mulB: 1, dead: false
   };
+  // 1.9.994: no two alike: each one a little bigger or smaller and its own pace (the bosses and the swarms of flyers as they are)
+  if (!o.boss && !o.fly && !o.illusion && !(NET.role === 'client' && NET.spawning)) { z.r *= 0.93 + Math.random() * 0.14; z.speed *= 0.88 + Math.random() * 0.26; }
   z.baseR = z.r;
   // the 2.0 zombies: how bullets treat them (helmets, armour, a shield, a low body) and limbs that can be crippled
   if (m.v2) { z.T = m.T; z.legK = 0; z.armK = 0; z.abMul = 1; if (o.emerge) z.emT = G.time; }
@@ -646,7 +707,7 @@ function updZ(z, dt) {
       const ZF = fieldFor(z);
       if (z.losT <= 0) { z.losT = 0.2 + Math.random() * 0.15; z.los = d < 700 && !(z.noLosT > 0) && hasLOS(z.x, z.y, p.x, p.y, ZF); }
       if (z.noLosT > 0) z.noLosT -= dt;
-      if (!z.los) { const f = flowDir(z.x, z.y, ZF); if (f) { ux = f[0]; uy = f[1]; } }
+      if (!z.los) { const f = flowDir(z.x, z.y, ZF) || (FFL.size ? flowDir(z.x, z.y, fieldLongFor(z)) : null); if (f) { ux = f[0]; uy = f[1]; } }
     }
     if (z.fly) { const a = Math.atan2(uy, ux) + Math.sin(G.time * 9 + z.bob) * 0.9; ux = Math.cos(a); uy = Math.sin(a); }
     if (z.detT > 0) { z.detT -= dt; const a = z.detSide * 1.25, co = Math.cos(a), si = Math.sin(a); const nx = ux * co - uy * si, ny = ux * si + uy * co; ux = nx; uy = ny; }
@@ -1147,7 +1208,7 @@ function startWave(n, carry) {
   // while 2.0 is built only the new roster comes (the old mutations are switched off until all 1,000 are rebuilt)
   G.pool = typeof ZR_ONLY !== 'undefined' && ZR_ONLY && ZR.length ? zrPool(n) : MUTS.filter(m => m.threat <= cap);
   const capT = Math.max.apply(null, G.pool.map(m => m.threat));
-  const k = Math.min(9, 3 + Math.floor(n / 2)), cand = G.pool.slice(), feat = [];
+  const k = Math.min(14, 5 + Math.floor(n * 0.75)), cand = G.pool.slice(), feat = [];   // (1.9.994: more kinds in every wave)
   for (let i = 0; i < k && cand.length; i++) {
     let tot = 0; const ws = cand.map(m => { const w = (found.has(m.id) ? 1 : 3.2) * (m.threat >= capT - 1 ? 1.7 : 1); tot += w; return w; });
     let r = Math.random() * tot, idx = 0; while (idx < ws.length - 1 && r > ws[idx]) { r -= ws[idx]; idx++; }
@@ -1180,8 +1241,10 @@ function spawner(dt) {
   if (G.zs.length >= Math.min(typeof swarmCapLive === 'function' ? swarmCapLive() : 120, 24 + G.wave * 6)) { G.spawnT = 0.4; return; }
   const group = Math.min(G.spawnQ, 1 + Math.floor(Math.random() * Math.min(4, 1 + G.wave / 3)));
   const pos = spawnPos();
+  let lastM = null;
   for (let i = 0; i < group; i++) {
-    const m = Math.random() < 0.75 ? pick(G.feat) : pick(G.pool);
+    // a group is a mix of the wave's dead, never two of a kind side by side when it can help it
+    let m = Math.random() < 0.62 ? pick(G.feat) : pick(G.pool); if (m === lastM) m = pick(G.pool.length > 1 ? G.pool : G.feat) || m; lastM = m;
     spawnZombie(m, pos.x + rand(-30, 30), pos.y + rand(-30, 30)); G.spawnQ--;
   }
   G.spawnT = Math.max(0.25, 1.4 - G.wave * 0.06) * rand(0.6, 1.4);
@@ -2416,6 +2479,7 @@ function update(dt) {
     else if (G.needFS && (stale(FFS) || G.time - FFS.t > 0.6)) buildField(FFS);
     else if (G.needFB && (stale(FFB) || G.time - FFB.t > 0.6)) buildField(FFB);
     else if (G.needFP && (stale(FFP) || G.time - FFP.t > 0.6)) buildField(FFP);
+    else fieldsCoop();   // (1.9.994: each player's own field in co-op, and the long-range ones)
     let nb = 0, ns = 0, np = 0; for (const z of G.zs) { if (z.dead || z.fly) continue; if (zBig(z)) ns++; else if (z.r >= 16) nb++; else if (z.hd && z.pushOk && z.pkT > G.time) np++; } G.needFB = nb > 0; G.needFS = ns > 0; G.needFP = np > 0; }
   if (G.cineT > 0) G.cineT -= dt;
   let nf = 0; for (const z of G.zs) if (z.fly && !z.dead) nf++; G.nFly = nf;

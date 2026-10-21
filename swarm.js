@@ -265,7 +265,10 @@ function swarmMember(H) {
   let x = H.x, y = H.y;
   // somewhere in the gathering, on open street that leads to the players (never inside a fenced yard it cannot leave)
   for (let t = 0; t < 5; t++) { const a = rand(TAU), d = Math.sqrt(Math.random()) * r, px = H.x + Math.cos(a) * d, py = H.y + Math.sin(a) * d; if (!blocked(px, py, 14) && waterAt(px, py) !== 2 && reachable(px, py)) { x = px; y = py; break; } }
-  const u = Math.random(), m = u < 0.7 ? H.lead : u < 0.92 ? pick(H.kin) : pick(G.pool);
+  // 1.9.994: a horde is a mix: the leader's kind, its strain, and the rest of the wave's dead (a handful of kinds chosen
+  // when it set out), so a crowd is never a wall of the same face
+  if (!H.mix) { const P = (G.pool || []).filter(q => q !== H.lead && q.A && q.A.key !== 'splitter' && !q.unique); H.mix = []; for (let i = 0; i < 6 && P.length; i++) H.mix.push(P.splice((Math.random() * P.length) | 0, 1)[0]); }
+  const u = Math.random(), m = u < 0.36 ? H.lead : u < 0.56 ? pick(H.kin) : (H.mix.length ? pick(H.mix) : pick(G.pool));
   const z = spawnZombie(m || H.lead, x, y); if (!z) return;
   // one of many: a little weaker on its own, dangerous together
   z.hd = H.id; z.hp *= 0.8; z.maxHp *= 0.8; z.dmg *= 0.85; z.ang = H.ang + Math.PI;
@@ -324,7 +327,7 @@ function swarmHordes(dt) {
     if (Hd.state === 'march') {
       let near = Infinity; for (const p of P) near = Math.min(near, Math.hypot(p.x - Hd.cx, p.y - Hd.cy));
       // it sees you (or you shot at it, or it has been marching long enough): it surges
-      if (near < sight || Hd.hit || Hd.t > 40) { Hd.state = 'surge'; Hd.surgeT = 3; if (near < sight * 1.6 && SFX.roar) SFX.roar(); }
+      if (near < sight || Hd.hit || Hd.t > 14) { Hd.state = 'surge'; Hd.surgeT = 3; if (near < sight * 1.6 && SFX.roar) SFX.roar(); }   // (1.9.994: it comes for you sooner: 14 s of marching at most)
     }
   }
 }

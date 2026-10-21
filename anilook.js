@@ -247,11 +247,37 @@ function lkTorso(g, m, pose) {
   if (F.bones && lod <= 1) { g.strokeStyle = '#d9cfb4'; g.lineWidth = 0.05; for (let i = 0; i < 3; i++) { const w = D2 * (0.1 + i * 0.22); g.beginPath(); g.moveTo(-W2 * 0.75, w); g.quadraticCurveTo(-W2 * 0.4, w - 0.12, -W2 * 0.1, w); g.stroke(); } }
   if (F.tattoo && lod <= 1) { g.strokeStyle = 'rgba(30,40,70,0.6)'; g.lineWidth = 0.03; g.beginPath(); g.arc(W2 * 0.55, 0, 0.12, 0, TAU); g.stroke(); }
   if (F.camo && L.key === 'hunter') { g.fillStyle = L.ac.b; g.fillRect(-W2 * 0.75, -D2 * 0.15, W2 * 1.5, 0.12); }
+  if (LKO.z && lod <= 1) lkWear(g, m, W2, D2, LKO.z);
   g.restore();
   // the collar or neckline at the base of the neck
   const nx = lkX(JN.neck), ny = lkY(JN.neck), nk = lkK(JN.neck);
   if (T.collar && !L.bare) lkEll(g, nx, ny, D.headR * 0.95 * nk, D.headR * 0.75 * nk, rot, (L.shirtC || L.cl).l, (L.shirtC || L.cl).o, 0.04);
   lkRim(g, cx, cy, chW, chD, rot);
+}
+// 1.9.994: what happened to this one (not its kind): its own blood, rips, a gash, bite marks, drool down its front, and
+// more blood as it takes hits. From a seed of its own, so two office drones in the same crowd never look alike. In the
+// chest's frame (x along the shoulders, -y its front), clipped to the chest's outline.
+function lkWear(g, m, W2, D2, z) {
+  const L = m.al, dmg = z.maxHp > 0 ? clamp(1 - z.hp / z.maxHp, 0, 1) : 0;
+  let s = ((z.nid | 0) * 2654435761 >>> 0) % 2147483646 + 1; const R = () => (s = s * 16807 % 2147483647) / 2147483647;
+  g.save(); g.beginPath(); g.ellipse(0, 0, W2 * 0.97, D2 * 0.97, 0, 0, TAU); g.clip();
+  const blob = (x, y, r, col, n) => { g.beginPath(); for (let i = 0; i <= n; i++) { const a = i / n * TAU, rr = r * (0.62 + R() * 0.55); if (i === 0) g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); else g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fillStyle = col; g.fill(); };
+  // a rip in what it wears, the skin underneath (not on the bare)
+  if (!L.bare && R() < 0.62) {
+    const x = (R() - 0.5) * W2 * 1.2, y = (R() - 0.6) * D2 * 1.1, w = W2 * (0.18 + R() * 0.2), h = D2 * (0.12 + R() * 0.16);
+    g.beginPath(); for (let i = 0; i <= 9; i++) { const a = i / 9 * TAU, k = i % 2 ? 0.55 : 1; if (i === 0) g.moveTo(x + Math.cos(a) * w * k, y + Math.sin(a) * h * k); else g.lineTo(x + Math.cos(a) * w * k, y + Math.sin(a) * h * k); }
+    g.closePath(); g.fillStyle = L.skin.d; g.fill(); g.strokeStyle = L.cl.o; g.lineWidth = 0.03; g.stroke();
+  }
+  // its own old blood, and new blood with every hit it takes
+  const n = 1 + (R() * 2.6 | 0) + Math.floor(dmg * 5);
+  for (let i = 0; i < n; i++) { const x = (R() - 0.5) * W2 * 1.5, y = (R() - 0.55) * D2 * 1.4, r = (0.07 + R() * 0.12) * (i >= n - Math.floor(dmg * 5) ? 1.15 : 1); blob(x, y, r, i % 3 ? 'rgba(78,8,10,0.72)' : 'rgba(110,14,14,0.62)', 7); if (r > 0.12) blob(x + r * 0.2, y + r * 0.1, r * 0.45, 'rgba(140,20,18,0.5)', 6); }
+  // a gash, its edges, a dark line down it
+  if (R() < 0.42) { const x0 = (R() - 0.5) * W2, y0 = (R() - 0.5) * D2, a = R() * Math.PI, l = W2 * (0.35 + R() * 0.3); g.lineCap = 'round'; g.strokeStyle = 'rgba(150,40,36,0.75)'; g.lineWidth = 0.075; g.beginPath(); g.moveTo(x0 - Math.cos(a) * l / 2, y0 - Math.sin(a) * l / 2); g.lineTo(x0 + Math.cos(a) * l / 2, y0 + Math.sin(a) * l / 2); g.stroke(); g.strokeStyle = 'rgba(40,2,4,0.9)'; g.lineWidth = 0.03; g.stroke(); }
+  // a bite out of a shoulder: two crescents of teeth marks
+  if (R() < 0.3) { const sx = (R() < 0.5 ? -1 : 1) * W2 * 0.7, sy = -D2 * 0.15; g.strokeStyle = 'rgba(60,6,8,0.8)'; g.lineWidth = 0.025; for (const k of [0, 1]) { g.beginPath(); g.arc(sx, sy + k * 0.09, 0.09, 0.2 + k * Math.PI, Math.PI - 0.2 + k * Math.PI); g.stroke(); } }
+  // drool and blood from the mouth down its front
+  if (R() < 0.55) { g.strokeStyle = 'rgba(96,10,12,0.6)'; g.lineWidth = 0.05; const x = (R() - 0.5) * W2 * 0.3; g.beginPath(); g.moveTo(x, -D2 * 0.95); g.quadraticCurveTo(x + 0.05, -D2 * 0.5, x - 0.02, -D2 * 0.05 - R() * D2 * 0.3); g.stroke(); }
+  g.restore();
 }
 // the patterns printed or woven on clothes, inside the chest's outline (chords worked out, so nothing needs clipping)
 function lkPattern(g, pat, W2, D2, L) {
