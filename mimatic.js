@@ -605,6 +605,7 @@ function mimRender(w, h, rt, st) {
   S.desat = freeze * 0.7; S.sat = 1 - freeze * 0.15;
   const accS = lgHex(LG_CLASS_BY[MIM.cls].col);
   S.items = [{ m: MIM.ground, W: MIM.setW, ground: true, acc: accS, glow: 1, noShadow: true, noRim: true }, { m: MIM.set, W: MIM.setW, acc: accS, glow: 1, noShadow: true, noRim: true }];
+  if (scene === 'studio' && MIM.actors[0] && MIM.actors[0].seat) { if (!MIM.chairW) { MIM.chairW = lgWorldNew(); for (let i = 0; i < LG_NB; i++) MIM.chairW.set(lgM4(), i * 16); } S.items.push({ m: lgModel('studioChair', 0, ''), W: MIM.chairW }); }
   for (const a of MIM.actors) { if (a.hidden || !a.m) continue; S.items.push({ m: a.m, W: a.W, acc: a.acc || lgHex(LG_CLASS_BY[a.cls] ? LG_CLASS_BY[a.cls].col : '#ff4b3e'), glow: a.P ? (a.P.glow == null ? 1 : Math.max(a.P.glow, scene === 'studio' ? 1 : 0)) : 1, hide: a.hide, rim: a.rimCol }); }
   const op = MIM.actors[0];
   S.shadow = { on: vq.shadow && scene !== 'hub', c: op && op.W ? [op.W[LGB.pelvis * 16 + 12], op.W[LGB.pelvis * 16 + 13], 0.8] : [0, 0, 0.8], r: scene === 'lineup' ? 4.2 : 2.6, size: mimLevel() >= 3 ? 2048 : 1024 };
@@ -669,8 +670,9 @@ function mimStudioCam(rt) {
 function mimStudioView(v) { const s = MIM.studio; s.held = true; s.from = s.cur ? Object.assign({}, s.cur) : { yaw: s.yaw, pitch: s.pitch, dist: s.dist }; s.tTilt = MIM.rt; s.view = v; s.auto = false; if (v === 'orbit') { s.yaw = s.from.yaw; s.pitch = s.from.pitch; s.dist = s.from.dist; s.from = null; } }
 function mimStudioDrag(dx, dy) { const s = MIM.studio; if (s.view !== 'orbit') { mimStudioView('orbit'); } s.yaw -= dx * 0.008; s.pitch = clamp(s.pitch + dy * 0.006, -0.15, 1.55); }
 function mimStudioZoom(d) { const s = MIM.studio; s.dist = clamp(s.dist * (1 + d * 0.001), 1.2, 6); if (s.view !== 'orbit') mimStudioView('orbit'); }
-function mimStudioPlay(id) { const a = MIM.actors[0]; if (!a || !a.player) return; lgPlay(a.player, id, { restart: true, fade: 0.2 }); a.player.ctx.inPlace = true; }
-function mimStudioClass(cls) { MIM.cls = cls; const a = MIM.actors[0]; if (!a) return; a.cls = cls; a.acc = lgHex(LG_CLASS_BY[cls].col); a.m = lgModel(a.model, a.lod, cls); }
+// a seated clip (the stoop's idles) plays in the studio on his chair, with his mask down and his whetstone (the idle kit)
+function mimStudioPlay(id) { const a = MIM.actors[0]; if (!a || !a.player) return; const seat = !!(LG_ANIM_BY[id] && LG_ANIM_BY[id].seat); if (seat !== !!a.seat) { a.seat = seat; a.m = lgModel(a.model, a.lod, a.cls + (seat ? '|idle' : '')); } lgPlay(a.player, id, { restart: true, fade: seat ? 0 : 0.2 }); a.player.ctx.inPlace = true; }
+function mimStudioClass(cls) { MIM.cls = cls; const a = MIM.actors[0]; if (!a) return; a.cls = cls; a.acc = lgHex(LG_CLASS_BY[cls].col); a.m = lgModel(a.model, a.lod, cls + (a.seat ? '|idle' : '')); }
 function mimHurt(e) {
   const now = performance.now(); coreHurt('MIMATIC', e); try { console.error(e); } catch (x) { }
   MIM.errT.push(now); while (MIM.errT.length && now - MIM.errT[0] > 10000) MIM.errT.shift();

@@ -23,6 +23,14 @@
 const LGI = { scene: null };
 // the set's moving pieces (extra bones): the lamp on its cable and the can
 const LGI_LAMP = 52, LGI_CAN = 53;
+// his chair, in the root's space (the seated clips sit on it): the stoop's, and the studio's when a seated clip plays there
+function lgiChair(B) {
+  lgBox(B, -0.14, 0, 0.455, 0.22, 0.23, 0.02, 0.008);
+  for (const [x, y] of [[0.06, 0.2], [0.06, -0.2], [-0.33, 0.2], [-0.33, -0.2]]) lgBox(B, x, y, 0.22, 0.018, 0.018, 0.22, 0.004);
+  for (const y of [0.2, -0.2]) lgBox(B, -0.35, y, 0.72, 0.018, 0.018, 0.26, 0.004);
+  for (let i = 0; i < 3; i++) lgBox(B, -0.35, 0, 0.62 + i * 0.13, 0.012, 0.2, 0.03, 0.005);
+}
+LG_MAKERS.studioChair = function (B) { lgBone(B, 'root'); lgMat(B, lgMtl({ c: '#6b4f33', t: LT.twill, r: 0.8, w: 0.7, k: 0.5 })); lgiChair(B); };
 LG_MAKERS.stoop = function (B) {
   const hi = B.lod < 2, top = B.lod === 0;
   const M = {
@@ -67,11 +75,7 @@ LG_MAKERS.stoop = function (B) {
   // the lamp's bracket on the wall; the lamp itself hangs on its own bone (it swings)
   lgMat(B, M.steel); lgTube(B, [[-1.28, 0.1, 3.0], [-0.5, 0.1, 3.05], [0.3, 0.1, 3.0]], 0.018, { segs: 5 }); lgTube(B, [[-1.28, 0.1, 2.6], [-0.5, 0.1, 3.0]], 0.012, { segs: 4 });
   // his chair (wood, a slatted back), a crate beside it with a canteen and an oil can, the trash can, the hydrant
-  lgMat(B, M.wood);
-  lgBox(B, -0.14, 0, 0.455, 0.22, 0.23, 0.02, 0.008);
-  for (const [x, y] of [[0.06, 0.2], [0.06, -0.2], [-0.33, 0.2], [-0.33, -0.2]]) lgBox(B, x, y, 0.22, 0.018, 0.018, 0.22, 0.004);
-  for (const y of [0.2, -0.2]) lgBox(B, -0.35, y, 0.72, 0.018, 0.018, 0.26, 0.004);
-  for (let i = 0; i < 3; i++) lgBox(B, -0.35, 0, 0.62 + i * 0.13, 0.012, 0.2, 0.03, 0.005);
+  lgMat(B, M.wood); lgiChair(B);
   lgMat(B, M.woodDk); lgBox(B, 0.05, -0.62, 0.21, 0.2, 0.2, 0.2, 0.01); if (hi) { for (let i = 0; i < 3; i++) lgBox(B, 0.252, -0.62, 0.08 + i * 0.13, 0.002, 0.19, 0.012, 0); }
   lgMat(B, M.tin); lgBox(B, 0.08, -0.56, 0.5, 0.05, 0.07, 0.09, 0.02); lgMat(B, M.steel); lgLathe(B, [[0.0, 0.0], [0.04, 0.0], [0.04, 0.09], [0.015, 0.12], [0.008, 0.16], [0.0, 0.16]], { segs: 12, ox: 0.0, oy: -0.72 });
   lgMat(B, M.steel); lgLathe(B, [[0.0, 0.0], [0.27, 0.0], [0.29, 0.8], [0.3, 0.82], [0.0, 0.82]], { segs: 16, ox: 0.4, oy: 1.9 }); lgLathe(B, [[0.0, 0.82], [0.31, 0.82], [0.31, 0.86], [0.12, 0.9], [0.0, 0.9]], { segs: 16, ox: 0.4, oy: 1.9 });

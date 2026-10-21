@@ -27235,7 +27235,7 @@ lgClip('death_crumple', 'Crumples', 'Down', 1.6, false, LG_SRC.merc, 'Straight d
    - It learns. After each frame it checks its own work: a hand that missed its grip on a gun by more than a few
      millimetres moves that gun's posture in for the next frames (until it reaches); each walk is measured for how far
      a planted foot really travels in a cycle, and the steps are paced by that, so the feet do not slide. */
-const LGV = { on: true, made: 0, ms: 0, miss: {}, fix: {}, tries: {}, stride: {}, learnt: 0, bodies: new WeakMap() };
+const LGV = { on: true, made: 0, ms: 0, miss: {}, fix: {}, tries: {}, first: {}, stuck: {}, stride: {}, learnt: 0, bodies: new WeakMap() };
 // which bones each layer shows
 const LGV_LEGS = ['root', 'pelvis', 'thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'];
 const LGV_HEAD = ['head', 'mBrow', 'mCheekL', 'mCheekR', 'mJawL', 'mJawR', 'mChin', 'mVisor'];
@@ -27295,7 +27295,7 @@ function lgvTorso(P, focus, t, fam) {
 function lgvC(ctx) { return ctx.fam === 'c'; }
 // the long gun in a posture v with both hands on (the support hand blended to a free target by kL)
 function lgvRifle(P, v, ctx, free, kL) {
-  const g = ctx.gun || '', vv = lgvFix(g, v);
+  const g = ctx.fk || ctx.gun || '', vv = lgvFix(g, v);
   P.carbine.at = 'aim'; P.carbine.sp = 'chest'; P.carbine.M = lgvGunM(vv);
   P.ik.handR = { on: 'carbine', pole: [-0.2, -0.8, -0.6] }; P.grip.R = ctx.trigger ? 'trigger' : 'pistol';
   if (free && kL > 0) { const on = lgvOnGun(vv, lgSockFor('carbine', 'gripL')); lgvHand(P, 'L', lgvMix(on, free, kL)); P.grip.L = kL > 0.6 ? (ctx.gripL || 'cup') : 'cup'; }
@@ -27304,7 +27304,7 @@ function lgvRifle(P, v, ctx, free, kL) {
   return vv;
 }
 function lgvPistol(P, v, ctx, free, kL) {
-  const g = ctx.gun || '', vv = lgvFix(g, v);
+  const g = ctx.fk || ctx.gun || '', vv = lgvFix(g, v);
   P.pistol.at = 'aim'; P.pistol.sp = 'chest'; P.pistol.M = lgvGunM(vv);
   P.ik.handR = { on: 'pistol', pole: LG_POLE.Rt }; P.grip.R = ctx.trigger ? 'trigger' : 'pistol';
   if (free && kL > 0) { const on = lgvOnGun(vv, lgSockFor('pistol', 'gripL')); lgvHand(P, 'L', lgvMix(on, free, kL), LG_POLE.Lt); P.grip.L = kL > 0.6 ? (ctx.gripL || 'cup') : 'support'; }
@@ -27584,7 +27584,7 @@ function lgvPaint(lgId, mk, f, hide, box, px, centre) {
   const out = c.getContext('2d'); out.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in out) out.imageSmoothingQuality = 'high'; out.drawImage(tc, 0, 0, Sw, Sh, 0, 0, w, h);
   const o = { c: c, box: box, cx: cx / U, cy: -cy / U };
   const dt = performance.now() - t0; LGV.made++; LGV.ms += dt; LG.spriteMade++; LG.spriteMs += dt; coreCost('LEGEND', dt);
-  return { o: o, W: W, P: P };
+  return { o: o, W: W, P: P, gp: mk.gp, gs: mk.gs };
 }
 // one frame, any layer, cached; the key says everything it depends on
 function lgvGet(key, make) {
@@ -27627,23 +27627,41 @@ function lgvUpState(p, B) {
 }
 // what a frame's pose solved to: the muzzle and the head in sprite units; how far the hands were from their grips
 function lgvMeasure(r, fam, gun) {
+  lgGunSet(r.gp, r.gs); try { return lgvMeasure1(r, fam, gun); } finally { lgGunSet(null, null); }   // (this frame's guns and their sockets, then back)
+}
+function lgvMeasure1(r, fam, gun) {
   const W = r.W, P = r.P, o = r.o;
   const mi = fam === 'p' ? LGB.pistol : LGB.carbine, mo = lgSockFor(fam === 'p' ? 'pistol' : 'carbine', 'muz'), MW = W.subarray(mi * 16, mi * 16 + 16), mz = lgPt(MW, mo[0], mo[1], mo[2]);
   o.mx = mz[0] / LG_UNIT; o.my = -mz[1] / LG_UNIT;
   const h = LGB.head * 16; o.hx = W[h + 12] / LG_UNIT; o.hy = -W[h + 13] / LG_UNIT;
-  // learning: the support hand on the gun -- did it get there?
+  // learning: the support hand on the gun -- did it get there? (gun is 'm4a1:ready': each gun in each posture)
   if (gun && P.ik.handL && P.ik.handL.on) {
     const PM = W.subarray(LGB[P.ik.handL.on] * 16, LGB[P.ik.handL.on] * 16 + 16), S = lgSockFor(P.ik.handL.on, 'gripL'), Gm = lgMul(lgM4(), PM, S), hl = LGB.handL * 16;
     const miss = Math.hypot(W[hl + 12] - Gm[12], W[hl + 13] - Gm[13], W[hl + 14] - Gm[14]);
     LGV.miss[gun] = miss;
-    if (miss > 0.006 && (LGV.tries[gun] || 0) < 6) {
-      // bring that gun in toward the shoulder by most of the miss, and paint its frames again
-      const f = LGV.fix[gun] || (LGV.fix[gun] = [0, 0, 0]); f[0] -= miss * 0.8; f[2] -= miss * 0.25; LGV.tries[gun] = (LGV.tries[gun] || 0) + 1; LGV.learnt++;
-      for (const key of Array.from(LG.sprites.keys())) if (key.indexOf('|v2|up|') > 0 && key.indexOf('|' + gun) > 0) LG.sprites.delete(key);
+    const tries = LGV.tries[gun] || 0;
+    if (miss > 0.006 && tries < 5 && !LGV.stuck[gun]) {
+      if (!tries) LGV.first[gun] = miss;
+      const parts = gun.split(':'), drop = () => { for (const key of Array.from(LG.sprites.keys())) if (key.indexOf('|v2|up|') > 0 && key.indexOf('|' + parts[1] + fam + parts[0]) > 0) LG.sprites.delete(key); };
+      if (tries >= 2 && miss > LGV.first[gun] * 0.7) {
+        // it tried and the hand is no closer: that posture's miss is not about where the gun sits; put it back as it was
+        delete LGV.fix[gun]; LGV.stuck[gun] = 1; drop();
+      } else {
+        // bring that gun in toward the shoulder by most of the miss, and paint that posture again
+        const f = LGV.fix[gun] || (LGV.fix[gun] = [0, 0, 0]); f[0] -= miss * 0.8; f[2] -= miss * 0.25; LGV.tries[gun] = tries + 1; LGV.learnt++; drop();
+      }
+      lgvFixSave();
     }
   }
   return o;
 }
+// what it learnt about the grips is kept on the device (a new version of the gun models starts it over)
+const LGV_FIXV = 1;
+function lgvFixLoad() {
+  if (LGV.loaded) return; LGV.loaded = 1;
+  try { const s = typeof store !== 'undefined' ? store.get('zc_lgvFix', null) : null; if (s && s.v === LGV_FIXV) { Object.assign(LGV.fix, s.fix || {}); Object.assign(LGV.stuck, s.stuck || {}); Object.assign(LGV.tries, s.tries || {}); } } catch (x) { }
+}
+function lgvFixSave() { clearTimeout(LGV.saveT); LGV.saveT = setTimeout(() => { try { store.set('zc_lgvFix', { v: LGV_FIXV, fix: LGV.fix, stuck: LGV.stuck, tries: LGV.tries }); } catch (x) { } }, 2000); }
 // each walk measured once: how far a planted foot travels in a cycle (so the steps are paced and the feet do not slide)
 function lgvLearnStride(clip) {
   if (LGV.stride[clip] || !LG_ANIM_BY[clip]) return;
@@ -27659,14 +27677,16 @@ function lgvLearnStride(clip) {
 }
 function lgvMakeUp(lgId, mk, st, i, n, ctx0, px) {
   const ctx = Object.assign({}, ctx0), k = st === 'sprint' ? i / n : (i + 0.5) / n; ctx.t = st === 'relaxed' || st === 'ready' ? i / n * 4 : 0;
+  if (ctx.gun) ctx.fk = ctx.gun + ':' + st;
   const f = P => { (LGV_UP[st] || LGV_UP.relaxed)(P, k, ctx); P.mask = 1; };
   const r = lgvPaint(lgId, mk, f, P => P.pistol.at === 'holster' ? LGV_M.upperNoP : LGV_M.upper, LGV_BOX.up, px, null);
   if (!r) return null;
-  const o = lgvMeasure(r, ctx.fam, ctx.gun); o.look = ctx.look || 0; return o;
+  const o = lgvMeasure(r, ctx.fam, ctx.fk || ''); o.look = ctx.look || 0; return o;
 }
 /* ---------- drawing the survivor ---------- */
 function lgvDraw(p, ctx2) {
   if (!LGV.on || !LG_ANIM_BY.idle_ready || !LG_MAKERS.operator || typeof lgSockFor !== 'function') return null;
+  if (!LGV.loaded) lgvFixLoad();
   const lgId = p === G.p ? (SET.legend || 'operator') : (p.lg || 'operator'); if (lgId === 'none') return null;
   const B = lgvStep(p, lgvBody(p)), mk = lgvModelKey(p), px = SPR * PK * (LGV.pxMul || 1), aim = p.aim || 0, U = lgvUpState(p, B), fam = U.ctx.fam;
   const img = (s, b) => ctx2.drawImage(s.c, b[0], b[2], b[1] - b[0], b[3] - b[2]);
@@ -28672,6 +28692,7 @@ function mimRender(w, h, rt, st) {
   S.desat = freeze * 0.7; S.sat = 1 - freeze * 0.15;
   const accS = lgHex(LG_CLASS_BY[MIM.cls].col);
   S.items = [{ m: MIM.ground, W: MIM.setW, ground: true, acc: accS, glow: 1, noShadow: true, noRim: true }, { m: MIM.set, W: MIM.setW, acc: accS, glow: 1, noShadow: true, noRim: true }];
+  if (scene === 'studio' && MIM.actors[0] && MIM.actors[0].seat) { if (!MIM.chairW) { MIM.chairW = lgWorldNew(); for (let i = 0; i < LG_NB; i++) MIM.chairW.set(lgM4(), i * 16); } S.items.push({ m: lgModel('studioChair', 0, ''), W: MIM.chairW }); }
   for (const a of MIM.actors) { if (a.hidden || !a.m) continue; S.items.push({ m: a.m, W: a.W, acc: a.acc || lgHex(LG_CLASS_BY[a.cls] ? LG_CLASS_BY[a.cls].col : '#ff4b3e'), glow: a.P ? (a.P.glow == null ? 1 : Math.max(a.P.glow, scene === 'studio' ? 1 : 0)) : 1, hide: a.hide, rim: a.rimCol }); }
   const op = MIM.actors[0];
   S.shadow = { on: vq.shadow && scene !== 'hub', c: op && op.W ? [op.W[LGB.pelvis * 16 + 12], op.W[LGB.pelvis * 16 + 13], 0.8] : [0, 0, 0.8], r: scene === 'lineup' ? 4.2 : 2.6, size: mimLevel() >= 3 ? 2048 : 1024 };
@@ -28736,8 +28757,9 @@ function mimStudioCam(rt) {
 function mimStudioView(v) { const s = MIM.studio; s.held = true; s.from = s.cur ? Object.assign({}, s.cur) : { yaw: s.yaw, pitch: s.pitch, dist: s.dist }; s.tTilt = MIM.rt; s.view = v; s.auto = false; if (v === 'orbit') { s.yaw = s.from.yaw; s.pitch = s.from.pitch; s.dist = s.from.dist; s.from = null; } }
 function mimStudioDrag(dx, dy) { const s = MIM.studio; if (s.view !== 'orbit') { mimStudioView('orbit'); } s.yaw -= dx * 0.008; s.pitch = clamp(s.pitch + dy * 0.006, -0.15, 1.55); }
 function mimStudioZoom(d) { const s = MIM.studio; s.dist = clamp(s.dist * (1 + d * 0.001), 1.2, 6); if (s.view !== 'orbit') mimStudioView('orbit'); }
-function mimStudioPlay(id) { const a = MIM.actors[0]; if (!a || !a.player) return; lgPlay(a.player, id, { restart: true, fade: 0.2 }); a.player.ctx.inPlace = true; }
-function mimStudioClass(cls) { MIM.cls = cls; const a = MIM.actors[0]; if (!a) return; a.cls = cls; a.acc = lgHex(LG_CLASS_BY[cls].col); a.m = lgModel(a.model, a.lod, cls); }
+// a seated clip (the stoop's idles) plays in the studio on his chair, with his mask down and his whetstone (the idle kit)
+function mimStudioPlay(id) { const a = MIM.actors[0]; if (!a || !a.player) return; const seat = !!(LG_ANIM_BY[id] && LG_ANIM_BY[id].seat); if (seat !== !!a.seat) { a.seat = seat; a.m = lgModel(a.model, a.lod, a.cls + (seat ? '|idle' : '')); } lgPlay(a.player, id, { restart: true, fade: seat ? 0 : 0.2 }); a.player.ctx.inPlace = true; }
+function mimStudioClass(cls) { MIM.cls = cls; const a = MIM.actors[0]; if (!a) return; a.cls = cls; a.acc = lgHex(LG_CLASS_BY[cls].col); a.m = lgModel(a.model, a.lod, cls + (a.seat ? '|idle' : '')); }
 function mimHurt(e) {
   const now = performance.now(); coreHurt('MIMATIC', e); try { console.error(e); } catch (x) { }
   MIM.errT.push(now); while (MIM.errT.length && now - MIM.errT[0] > 10000) MIM.errT.shift();
@@ -28769,6 +28791,14 @@ function mimHurt(e) {
 const LGI = { scene: null };
 // the set's moving pieces (extra bones): the lamp on its cable and the can
 const LGI_LAMP = 52, LGI_CAN = 53;
+// his chair, in the root's space (the seated clips sit on it): the stoop's, and the studio's when a seated clip plays there
+function lgiChair(B) {
+  lgBox(B, -0.14, 0, 0.455, 0.22, 0.23, 0.02, 0.008);
+  for (const [x, y] of [[0.06, 0.2], [0.06, -0.2], [-0.33, 0.2], [-0.33, -0.2]]) lgBox(B, x, y, 0.22, 0.018, 0.018, 0.22, 0.004);
+  for (const y of [0.2, -0.2]) lgBox(B, -0.35, y, 0.72, 0.018, 0.018, 0.26, 0.004);
+  for (let i = 0; i < 3; i++) lgBox(B, -0.35, 0, 0.62 + i * 0.13, 0.012, 0.2, 0.03, 0.005);
+}
+LG_MAKERS.studioChair = function (B) { lgBone(B, 'root'); lgMat(B, lgMtl({ c: '#6b4f33', t: LT.twill, r: 0.8, w: 0.7, k: 0.5 })); lgiChair(B); };
 LG_MAKERS.stoop = function (B) {
   const hi = B.lod < 2, top = B.lod === 0;
   const M = {
@@ -28813,11 +28843,7 @@ LG_MAKERS.stoop = function (B) {
   // the lamp's bracket on the wall; the lamp itself hangs on its own bone (it swings)
   lgMat(B, M.steel); lgTube(B, [[-1.28, 0.1, 3.0], [-0.5, 0.1, 3.05], [0.3, 0.1, 3.0]], 0.018, { segs: 5 }); lgTube(B, [[-1.28, 0.1, 2.6], [-0.5, 0.1, 3.0]], 0.012, { segs: 4 });
   // his chair (wood, a slatted back), a crate beside it with a canteen and an oil can, the trash can, the hydrant
-  lgMat(B, M.wood);
-  lgBox(B, -0.14, 0, 0.455, 0.22, 0.23, 0.02, 0.008);
-  for (const [x, y] of [[0.06, 0.2], [0.06, -0.2], [-0.33, 0.2], [-0.33, -0.2]]) lgBox(B, x, y, 0.22, 0.018, 0.018, 0.22, 0.004);
-  for (const y of [0.2, -0.2]) lgBox(B, -0.35, y, 0.72, 0.018, 0.018, 0.26, 0.004);
-  for (let i = 0; i < 3; i++) lgBox(B, -0.35, 0, 0.62 + i * 0.13, 0.012, 0.2, 0.03, 0.005);
+  lgMat(B, M.wood); lgiChair(B);
   lgMat(B, M.woodDk); lgBox(B, 0.05, -0.62, 0.21, 0.2, 0.2, 0.2, 0.01); if (hi) { for (let i = 0; i < 3; i++) lgBox(B, 0.252, -0.62, 0.08 + i * 0.13, 0.002, 0.19, 0.012, 0); }
   lgMat(B, M.tin); lgBox(B, 0.08, -0.56, 0.5, 0.05, 0.07, 0.09, 0.02); lgMat(B, M.steel); lgLathe(B, [[0.0, 0.0], [0.04, 0.0], [0.04, 0.09], [0.015, 0.12], [0.008, 0.16], [0.0, 0.16]], { segs: 12, ox: 0.0, oy: -0.72 });
   lgMat(B, M.steel); lgLathe(B, [[0.0, 0.0], [0.27, 0.0], [0.29, 0.8], [0.3, 0.82], [0.0, 0.82]], { segs: 16, ox: 0.4, oy: 1.9 }); lgLathe(B, [[0.0, 0.82], [0.31, 0.82], [0.31, 0.86], [0.12, 0.9], [0.0, 0.9]], { segs: 16, ox: 0.4, oy: 1.9 });
@@ -29457,8 +29483,8 @@ function lgSelfTest() {
       for (const [hn, so] of [['handR', sR], ['handL', sL]]) { const Gm = lgMul(lgM4(), PM, so), h = LGB[hn] * 16, miss = Math.hypot(W[h + 12] - Gm[12], W[h + 13] - Gm[13], W[h + 14] - Gm[14]); n++; if (miss < 0.002) pass++; else why = why || 'a hand missed its grip on the ' + prop + ' by ' + (miss * 1000).toFixed(1) + ' mm'; }
     }
     n++; if (LG_ANIMS.filter(a => ['Actors', 'Cinematic', 'Idle', 'Arms'].indexOf(a.cat) < 0).length === 50) pass++; else why = why || 'the fifty are not all there';
-    // 1.9.993: the stoop's twenty-seven (the sharpening, the can, the twenty-five) and the ARMS moves
-    n++; if (LG_ANIMS.filter(a => a.cat === 'Idle').length === 27 && LG_ANIMS.filter(a => a.cat === 'Arms').length >= 12) pass++; else why = why || 'the idle or arms animations are not all there';
+    // 1.9.993: the stoop's seated idles (the sharpening, the can, and at least twenty-five more) and the ARMS moves
+    n++; if (LG_ANIMS.filter(a => a.cat === 'Idle').length >= 27 && LG_ANIMS.filter(a => a.cat === 'Arms').length >= 12) pass++; else why = why || 'the idle or arms animations are not all there';
     // the knife: in the reverse grip the blade leaves the little-finger side of the fist; in the forward grip the thumb side
     { lgPoseReset(P); lgBase(P, {}); P.knife.at = 'handL'; P.grip.L = 'knife'; lgHandTo(P, 'L', 'chest', [0.5, 0.3, 0.05], [0, 0, 0], [-0.3, 0.8, -0.4]); lgSolve(P, L, W, lgM4());
       const Hi = lgInv(lgM4(), W.subarray(LGB.handL * 16, LGB.handL * 16 + 16)), K = W.subarray(LGB.knife * 16, LGB.knife * 16 + 16), tip = lgPt(Hi, ...lgPt(K, 0.152, 0, 0));
@@ -29466,7 +29492,7 @@ function lgSelfTest() {
   } catch (e) { why = String(e && e.message || e); }
   return { ok: pass === n, n: n, pass: pass, why: why };
 }
-coreDefine({ name: 'LEGEND', kind: 'render', ver: 2, does: 'The legends: real 3D characters built from shapes on a 47-bone rig, with procedural textures, reach (IK), ninety animations and two renderers; in a run the survivor is three frames (legs, upper body and gun, head) that turn on their own with weight, each rebuilt gun modelled with its own grips, and it corrects its own grips and strides.',
+coreDefine({ name: 'LEGEND', kind: 'render', ver: 2, does: 'The legends: real 3D characters built from shapes on a 47-bone rig, with procedural textures, reach (IK), a hundred and seven animations and two renderers; in a run the survivor is three frames (legs, upper body and gun, head) that turn on their own with weight, each rebuilt gun modelled with its own grips, and it corrects its own grips and strides.',
   provides: ['characters', 'rig', 'animation', 'playerSprite'], needs: ['CORE'], covers: [], feats: { want: ['webgl'], without: 'characters are painted on the processor: the same meshes and animation, simpler shading' }, climb: true,
   state: () => (LGS.open ? 'on screen' : LG.sprites.size ? 'in the run' : 'ready'), level: () => (LGR.ok ? 'GPU' : 'processor') + ' · ' + LG.models.size + ' models · ' + LG.sprites.size + ' run frames',
   lv: () => lgLevel(), adaptGet: () => LG.adapt, loadNow: () => LG.sprites.size, loadName: 'frames kept',
@@ -29478,11 +29504,12 @@ coreDefine({ name: 'LEGEND', kind: 'render', ver: 2, does: 'The legends: real 3D
   reset: () => { LG.sprites.clear(); for (const m of LG.models.values()) { lgGLFree(m); m.cpu = null; } LG.models.clear(); LG.errT.length = 0; LG.offUntil = 0; },
   selfTest: () => lgSelfTest(),
   learned: () => { const o = learnOwn('LEGEND'), out = []; if (LG.spriteMade) out.push('A run frame of a legend takes about ' + (LG.spriteMs / LG.spriteMade).toFixed(1) + ' ms to paint here (' + LG.spriteMade + ' painted, kept for reuse).');
-    const fx = Object.keys(LGV.fix || {}); if (fx.length) out.push('It moved ' + fx.length + ' gun posture' + (fx.length > 1 ? 's' : '') + ' in after a hand missed its grip (' + fx.map(k => k + ' ' + Math.round(-LGV.fix[k][0] * 1000) + ' mm').join(', ') + ').');
-    const sk = Object.keys(LGV.stride || {}).filter(k => LGV.stride[k] > 0); if (sk.length) out.push('It measured how far a planted foot really travels in ' + sk.length + ' walks and paces the steps by that (the tactical walk: ' + (LGV.stride.walk_tac || 0).toFixed(2) + ' m a cycle).');
+    const fx = Object.keys(LGV.fix || {}); if (fx.length) out.push('It moved ' + fx.length + ' gun posture' + (fx.length > 1 ? 's' : '') + ' in after the support hand missed its grip, and checked again (' + fx.slice(0, 4).map(k => k.replace(':', ' ') + ' ' + Math.round(-LGV.fix[k][0] * 1000) + ' mm, now ' + Math.round((LGV.miss[k] || 0) * 1000) + ' mm off').join('; ') + (fx.length > 4 ? '; …' : '') + ').');
+    const st = Object.keys(LGV.stuck || {}); if (st.length) out.push('In ' + st.length + ' posture' + (st.length > 1 ? 's' : '') + ' moving the gun did not bring the hand closer, so it put them back and left them.');
+    const sk = Object.keys(LGV.stride || {}).filter(k => LGV.stride[k] > 0); if (sk.length) out.push('It measured how far a planted foot really travels in ' + sk.length + ' walk' + (sk.length > 1 ? 's' : '') + ' and paces the steps by that (' + sk.slice(0, 3).map(k => (LG_ANIM_BY[k] ? LG_ANIM_BY[k].name.toLowerCase() : k) + ' ' + LGV.stride[k].toFixed(2) + ' m').join(', ') + ' a cycle).');
     return out; },
   on: { run: () => { LG.spriteBudget = 0; }, lowMemory: () => { LG.sprites.clear(); } },
-  spec: { files: ['legend', 'legmodel', 'leggun', 'leganim', 'legrun'], parts: ['shape builder', 'procedural atlas (20 textures)', '47-bone rig', 'two-bone reach (legs first)', 'poses and blends', 'fifty animations', 'twenty-seven seated idles', 'thirteen arms moves', 'the Operator, his kit and his face', 'the exotech mask', 'ten gun models with their own grips', 'layered run frames', 'head-led turning', 'weight and recoil springs', 'corner lean', 'self-corrected grips and strides', 'GPU renderer', 'processor painter'], procs: ['gpu', 'cpu'],
+  spec: { files: ['legend', 'legmodel', 'leggun', 'leganim', 'legrun'], parts: ['shape builder', 'procedural atlas (20 textures)', '47-bone rig', 'two-bone reach (legs first)', 'poses and blends', 'fifty animations', 'thirty-two seated idles', 'thirteen arms moves', 'the Operator, his kit and his face', 'the exotech mask', 'ten gun models with their own grips', 'layered run frames', 'head-led turning', 'weight and recoil springs', 'corner lean', 'self-corrected grips and strides', 'GPU renderer', 'processor painter'], procs: ['gpu', 'cpu'],
     hard: 'keeps more run frames and paints them sharper', eco: 'keeps fewer run frames and paints them at a lower detail',
     apply: (k, proc) => { engFloor(LG, 'adapt', k); lgsProc(LG, proc); },
     stats: () => [['Renderer', LGR.ok ? 'GPU' : 'processor'], ['Models', LG.models.size], ['Run frames', LG.sprites.size], ['Textures', LG.atlas ? LG.atlas.T + ' px tiles' : 'not yet'], ['Animations', LG_ANIMS.filter(a => a.cat !== 'Actors' && a.cat !== 'Cinematic').length]] }
@@ -29529,7 +29556,7 @@ coreDefine({ name: 'VFXRAY', kind: 'render', ver: 2, does: 'The last pass: rain 
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[333,0,4,39334],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31092],"physics":[265,23,49,25142],"arms":[364,35,48,36738],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1132,118,170,127774],"legmodel":[428,23,91,51563],"leggun":[232,20,67,27735],"leganim":[447,21,53,56045],"legrun":[448,36,92,48080],"vfxray":[269,26,37,31771],"mimatic":[559,46,108,68304],"legidle":[329,17,63,43134],"legends":[328,33,46,38622],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[333,0,4,39334],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31092],"physics":[265,23,49,25142],"arms":[364,35,48,36738],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1132,118,170,127774],"legmodel":[428,23,91,51563],"leggun":[232,20,67,27735],"leganim":[447,21,53,56045],"legrun":[466,39,94,49543],"vfxray":[269,26,37,31771],"mimatic":[560,46,109,68872],"legidle":[332,18,64,43443],"legends":[329,33,46,39118],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };
