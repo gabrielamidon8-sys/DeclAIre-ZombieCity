@@ -393,6 +393,12 @@ function armsSelfTest() {
     n++; if (q.arm.mag[0] === 30) pass++; else why = why || 'an empty reload did not leave thirty';
     q.arm.st = 'sprint'; const fired = armsFire(q, null, 0);
     n++; if (!fired && q.arm.st === 'sprintOut') pass++; else why = why || 'it fired while sprinting';
+    q.arm.st = 'relaxed'; q.arm.t = 0; const early = armsFire(q, null, 0);
+    n++; if (!early && q.arm.st === 'raise') pass++; else why = why || 'it fired before the gun was up';
+    // each gun's round against the real one: muzzle energy (all the pellets for buckshot) within a quarter of the published figure
+    const REF = [['5.56', 1700], ['5.45', 1400], ['7.62×51', 3300], ['12 gauge', 2700], ['9×18', 310], ['9×19', 520], ['.45', 480]];
+    const off = ARMS_LIST.filter(w => { const A = w.arms, r = REF.find(x => A.cal.indexOf(x[0]) >= 0); if (!r) return true; const E = 0.5 * A.g / 1000 * A.v * A.v * (A.pellets || 1); return Math.abs(E / r[1] - 1) > 0.25; });
+    n++; if (!off.length) pass++; else why = why || 'a round is off its real energy: ' + off.map(w => w.arms.key).join(', ');
   } catch (e) { why = String(e && e.message || e); }
   ARMS.testing = false; ARMS.reloads = Math.max(0, ARMS.reloads - 2); ARMS.tac = Math.max(0, ARMS.tac - 1); ARMS.specials = Math.max(0, ARMS.specials - 1);
   return { ok: pass === n, n: n, pass: pass, why: why };
