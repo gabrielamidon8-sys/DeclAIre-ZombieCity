@@ -80,7 +80,7 @@ A free DeclAIre Studios account keeps your progress on every device. Make one on
 - Layered gun sounds for every weapon, with shell casings and echoes that change with the district
 - A light show that reacts to the radio or your own music (paused while 2.0 is built)
 - Settings with a simple Basic page and an Advanced page for graphics, sound (master, music, effects, gunfire, ambience and menu volume), gameplay, controls, accessibility and the system
-- Touch, keyboard and mouse, and controllers (Xbox, PlayStation, Switch and others), picked automatically from what you last used. Mouse aim with a crosshair, twin-stick aiming on a controller, R (X on a controller) to reload, X or the mouse wheel (B) to swap guns, Space (A) to roll and Shift (the left stick, or the left trigger) to sprint, optional aim assist or auto-aim, full key and button rebinding, controller rumble and menus you can drive with a controller
+- Touch, keyboard and mouse, and controllers (Xbox, PlayStation, Switch and others), picked automatically from what you last used. Mouse aim with a crosshair, twin-stick aiming on a controller, R to reload, X or the mouse wheel to swap guns, Space to roll and Shift to sprint (on a controller: X, B, A, and a click of the left stick or the left trigger), optional aim assist or auto-aim, full key and button rebinding, controller rumble and menus you can drive with a controller
 - Your name on the main menu, at the top left during a run and on the leaderboard, with the device each score was played on
 - Wi-Fi co-op for 2 to 4 players: a PC hosts, phones and other PCs on the same Wi-Fi join, with revives, shared cards and a shared A-10
 - Free accounts with encrypted cloud saves across devices, one global season board, and a name filter
