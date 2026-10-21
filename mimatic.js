@@ -374,7 +374,7 @@ function mimCanvas() { return MIM.mode === 'gl' ? LGR.cv : MIM.cv2; }
 // name: 'lineup' | 'alley' | 'studio' | 'hub'; o: { cls, onEnd, onCue, legend }
 function mimStart(name, o) {
   o = o || {}; mimSetup(); MIM.reduce = typeof RM !== 'undefined' && RM;
-  MIM.scene = name; MIM.rt = 0; MIM.st = 0; MIM.lastSt = 0; MIM.playing = true; MIM.noSync = false; MIM.clk = null; MIM.cls = o.cls || MIM.cls; MIM.onEnd = o.onEnd || null; MIM.onCue = o.onCue || null; MIM.cueI = 0; MIM.shot = -1; MIM.look = {};
+  MIM.scene = name; MIM.rt = 0; MIM.st = 0; MIM.lastSt = 0; MIM.playing = true; MIM.noSync = false; MIM.clk = null; MIM.wall0 = performance.now(); MIM.cls = o.cls || MIM.cls; MIM.onEnd = o.onEnd || null; MIM.onCue = o.onCue || null; MIM.cueI = 0; MIM.shot = -1; MIM.look = {};
   vfxReset();
   const q = MIMQ[mimLevel()];
   if (name === 'alley') {
@@ -471,10 +471,18 @@ function mimMuzzle(a) {
   MIM.flashUntil = MIM.rt + 0.06; MIM.flashP = p;
   if (MIM.scene === 'alley' && MIM.actors[1]) { const z = MIM.actors[1].W, h = LGB.head * 16; vfxMist([z[h + 12], z[h + 13], z[h + 14] + 0.08], d); }
 }
-function mimClock() { try { return typeof SFX !== 'undefined' && SFX.cineClock ? SFX.cineClock() : null; } catch (e) { return null; } }
+// the alley's clock: the score's when it is playing (so the hits land on the cut), otherwise the wall clock (muted, or
+// the audio not started yet): either way the film keeps real time on a slow device, skipping frames instead of slowing
+function mimClock() {
+  let c = null; try { c = typeof SFX !== 'undefined' && SFX.cineClock ? SFX.cineClock() : null; } catch (e) { c = null; }
+  const w = MIM.wall0 ? (performance.now() - MIM.wall0) / 1000 : null;
+  // the audio clock leads while it keeps time with the wall clock; one that stalls or lags (no output device, a busy
+  // audio thread) hands over to the wall clock, so the film never waits for it
+  return c != null && (w == null || Math.abs(c - w) < 0.35) ? c : w;
+}
 function mimSfx(name, rate, a) { try { if (typeof SFX !== 'undefined' && SFX.cine) SFX.cine(name, rate == null ? 1 : rate, a && a.model === 'zombie' ? 'z' : 'o'); } catch (e) { } }
 function mimCue(c, rt) {
-  if (c === 'score') mimSfx('score', 1);
+  if (c === 'score') { mimSfx('score', 1); MIM.wall0 = performance.now() - rt * 1000; }
   else if (c === 'lightning') { vfxLightning(rt, [48, 9, 44], [41, 3, 15]); mimSfx('lightning'); }
   else if (c === 'freeze') mimSfx('freeze');
   else if (c === 'slowmo') mimSfx('slowmo');

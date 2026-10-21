@@ -17,7 +17,7 @@ function legendFrame(rdt) {
   const cv = mimCanvas(); if (cv && cv.parentNode !== st) { st.textContent = ''; st.appendChild(cv); }
   if (cv) { cv.style.width = '100%'; cv.style.height = '100%'; }
   // real time, not the game's clamped step: on a slow device the cinematic skips frames to stay with its score
-  const now = performance.now(), real = LGS.lastT && now - LGS.lastT < 1000 ? Math.min(0.25, (now - LGS.lastT) / 1000) : Math.min(rdt, 0.05); LGS.lastT = now;
+  const now = performance.now(), real = LGS.lastT && now - LGS.lastT < 1000 ? Math.min(0.5, (now - LGS.lastT) / 1000) : Math.min(rdt, 0.05); LGS.lastT = now;
   mimFrame(real, w, h);
   // on his page the model stands in the part of the stage the side panel leaves free (to its left on a wide screen,
   // above it on a phone held upright): the lens is shifted there and pulled back to fit
@@ -61,7 +61,7 @@ function lgsGovern(rdt) {
 
 /* ---------- opening and closing ---------- */
 function openLegends() {
-  if (LGS.open) return; LGS.open = true; lgsBuild();
+  if (LGS.open) return; LGS.open = true; LGS.target = null; lgsBuild();
   $('legends').hidden = false; $('legends').classList.remove('watching');
   lgsView('hub', true);
   mimSetup(); lgsMount();
@@ -73,7 +73,7 @@ function openLegends() {
   coreEmit('legends', { open: true });
 }
 function closeLegends() {
-  if (!LGS.open) return; LGS.open = false; LGS.watching = false;
+  if (!LGS.open) return; LGS.open = false; LGS.watching = false; LGS.target = null;
   mimStop(); try { SFX.cineStop(); SFX.cineAmb(false); SFX.fm.hold(false); } catch (e) { }
   $('legends').hidden = true; $('lgTitle').hidden = true; refreshTitle(); lgsMenuTile();
   coreEmit('legends', { open: false });
@@ -88,14 +88,19 @@ function lgsView(v, quick) {
   if (!quick) setTimeout(() => { const f = focusables($('legends')); const p = v === 'hub' ? $('lgEnter') : v === 'select' ? document.querySelector('.lg-card') : $('lgDeploy'); if (p && DEV.kind === 'pad') focusEl(p); }, 30);
 }
 // hub > characters: the cinematic flow into the selection
+// a move between views: the screen knows where it is heading at once (so a second press during the fade goes one
+// step further instead of repeating this one), and switches behind the fade
+function lgsGo(v, dur, hold, fn) { LGS.target = v; lgsFade(dur, hold, () => { if (!LGS.open || LGS.target !== v) return; LGS.target = null; fn(); }); }
 function lgsEnterCharacters() {
+  if ((LGS.target || LGS.view) !== 'hub') return;
   try { SFX.cine('uiTransition'); } catch (e) { }
-  lgsFade(1.1, 120, () => { lgsView('select'); mimStart('lineup'); LGS.lineRt = 0; });
+  lgsGo('select', 1.1, 120, () => { lgsView('select'); mimStart('lineup'); LGS.lineRt = 0; });
 }
 function lgsBack() {
   if (!LGS.open) return false;
-  if (LGS.view === 'detail') { try { SFX.cine('uiBack'); } catch (e) { } lgsFade(0.7, 60, () => { lgsView('select'); mimStart('lineup'); MIM.rt = LGS.lineRt; }); return true; }
-  if (LGS.view === 'select') { try { SFX.cine('uiBack'); } catch (e) { } lgsStopWatch(true); lgsFade(0.7, 60, () => { lgsView('hub'); mimStart('hub'); }); return true; }
+  const v = LGS.target || LGS.view;
+  if (v === 'detail') { try { SFX.cine('uiBack'); } catch (e) { } lgsGo('select', 0.7, 60, () => { lgsView('select'); mimStart('lineup'); MIM.rt = LGS.lineRt; }); return true; }
+  if (v === 'select') { try { SFX.cine('uiBack'); } catch (e) { } lgsStopWatch(true); lgsGo('hub', 0.7, 60, () => { lgsView('hub'); mimStart('hub'); }); return true; }
   try { SFX.cine('uiBack'); } catch (e) { } closeLegends(); return true;
 }
 
@@ -230,7 +235,7 @@ function lgsCue(c) {
 function lgsOpenLegend(cls) {
   lgsStopWatch(true); LGS.cls = cls; LGS.anim = 'idle_ready'; LGS.speed = 1;
   try { SFX.cine('uiSelect'); } catch (e) { }
-  lgsFade(0.8, 80, () => { lgsView('detail'); mimStart('studio', { cls: cls, anim: 'mask_tap' }); setTimeout(() => { if (LGS.view === 'detail') lgsPlayAnim('idle_ready', true); }, 2600); lgsSetClass(cls, true); lgsAnimList(); lgsViews(); lgsDeployLabel(); });
+  lgsGo('detail', 0.8, 80, () => { lgsView('detail'); mimStart('studio', { cls: cls, anim: 'mask_tap' }); setTimeout(() => { if (LGS.view === 'detail') lgsPlayAnim('idle_ready', true); }, 2600); lgsSetClass(cls, true); lgsAnimList(); lgsViews(); lgsDeployLabel(); });
 }
 function lgsSetClass(cls, quiet) {
   LGS.cls = cls; mimStudioClass(cls);
