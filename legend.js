@@ -384,7 +384,7 @@ function lgPose() {
     pistol: { at: 'holster', M: null, slide: 0, mag: 'in', magM: null }, knife: { at: 'sheath', M: null }, carbine: { at: 'back', M: null, mag: 'in' },
     mask: 0, glow: 0, ev: null };
 }
-function lgPoseReset(P) { P.r.fill(0); P.t.fill(0); P.ik = {}; P.root[0] = P.root[1] = P.root[2] = P.root[3] = 0; P.grip.L = P.grip.R = 'relax'; P.pistol.at = 'holster'; P.pistol.M = null; P.pistol.slide = 0; P.pistol.mag = 'in'; P.pistol.magM = null; P.knife.at = 'sheath'; P.knife.M = null; P.carbine.at = 'back'; P.carbine.M = null; P.carbine.mag = 'in'; P.mask = 0; P.glow = 0; return P; }
+function lgPoseReset(P) { P.r.fill(0); P.t.fill(0); P.ik = {}; P.root[0] = P.root[1] = P.root[2] = P.root[3] = 0; P.grip.L = P.grip.R = 'relax'; P.pistol.at = 'holster'; P.pistol.M = null; P.pistol.slide = 0; P.pistol.mag = 'in'; P.pistol.magM = null; P.knife.at = 'sheath'; P.knife.M = null; P.carbine.at = 'back'; P.carbine.M = null; P.carbine.mag = 'in'; P.carbine.rock = 0; P.carbine.piv = null; P.mask = 0; P.glow = 0; return P; }
 // set a bone's angles (radians); mirrored: the same pose on the other side
 function lgJ(P, name, rx, ry, rz) { const i = LGB[name] * 3; P.r[i] = rx || 0; P.r[i + 1] = ry || 0; P.r[i + 2] = rz || 0; }
 function lgJadd(P, name, rx, ry, rz) { const i = LGB[name] * 3; P.r[i] += rx || 0; P.r[i + 1] += ry || 0; P.r[i + 2] += rz || 0; }
@@ -513,7 +513,7 @@ function lgGripApplyL(P, L) {
 function lgIKtarget(P, ch, W, rootM) {
   const ik = P.ik[ch];
   if (ik.on) {
-    const pi = LGB[ik.on], PM = W.subarray(pi * 16, pi * 16 + 16), S = ik.on === 'pistol' ? (ch === 'handR' ? LG_SOCK.gripR : LG_SOCK.gripL) : ik.on === 'carbine' ? (ch === 'handR' ? LG_SOCK.cgripR : LG_SOCK.cgripL) : LG_SOCK.kgrip;
+    const pi = LGB[ik.on], PM = W.subarray(pi * 16, pi * 16 + 16), S = ik.on === 'pistol' || ik.on === 'carbine' ? lgSockFor(ik.on, ch === 'handR' ? 'gripR' : 'gripL') : LG_SOCK.kgrip;   // (each gun its own grips: leggun.js)
     const M = lgMul(lgM4(), PM, S || lgM4());
     return { sp: 'world', p: [M[12], M[13], M[14]], M: M, pole: ik.pole ? lgDir(rootM, ik.pole[0], ik.pole[1], ik.pole[2]) : null };
   }
@@ -540,7 +540,7 @@ function lgPropsLate(P, L, W, rootM) {
   const aimed = (st) => { const sp = st.sp || 'chest', B = sp === 'root' ? rootM : bw(sp); return lgMul(lgM4(), B, st.M); };
   { const st = P.pistol, i = LGB.pistol; let M = null;
     if (st.at === 'aim' && st.M) M = aimed(st);
-    else if (st.at === 'handR' || st.at === 'handL') M = lgMul(tmp, bw(st.at), lgInv(lgM4(), st.at === 'handR' ? LG_SOCK.gripR : LG_SOCK.gripL));
+    else if (st.at === 'handR' || st.at === 'handL') M = lgMul(tmp, bw(st.at), lgInv(lgM4(), lgSockFor('pistol', st.at === 'handR' ? 'gripR' : 'gripL')));
     else if (st.at === 'holster' && LG_SOCK.holster) M = lgMul(tmp, bw('pelvis'), LG_SOCK.holster);
     else if (st.at === 'free' && st.W) M = st.W;
     lgPropSet(L, W, i, M || LG_HIDE, rootM);
@@ -549,7 +549,7 @@ function lgPropsLate(P, L, W, rootM) {
     const mi = LGB.mag; L.R.fill(0, mi * 9, mi * 9 + 9); L.R[mi * 9] = L.R[mi * 9 + 4] = L.R[mi * 9 + 8] = 1; L.T[mi * 3] = L.T[mi * 3 + 1] = L.T[mi * 3 + 2] = 0;
     if (typeof st.mag === 'number') L.T[mi * 3 + 2] = -0.09 * st.mag;
     lgWorldOne(W, L, mi, rootM);
-    lgMagState(st.mag, W, mi, 'handL', LG_SOCK.magHand);
+    lgMagState(st.mag, W, mi, 'handL', lgSockFor('pistol', 'magHand'));
     if (st.magM) { W.set(st.magM, mi * 16); }
   }
   // knife
@@ -561,11 +561,14 @@ function lgPropsLate(P, L, W, rootM) {
   // carbine
   { const st = P.carbine, i = LGB.carbine; let M = null;
     if (st.at === 'aim' && st.M) M = aimed(st);
-    else if (st.at === 'handR') M = lgMul(tmp, bw('handR'), lgInv(lgM4(), LG_SOCK.cgripR || lgM4()));
+    else if (st.at === 'handR') M = lgMul(tmp, bw('handR'), lgInv(lgM4(), lgSockFor('carbine', 'gripR') || lgM4()));
     else if (st.at === 'back' && LG_SOCK.back) M = lgMul(tmp, bw('chest'), LG_SOCK.back);
     lgPropSet(L, W, i, M || LG_HIDE, rootM);
-    const ci = LGB.cmag; L.R.fill(0, ci * 9, ci * 9 + 9); L.R[ci * 9] = L.R[ci * 9 + 4] = L.R[ci * 9 + 8] = 1; L.T[ci * 3] = L.T[ci * 3 + 1] = 0; L.T[ci * 3 + 2] = typeof st.mag === 'number' ? -0.12 * st.mag : 0; lgWorldOne(W, L, ci, rootM);
-    lgMagState(st.mag, W, ci, 'handL', LG_SOCK.cmagHand); }
+    const ci = LGB.cmag; L.R.fill(0, ci * 9, ci * 9 + 9); L.R[ci * 9] = L.R[ci * 9 + 4] = L.R[ci * 9 + 8] = 1; L.T[ci * 3] = L.T[ci * 3 + 1] = 0; L.T[ci * 3 + 2] = typeof st.mag === 'number' ? -0.12 * st.mag : 0;
+    // 1.9.993: a magazine that rocks in (the AK's hook and rock, the PP-19's hook and rotate): a pitch about its front hook
+    if (st.rock) { const q = ci * 9, px = st.piv ? st.piv[0] : 0.1, pz = st.piv ? st.piv[1] : -0.045; lgR9(L.R, q, 0, st.rock, 0); const R = L.R; L.T[ci * 3] += px - (R[q] * px + R[q + 6] * pz); L.T[ci * 3 + 2] += pz - (R[q + 2] * px + R[q + 8] * pz); }
+    lgWorldOne(W, L, ci, rootM);
+    lgMagState(st.mag, W, ci, 'handL', lgSockFor('carbine', 'magHand')); }
 }
 // a magazine that is not in the gun: falling (with a tumble, stopping on the ground), in the support hand, or gone
 function lgMagState(m, W, i, hand, sock) {
@@ -1159,6 +1162,7 @@ const LG_WARM_CLIPS = [['idle_ready', 12], ['walk_tac', 16], ['backpedal', 16], 
 function legendIdleWarm() {
   if (SET.legend === 'none' || !LG_ANIM_BY.idle_ready || !LG.atlas || !LG.atlas.done) return;
   const now = performance.now(); if (now - (LG.warmT || 0) < 140 || (PERF.fps && PERF.fps < 40)) return; LG.warmT = now;
+  if (typeof lgvWarm === 'function' && typeof ARMS_ON !== 'undefined' && ARMS_ON) { try { if (lgvWarm(1)) return; } catch (e) { lgHurt(e); } }   // LEGEND v2's frames first
   const lgId = SET.legend || 'operator', cls = SET.legendClass || 'attack', px = SPR * PK, w = WEAPONS[loadoutId()] || WEAPONS[0] || {}, fk = (w.F && w.F.key) || 'pistol', wcs = [lgRunClass(fk)];
   if (wcs[0] !== 'p') wcs.push('p');
   for (const wc of wcs) for (const [clip, n] of LG_WARM_CLIPS) {
@@ -1177,6 +1181,7 @@ function legendWarmJobs() {
   jobs.push(() => { if (!LG.atlas || !LG.atlas.done) { const at = lgAtlasNew(128); while (!lgAtlasStep(at)) { } LG.atlas = at; LG.atlasT = 128; } });
   const warm = (clip, n, from, to) => () => { try { const a = LG_ANIM_BY[clip], lgId = SET.legend || 'operator', cls = SET.legendClass || 'attack', px = SPR * PK, w = (G.p && G.p.weapon) || WEAPONS[0] || {}, fk = (w.F && w.F.key) || 'pistol', wc = lgRunClass(fk), gl = GUN_LEN[fk] || 16;
     for (let ph = from; ph < to; ph++) { const k = lgSprKey(lgId, cls, clip, ph, wc, gl, px); if (LG.sprites.has(k)) continue; const s = lgSpriteMake(lgId, cls, a, ph / n * a.dur, wc, gl, px); if (s) LG.sprites.set(k, s); } } catch (e) { lgHurt(e); } };
+  if (typeof lgvWarm === 'function' && typeof ARMS_ON !== 'undefined' && ARMS_ON) { for (let i = 0; i < 6; i++) jobs.push(() => { try { lgvWarm(7); } catch (e) { lgHurt(e); } }); return jobs; }
   jobs.push(warm('idle_ready', 12, 0, 12)); jobs.push(warm('walk_tac', 16, 0, 8)); jobs.push(warm('walk_tac', 16, 8, 16));
   return jobs;
 }
@@ -1200,7 +1205,7 @@ function lgSpriteMake(lgId, cls, a, t, wc, gl, px) {
   lg2D(g, m, W, lgMul(lgM4(), VP, view), S, S, L, { grow: 0.5 * ss, hide: LG_SPR_HIDE(wc) });
   const out = c.getContext('2d'); out.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in out) out.imageSmoothingQuality = 'high'; out.drawImage(tc, 0, 0, S, S, 0, 0, size, size);
   // where the muzzle ended up (sprite units), so the flash and the smoke come out of the real barrel
-  const mi = wc === 'p' ? LGB.pistol : LGB.carbine, MW = W.subarray(mi * 16, mi * 16 + 16), mo = wc === 'p' ? LG_SOCK.muzP : LG_SOCK.muzC, mz = lgPt(MW, mo[0], mo[1], mo[2]);
+  const mi = wc === 'p' ? LGB.pistol : LGB.carbine, MW = W.subarray(mi * 16, mi * 16 + 16), mo = lgSockFor(wc === 'p' ? 'pistol' : 'carbine', 'muz'), mz = lgPt(MW, mo[0], mo[1], mo[2]);
   const dt = performance.now() - t0; LG.spriteMs += dt; LG.spriteMade++; coreCost('LEGEND', dt);
   return { c: c, half: half, mx: mz[0] / LG_UNIT, my: -mz[1] / LG_UNIT };
 }
@@ -1212,6 +1217,8 @@ function legendDrawPlayer(p, ctx2, fk, gl) {
   if (LG.offUntil && performance.now() < LG.offUntil) return null;
   // a fresh budget each frame: two new frames painted at most (one when the engine is trimmed)
   if (LG.budT !== G.time) { LG.budT = G.time; LG.spriteBudget = LG.adapt < 0 ? 1 : 2; if (typeof lgLevel === 'function') lgLevel(); }
+  // 1.9.993: with the rebuilt guns, LEGEND v2 draws him in three parts that turn on their own (legrun.js)
+  if (p.weapon && p.weapon.arms && typeof lgvDraw === 'function') { try { const r = lgvDraw(p, ctx2); if (r) { r.rot = (p.lgAim || p.aim || 0) - (p.aim || 0); r.v2 = true; return r; } } catch (e) { lgHurt(e); } }
   let s = null; try { s = lgSpriteFor(p); } catch (e) { lgHurt(e); return null; }
   if (!s) return null;
   ctx2.drawImage(s.c, -s.half, -s.half, s.half * 2, s.half * 2);

@@ -2103,14 +2103,14 @@ function drawPlayer(p) {
   // the survivor is one textured sprite per weapon and walking pose (made once by the texture engine), turned to the aim
   const fk = (p.weapon && p.weapon.F && p.weapon.F.key) || 'pistol', gl = GUN_LEN[fk] || 20;
   // recoil: the gun (and the shoulders behind it) kick back with each shot and settle
-  if (p.kick > 0.01) { ctx.translate(-p.kick * 3.2, 0); ctx.rotate(p.kick * 0.035 * ((p.shots & 1) ? 1 : -1)); }
+  if (p.kick > 0.01 && !(p.weapon && p.weapon.arms)) { ctx.translate(-p.kick * 3.2, 0); ctx.rotate(p.kick * 0.035 * ((p.shots & 1) ? 1 : -1)); }   // (LEGEND v2 kicks the upper body itself)
   // 1.9.992: the survivor is the chosen legend (a frame of his 3D rig, seen from above, doing what the player does);
   // the old textured survivor is the fallback
   const LS = legendDrawPlayer(p, ctx, fk, gl);
   if (!LS) { const PS = texelPlayer(p); ctx.drawImage(PS.c, -PS.half, -PS.half, PS.half * 2, PS.half * 2); }
   // the light that falls on the survivor: lit toward the lamp (or the sun), shaded away from it, a rim of its colour
   if (typeof lookShade === 'function' && typeof aLight === 'function' && LUX.live && Q.lod < 3) { const L = aLight({ x: p.x, y: p.y, ang: p.aim }); lookShade(ctx, L, 14, 15, 1); }
-  if (typeof muzzleDraw === 'function') { try { if (LS) { ctx.save(); ctx.translate(LS.mx - 8 - gl, LS.my); } muzzleDraw(ctx, p, fk, gl, 1); if (LS) ctx.restore(); } catch (e) { muzzleHurt(e); } }
+  if (typeof muzzleDraw === 'function') { try { if (LS) { ctx.save(); if (LS.v2) { ctx.translate(LS.mx, LS.my); ctx.rotate(LS.rot || 0); ctx.translate(-8 - gl, 0); } else ctx.translate(LS.mx - 8 - gl, LS.my); } muzzleDraw(ctx, p, fk, gl, 1); if (LS) ctx.restore(); } catch (e) { muzzleHurt(e); } }
   else if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M && p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
   if (p.frozenT > 0) { ctx.fillStyle = 'rgba(200,240,255,0.55)'; ctx.fillRect(-15, -15, 30, 30); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(-15, -15, 30, 30); }
   if (p.rootT > 0) { ctx.strokeStyle = '#4d5e22'; ctx.lineWidth = 3; for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + 0.4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 18, Math.sin(a) * 18); ctx.quadraticCurveTo(Math.cos(a + 0.6) * 8, Math.sin(a + 0.6) * 8, Math.cos(a + 1.2) * 14, Math.sin(a + 1.2) * 14); ctx.stroke(); } }

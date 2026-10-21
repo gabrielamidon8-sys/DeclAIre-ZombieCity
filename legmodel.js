@@ -156,10 +156,12 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
 
 /* ---------- the Operator ---------- */
 LG_MAKERS.operator = function (B, cls) {
-  const K = lgOpKit(cls);
+  // cls may carry a loadout: "class|primary|secondary" (1.9.993: each rebuilt gun has its own model, leggun.js)
+  const parts = String(cls || 'attack').split('|'), K = lgOpKit(parts[0]);
   lgOpPelvis(B, K); lgOpSpine(B, K); lgOpChest(B, K); lgOpHead(B, K); lgOpHelmet(B, K); lgOpMask(B, K);
   for (const s of ['L', 'R']) { lgOpArm(B, K, s); lgOpHand(B, K, s); lgOpLeg(B, K, s); }
-  lgOpPistol(B, K); lgOpKnife(B, K); lgOpCarbine(B, K);
+  if (parts.length > 1 && typeof lgOpGuns === 'function') lgOpGuns(B, K, parts[1], parts[2]); else { lgOpPistol(B, K); lgOpCarbine(B, K); }
+  lgOpKnife(B, K);
 };
 function lgOpPelvis(B, K) {
   const M = K.M, hi = B.lod < 2;
