@@ -107,14 +107,14 @@ function lgqClip(clip, o) {
   let pen = 0, pair = null; for (let i = 0; i < frames.length; i += 2) { const c = lgqCollide(frames[i]); if (c.pen > pen) { pen = c.pen; pair = c.pair; } }
   return { pen: pen, pair: pair, feet: lgqFeet(frames, fps) };
 }
-// breathing: the chest's rise and fall in an idle, counted as breaths a minute (zero crossings of its height's swing)
+// breathing: the chest's rise and fall in an idle, as breaths a minute: the strongest rhythm of the chest's pitch between
+// 8 and 30 a minute (its spectrum over the clip)
 function lgqBreaths(clipId, secs) {
-  const c = LG_ANIM_BY[clipId]; if (!c) return 0; const fps = 30, n = Math.round((secs || 12) * fps), z = [];
-  for (let i = 0; i < n; i++) { const P = lgPose(); lgEvalClip(c, i / fps, P, { inPlace: true }); const W = lgmSolve(P); z.push(lgaP(W, 'neck')[2]); }
-  // the slow part of the motion (a moving average over 1 s removes the faster gestures' share; the long trend is taken out)
-  const avg = (a, w) => a.map((_, i) => { let s = 0, k = 0; for (let j = Math.max(0, i - w); j <= Math.min(a.length - 1, i + w); j++) { s += a[j]; k++; } return s / k; });
-  const slow = avg(z, 4), trend = avg(z, 45), d = slow.map((v, i) => v - trend[i]); let cross = 0; for (let i = 1; i < d.length; i++) if (d[i - 1] < 0 && d[i] >= 0) cross++;
-  return cross / (n / fps) * 60;
+  const c = LG_ANIM_BY[clipId]; if (!c) return 0; const fps = 30, n = Math.round((secs || 16) * fps), x = [];
+  for (let i = 0; i < n; i++) { const P = lgPose(); lgEvalClip(c, i / fps, P, { inPlace: true }); x.push(P.r[LGB.chest * 3 + 1]); }
+  const m = x.reduce((a, b) => a + b, 0) / n; let best = 0, bf = 0;
+  for (let bpm = 8; bpm <= 30; bpm += 0.25) { const f = bpm / 60; let re = 0, im = 0; for (let i = 0; i < n; i++) { re += (x[i] - m) * Math.cos(TAU * f * i / fps); im += (x[i] - m) * Math.sin(TAU * f * i / fps); } const a = Math.hypot(re, im); if (a > best) { best = a; bf = bpm; } }
+  return bf;
 }
 /* ---------- Laban's efforts ---------- */
 // time: +1 sudden .. -1 sustained; space: +1 direct .. -1 indirect; weight: +1 strong .. -1 light; flow: +1 free .. -1 bound

@@ -33,7 +33,9 @@ function lgaJoints(W) {
     // and the arm's range goes with it: scapulohumeral rhythm)
     const d = curV3.norm(lgaIn(W, 'clav' + s, lgaDown(W, 'arm' + s))), dyo = d[1] * out;
     J['shoulderElev' + s] = lgaDeg(Math.acos(clamp(-d[2], -1, 1)));
-    J['shoulderExt' + s] = d[0] < 0 && d[2] < 0 ? lgaDeg(Math.atan2(-d[0], -d[2])) : 0;   // (behind and above the shoulder is elevation, not extension)
+    J['shoulderExt' + s] = d[0] < 0 && d[2] < 0 && dyo <= 0.6 ? lgaDeg(Math.atan2(-d[0], -d[2])) : 0;   // (behind and above the shoulder is elevation, not extension)
+    // (an arm raised out to the side goes back by horizontal extension instead, to about 45 degrees behind the shoulders' line)
+    J['shoulderHExt' + s] = d[0] < 0 && dyo > 0.6 ? lgaDeg(Math.atan2(-d[0], dyo)) : 0;
     J['shoulderCross' + s] = dyo < 0 ? lgaDeg(Math.atan2(-dyo, Math.hypot(d[0], d[2]))) : 0;
     // elbow: the forearm in the upper arm's frame (a hinge; flexion forward of the arm's -z)
     const f = curV3.norm(lgaIn(W, 'arm' + s, lgaDown(W, 'fore' + s)));
@@ -83,7 +85,7 @@ function lgaJoints(W) {
 // [min, max] degrees for each measured angle (active range, with the passive end where a body's weight can take a joint
 // further: a knee in a kneel, a hip in a deep squat). Sources: AAOS / Norkin and White clinical tables (see the course).
 const LGA_ROM = {
-  shoulderElev: [0, 180], shoulderExt: [0, 60], shoulderCross: [0, 55],
+  shoulderElev: [0, 180], shoulderExt: [0, 60], shoulderHExt: [0, 45], shoulderCross: [0, 55],
   elbowFlex: [-5, 150], elbowSide: [0, 8], forearmRot: [-90, 90],
   wristFlex: [-70, 80], wristDev: [-30, 20],
   MCP: [-30, 90], PIP: [-2, 110], DIP: [-5, 90], thumbMCP: [0, 60], thumbIP: [0, 80],
@@ -232,7 +234,7 @@ function lgaArmSearch(W, L, ia, ib, ic, T, ps, rootM, free) {
     let xf = curV3.sub(p, curV3.mul(f, curV3.dot(p, f))); xf = curV3.mul(curV3.norm(xf), -1);
     let w = curV3.sub(hx, curV3.mul(f, curV3.dot(hx, f))); const wl = curV3.len(w); w = wl > 1e-5 ? curV3.mul(w, 1 / wl) : xf;
     const pro = Math.atan2(curV3.dot(curV3.cross(xf, w), nf), curV3.dot(xf, w)) * CUR_DEG * ps;
-    const du = [curV3.dot(u, cx), curV3.dot(u, cy), curV3.dot(u, cz)], ext = du[0] < 0 && du[2] < 0 ? Math.atan2(-du[0], -du[2]) * CUR_DEG : 0, dyo = du[1] * out, cross = dyo < 0 ? Math.atan2(-dyo, Math.hypot(du[0], du[2])) * CUR_DEG : 0;
+    const du = [curV3.dot(u, cx), curV3.dot(u, cy), curV3.dot(u, cz)], dyo = du[1] * out, ext = du[0] < 0 && du[2] < 0 && dyo <= 0.6 ? Math.atan2(-du[0], -du[2]) * CUR_DEG : du[0] < 0 && dyo > 0.6 ? Math.atan2(-du[0], dyo) * CUR_DEG * 60 / 45 : 0, cross = dyo < 0 ? Math.atan2(-dyo, Math.hypot(du[0], du[2])) * CUR_DEG : 0;
     // (a free hand's wrist is turned back into range afterwards, so for it the arm only has to suit the shoulder)
     const wex = lgaExc(flex, LGA_WR.flex[0], LGA_WR.flex[1]) + lgaExc(dev, LGA_WR.dev[0], LGA_WR.dev[1]) + lgaExc(pro, LGA_WR.pro[0], LGA_WR.pro[1]), sex = lgaExc(ext, 0, 60) + lgaExc(cross, 0, 55);
     const exc = (free ? wex * 0.15 : wex) + sex * 1.5;

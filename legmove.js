@@ -111,7 +111,7 @@ function lgmReach(o) {
   const D = curV3.len(curV3.sub(p1, p0)), w = lgmWidth(key, gr.type), MT = (o.mt || lgmFitts(D, w)) * E.mtK, mga = lgmMGA(w), kOpen = lgmOpenFor(gr.g, mga, ps), BELL = E.bell;
   // the hand comes in along the direction the palm faces at the end (the last few centimetres straight onto the thing)
   const palmN = [H1[4] * ps, H1[5] * ps, H1[6] * ps], ctrl = curV3.sub(p1, curV3.mul(palmN, Math.min(0.14, D * 0.45))); ctrl[2] += 0.04;
-  { const dir = curV3.norm(curV3.sub(p1, p0)), side = curV3.norm(curV3.cross(dir, [0, 0, 1])); for (let i = 0; i < 3; i++) ctrl[i] += side[i] * E.lat * ps * -1; }
+  { const mid = curV3.lerp(p0, p1, 0.5), bow = curV3.sub(ctrl, mid), dir = curV3.norm(curV3.sub(p1, p0)), perp = curV3.norm(curV3.sub(bow, curV3.mul(dir, curV3.dot(bow, dir)))); for (let i = 0; i < 3; i++) ctrl[i] += perp[i] * E.lat; }   // (an indirect effort bows the path further the way it already bends)
   const arc = lgmArc(p0, ctrl, p1);
   const tEye = 0, tHand = 0.15, tTouch = tHand + MT, tSecure = tTouch + 0.12 * E.secureK, liftT = o.lift ? 0.55 + 0.4 * Math.min(1, ob.kg / 3) : 0, tLift = tSecure + 0.08, tUp = tLift + liftT;
   const carry = o.carry || null, carryT = carry ? 0.7 : 0, tCarry = tUp + carryT, dur = (o.hold || 0.5) + (carry ? tCarry : tUp);
@@ -164,11 +164,11 @@ function lgmLiftBox(o) {
   const need = (() => {
     let squat = 0.3, lean = 0.35; const HR = lgmGraspM(OW0, gR), HL = lgmGraspM(OW0, gL);
     for (let it = 0; it < 14; it++) {
-      const P = lgPose(); lgPoseReset(P); P.root = root.slice(); lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgStance(P, 0.16, 0.0, 0.25);
-      lgJadd(P, 'pelvis', 0, lean * 0.7, 0); lgJadd(P, 'spine', 0, lean * 0.18, 0); lgJadd(P, 'chest', 0, lean * 0.12, 0);
+      const P = lgPose(); lgPoseReset(P); P.root = root.slice(); lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgStance(P, 0.21, 0.0, 0.5);
+      lgJadd(P, 'pelvis', 0, lean * 0.5, 0); lgJadd(P, 'spine', 0, lean * 0.3, 0); lgJadd(P, 'chest', 0, lean * 0.2, 0);
       const W = lgmSolve(P), dR = curV3.len(curV3.sub([HR[12], HR[13], HR[14]], lgaP(W, 'armR'))), dL = curV3.len(curV3.sub([HL[12], HL[13], HL[14]], lgaP(W, 'armL'))), d = Math.max(dR, dL);
-      if (d < 0.535) break; if (squat < 0.46) squat += Math.min(0.06, (d - 0.52) * 0.5); else lean += Math.min(0.1, (d - 0.52) * 1.2);
-      if (lean > 1.1) break;
+      if (d < 0.535) break; if (squat < 0.42) squat += Math.min(0.06, (d - 0.52) * 0.5); else lean += Math.min(0.1, (d - 0.52) * 1.2);
+      if (lean > 1.45) break;
     }
     return { squat: squat, lean: lean };
   })();
@@ -179,11 +179,11 @@ function lgmLiftBox(o) {
     // the box: on the floor, then rising to the height of the hips, close to the body
     const OW = OW0.slice(); OW[12] = at0[0] + (0.27 - at0[0]) * ku; OW[14] = at0[2] + (upZ - 0.42 - at0[2]) * ku;
     const squat = need.squat * kd * (1 - ku), lean = need.lean * kd * (1 - ku);
-    lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgStance(P, 0.16, 0.0, 0.25);
-    lgJadd(P, 'pelvis', 0, lean * 0.7, 0); lgJadd(P, 'spine', 0, lean * 0.18, 0); lgJadd(P, 'chest', 0, lean * 0.12, 0); lgJadd(P, 'neck', 0, -lean * 0.5, 0);
+    lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgStance(P, 0.21, 0.0, 0.5);
+    lgJadd(P, 'pelvis', 0, lean * 0.5, 0); lgJadd(P, 'spine', 0, lean * 0.3, 0); lgJadd(P, 'chest', 0, lean * 0.2, 0); lgJadd(P, 'neck', 0, -lean * 0.5, 0);
     const HR = lgmGraspM(OW, gR), HL = lgmGraspM(OW, gL), R = lgRootM(P);
     // before the grip the hands come down toward the box from the sides
-    const toward = (H, side) => { if (t >= tDown) return H; const H0 = lgmRestHand(root, side), k = lgmS(LGM_BELL, clamp((t - 0.15) / (tDown - 0.15), 0, 1)), M = lgmTurn(H0, H, k), p = curV3.lerp([H0[12], H0[13], H0[14]], [H[12], H[13], H[14]], k); M[12] = p[0]; M[13] = p[1]; M[14] = p[2]; return M; };
+    const toward = (H, side) => { if (t >= tDown) return H; const H0 = lgmRestHand(root, side), k = lgmS(LGM_BELL, clamp((t - 0.15) / (tDown - 0.15), 0, 1)), M = lgmTurn(H0, H, k), a = [H0[12], H0[13], H0[14]], b = [H[12], H[13], H[14]], c = [b[0] + 0.12, b[1], (a[2] + b[2]) / 2 + 0.12], p = lgmBez(a, c, b, k); M[12] = p[0]; M[13] = p[1]; M[14] = p[2]; return M; };   // (the hands come down in front of the knees, not through them)
     const MR = toward(HR, 'R'), ML = toward(HL, 'L');
     P.ik.handR = { sp: 'world', p: [MR[12], MR[13], MR[14]], M: MR, pole: lgDir(R, -0.3, -0.9, -0.3) }; P.ik.handL = { sp: 'world', p: [ML[12], ML[13], ML[14]], M: ML, pole: lgDir(R, -0.3, 0.9, -0.3) };
     P.grip.R = t < tDown ? LGM_OPEN : gR.g; P.grip.L = t < tDown ? LGM_OPEN : gL.g;
@@ -276,7 +276,7 @@ function lgmThrow(o) {
     lgJadd(P, 'spine', 0, a.tilt * 0.35, a.trunk * 0.5); lgJadd(P, 'chest', -0.12 * lgSS(0.3, T.fc, t), a.tilt * 0.3, a.trunk * 0.5);
     lgJadd(P, 'neck', 0, -a.tilt * 0.4, -(a.pelvis + a.trunk) * 0.55);
     // the throwing arm (forward kinematics: abduction, horizontal extension, external turn, elbow) and the glove arm
-    lgArm(P, 'R', a.ext * 0.9, a.abd, a.er, a.elbow, a.wrist, 0);
+    lgArm(P, 'R', a.ext * 0.9, a.abd, a.er, a.elbow, 0, -a.wrist);   // (the wrist laid back while the arm cocks, flicked forward at the release)
     lgArm(P, 'L', -1.2 * lgSS(0.3, T.fc, t) + 1.4 * lgSS(T.fc, T.rel + 0.2, t), 0.5 * lgSS(0.3, T.fc, t), 0, 1.2 - 0.6 * lgSS(T.fc, T.rel, t), 0, 0);
     P.grip.R = t < relT ? gr.g : lgmMix(gr.g, LGM_OPEN, lgSS(relT, relT + 0.06, t)); P.grip.L = 'fist';
     if (W0) lgmLook(P, W0, [root[0] + 18, root[1], 1.6], 1);
