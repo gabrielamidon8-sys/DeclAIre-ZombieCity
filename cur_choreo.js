@@ -74,7 +74,7 @@ curLevel('CHOREO', {
   can: ['Staged hits that read as contact from the camera while the gap stays', 'Strikes that show across the frame', 'Coverage where each hit and its reaction share a shot'],
   exam: X => {
     const F = choAlleyFight(); choPerf(F); let read = 0, n = 0, show = 1, frame = 0;
-    for (const e of F.ex) { const m = CHO_MOVES[e.move]; if (e.def || !['strike', 'kick'].includes(m.kind)) continue; const r = choReads(F, e); n++; if (r.gap2 < (m.kind === 'kick' ? 0.052 : 0.035) && r.gap3 > 0.06) read++;   // (a foot is bigger than a fist: 5 cm on the picture still reads as contact) show = Math.min(show, r.show); if (r.inFrame) frame++; }
+    for (const e of F.ex) { const m = CHO_MOVES[e.move]; if (e.def || !['strike', 'kick'].includes(m.kind)) continue; const r = choReads(F, e); n++; if (r.gap2 < (m.kind === 'kick' ? 0.052 : 0.035) && r.gap3 > 0.06) read++; show = Math.min(show, r.show); if (r.inFrame) frame++; }
     X.ok('staged hits that read as contact on camera with the gap kept', read === n, read + ' of ' + n, 'all');
     X.within('the striking limb shown across the frame (fraction of its length, the least)', show, 0.6, 1);
     X.ok('the blow and its target in frame', frame === n, frame + ' of ' + n, 'all');
