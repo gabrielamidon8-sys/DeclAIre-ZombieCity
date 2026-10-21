@@ -152,6 +152,27 @@
       case 'uiTransition': o = cOut(0.45, 0, 0.5); noise(t, 0.6, 0.25, 'bandpass', 400, 1.2, 3600, o); osc('sine', 90, 35, t + 0.45, 0.8, 0.5, o); noise(t + 0.45, 0.05, 0.3, 'lowpass', 1200, 0.8, null, o); break;
       case 'uiDeploy': o = cOut(0.45, 0, 0.35); osc('sine', 110, 45, t, 0.5, 0.6, o); noise(t, 0.025, 0.5, 'bandpass', 2400, 5, null, o); osc('sine', 880, 1760, t + 0.05, 0.5, 0.05, o); bell(t + 0.08, 1318.5, 0.05, 1.4, o); break;
       case 'uiTab': o = cOut(0.15, 0, 0.05); noise(t, 0.015, 0.3, 'bandpass', 3000, 5, null, o); break;
+      // 1.9.993: the stoop. A stroke of steel on a whetstone is a rising rasp with a thin ring at its end; a kicked can is
+      // a hollow tin knock with a ring of its own, then rattling bounces and a tinny roll; a wooden chair scrapes and creaks
+      case 'whet': o = cOut(0.28, -0.1, 0.12); noise(t, R(0.42), 0.22, 'bandpass', F(2600), 3, F(4200), o); noise(t + R(0.05), R(0.34), 0.08, 'highpass', F(6000), 0.7, F(9000), o); osc('sine', F(3900), F(4100), t + R(0.36), R(0.25), 0.012, o, 0.003); break;
+      case 'canKick': o = cOut(0.5, (Math.random() - 0.5) * 1.4, 0.35); osc('triangle', 520, 300, t, 0.08, 0.3, o, 0.001); noise(t, 0.05, 0.45, 'bandpass', 1900, 2, null, o); [[1, 0.2], [2.4, 0.12], [3.9, 0.06]].forEach(function (p) { osc('sine', 760 * p[0], 740 * p[0], t + 0.004, 0.5 / p[0], p[1], o, 0.001); }); break;
+      case 'canBounce': o = cOut(0.36, (Math.random() - 0.5) * 0.8, 0.3); noise(t, 0.03, 0.4, 'bandpass', F(2200), 2.5, null, o); [[1, 0.12], [2.3, 0.07]].forEach(function (p) { osc('sine', F(820) * p[0], F(800) * p[0], t + 0.003, 0.25 / p[0], p[1], o, 0.001); }); break;
+      case 'canRoll': o = cOut(0.3, 0.2, 0.25); for (i = 0; i < 9; i++) noise(t + i * 0.09 + Math.random() * 0.03, 0.03, 0.18 * (1 - i / 10), 'bandpass', 1700 + Math.random() * 600, 3, null, o); break;
+      case 'chairScrape': o = cOut(0.36, 0, 0.12); noise(t, 0.22, 0.3, 'bandpass', 700, 2, 1400, o); osc('sawtooth', 210, 160, t, 0.18, 0.03, o); break;
+      case 'chairCreak': o = cOut(0.25, 0, 0.12); osc('sawtooth', 340, 300, t, 0.3, 0.025, o, 0.05); noise(t, 0.3, 0.06, 'bandpass', 900, 6, 700, o); break;
+      case 'stoneTap': o = cOut(0.3, -0.1, 0.1); osc('sine', 300, 140, t, 0.06, 0.35, o); noise(t, 0.02, 0.3, 'bandpass', 1400, 2, null, o); break;
+      case 'catch': o = cOut(0.25, 0.1, 0.05); noise(t, 0.02, 0.35, 'bandpass', 1600, 2, null, o); osc('sine', 3300, 3300, t + 0.005, 0.2, 0.01, o, 0.002); break;
+      case 'bulbFlicker': o = cOut(0.18, 0, 0.1); for (i = 0; i < 5; i++) { noise(t + i * 0.07 + Math.random() * 0.04, 0.02, 0.25, 'highpass', 3000, 0.7, null, o); osc('square', 120, 120, t + i * 0.07, 0.03, 0.02, o); } break;
+      case 'knuckles': o = cOut(0.3, 0, 0.05); for (i = 0; i < 4; i++) noise(t + i * 0.035 + Math.random() * 0.02, 0.006, 0.5, 'bandpass', 2400 + Math.random() * 1200, 4, null, o); break;
+      case 'slideRack': o = cOut(0.32, 0.1, 0.06); noise(t, 0.05, 0.3, 'bandpass', 3000, 3, 3800, o); noise(t + 0.18, 0.015, 0.45, 'bandpass', 2200, 6, null, o); break;
+      case 'radioClick': o = cOut(0.22, -0.3, 0.02); noise(t, 0.008, 0.4, 'bandpass', 2600, 6, null, o); noise(t + 0.02, 0.6, 0.05, 'bandpass', 1800, 0.6, 1200, o); break;
+      case 'glove': case 'stretch': o = cOut(0.2, 0, 0.04); noise(t, 0.35, 0.18, 'bandpass', 1200, 0.8, 2000, o); break;
+      case 'hum': o = cOut(0.14, 0, 0.1); [0, 0.55, 1.1, 1.65, 2.2].forEach(function (d, j) { voice(t + d, [196, 220, 247, 220, 196][j], [196, 220, 247, 220, 196][j], 0.5, 0.05, [[500, 3], [900, 4]], o); }); break;
+      case 'blow': o = cOut(0.2, 0, 0.05); noise(t, 0.5, 0.18, 'bandpass', 1300, 0.6, 700, o); break;
+      case 'startle': o = cOut(0.22, 0, 0.04); noise(t, 0.12, 0.2, 'bandpass', 900, 1, 1600, o); break;
+      case 'sheathIn': o = cOut(0.32, -0.1, 0.1); noise(t, 0.25, 0.2, 'bandpass', 3000, 3, 2000, o); noise(t + 0.24, 0.02, 0.4, 'bandpass', 1800, 4, null, o); break;
+      case 'siren': o = cOut(0.06, -0.6, 0.6); (function () { var g2 = ac.createOscillator(), gg = ac.createGain(); g2.type = 'triangle'; g2.frequency.setValueAtTime(650, t); for (var k2 = 0; k2 < 6; k2++) { g2.frequency.linearRampToValueAtTime(950, t + k2 * 0.9 + 0.45); g2.frequency.linearRampToValueAtTime(650, t + k2 * 0.9 + 0.9); } gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(0.06, t + 1); gg.gain.linearRampToValueAtTime(0, t + 5.4); g2.connect(gg); gg.connect(o); g2.start(t); g2.stop(t + 5.5); })(); break;
+      case 'flick': o = cOut(0.25, 0.2, 0.15); for (i = 0; i < 4; i++) noise(t + 0.25 + i * 0.12 * (1 + i * 0.3), 0.012, 0.3 / (i + 1), 'bandpass', 2600, 5, null, o); break;
     }
   }
   // the Legends screen's ambience: rain on the alley, drips, a low hum of the city and a slow dark pad

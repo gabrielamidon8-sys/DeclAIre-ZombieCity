@@ -143,7 +143,9 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
   LG_SOCK.sheath = lgBasis([0, 1, 0], [-1, 0, 0], [0, 0, 1], [0.205, 0.035, -0.105]);
   // left hand, reverse grip (1.9.993, fixed: the handle lies across the palm in the closed fist, the blade leaves the
   // little-finger side and lies back along the forearm, the edge out; it used to lie along the fingers, backwards)
-  LG_SOCK.kgrip = lgBasis([-0.75, 0, 0.66], [0, -1, 0], [0.66, 0, 0.75], [-0.004, -0.022, 0.063]);   // (held diagonally, heel of the palm to the index, as a real fist holds a handle)
+  LG_SOCK.kgrip = lgBasis([-0.75, 0, 0.66], [0, -1, 0], [0.66, 0, 0.75], [-0.004, -0.022, 0.063]);
+  // right hand, forward (hammer) grip, for work like sharpening: the blade leaves between thumb and index, edge forward
+  LG_SOCK.kgripF = lgBasis([0.75, 0, 0.66], [0, 1, 0], [-0.66, 0, 0.75], [-0.0894, -0.022, 0.0411]);   // (held diagonally, heel of the palm to the index, as a real fist holds a handle)
   // carbine space: bore +x, origin over the pistol grip; on the back, muzzle up behind the left shoulder
   LG_SOCK.back = lgBasis([0, 0.5, 0.866], [0, 0.866, -0.5], [-1, 0, 0], [-0.205, -0.06, 0.02]);
   LG_SOCK.cgripR = lgBasis([0.42, 0, 0.906], [0, 1, 0], [-0.906, 0, 0.42], [-0.085, -0.032, -0.07]);
@@ -158,10 +160,11 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
 /* ---------- the Operator ---------- */
 LG_MAKERS.operator = function (B, cls) {
   // cls may carry a loadout: "class|primary|secondary" (1.9.993: each rebuilt gun has its own model, leggun.js)
-  const parts = String(cls || 'attack').split('|'), K = lgOpKit(parts[0]);
+  const parts = String(cls || 'attack').split('|'), K = lgOpKit(parts[0]); K.face = parts[1] === 'idle';   // (the stoop: balaclava pulled down, his face showing)
   lgOpPelvis(B, K); lgOpSpine(B, K); lgOpChest(B, K); lgOpHead(B, K); lgOpHelmet(B, K); lgOpMask(B, K);
   for (const s of ['L', 'R']) { lgOpArm(B, K, s); lgOpHand(B, K, s); lgOpLeg(B, K, s); }
-  if (parts.length > 1 && typeof lgOpGuns === 'function') lgOpGuns(B, K, parts[1], parts[2]); else { lgOpPistol(B, K); lgOpCarbine(B, K); }
+  if (parts[1] === 'idle' && typeof lgOpIdleProps === 'function') { lgOpPistol(B, K); lgOpIdleProps(B, K); }   // the stoop: a whetstone where the carbine would be
+  else if (parts.length > 1 && typeof lgOpGuns === 'function') lgOpGuns(B, K, parts[1], parts[2]); else { lgOpPistol(B, K); lgOpCarbine(B, K); }
   lgOpKnife(B, K);
 };
 function lgOpPelvis(B, K) {
@@ -266,13 +269,25 @@ function lgOpChest(B, K) {
 function lgOpHead(B, K) {
   const M = K.M, hi = B.lod < 2;
   lgBone(B, 'neck'); lgMat(B, M.bala); lgLathe(B, [[0.057, -0.035], [0.055, 0.02], [0.054, 0.08], [0.058, 0.12]], { segs: 16, sx: 1.05 });
+  // the balaclava pulled down off his face: a rolled ring of knit round the neck
+  if (K.face) lgLathe(B, [[0.056, 0.05], [0.066, 0.06], [0.072, 0.085], [0.068, 0.11], [0.056, 0.12]], { segs: 18, sx: 1.08 });
   lgBone(B, 'head'); lgMat(B, M.bala);
   lgSphere(B, 0.015, 0, 0.09, 0.1, 0.079, 0.118, { segs: 22, rings: 14 });
-  lgSphere(B, 0.04, 0, 0.012, 0.064, 0.064, 0.052, { segs: 16, rings: 10 });
-  lgSphere(B, 0.1, 0, 0.074, 0.018, 0.012, 0.02, { segs: 10, rings: 8 });
+  const skin = K.face ? lgMtl({ c: '#a07a60', r: 0.5, w: 0.15, n: 0.3 }) : M.bala, stub = K.face ? lgMtl({ c: '#5b4536', r: 0.75, w: 0.4, n: 0.5 }) : M.bala;
+  lgMat(B, K.face ? stub : M.bala); lgSphere(B, 0.04, 0, 0.012, 0.064, 0.064, 0.052, { segs: 16, rings: 10 });
+  lgMat(B, skin); lgSphere(B, 0.1, 0, 0.074, 0.018, 0.012, 0.02, { segs: 10, rings: 8 });
   lgSphere(B, 0.088, 0, 0.115, 0.032, 0.07, 0.018, { segs: 12, rings: 6 });
-  // the eyes, through the balaclava (seen when the mask is open)
-  lgMat(B, M.eyes); { const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118]; B.def = lgOnEll(E, 0.0035); lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.023], [0.005, 0.15, 0.495, 0.35], { sub: 6, lift: 0 }); B.def = null; }
+  if (K.face) {
+    // his face: skin over the front of the head, stubble over the jaw, a straight nose, the brow, a set mouth; the eyes
+    // are the decal below (lifted clear of the skin)
+    const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118];
+    lgShell(B, E, -1.1, 1.1, -0.62, 0.55, 0.0008, 0.0008, { nu: 16, nv: 10, inner: false });
+    lgMat(B, stub); lgShell(B, E, -1.05, 1.05, -0.76, -0.38, 0.0018, 0.0008, { nu: 14, nv: 5, inner: false });
+    lgMat(B, skin); lgSphere(B, 0.108, 0, 0.08, 0.009, 0.007, 0.022, { segs: 10, rings: 8 }); lgSphere(B, 0.112, 0, 0.065, 0.009, 0.011, 0.008, { segs: 10, rings: 6 });
+    for (const s of [1, -1]) { lgMat(B, lgMtl({ c: '#2a1f18', r: 0.8 })); lgBox(B, 0.1135, s * 0.028, 0.114, 0.002, 0.016, 0.0022, 0.0012); }
+    lgMat(B, lgMtl({ c: '#5e3e33', r: 0.45 })); lgBox(B, 0.1095, 0, 0.047, 0.0015, 0.016, 0.0016, 0.0008);
+  }  // the eyes, through the balaclava (seen when the mask is open)
+  lgMat(B, M.eyes); { const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118]; B.def = lgOnEll(E, K.face ? 0.0024 : 0.0035); if (K.face) lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.0085], [0.005, 0.214, 0.495, 0.286], { sub: 6, lift: 0 }); else lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.023], [0.005, 0.15, 0.495, 0.35], { sub: 6, lift: 0 }); B.def = null; }
   // ear protection: cups with a grille, on arms up to the helmet rails
   for (const s of [1, -1]) {
     lgPush(B, lgTR(-0.004, s * 0.082, 0.083, -s * Math.PI / 2, 0, 0));

@@ -58,6 +58,14 @@
 .lg-card-act{display:flex;gap:6px;margin-top:6px}
 .lg-card-act span{font-family:var(--f-num);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px rgba(235,229,214,.18)}
 .lg-card-act .lg-open{background:var(--cc);color:#0b0c0e;box-shadow:none}
+/* 1.9.993: the face card: a small square, his face and nothing else (the name shows on hover) */
+.lg-card.lg-face{display:block;width:min(100%, 132px);aspect-ratio:1;padding:0;justify-self:center;align-self:center;overflow:hidden;clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  background:radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--cc) 42%, #161a22), #07080b 78%)}
+.lg-face .lg-card-art{position:absolute;inset:0;min-height:0;display:block}
+.lg-face .lg-card-art canvas{width:100%;height:100%;aspect-ratio:1;filter:none}
+.lg-face .lg-card-name{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 6px;font-size:15px;text-align:center;background:linear-gradient(180deg, transparent, rgba(4,5,8,.85));opacity:0;transform:translateY(6px);transition:opacity .2s, transform .2s}
+.lg-face:hover .lg-card-name,.lg-face:focus-visible .lg-card-name,.lg-col.hot .lg-face .lg-card-name{opacity:1;transform:none}
+.lg-col.hot .lg-face{box-shadow:inset 0 0 0 2px var(--cc), 0 0 28px color-mix(in srgb, var(--cc) 55%, transparent)}
 .lg-locks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .lg-lock{display:flex;flex-direction:column;gap:1px;padding:7px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px rgba(235,229,214,.07);opacity:.75}
 .lg-lock-art{height:34px;background:radial-gradient(ellipse 30% 42% at 50% 40%, rgba(255,255,255,.12), transparent 70%), repeating-linear-gradient(-45deg, rgba(255,255,255,.04) 0 6px, transparent 6px 12px)}
@@ -136,6 +144,8 @@
   .lg-col-blurb,.lg-locks,.lg-foot,.lg-hint{display:none}
   .lg-card-art{min-height:0}
   .lg-card-art canvas{width:64px}
+  .lg-card.lg-face{width:72px}
+  .lg-face .lg-card-art canvas{width:100%}
   .lg-side{width:min(360px, 46vw);padding-top:56px}
   .lg-hub{padding-top:60px;gap:12px}
   .lg-panel{min-height:80px}

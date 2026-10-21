@@ -475,6 +475,8 @@ function lgReach(W, L, ia, ib, ic, T, rootM) {
 }
 const LG_CHAINS = { handL: ['armL', 'foreL', 'handL', -1], handR: ['armR', 'foreR', 'handR', -1], footL: ['thighL', 'shinL', 'footL', 1], footR: ['thighR', 'shinR', 'footR', 1] };
 const LG_CHAIN_AT = {}; for (const k in LG_CHAINS) LG_CHAIN_AT[LGB[LG_CHAINS[k][0]]] = k;
+// the order bones are solved in: root, pelvis, the legs, then the rest as the skeleton lists them (each parent first)
+const LG_ORDER = (() => { const legs = ['thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'].map(n => LGB[n]), o = [LGB.root, LGB.pelvis].concat(legs); for (let i = 0; i < LG_NB; i++) if (o.indexOf(i) < 0) o.push(i); return o; })();
 // the props' sockets and the hands' grips on them, set by the models (legmodel.js)
 const LG_SOCK = { holster: null, sheath: null, back: null, gripR: null, gripL: null, kgrip: null, cgripR: null, cgripL: null, magOut: null, magHand: null, muzP: [0.19, 0, 0], muzC: [0.82, 0, 0.02], magHand: null, cmagHand: null };
 // solve: pose -> local rotations/offsets (L) and world matrices (W)
@@ -484,8 +486,9 @@ function lgSolve(P, L, W, rootM) {
   for (let i = 0; i < LG_NB; i++) { lgR9(R, i * 9, P.r[i * 3], P.r[i * 3 + 1], P.r[i * 3 + 2]); Tt[i * 3] = P.t[i * 3]; Tt[i * 3 + 1] = P.t[i * 3 + 1]; Tt[i * 3 + 2] = P.t[i * 3 + 2]; }
   lgGripApplyL(P, L);
   // props: the pistol (and the carbine) in their sockets, or aimed in the chest's space
-  for (let i = 0; i < LG_NB; i++) {
-    const ch = LG_CHAIN_AT[i];
+  // (1.9.993: the legs are solved before the arms, so a hand can reach for something on a thigh or a knee)
+  for (let k = 0; k < LG_NB; k++) {
+    const i = LG_ORDER[k], ch = LG_CHAIN_AT[i];
     if (ch && P.ik[ch]) {
       const c = LG_CHAINS[ch], ia = LGB[c[0]], ib = LGB[c[1]], ic = LGB[c[2]];
       if (ch === 'handR' || ch === 'handL') lgPropsEarly(P, W, rootM);
@@ -494,7 +497,7 @@ function lgSolve(P, L, W, rootM) {
       if (ch === 'handR' || ch === 'handL') lgReach(W, L, ia, ib, ic, tgt, rootM);
       lgIK2(W, L, ia, ib, ic, tgt, c[3], rootM);
       lgWorldOne(W, L, ic, rootM);
-      i = ic; continue;
+      k += 2; continue;
     }
     lgWorldOne(W, L, i, rootM);
   }
@@ -513,7 +516,7 @@ function lgGripApplyL(P, L) {
 function lgIKtarget(P, ch, W, rootM) {
   const ik = P.ik[ch];
   if (ik.on) {
-    const pi = LGB[ik.on], PM = W.subarray(pi * 16, pi * 16 + 16), S = ik.on === 'pistol' || ik.on === 'carbine' ? lgSockFor(ik.on, ch === 'handR' ? 'gripR' : 'gripL') : LG_SOCK.kgrip;   // (each gun its own grips: leggun.js)
+    const pi = LGB[ik.on], PM = W.subarray(pi * 16, pi * 16 + 16), S = ik.on === 'pistol' || ik.on === 'carbine' ? lgSockFor(ik.on, ch === 'handR' ? 'gripR' : 'gripL') : ch === 'handR' && LG_SOCK.kgripF ? LG_SOCK.kgripF : LG_SOCK.kgrip;   // (each gun its own grips: leggun.js)
     const M = lgMul(lgM4(), PM, S || lgM4());
     return { sp: 'world', p: [M[12], M[13], M[14]], M: M, pole: ik.pole ? lgDir(rootM, ik.pole[0], ik.pole[1], ik.pole[2]) : null };
   }
@@ -555,7 +558,7 @@ function lgPropsLate(P, L, W, rootM) {
   // knife
   { const st = P.knife, i = LGB.knife; let M = null;
     if (st.at === 'aim' && st.M) M = aimed(st);
-    else if (st.at === 'handL' || st.at === 'handR') M = lgMul(tmp, bw(st.at), LG_SOCK.kgrip ? lgInv(lgM4(), LG_SOCK.kgrip) : lgM4());
+    else if (st.at === 'handL' || st.at === 'handR') { const kg = st.at === 'handR' && LG_SOCK.kgripF ? LG_SOCK.kgripF : LG_SOCK.kgrip; M = lgMul(tmp, bw(st.at), kg ? lgInv(lgM4(), kg) : lgM4()); }
     else if (st.at === 'sheath' && LG_SOCK.sheath) M = lgMul(tmp, bw('chest'), LG_SOCK.sheath);
     lgPropSet(L, W, i, M || LG_HIDE, rootM); }
   // carbine

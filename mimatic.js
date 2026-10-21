@@ -383,6 +383,10 @@ function mimStart(name, o) {
   } else if (name === 'lineup' || name === 'hub') {
     MIM.set = lgModel('alley', q.lod === 0 ? 0 : 1, ''); MIM.ground = lgModel('alleyGround', q.lod === 0 ? 0 : 1, ''); MIM.setW = mimSetW();
     MIM.actors = mimLineup(); MIM.shots = []; MIM.warp = null; MIM.cues = []; MIM.dur = 1e9; MIM.nextBolt = 6 + Math.random() * 6; mimAlleyProps(0);
+  } else if (name === 'stoop') {
+    // 1.9.993: the selection screen's idle scene (legidle.js)
+    MIM.set = lgModel('stoop', q.lod === 0 ? 0 : 1, ''); MIM.ground = lgModel('stoopGround', q.lod === 0 ? 0 : 1, ''); MIM.setW = mimSetW();
+    MIM.actors = lgiStart(o); MIM.shots = []; MIM.warp = null; MIM.cues = []; MIM.dur = 1e9;
   } else if (name === 'studio') {
     MIM.set = lgModel('studio', 0, ''); MIM.ground = lgModel('studioGround', 0, ''); MIM.setW = mimSetW();
     const pl = lgPlayer(); lgPlay(pl, o.anim || 'idle_ready', { fade: 0 }); pl.ctx.inPlace = true;
@@ -420,6 +424,7 @@ function mimFrame(rdt, w, h) {
       mimActorEvents(a, MIM.lastSt, st, (e) => mimEvent(e, a));
       mimActorEvalFull(a, st);
     }
+    if (MIM.scene === 'stoop') { lgiTick(rdt); if (Math.random() < 0.6) vfxSteam([3.6, -1.2, 0.03], rdt); }
     if (MIM.scene === 'studio') { const sd = MIM.studio; if (sd.auto && sd.view === 'front' && rt > 1.6 && !sd.held) { sd.view = 'top'; sd.tTilt = rt; sd.from = { yaw: sd.yaw, pitch: sd.pitch, dist: sd.dist }; } }
     if (MIM.scene === 'alley') { mimAlleyProps(st); if (MIM.pendingSplash && rt >= MIM.pendingSplash) { MIM.pendingSplash = 0; vfxSplash([5.65, -0.6], 1.1); mimSfx('bodySplash'); } }
     vfxTick(Math.max(0, dst));
@@ -504,17 +509,19 @@ function mimRender(w, h, rt, st) {
   if (scene === 'alley') { let i = 0; while (i < MIM.shots.length - 1 && MIM.shots[i + 1].t0 <= rt) i++; if (i !== MIM.shot) { MIM.shot = i; } look = Object.assign(look, MIM.shots[i].cam(rt, st)); }
   else if (scene === 'lineup' || scene === 'hub') { const k = Math.sin(rt * 0.07), far = scene === 'hub'; look = { eye: [far ? -3.2 : -1.2 + k * 0.4, k * 0.9, far ? 2.3 : 1.55 + Math.sin(rt * 0.11) * 0.1], tgt: [6.2, k * 0.25, far ? 1.3 : 1.2], fov: far ? 0.62 : 0.74, roll: 0, shake: 0.12, mb: 0, flare: 0.5 }; if (MIM.focus != null) { const y = (2 - MIM.focus) * 1.18; look.tgt[1] = lgLerp(look.tgt[1], y, 0.3); } }
   else if (scene === 'studio') look = mimStudioCam(rt);
+  else if (scene === 'stoop') look = lgiCam(rt);
   if (!MIM.reduce && look.shake) mimShake(rt, look.shake, look.eye);
   if (!MIM.reduce && look.punch) { const p = look.punch; look.fov *= 1 - 0.06 * p; look.eye[2] += Math.sin(rt * 70) * 0.01 * p; }
   cam.eye = look.eye; cam.tgt = look.tgt; cam.fov = look.fov; cam.roll = look.roll || 0; cam.near = 0.05; cam.far = 150; cam.up = look.up || [0, 0, 1]; cam.shift = look.shift || null;
   // the lights of this moment
   let S;
   if (scene === 'studio') S = mimStudioLights();
+  else if (scene === 'stoop') S = lgiLights();
   else { const L = mimAlleyLights(); S = Object.assign({}, L); }
   S.cam = cam; S.time = st;
   const fl = vfxFlashAt(rt), freeze = scene === 'alley' ? lgW(rt, 10.62, 11.6) : 0;
   if (fl > 0) { S.flash = { dir: [0.35, 0.25, 1], col: [3.2 * fl, 3.4 * fl, 4.2 * fl] }; S.sky = S.sky.map((v, i) => v + [0.35, 0.4, 0.55][i] * fl); }
-  if (S.pts && scene !== 'studio' && MIM.actors[0] && MIM.actors[0].W) { const P0 = mimBone(MIM.actors[0], 'chest'); S.pts = S.pts.slice(); S.pts[3] = { p: [P0[0] - 1.2, P0[1] - 1.5, P0[2] + 1.4], r: 4.2, col: [0.55, 0.85, 1.2] }; }
+  if (S.pts && scene !== 'studio' && scene !== 'stoop' && MIM.actors[0] && MIM.actors[0].W) { const P0 = mimBone(MIM.actors[0], 'chest'); S.pts = S.pts.slice(); S.pts[3] = { p: [P0[0] - 1.2, P0[1] - 1.5, P0[2] + 1.4], r: 4.2, col: [0.55, 0.85, 1.2] }; }
   if (MIM.flashUntil && rt < MIM.flashUntil && S.pts) { S.pts = S.pts.slice(); S.pts[3] = { p: MIM.flashP, r: 6.5, col: [2.6, 1.7, 0.75] }; }
   S.desat = freeze * 0.7; S.sat = 1 - freeze * 0.15;
   const accS = lgHex(LG_CLASS_BY[MIM.cls].col);
@@ -531,16 +538,17 @@ function mimRender(w, h, rt, st) {
     mimSceneGL(S, rw, rh, f);
     // rain, splashes and sprites into the scene, depth-tested
     gl.bindFramebuffer(gl.FRAMEBUFFER, f.fb); gl.viewport(0, 0, rw, rh);
-    const rain = scene === 'studio' ? null : { on: true, center: [cam.tgt[0] * 0.5 + cam.eye[0] * 0.5, cam.tgt[1] * 0.5 + cam.eye[1] * 0.5, 4], box: [13, 9, 9], fall: 9, wind: [0.5, 0.25], speed: MIM.warp ? MIM.warp.sp(rt) : 1, dim: 1, splash: { center: [cam.eye[0] * 0.3 + cam.tgt[0] * 0.7, cam.eye[1] * 0.3 + cam.tgt[1] * 0.7, 0], area: [9, 5.4], z: 0 }, density: scene === 'hub' ? 0.6 : 1 };
+    const rain = scene === 'studio' ? null : scene === 'stoop' ? { on: true, center: [2.5, 0, 3], box: [10, 12, 7], fall: 7.5, wind: [0.3, 0.6], speed: 1, dim: 0.7, splash: { center: [3.2, 0, 0], area: [6, 9], z: 0 }, density: 0.3 } : { on: true, center: [cam.tgt[0] * 0.5 + cam.eye[0] * 0.5, cam.tgt[1] * 0.5 + cam.eye[1] * 0.5, 4], box: [13, 9, 9], fall: 9, wind: [0.5, 0.25], speed: MIM.warp ? MIM.warp.sp(rt) : 1, dim: 1, splash: { center: [cam.eye[0] * 0.3 + cam.tgt[0] * 0.7, cam.eye[1] * 0.3 + cam.tgt[1] * 0.7, 0], area: [9, 5.4], z: 0 }, density: scene === 'hub' ? 0.6 : 1 };
     let vx0 = performance.now();
     if (rain) vfxRain(S, rain, st);
     vfxBoltSprites(fl); vfxSprites(S, true); vfxSprites(S, false);
     VX.msF += performance.now() - vx0;
     // the post chain to the screen
     if (LGR.cv.width !== w || LGR.cv.height !== h) { LGR.cv.width = w; LGR.cv.height = h; }
-    const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.6, 14.2)) * 0.12 + freeze * 0.03 : scene === 'studio' ? 0 : 0.0;
+    const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.6, 14.2)) * 0.12 + freeze * 0.03 : scene === 'stoop' ? 0.085 * lgW(rt, 0, 1.2) : 0.0;
     const fade = scene === 'alley' ? Math.max(1 - lgW(rt, 0, 0.9), lgW(rt, 13.15, 14.0)) : (scene === 'studio' ? 1 - lgW(rt, 0, 0.5) : 1 - lgW(rt, 0, 1.2));
-    const post = { bloom: 3, bloomK: scene === 'studio' ? 0.4 : 0.62, th: 0.58, streak: (look.flare || 0.4) * (scene === 'studio' ? 0.4 : 1), ca: scene === 'alley' ? 0.55 + (look.ca || 0) : 0.3, grain: scene === 'studio' ? 0.025 : 0.045, vig: scene === 'studio' ? 0.45 : 0.62, bars: bars, fade: fade, flash: Math.max(fl * 0.3 * (SET.flash ? 0.35 : 1), scene === 'alley' ? lgPulse(rt, 10.64, 10.78) * 0.6 * (SET.flash ? 0.3 : 1) : 0), mb: look.mb || 0, sat: 1.05 - freeze * 0.1, expo: 1.0 + fl * 0.25, lift: [0.008, 0.012, 0.02], gain: [1.03, 1.0, 0.97] };
+    const stp = scene === 'stoop';
+    const post = { bloom: 3, bloomK: scene === 'studio' ? 0.4 : stp ? 0.8 : 0.62, th: stp ? 0.5 : 0.58, streak: (look.flare || 0.4) * (scene === 'studio' ? 0.4 : 1), ca: scene === 'alley' ? 0.55 + (look.ca || 0) : stp ? 0.5 : 0.3, grain: scene === 'studio' ? 0.025 : stp ? 0.06 : 0.045, vig: scene === 'studio' ? 0.45 : stp ? 0.78 : 0.62, bars: bars, fade: fade, flash: Math.max(fl * 0.3 * (SET.flash ? 0.35 : 1), scene === 'alley' ? lgPulse(rt, 10.64, 10.78) * 0.6 * (SET.flash ? 0.3 : 1) : 0), mb: look.mb || 0, sat: stp ? 0.92 : 1.05 - freeze * 0.1, expo: 1.0 + fl * 0.25, lift: stp ? [0.004, 0.014, 0.022] : [0.008, 0.012, 0.02], gain: stp ? [1.08, 0.99, 0.9] : [1.03, 1.0, 0.97] };
     vx0 = performance.now(); vfxPost(f, w, h, post, rt); VX.msF += performance.now() - vx0;
   } else {
     const c = MIM.cv2; if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }

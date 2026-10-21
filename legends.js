@@ -128,16 +128,16 @@ function lgsBuild() {
   LG_CLASSES.forEach((c, i) => {
     const col = el('div', 'lg-col'); col.style.setProperty('--cc', c.col); col.style.setProperty('--cg', c.glow); col.dataset.cls = c.id;
     const head = el('div', 'lg-col-head'); head.innerHTML = lgsIcon(c.id) + '<b>' + c.name + '</b><small>' + c.tag + '</small>';
-    const card = el('button', 'lg-card'); card.type = 'button'; card.dataset.cls = c.id; card.setAttribute('aria-label', 'Operator, ' + c.name + ' class. Base legend.');
-    card.innerHTML = '<span class="lg-card-tier">Base</span><span class="lg-card-art" aria-hidden="true"><canvas width="160" height="200"></canvas></span><b class="lg-card-name">Operator</b><span class="lg-card-sub">' + LG_LEGENDS[0].line + '</span><span class="lg-card-act"><span class="lg-watch">Watch</span><span class="lg-open">Open</span></span>';
+    // 1.9.993: a small square card with his face, nothing else; hovering it plays the stoop behind the columns
+    const card = el('button', 'lg-card lg-face'); card.type = 'button'; card.dataset.cls = c.id; card.setAttribute('aria-label', 'Operator, ' + c.name + ' class. Base legend. Open his page.'); card.title = 'Operator · ' + c.name;
+    card.innerHTML = '<span class="lg-card-art" aria-hidden="true"><canvas width="192" height="192"></canvas></span><b class="lg-card-name">Operator</b>';
     card.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') lgsHover(c.id); });
     card.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') lgsUnhover(c.id); });
     card.addEventListener('focus', () => { if (DEV.kind === 'pad' || DEV.kind === 'kbm') lgsHover(c.id, 450); });
     card.addEventListener('blur', () => lgsUnhover(c.id));
     card.addEventListener('click', e => {
       const touch = e.pointerType === 'touch' || (e.detail === 0 ? false : LGS.lastPointer === 'touch');
-      if (e.target.closest('.lg-watch')) { lgsHover(c.id, 0, true); return; }
-      if (touch && LGS.armed !== c.id && !e.target.closest('.lg-open')) { LGS.armed = c.id; lgsHover(c.id, 0, true); return; }
+      if (touch && LGS.armed !== c.id) { LGS.armed = c.id; lgsHover(c.id, 0, true); return; }
       lgsOpenLegend(c.id);
     });
     card.addEventListener('pointerdown', e => { LGS.lastPointer = e.pointerType; });
@@ -178,7 +178,7 @@ function lgsBuild() {
   st.addEventListener('touchmove', e => { if (LGS.view !== 'detail' || e.touches.length !== 2) return; const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (LGS.pinch) mimStudioZoom((LGS.pinch - d) * 3); LGS.pinch = d; e.preventDefault(); }, { passive: false });
   st.addEventListener('touchend', () => { LGS.pinch = null; });
   $('lgBack').addEventListener('click', () => lgsBack());
-  $('lgWatchAll').addEventListener('click', () => { const c = LGS.hoverCls || SET.legendClass || 'attack'; lgsHover(c, 0, true); });
+  $('lgWatchAll').addEventListener('click', () => { const c = LGS.hoverCls || SET.legendClass || 'attack'; lgsWatchFight(c); });
   lgsPortraits();
 }
 // small portraits on the cards: the Operator painted once per class on the processor (front, a little from the side)
@@ -187,12 +187,14 @@ function lgsPortraits() {
     document.querySelectorAll('.lg-card').forEach(card => {
       const cls = card.dataset.cls, c = card.querySelector('canvas'); if (!c || c.dataset.done) return;
       try {
-        const m = lgModel('operator', 1, cls), P = lgPose(); lgEvalClip(LG_ANIM_BY.idle_ready, 0.6, P, {}); P.mask = 1; P.glow = 1;
+        // his face, close, the mask down (the same face as the stoop's), a little from his right, lit from above
+        const m = lgModel('operator', 1, cls + '|idle'), P = lgPose(); lgEvalClip(LG_ANIM_BY.idle_ready, 0.6, P, {}); P.mask = 0; P.glow = 0.4;
         const L = lgLocalNew(), W = lgWorldNew(); lgSolve(P, L, W, lgRootM(P));
         const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height);
-        const cam = lgCam(); cam.eye = [2.4, 0.9, 1.45]; cam.tgt = [0, 0, 1.12]; cam.fov = 0.6;
+        const h = LGB.head * 16, H = [W[h + 12], W[h + 13], W[h + 14] + 0.07];
+        const cam = lgCam(); cam.eye = [H[0] + 0.66, H[1] - 0.2, H[2] + 0.02]; cam.tgt = [H[0], H[1], H[2] - 0.01]; cam.fov = 0.42;
         const col = lgHex((LG_CLASS_BY[cls] || LG_CLASSES[0]).col);
-        lg2DScene(g, { cam: cam, items: [{ m: m, W: W, acc: col, glow: 1.2, hide: mimHideCarbine() }], key: { dir: [0.6, 0.5, 0.8], col: [1.3, 1.25, 1.2] }, rim: { dir: [-0.8, -0.4, 0.4], col: col.map(v => v * 1.6) }, sky: [0.22, 0.24, 0.3], gnd: [0.06, 0.06, 0.07], clear: [0, 0, 0] }, c.width, c.height);
+        lg2DScene(g, { cam: cam, items: [{ m: m, W: W, acc: col, glow: 1, hide: mimHideCarbine() }], key: { dir: [0.5, -0.3, 0.9], col: [1.45, 1.3, 1.1] }, rim: { dir: [-0.8, 0.6, 0.3], col: col.map(v => v * 1.8) }, sky: [0.2, 0.22, 0.28], gnd: [0.06, 0.06, 0.07], clear: [0, 0, 0] }, c.width, c.height);
         // keep the background transparent: the painter cleared to black, so knock the black out
         const d = g.getImageData(0, 0, c.width, c.height), a = d.data; for (let i = 0; i < a.length; i += 4) if (a[i] + a[i + 1] + a[i + 2] < 6) a[i + 3] = 0; g.putImageData(d, 0, 0);
         c.dataset.done = '1';
@@ -207,12 +209,22 @@ function lgsHover(cls, delay, now) {
   clearTimeout(LGS.hoverT); LGS.hoverCls = cls;
   LGS.hoverT = setTimeout(() => {
     if (LGS.view !== 'select' || LGS.hoverCls !== cls) return;
-    if (LGS.watching && MIM.cls === cls && MIM.scene === 'alley') return;
+    if (LGS.watching && MIM.cls === cls && (MIM.scene === 'alley' || MIM.scene === 'stoop')) return;
     if (MIM.scene === 'lineup') LGS.lineRt = MIM.rt;
     LGS.watching = true; $('legends').classList.add('watching'); document.querySelectorAll('.lg-col').forEach(c => c.classList.toggle('hot', c.dataset.cls === cls));
-    try { SFX.cine('uiSelect'); SFX.cineAmbDuck(0.35); } catch (e) { }
-    mimStart('alley', { cls: cls, onEnd: () => lgsStopWatch(), onCue: lgsCue });
+    try { SFX.cine('uiSelect'); SFX.cineAmbDuck(0.8); } catch (e) { }
+    // the stoop: he sits under a bulb sharpening his knife, mask down (legidle.js); it plays as long as you stay
+    mimStart('stoop', { cls: cls });
   }, now ? 0 : (delay == null ? 220 : delay));
+}
+// "Watch the cinematic": the alley fight, with its score and its title card
+function lgsWatchFight(cls) {
+  if (LGS.view !== 'select') return;
+  clearTimeout(LGS.hoverT); LGS.hoverCls = cls; LGS.armed = cls;
+  if (MIM.scene === 'lineup') LGS.lineRt = MIM.rt;
+  LGS.watching = true; $('legends').classList.add('watching'); document.querySelectorAll('.lg-col').forEach(c => c.classList.toggle('hot', c.dataset.cls === cls));
+  try { SFX.cine('uiSelect'); SFX.cineAmbDuck(0.35); } catch (e) { }
+  mimStart('alley', { cls: cls, onEnd: () => lgsStopWatch(), onCue: lgsCue });
 }
 function lgsUnhover(cls) {
   if (LGS.hoverCls !== cls) return; clearTimeout(LGS.hoverT);
