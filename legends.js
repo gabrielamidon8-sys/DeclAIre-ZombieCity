@@ -311,7 +311,8 @@ function lgSelfTest() {
     const P = lgPose(), L = lgLocalNew(), W = lgWorldNew(), R = lgRng(7);
     for (let k = 0; k < 6; k++) { lgPoseReset(P); for (let i = 0; i < LG_NB * 3; i++) P.r[i] = (R() - 0.5) * 1.2; lgSolve(P, L, W, lgM4()); let ok = true; for (let i = 1; i < 34; i++) { const p = LG_PAR[i]; if (p < 0) continue; const d = Math.hypot(W[i * 16 + 12] - W[p * 16 + 12], W[i * 16 + 13] - W[p * 16 + 13], W[i * 16 + 14] - W[p * 16 + 14]), e = Math.hypot(LG_OFF[i * 3], LG_OFF[i * 3 + 1], LG_OFF[i * 3 + 2]); if (Math.abs(d - e) > 1e-4) ok = false; } n++; if (ok) pass++; else why = 'a bone changed length'; }
     // both hands on the pistol in the isosceles stance, and on the carbine aimed (grip and handguard)
-    for (const [fn, post, prop, sR, sL] of [[lgPistolAt, LG_POST.iso, 'pistol', LG_SOCK.gripR, LG_SOCK.gripL], [lgCarbineAt, LG_POST.raim, 'carbine', LG_SOCK.cgripR, LG_SOCK.cgripL]]) {
+    lgGunSet(null, null);
+    for (const [fn, post, prop, sR, sL] of [[lgPistolAt, LG_POST.iso, 'pistol', lgSockFor('pistol', 'gripR'), lgSockFor('pistol', 'gripL')], [lgCarbineAt, LG_POST.raim, 'carbine', lgSockFor('carbine', 'gripR'), lgSockFor('carbine', 'gripL')]]) {   // (1.9.994: the sockets as fitted to the grip)
       lgPoseReset(P); fn(P, post); lgSolve(P, L, W, lgM4()); const PM = W.subarray(LGB[prop] * 16, LGB[prop] * 16 + 16);
       for (const [hn, so] of [['handR', sR], ['handL', sL]]) { const Gm = lgMul(lgM4(), PM, so), h = LGB[hn] * 16, miss = Math.hypot(W[h + 12] - Gm[12], W[h + 13] - Gm[13], W[h + 14] - Gm[14]); n++; if (miss < 0.002) pass++; else why = why || 'a hand missed its grip on the ' + prop + ' by ' + (miss * 1000).toFixed(1) + ' mm'; }
     }

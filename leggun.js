@@ -49,12 +49,6 @@ function lgRail(B, M, x0, x1, z, w, hi, top) {
   lgMat(B, M.gunBlk); lgBox(B, (x0 + x1) / 2, 0, z, (x1 - x0) / 2, w, 0.004, 0.0015);
   if (top) { lgMat(B, M.poly); const n = Math.round((x1 - x0) / 0.01); for (let i = 0; i < n; i++) lgBox(B, x0 + (i + 0.5) * (x1 - x0) / n, 0, z + 0.0042, 0.0025, w + 0.0005, 0.0008, 0); }
 }
-// a holographic sight (long guns)
-function lgHolo(B, M, x, z, hi) {
-  lgMat(B, M.gunBlk); lgBox(B, x, 0, z + 0.008, 0.036, 0.017, 0.008, 0.003);
-  lgBox(B, x - 0.03, 0, z + 0.028, 0.004, 0.017, 0.016, 0.002); lgBox(B, x + 0.028, 0, z + 0.028, 0.004, 0.017, 0.016, 0.002); lgBox(B, x, 0, z + 0.045, 0.034, 0.017, 0.003, 0.002);
-  if (hi) { lgMat(B, M.lens); lgBox(B, x + 0.024, 0, z + 0.028, 0.0008, 0.014, 0.013, 0); lgMat(B, M.glow); lgSphere(B, x + 0.023, 0, z + 0.028, 0.0016, 0.0016, 0.0016, { segs: 5, rings: 3 }); }
-}
 // a curved box magazine drawn side-on: top at (mx, mz), length L (down), curve forward c, width w, depth d
 function lgCurvedMag(B, mx, mz, L, c, d, w, o) {
   o = o || {}; const n = 6, F = [], Bk = [];
@@ -64,104 +58,170 @@ function lgCurvedMag(B, mx, mz, L, c, d, w, o) {
 }
 
 /* ---------- long guns (carbine bone) ---------- */
+// 1.9.994: rebuilt from the real guns' proportions with the pistol grip where a hand can hold it (a trigger guard's
+// length behind the magazine, raked back), and much more of each gun: pins, levers, ports, sights, sling points.
+// a pin across a receiver (its two ends show)
+function lgPin(B, x, z, r, w) { lgPush(B, lgTR(x, -w / 2, z, Math.PI / 2, 0, 0)); lgLimb(B, w, [[0, r], [1, r]], { segs: 8, rings: 2, capK: 0.25 }); lgPop(B); }
+// a round knob sticking out of a side (y sign s), along y
+function lgKnob(B, x, y, z, r, l, s) { lgPush(B, lgTR(x, y, z, -s * Math.PI / 2, 0, 0)); lgLimb(B, l, [[0, r], [0.7, r], [1, r * 1.25]], { segs: 8, rings: 3, capK: 0.5 }); lgPop(B); }
+// a raked pistol grip: its top front at (x, z), a finger hump, a beavertail at the back; w wide
+function lgARGrip(B, x, z, w, o) {
+  o = o || {}; const k = o.k || 1;
+  const P = [[0, 0], [-0.006, -0.024], [-0.003, -0.034], [-0.011, -0.045], [-0.022, -0.067], [-0.033, -0.088], [-0.038, -0.093], [-0.069, -0.089], [-0.072, -0.083], [-0.062, -0.044], [-0.051, -0.012], [-0.056, -0.002], [-0.044, 0.003]];
+  lgSide(B, P.map(p => [x + p[0], z + p[1] * k]), w, { bev: 0.0045, smooth: 0.55 });
+}
+// the trigger guard (a strap from the grip to the front of the guard) and the trigger blade
+function lgTrigger(B, M, xg, xf, z, zt, o) {
+  o = o || {}; lgMat(B, o.gm || M.gunBlk);
+  lgTube(B, [[xg, 0, z + 0.012], [xg + 0.004, 0, z + 0.002], [xg + 0.012, 0, z], [xf - 0.008, 0, z], [xf - 0.001, 0, z + 0.006], [xf + 0.001, 0, zt + 0.004]], 0.0027, { segs: 5, flat: 2.6, up: [0, 1, 0] });
+  lgMat(B, M.metal); const tx = o.tx == null ? xg + 0.026 : o.tx;
+  lgTube(B, [[tx, 0, zt], [tx + 0.004, 0, zt - 0.009], [tx + 0.001, 0, zt - 0.017], [tx - 0.005, 0, zt - 0.021]], 0.0017, { segs: 4, flat: 2.2, up: [0, 1, 0] });
+}
+// a holographic sight (EXPS style): its mount, the body with the battery cap forward, the hood, the window, the buttons
+function lgHolo(B, M, x, z, hi) {
+  const top = B.lod === 0;
+  lgMat(B, M.gunBlk);
+  lgBox(B, x - 0.004, 0, z + 0.004, 0.032, 0.012, 0.004, 0.0015);                         // the rail clamp
+  lgBox(B, x, 0, z + 0.012, 0.038, 0.0165, 0.006, 0.003);                                 // the body
+  lgBox(B, x + 0.028, 0, z + 0.022, 0.01, 0.015, 0.006, 0.003);                           // the battery housing
+  lgPush(B, lgTR(0, 0.0152, 0)); lgSide(B, [[x - 0.036, z + 0.016], [x + 0.034, z + 0.016], [x + 0.03, z + 0.046], [x - 0.032, z + 0.046]], 0.0028, { bev: 0.001 }); lgPop(B);
+  lgPush(B, lgTR(0, -0.0152, 0)); lgSide(B, [[x - 0.036, z + 0.016], [x + 0.034, z + 0.016], [x + 0.03, z + 0.046], [x - 0.032, z + 0.046]], 0.0028, { bev: 0.001 }); lgPop(B);
+  lgBox(B, x - 0.002, 0, z + 0.047, 0.032, 0.0175, 0.0028, 0.0012);                       // the hood's roof
+  if (hi) {
+    lgMat(B, M.lens); lgPush(B, lgTR(x + 0.012, 0, z + 0.031, 0, -0.12, 0)); lgBox(B, 0, 0, 0, 0.0009, 0.0128, 0.0125, 0); lgPop(B);
+    lgMat(B, M.glow); lgSphere(B, x + 0.011, 0, z + 0.031, 0.0014, 0.0014, 0.0014, { segs: 5, rings: 3 });
+    lgMat(B, M.rubber); lgBox(B, x - 0.03, 0, z + 0.022, 0.006, 0.011, 0.004, 0.002);  // the buttons at the back
+    if (top) { lgMat(B, M.poly); lgBox(B, x - 0.006, -0.0175, z + 0.006, 0.008, 0.002, 0.004, 0.001); lgKnob(B, x + 0.004, -0.0175, z + 0.006, 0.0028, 0.006, -1); }
+  }
+}
+// an A2 birdcage flash hider at x (slots round its tip)
+function lgBirdcage(B, x, len, r, top) { lgBore(B, x, len, [[0, r * 0.95], [0.12, r], [0.88, r], [1, r * 0.92]], 0, 0, { segs: 12, wr: top ? (a, z) => (z > len * 0.35 && z < len * 0.9 && Math.sin(a * 6) > 0.55 ? -0.4 : 0) : null }); }
+// a magazine's follower and the top round showing at its lips
+function lgMagTop(B, M, x, z, d, w, round) { if (round !== false) { lgMat(B, M.brass); lgPush(B, lgTR(x - d * 0.25, 0, z + 0.004, 0, Math.PI / 2, 0)); lgLimb(B, d * 0.85, [[0, w * 0.2], [0.65, w * 0.2], [1, w * 0.1]], { up: true, segs: 8, rings: 3 }); lgPop(B); } }
+
 function lgGunM4(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
-  // upper receiver with its rail, the ejection port, the forward assist, the brass deflector
-  lgMat(B, M.gunBlk); lgSide(B, [[-0.075, -0.012], [0.1, -0.012], [0.1, 0.022], [-0.075, 0.022]], 0.029, { bev: 0.003 });
-  lgRail(B, M, -0.07, 0.1, 0.026, 0.011, hi, top);
-  if (hi) { lgMat(B, M.visor); lgBox(B, 0.03, -0.0148, 0.004, 0.025, 0.0008, 0.007, 0.001); lgMat(B, M.gunBlk); lgBox(B, -0.03, -0.0175, 0.012, 0.009, 0.004, 0.007, 0.003); lgBox(B, -0.005, -0.017, 0.016, 0.006, 0.003, 0.005, 0.002); }
-  // lower receiver: magazine well, trigger guard, the grip
-  lgSide(B, [[-0.07, -0.012], [0.075, -0.012], [0.072, -0.05], [0.028, -0.06], [-0.07, -0.046]], 0.027, { bev: 0.003 });
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.012, -0.012], [0.018, -0.012], [0.004, -0.1], [-0.026, -0.1], [-0.03, -0.02]], 0.028, { bev: 0.004, smooth: 0.5 });
-  lgTube(B, [[0.02, 0, -0.03], [0.034, 0, -0.04], [0.026, 0, -0.046], [0.002, 0, -0.044]], 0.0028, { segs: 4, flat: 2, up: [0, 1, 0] });
-  if (hi) { lgMat(B, M.gunBlk); lgBox(B, 0.06, 0.0145, -0.02, 0.006, 0.0015, 0.01, 0.001); lgBox(B, -0.04, -0.0145, -0.018, 0.007, 0.0015, 0.004, 0.001); }
-  // quad rail handguard, the front sight block, the barrel and the birdcage
-  lgMat(B, M.gunBlk); lgBox(B, 0.215, 0, 0.004, 0.115, 0.021, 0.021, 0.006);
-  if (hi) { lgRail(B, M, 0.1, 0.33, 0.026, 0.011, hi, top); for (const s of [1, -1]) { lgMat(B, M.gunBlk); lgBox(B, 0.215, s * 0.022, 0.004, 0.11, 0.003, 0.006, 0.001); } }
-  lgBore(B, 0.33, 0.13, 0.0075); lgBox(B, 0.36, 0, 0.022, 0.008, 0.009, 0.018, 0.002); lgBox(B, 0.36, 0, 0.042, 0.003, 0.002, 0.012, 0.001);
-  lgBore(B, 0.46, 0.042, [[0, 0.0105], [0.15, 0.011], [1, 0.0105]], 0, 0, { wr: top ? (a, z) => (Math.sin(a * 6) > 0.6 && z > 0.01 && z < 0.036 ? -0.35 : 0) : null });
-  // buffer tube and the six-position stock
-  lgBore(B, -0.075, 0.18, 0.0145, 0, 0.004, { up: false });
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.33, -0.058], [-0.2, -0.026], [-0.19, 0.024], [-0.33, 0.028], [-0.345, 0.02], [-0.345, -0.062]], 0.036, { bev: 0.005 });
-  lgMat(B, M.rubber); lgBox(B, -0.35, 0, -0.018, 0.006, 0.019, 0.046, 0.004);
-  // charging handle at the back of the upper, and the holographic sight
-  lgMat(B, M.gunBlk); lgBox(B, -0.082, 0, 0.018, 0.008, 0.016, 0.004, 0.002);
-  if (hi) lgHolo(B, M, 0.03, 0.03, hi); else { lgMat(B, M.gunBlk); lgBox(B, 0.03, 0, 0.045, 0.032, 0.016, 0.016, 0.004); }
-  lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.048, -0.055, 0.178, 0.14, 0.034, 0.022);
-  if (hi) { lgMat(B, M.brass); lgBox(B, 0.046, 0, -0.054, 0.012, 0.004, 0.003, 0.002); }
+  // the upper receiver, flat-top, its rail
+  lgMat(B, M.gunBlk);
+  lgSide(B, [[-0.088, -0.009], [0.1, -0.009], [0.1, 0.018], [0.094, 0.022], [-0.083, 0.022], [-0.088, 0.016]], 0.028, { bev: 0.0028 });
+  lgRail(B, M, -0.083, 0.096, 0.026, 0.0105, hi, top);
+  if (hi) {
+    lgMat(B, M.visor); lgBox(B, 0.03, -0.0143, 0.004, 0.024, 0.0008, 0.0062, 0.001);                    // the ejection port
+    lgMat(B, M.gunBlk); lgBox(B, 0.03, -0.0172, -0.0055, 0.024, 0.0035, 0.0011, 0.0008);                // its dust cover, hanging open
+    lgBox(B, -0.006, -0.0158, 0.016, 0.009, 0.0025, 0.0045, 0.002);                                     // the brass deflector
+    lgKnob(B, -0.052, -0.014, 0.011, 0.0048, 0.012, -1); lgBox(B, -0.052, -0.016, 0.011, 0.012, 0.004, 0.0052, 0.002);   // the forward assist
+    lgPin(B, 0.094, -0.004, 0.0028, 0.03); lgPin(B, -0.078, -0.004, 0.0028, 0.03);                         // takedown and pivot pins
+  }
+  // the lower receiver and its magazine well (flared at the bottom)
+  lgSide(B, [[-0.085, -0.009], [0.104, -0.009], [0.104, -0.02], [0.098, -0.062], [0.102, -0.068], [0.044, -0.068], [0.046, -0.044], [0.02, -0.046], [-0.058, -0.046], [-0.085, -0.03]], 0.0272, { bev: 0.0028 });
+  if (hi) {
+    lgMat(B, M.metal); lgBox(B, 0.028, 0.0145, -0.017, 0.007, 0.0016, 0.0045, 0.0012);                  // the bolt catch (left)
+    lgKnob(B, 0.032, -0.0137, -0.03, 0.0035, 0.0035, -1);                                                 // the magazine release (right)
+    lgMat(B, M.gunBlk); lgPush(B, lgTR(-0.038, 0.0148, -0.024, Math.PI / 2, 0, 0)); lgSide(B, [[-0.002, -0.003], [0.016, -0.002], [0.017, 0.002], [-0.002, 0.003]], 0.0018, { bev: 0.0005 }); lgPop(B);   // the safety selector (left)
+    lgPin(B, 0.0, -0.032, 0.0022, 0.029); lgPin(B, -0.02, -0.032, 0.0022, 0.029);                          // trigger and hammer pins
+  }
+  lgMat(B, M.gunPoly); lgARGrip(B, -0.02, -0.044, 0.0285);
+  lgTrigger(B, M, -0.024, 0.044, -0.064, -0.046, { tx: 0.004 });
+  // the quad-rail handguard and its delta ring, the barrel, the front sight base, the birdcage
+  lgMat(B, M.gunBlk); lgBore(B, 0.1, 0.008, 0.024); lgBox(B, 0.195, 0, 0.004, 0.087, 0.0205, 0.0205, 0.006);
+  if (hi) {
+    lgRail(B, M, 0.11, 0.28, 0.026, 0.0105, hi, top);
+    for (const s of [1, -1]) { lgMat(B, M.gunBlk); lgBox(B, 0.195, s * 0.0215, 0.004, 0.082, 0.0028, 0.0055, 0.001); if (top) { lgMat(B, M.poly); for (let i = 0; i < 12; i++) lgBox(B, 0.118 + i * 0.0142, s * 0.0244, 0.004, 0.0028, 0.0006, 0.0058, 0); } }
+    lgMat(B, M.gunBlk); lgBox(B, 0.195, 0, -0.0175, 0.082, 0.0055, 0.0028, 0.001);
+  }
+  lgMat(B, M.gunBlk); lgBore(B, 0.282, 0.145, [[0, 0.0078], [0.25, 0.0074], [1, 0.0072]]);
+  lgBox(B, 0.31, 0, 0.014, 0.011, 0.0095, 0.018, 0.002);                                                  // the front sight base
+  lgPush(B, lgTR(0.31, 0, 0.032, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.008, 0], [0.003, 0.018], [-0.003, 0.018]], 0.009, { bev: 0.001 }); lgPop(B);   // its A-frame
+  if (hi) { lgBox(B, 0.31, 0, 0.049, 0.0014, 0.0014, 0.004, 0); lgBox(B, 0.326, 0, -0.012, 0.004, 0.004, 0.006, 0.0015); }   // the post, the bayonet lug
+  lgBirdcage(B, 0.427, 0.042, 0.0108, top);
+  // the buffer tube and its castle nut, the six-position stock, the butt pad, the sling loop
+  lgMat(B, M.gunBlk); lgBore(B, -0.088, 0.17, 0.0145, 0, 0.002, { up: false }); lgBore(B, -0.096, 0.008, 0.0175, 0, 0.002, { up: false });
+  lgMat(B, M.gunPoly); lgSide(B, [[-0.33, -0.058], [-0.21, -0.03], [-0.198, -0.012], [-0.198, 0.022], [-0.33, 0.029], [-0.345, 0.022], [-0.345, -0.064]], 0.036, { bev: 0.005, smooth: 0.3 });
+  if (hi) { lgBox(B, -0.25, 0, -0.03, 0.012, 0.0185, 0.008, 0.003); lgMat(B, M.metal); lgTube(B, [[-0.31, 0.019, -0.04], [-0.3, 0.025, -0.05], [-0.29, 0.019, -0.04]], 0.0016, { segs: 4 }); }
+  lgMat(B, M.rubber); lgBox(B, -0.35, 0, -0.018, 0.006, 0.019, 0.047, 0.004);
+  // the charging handle, and the sight
+  lgMat(B, M.gunBlk); lgBox(B, -0.092, 0, 0.017, 0.006, 0.017, 0.0035, 0.0015); if (hi) lgBox(B, -0.093, 0.016, 0.017, 0.004, 0.003, 0.004, 0.001);
+  if (hi) lgHolo(B, M, 0.022, 0.03, hi); else { lgMat(B, M.gunBlk); lgBox(B, 0.022, 0, 0.045, 0.034, 0.016, 0.016, 0.004); }
+  // the magazine: a curved 30-rounder with its ribs, its base plate, the round at the lips
+  lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.07, -0.058, 0.172, 0.13, 0.034, 0.0215);
+  if (hi) { for (const s of [1, -1]) for (let i = 0; i < 3; i++) lgBox(B, 0.071 + i * 0.002, s * 0.011, -0.09 - i * 0.03, 0.012, 0.0008, 0.011, 0.001); lgMagTop(B, M, 0.07, -0.058, 0.034, 0.022); }
 }
 function lgGunAK(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
-  // receiver and the ribbed dust cover
-  lgMat(B, M.blued); lgSide(B, [[-0.06, -0.045], [0.2, -0.045], [0.21, -0.012], [0.2, 0.012], [-0.06, 0.012]], 0.029, { bev: 0.002 });
-  lgSide(B, [[-0.055, 0.012], [0.19, 0.012], [0.2, 0.024], [-0.04, 0.03], [-0.06, 0.022]], 0.027, { bev: 0.004, smooth: 0.6 });
-  if (top) { lgMat(B, M.blued); for (let i = 0; i < 9; i++) lgBox(B, -0.02 + i * 0.022, 0, 0.0285, 0.003, 0.0125, 0.0012, 0.001); }
-  // the safety lever on the right, the charging handle on the carrier (right side), the rear sight leaf
-  lgMat(B, M.blued); lgPush(B, lgTR(0, -0.0165, 0, 0, 0, 0)); lgSide(B, [[-0.02, 0.0], [0.16, -0.004], [0.16, -0.018], [0.0, -0.02], [-0.035, -0.008]], 0.003, { bev: 0.0006 }); lgPop(B);
-  lgBox(B, 0.17, -0.026, 0.004, 0.006, 0.012, 0.005, 0.003);
-  lgBox(B, 0.215, 0, 0.03, 0.02, 0.012, 0.005, 0.002);
-  // pistol grip and the trigger guard (black polymer)
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.012, -0.045], [0.016, -0.045], [0.0, -0.12], [-0.028, -0.12], [-0.03, -0.05]], 0.027, { bev: 0.004, smooth: 0.5 });
-  lgMat(B, M.blued); lgTube(B, [[0.02, 0, -0.045], [0.04, 0, -0.06], [0.03, 0, -0.068], [0.0, 0, -0.066]], 0.0028, { segs: 4, flat: 2, up: [0, 1, 0] });
-  // the handguard (lower) and the gas tube with its upper handguard
-  lgMat(B, M.gunPoly); lgBox(B, 0.31, 0, -0.006, 0.09, 0.02, 0.018, 0.008);
-  lgBox(B, 0.3, 0, 0.026, 0.085, 0.013, 0.011, 0.007);
-  if (hi) { lgMat(B, M.visor); for (let i = 0; i < 4; i++) for (const s of [1, -1]) lgBox(B, 0.26 + i * 0.03, s * 0.0205, -0.006, 0.006, 0.0005, 0.009, 0.002); }
-  // barrel, gas block, front sight post, the two-chamber brake
+  // the stamped receiver and the ribbed dust cover, the rear trunnion rivets
+  lgMat(B, M.blued); lgSide(B, [[-0.07, -0.048], [0.2, -0.048], [0.21, -0.012], [0.2, 0.012], [-0.07, 0.012]], 0.029, { bev: 0.002 });
+  lgSide(B, [[-0.065, 0.012], [0.19, 0.012], [0.2, 0.024], [-0.05, 0.03], [-0.07, 0.022]], 0.027, { bev: 0.004, smooth: 0.6 });
+  if (top) { for (let i = 0; i < 9; i++) lgBox(B, -0.03 + i * 0.022, 0, 0.0285, 0.003, 0.0125, 0.0012, 0.001); for (const [x, z] of [[-0.05, -0.03], [-0.05, -0.01], [0.17, -0.03], [0.17, -0.012], [0.185, -0.02]]) for (const s of [1, -1]) lgSphere(B, x, s * 0.0148, z, 0.0022, 0.001, 0.0022, { segs: 6, rings: 3 }); }
+  // the big safety lever on the right, the charging handle on the carrier, the rear sight leaf, the side rail (left)
+  if (hi) { lgMat(B, M.blued); lgPush(B, lgTR(0, -0.0165, 0, 0, 0, 0)); lgSide(B, [[-0.03, 0.0], [0.16, -0.004], [0.16, -0.018], [0.0, -0.02], [-0.045, -0.008]], 0.003, { bev: 0.0006 }); lgPop(B); lgBox(B, 0.0, 0.016, -0.025, 0.05, 0.003, 0.01, 0.001); }
+  lgMat(B, M.blued); lgBox(B, 0.17, -0.026, 0.004, 0.006, 0.012, 0.005, 0.003); lgSphere(B, 0.17, -0.039, 0.004, 0.006, 0.004, 0.006, { segs: 8, rings: 4 });
+  lgBox(B, 0.215, 0, 0.03, 0.02, 0.012, 0.005, 0.002); if (hi) lgBox(B, 0.215, 0, 0.037, 0.014, 0.004, 0.002, 0.001);
+  // the polymer grip behind a short trigger guard; the magazine well's lip in front of it
+  lgMat(B, M.gunPoly); lgARGrip(B, 0.006, -0.048, 0.027, { k: 0.95 });
+  lgMat(B, M.blued); lgTrigger(B, M, 0.0, 0.056, -0.068, -0.05, { gm: M.blued, tx: 0.024 });
+  // the plum handguard (lower) with its vents, the gas tube with its upper handguard
+  lgMat(B, M.plum); lgBox(B, 0.315, 0, -0.006, 0.09, 0.02, 0.018, 0.008);
+  lgBox(B, 0.305, 0, 0.026, 0.085, 0.013, 0.011, 0.007);
+  if (hi) { lgMat(B, M.visor); for (let i = 0; i < 4; i++) for (const s of [1, -1]) lgBox(B, 0.265 + i * 0.03, s * 0.0205, -0.006, 0.006, 0.0005, 0.009, 0.002); lgMat(B, M.blued); lgBox(B, 0.225, 0, 0.01, 0.006, 0.022, 0.024, 0.002); lgBox(B, 0.405, 0, 0.01, 0.006, 0.021, 0.022, 0.002); }
+  // the barrel, the gas block, the front sight post, the two-chamber brake
   lgMat(B, M.blued); lgBore(B, 0.2, 0.32, 0.0078); lgBox(B, 0.41, 0, 0.02, 0.012, 0.009, 0.016, 0.003);
   lgBox(B, 0.49, 0, 0.016, 0.01, 0.008, 0.02, 0.002); if (hi) { lgBox(B, 0.49, 0, 0.04, 0.0025, 0.002, 0.01, 0.0008); }
   lgBore(B, 0.52, 0.065, [[0, 0.0115], [0.35, 0.0125], [0.4, 0.0105], [0.55, 0.0125], [1, 0.0118]], 0, 0, { wr: hi ? (a, z) => (z > 0.02 && z < 0.06 && Math.abs(Math.sin(a)) > 0.92 ? -0.3 : 0) : null });
-  // the side-folding stock, unfolded
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.06, -0.035], [-0.06, 0.018], [-0.32, 0.01], [-0.335, -0.004], [-0.335, -0.09], [-0.31, -0.095], [-0.2, -0.05]], 0.03, { bev: 0.005, smooth: 0.4 });
+  // the side-folding stock, unfolded, its cheek and the sling loop
+  lgMat(B, M.gunPoly); lgSide(B, [[-0.07, -0.038], [-0.07, 0.018], [-0.32, 0.01], [-0.335, -0.004], [-0.335, -0.09], [-0.31, -0.095], [-0.2, -0.052]], 0.03, { bev: 0.005, smooth: 0.4 });
+  if (hi) { lgMat(B, M.blued); lgTube(B, [[-0.3, 0.016, -0.075], [-0.29, 0.022, -0.085], [-0.28, 0.016, -0.075]], 0.0016, { segs: 4 }); }
   lgMat(B, M.rubber); lgBox(B, -0.34, 0, -0.04, 0.005, 0.016, 0.052, 0.003);
   if (hi) lgHolo(B, M, 0.06, 0.03, hi);
-  lgBone(B, 'cmag'); lgMat(B, M.plum); lgCurvedMag(B, 0.085, -0.045, 0.19, 0.32, 0.036, 0.024);
-  if (hi) { lgMat(B, M.plum); lgBox(B, 0.087, 0, -0.05, 0.02, 0.0135, 0.006, 0.002); lgMat(B, M.brass); lgBox(B, 0.084, 0, -0.044, 0.012, 0.004, 0.003, 0.002); }
+  lgBone(B, 'cmag'); lgMat(B, M.plum); lgCurvedMag(B, 0.085, -0.048, 0.19, 0.32, 0.036, 0.024);
+  if (hi) { lgMat(B, M.plum); lgBox(B, 0.087, 0, -0.053, 0.02, 0.0135, 0.006, 0.002); for (const s of [1, -1]) lgBox(B, 0.095, s * 0.0125, -0.12, 0.012, 0.0008, 0.03, 0.001); lgMagTop(B, M, 0.084, -0.048, 0.034, 0.022); }
 }
 function lgGunMk17(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
-  // the monolithic upper with a full-length rail, the reciprocating charging handle on the left
+  // the monolithic upper, a rail its whole length, the side rails, the reciprocating charging handle on the left
   lgMat(B, M.fde); lgSide(B, [[-0.12, -0.014], [0.37, -0.014], [0.37, 0.02], [-0.12, 0.02]], 0.034, { bev: 0.004 });
   lgRail(B, M, -0.115, 0.36, 0.024, 0.011, hi, top);
-  if (hi) { for (const s of [1, -1]) lgRail(B, M, 0.2, 0.33, 0.0, 0.004, false, false); }
-  lgMat(B, M.gunBlk); lgBox(B, 0.15, 0.024, 0.008, 0.008, 0.008, 0.005, 0.003);
-  // the lower: magazine well, grip, trigger guard
-  lgMat(B, M.fde); lgSide(B, [[-0.08, -0.014], [0.09, -0.014], [0.086, -0.054], [0.03, -0.062], [-0.08, -0.05]], 0.03, { bev: 0.004 });
-  lgMat(B, M.fdeDk); lgSide(B, [[-0.012, -0.014], [0.018, -0.014], [0.004, -0.104], [-0.026, -0.104], [-0.03, -0.022]], 0.029, { bev: 0.004, smooth: 0.5 });
-  lgTube(B, [[0.02, 0, -0.032], [0.034, 0, -0.042], [0.026, 0, -0.048], [0.002, 0, -0.046]], 0.003, { segs: 4, flat: 2, up: [0, 1, 0] });
-  // barrel and the flash hider
-  lgMat(B, M.gunBlk); lgBore(B, 0.37, 0.15, 0.0095); lgBore(B, 0.52, 0.06, [[0, 0.012], [1, 0.0115]], 0, 0, { wr: top ? (a, z) => (Math.sin(a * 5) > 0.5 && z > 0.015 ? -0.3 : 0) : null });
-  // the folding stock with its cheek riser
+  if (hi) { for (const s of [1, -1]) { lgMat(B, M.gunBlk); lgBox(B, 0.27, s * 0.0185, 0.0, 0.09, 0.0028, 0.006, 0.001); } lgMat(B, M.visor); lgBox(B, 0.06, -0.0172, 0.004, 0.026, 0.0008, 0.007, 0.001); }
+  lgMat(B, M.gunBlk); lgBox(B, 0.15, 0.024, 0.008, 0.008, 0.008, 0.005, 0.003); lgKnob(B, 0.15, 0.03, 0.008, 0.004, 0.006, 1);
+  // the lower: magazine well, the raked grip behind a full trigger guard, the ambidextrous safety
+  lgMat(B, M.fde); lgSide(B, [[-0.09, -0.014], [0.1, -0.014], [0.1, -0.024], [0.094, -0.06], [0.098, -0.066], [0.024, -0.066], [0.026, -0.05], [0.0, -0.052], [-0.06, -0.052], [-0.09, -0.032]], 0.03, { bev: 0.004 });
+  if (hi) { lgMat(B, M.gunBlk); for (const s of [1, -1]) lgBox(B, -0.04, s * 0.0158, -0.03, 0.008, 0.0015, 0.003, 0.001); lgPin(B, 0.07, -0.01, 0.0028, 0.034); }
+  lgMat(B, M.fdeDk); lgARGrip(B, -0.026, -0.05, 0.029);
+  lgTrigger(B, M, -0.03, 0.022, -0.07, -0.052, { gm: M.fdeDk, tx: -0.002 });
+  // the barrel and the flash hider, the gas block
+  lgMat(B, M.gunBlk); lgBore(B, 0.37, 0.15, 0.0095); lgBox(B, 0.4, 0, 0.0, 0.01, 0.012, 0.012, 0.003);
+  lgBore(B, 0.52, 0.06, [[0, 0.012], [1, 0.0115]], 0, 0, { wr: top ? (a, z) => (Math.sin(a * 5) > 0.5 && z > 0.015 ? -0.3 : 0) : null });
+  // the folding stock with its cheek riser and the hinge
   lgMat(B, M.fde); lgSide(B, [[-0.12, -0.036], [-0.12, 0.018], [-0.3, 0.03], [-0.36, 0.034], [-0.37, 0.02], [-0.37, -0.075], [-0.34, -0.08], [-0.22, -0.04]], 0.034, { bev: 0.005, smooth: 0.4 });
+  if (hi) { lgMat(B, M.fdeDk); lgBox(B, -0.29, 0, 0.034, 0.05, 0.016, 0.006, 0.004); lgMat(B, M.gunBlk); lgBore(B, -0.12, 0.012, 0.012, 0, -0.01, { up: false }); }
   lgMat(B, M.rubber); lgBox(B, -0.375, 0, -0.022, 0.006, 0.019, 0.05, 0.004);
   if (hi) lgHolo(B, M, 0.04, 0.028, hi); else { lgMat(B, M.gunBlk); lgBox(B, 0.04, 0, 0.045, 0.032, 0.016, 0.016, 0.004); }
-  lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.055, -0.058, 0.138, 0.05, 0.04, 0.026);
-  if (hi) { lgMat(B, M.brass); lgBox(B, 0.054, 0, -0.057, 0.016, 0.005, 0.004, 0.002); }
+  lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.06, -0.06, 0.138, 0.05, 0.04, 0.026);
+  if (hi) { for (const s of [1, -1]) lgBox(B, 0.062, s * 0.0135, -0.12, 0.014, 0.0008, 0.035, 0.001); lgMagTop(B, M, 0.06, -0.06, 0.04, 0.026); }
 }
 function lgGunM1014(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
-  // receiver with the loading port underneath and the charging handle on the right
-  lgMat(B, M.gunBlk); lgSide(B, [[-0.08, -0.034], [0.19, -0.034], [0.2, -0.004], [0.19, 0.022], [-0.07, 0.024], [-0.08, 0.01]], 0.032, { bev: 0.004 });
+  // the receiver with the loading port underneath and the charging handle on the right, its rail
+  lgMat(B, M.gunBlk); lgSide(B, [[-0.08, -0.036], [0.19, -0.036], [0.2, -0.004], [0.19, 0.022], [-0.07, 0.024], [-0.08, 0.01]], 0.032, { bev: 0.004 });
   lgRail(B, M, -0.06, 0.16, 0.027, 0.011, hi, top);
-  lgBox(B, 0.08, -0.024, 0.0, 0.007, 0.009, 0.006, 0.003);
-  if (hi) { lgMat(B, M.visor); lgBox(B, 0.09, 0, -0.034, 0.04, 0.012, 0.0008, 0.002); lgMat(B, M.shellRed); lgBox(B, 0.1, 0, -0.033, 0.03, 0.009, 0.0008, 0.001); }
-  // grip
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.012, -0.034], [0.018, -0.034], [0.004, -0.11], [-0.026, -0.11], [-0.03, -0.04]], 0.029, { bev: 0.004, smooth: 0.5 });
-  lgMat(B, M.gunBlk); lgTube(B, [[0.022, 0, -0.034], [0.036, 0, -0.05], [0.028, 0, -0.056], [0.002, 0, -0.054]], 0.003, { segs: 4, flat: 2, up: [0, 1, 0] });
+  lgBox(B, 0.08, -0.024, 0.0, 0.007, 0.009, 0.006, 0.003); lgKnob(B, 0.08, -0.03, 0.0, 0.004, 0.006, -1);
+  if (hi) { lgMat(B, M.visor); lgBox(B, 0.105, 0, -0.036, 0.04, 0.012, 0.0008, 0.002); lgMat(B, M.shellRed); lgBox(B, 0.115, 0, -0.035, 0.03, 0.009, 0.0008, 0.001); lgMat(B, M.metal); lgBox(B, 0.07, 0.0168, -0.01, 0.01, 0.0015, 0.004, 0.001); lgPin(B, -0.06, -0.02, 0.0028, 0.033); lgPin(B, 0.0, -0.02, 0.0028, 0.033); }
+  // the raked grip behind its guard
+  lgMat(B, M.gunPoly); lgARGrip(B, -0.016, -0.036, 0.029);
+  lgTrigger(B, M, -0.02, 0.05, -0.058, -0.038, { tx: 0.008 });
   // the barrel above, the magazine tube below with its cap and the forend over it
-  lgBore(B, 0.2, 0.42, [[0, 0.0105], [1, 0.0098]], 0, 0.006);
-  lgBore(B, 0.19, 0.31, 0.0125, 0, -0.019); lgBore(B, 0.5, 0.018, 0.014, 0, -0.019);
+  lgMat(B, M.gunBlk); lgBore(B, 0.2, 0.42, [[0, 0.0105], [1, 0.0098]], 0, 0.006);
+  lgBore(B, 0.19, 0.31, 0.0125, 0, -0.019); lgBore(B, 0.5, 0.018, 0.014, 0, -0.019); if (hi) lgBox(B, 0.47, 0, -0.006, 0.006, 0.012, 0.016, 0.003);
   lgMat(B, M.gunPoly); lgBox(B, 0.3, 0, -0.016, 0.085, 0.02, 0.018, 0.009);
   if (hi) { lgMat(B, M.visor); for (let i = 0; i < 5; i++) for (const s of [1, -1]) lgBox(B, 0.24 + i * 0.024, s * 0.0205, -0.016, 0.0045, 0.0005, 0.012, 0.002); }
-  // ghost-ring sights
-  lgMat(B, M.gunBlk); lgBox(B, -0.02, 0, 0.05, 0.008, 0.012, 0.018, 0.003); if (hi) { lgLathe(B, [[0.006, -0.002], [0.009, 0], [0.009, 0.003], [0.006, 0.005]], { segs: 10, ox: -0.02 }); }
-  lgBox(B, 0.6, 0, 0.022, 0.006, 0.006, 0.014, 0.002);
-  // the collapsible stock
-  lgBore(B, -0.08, 0.17, 0.0135, 0, 0.0, { up: false });
+  // ghost-ring sights with their protective ears
+  lgMat(B, M.gunBlk); lgBox(B, -0.02, 0, 0.05, 0.008, 0.012, 0.018, 0.003); if (hi) { lgLathe(B, [[0.006, -0.002], [0.009, 0], [0.009, 0.003], [0.006, 0.005]], { segs: 10, ox: -0.02 }); for (const s of [1, -1]) lgBox(B, -0.02, s * 0.013, 0.058, 0.007, 0.0018, 0.012, 0.001); }
+  lgBox(B, 0.6, 0, 0.022, 0.006, 0.006, 0.014, 0.002); if (hi) { lgMat(B, M.glow); lgSphere(B, 0.6, 0, 0.037, 0.0016, 0.0016, 0.0016, { segs: 5, rings: 3 }); }
+  // the collapsible stock and its pad
+  lgMat(B, M.gunBlk); lgBore(B, -0.08, 0.17, 0.0135, 0, 0.0, { up: false });
   lgMat(B, M.gunPoly); lgSide(B, [[-0.33, -0.064], [-0.2, -0.03], [-0.19, 0.022], [-0.33, 0.026], [-0.345, 0.018], [-0.345, -0.068]], 0.038, { bev: 0.005 });
   lgMat(B, M.rubber); lgBox(B, -0.352, 0, -0.022, 0.007, 0.02, 0.05, 0.004);
   // the "magazine" bone carries a shell (the one going in, and the port load)
@@ -170,24 +230,25 @@ function lgGunM1014(B, K) {
 function lgGunPP19(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
-  lgMat(B, M.blued); lgSide(B, [[-0.06, -0.035], [0.17, -0.035], [0.18, -0.01], [0.17, 0.012], [-0.06, 0.012]], 0.028, { bev: 0.002 });
-  lgSide(B, [[-0.055, 0.012], [0.16, 0.012], [0.17, 0.022], [-0.04, 0.028], [-0.06, 0.02]], 0.026, { bev: 0.004, smooth: 0.6 });
+  lgMat(B, M.blued); lgSide(B, [[-0.07, -0.038], [0.17, -0.038], [0.18, -0.01], [0.17, 0.012], [-0.07, 0.012]], 0.028, { bev: 0.002 });
+  lgSide(B, [[-0.065, 0.012], [0.16, 0.012], [0.17, 0.022], [-0.05, 0.028], [-0.07, 0.02]], 0.026, { bev: 0.004, smooth: 0.6 });
+  if (top) for (const [x, z] of [[-0.05, -0.025], [0.15, -0.025], [0.15, -0.008]]) for (const s of [1, -1]) lgSphere(B, x, s * 0.0143, z, 0.0021, 0.001, 0.0021, { segs: 6, rings: 3 });
   lgBox(B, 0.14, -0.024, 0.004, 0.006, 0.011, 0.005, 0.003);
-  lgPush(B, lgTR(0, -0.0155, 0, 0, 0, 0)); lgSide(B, [[-0.02, 0.0], [0.13, -0.004], [0.13, -0.016], [0.0, -0.018], [-0.03, -0.008]], 0.003, { bev: 0.0006 }); lgPop(B);
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.012, -0.035], [0.016, -0.035], [0.0, -0.11], [-0.028, -0.11], [-0.03, -0.04]], 0.027, { bev: 0.004, smooth: 0.5 });
-  lgMat(B, M.blued); lgTube(B, [[0.02, 0, -0.035], [0.038, 0, -0.05], [0.028, 0, -0.058], [0.0, 0, -0.056]], 0.0028, { segs: 4, flat: 2, up: [0, 1, 0] });
-  // the short barrel and the slant brake
+  if (hi) { lgPush(B, lgTR(0, -0.0155, 0, 0, 0, 0)); lgSide(B, [[-0.02, 0.0], [0.13, -0.004], [0.13, -0.016], [0.0, -0.018], [-0.03, -0.008]], 0.003, { bev: 0.0006 }); lgPop(B); }
+  lgMat(B, M.gunPoly); lgARGrip(B, 0.0, -0.038, 0.027, { k: 0.95 });
+  lgMat(B, M.blued); lgTrigger(B, M, -0.004, 0.05, -0.06, -0.04, { gm: M.blued, tx: 0.02 });
+  // the short barrel and the slant brake, the front sight
   lgBore(B, 0.18, 0.15, 0.0078); lgBore(B, 0.33, 0.035, [[0, 0.011], [1, 0.0105]]);
-  if (hi) { lgBox(B, 0.3, 0, 0.018, 0.006, 0.006, 0.014, 0.002); }
+  if (hi) { lgBox(B, 0.3, 0, 0.018, 0.006, 0.006, 0.014, 0.002); lgBox(B, 0.3, 0, 0.034, 0.0018, 0.0018, 0.004, 0); }
   // the skeleton side-folding stock
-  lgTube(B, [[-0.06, 0, 0.004], [-0.3, 0, 0.0], [-0.33, 0, -0.03], [-0.33, 0, -0.085], [-0.3, 0, -0.09], [-0.18, 0, -0.04], [-0.06, 0, -0.03]], 0.0065, { segs: 6 });
+  lgTube(B, [[-0.07, 0, 0.004], [-0.3, 0, 0.0], [-0.33, 0, -0.03], [-0.33, 0, -0.085], [-0.3, 0, -0.09], [-0.18, 0, -0.04], [-0.07, 0, -0.03]], 0.0065, { segs: 6 });
   lgMat(B, M.rubber); lgBox(B, -0.336, 0, -0.045, 0.005, 0.016, 0.05, 0.003);
   if (hi) lgHolo(B, M, 0.06, 0.03, hi);
   // the 64-round helical magazine under the barrel: a ribbed cylinder, its feed at the back, a hook at the front
   lgBone(B, 'cmag'); lgMat(B, M.gunPoly);
-  lgBore(B, 0.05, 0.28, [[0, 0.026], [0.04, 0.028], [0.96, 0.028], [1, 0.024]], 0, -0.052, { segs: 14, wr: hi ? (a, z) => Math.sin(z * 180) * 0.04 : null });
-  lgBox(B, 0.045, 0, -0.03, 0.018, 0.014, 0.014, 0.004);
-  if (hi) { lgMat(B, M.blued); lgBox(B, 0.33, 0, -0.03, 0.006, 0.01, 0.008, 0.002); }
+  lgBore(B, 0.05, 0.28, [[0, 0.026], [0.04, 0.028], [0.96, 0.028], [1, 0.024]], 0, -0.054, { segs: 14, wr: hi ? (a, z) => Math.sin(z * 180) * 0.04 : null });
+  lgBox(B, 0.045, 0, -0.032, 0.018, 0.014, 0.014, 0.004);
+  if (hi) { lgMat(B, M.blued); lgBox(B, 0.33, 0, -0.032, 0.006, 0.01, 0.008, 0.002); lgMat(B, M.gunBlk); lgBore(B, 0.33, 0.006, 0.02, 0, -0.054); }
 }
 /* ---------- handguns (pistol, slide, mag bones) ---------- */
 // a polymer-framed striker pistol (M17) or a hammer gun (M9, 1911, APS): slide, frame, grip, trigger guard, magazine
@@ -254,11 +315,11 @@ function lgGunM1917(B, K) {
 // each gun: its builder, the bone family, its muzzle, the support hand, where its magazine's top is, a hand-off for the
 // magazine in the hand; held relative to the original carbine and pistol sockets
 const LG_GUN_DEF = {
-  m4a1: { mk: lgGunM4, fam: 'c', muz: [0.502, 0, 0], sup: 0.2, mag: [0.048, -0.055] },
-  ak74m: { mk: lgGunAK, fam: 'c', muz: [0.585, 0, 0], sup: 0.27, mag: [0.085, -0.045] },
-  mk17: { mk: lgGunMk17, fam: 'c', muz: [0.58, 0, 0], sup: 0.22, mag: [0.055, -0.058] },
-  m1014: { mk: lgGunM1014, fam: 'c', muz: [0.62, 0, 0.006], sup: 0.28, mag: [0.06, -0.06] },
-  pp19: { mk: lgGunPP19, fam: 'c', muz: [0.365, 0, 0], sup: 0.15, mag: [0.06, -0.03], helix: true },
+  m4a1: { mk: lgGunM4, fam: 'c', muz: [0.469, 0, 0], sup: 0.205, mag: [0.07, -0.058], gx: -0.02, gz: -0.044 },
+  ak74m: { mk: lgGunAK, fam: 'c', muz: [0.585, 0, 0], sup: 0.29, mag: [0.085, -0.048], gx: 0.006, gz: -0.048 },
+  mk17: { mk: lgGunMk17, fam: 'c', muz: [0.58, 0, 0], sup: 0.24, mag: [0.06, -0.06], gx: -0.026, gz: -0.05 },
+  m1014: { mk: lgGunM1014, fam: 'c', muz: [0.62, 0, 0.006], sup: 0.29, mag: [0.06, -0.06], gx: -0.016, gz: -0.036 },
+  pp19: { mk: lgGunPP19, fam: 'c', muz: [0.365, 0, 0], sup: 0.17, mag: [0.06, -0.032], helix: true, gx: 0.0, gz: -0.038 },
   m17: { mk: lgGunM17, fam: 'p', muz: [0.202, 0, 0], mag: [0.027, -0.03] },
   m9: { mk: lgGunM9, fam: 'p', muz: [0.217, 0, 0], mag: [0.027, -0.03] },
   m1911: { mk: lgGunM1911, fam: 'p', muz: [0.202, 0, 0], mag: [0.027, -0.03] },
@@ -273,10 +334,11 @@ function lgGunSock(key) {
   // the magazine in the support hand: the generic hand-off moved by how far this gun's magazine top is from the generic one
   const shift = (sock, m0, m) => { const o = sock.slice(), dx = m0[0] - m[0], dz = m0[1] - m[1]; o[12] += o[0] * dx + o[8] * dz; o[13] += o[1] * dx + o[9] * dz; o[14] += o[2] * dx + o[10] * dz; return o; };
   if (D.fam === 'c') {
-    S.gripR = LG_SOCK.cgripR;
-    S.gripL = LG_SOCK.cgripL.slice(); S.gripL[12] = D.sup - 0.05;
-    if (D.helix) { S.gripL = lgBasis([0, 1, 0], [0, 0, -1], [-1, 0, 0], [D.sup - 0.05, 0.0, -0.075]); }
-    S.magHand = shift(LG_SOCK.cmagHand, [0.046, -0.06], D.mag);
+    // the firing hand follows this gun's grip down from the generic one; the support hand to this gun's handguard
+    S.gripR = LG_SOCK.cgripR.slice(); S.gripR[12] += (D.gx == null ? -0.02 : D.gx) + 0.02; S.gripR[14] += (D.gz == null ? -0.044 : D.gz) + 0.044;
+    S.gripL = LG_SOCK.cgripL.slice(); S.gripL[12] = D.sup - 0.065;
+    if (D.helix) S.gripL[14] = -0.06;   // (the Bizon: the hand under the helical magazine, which is its forend)
+    S.magHand = shift(LG_SOCK.cmagHand, [0.07, -0.058], D.mag);
   } else {
     S.gripR = LG_SOCK.gripR; S.gripL = LG_SOCK.gripL;
     S.magHand = shift(LG_SOCK.magHand, [0.027, -0.03], D.mag);
@@ -287,10 +349,24 @@ function lgGunSock(key) {
 LG.gunC = null; LG.gunP = null;
 function lgGunSet(c, p) { LG.gunC = c && LG_GUN_DEF[c] ? c : null; LG.gunP = p && LG_GUN_DEF[p] ? p : null; }
 function lgSockFor(prop, which) {
-  const k = prop === 'carbine' ? LG.gunC : prop === 'pistol' ? LG.gunP : null, S = k ? lgGunSock(k) : null;
+  const k = prop === 'carbine' ? LG.gunC : prop === 'pistol' ? LG.gunP : null;
+  // 1.9.994: a hand's socket is the hand-made one moved until the palm meets the grip (leghand.js)
+  if ((which === 'gripR' || which === 'gripL') && typeof lghGet === 'function' && LGH.on) {
+    const side = which === 'gripR' ? 'R' : 'L', f = lghGet(prop, k, side, which, lghGripName(prop, side, null), lghBaseSock(prop, k, which)); if (f) return f.S;
+  }
+  return lgSockBase(prop, which, k);
+}
+function lgSockBase(prop, which, k) {
+  const S = k ? lgGunSock(k) : null;
   if (S && S[which]) return S[which];
   if (prop === 'carbine') return which === 'gripR' ? LG_SOCK.cgripR : which === 'gripL' ? LG_SOCK.cgripL : which === 'magHand' ? LG_SOCK.cmagHand : which === 'muz' ? LG_SOCK.muzC : null;
   return which === 'gripR' ? LG_SOCK.gripR : which === 'gripL' ? LG_SOCK.gripL : which === 'magHand' ? LG_SOCK.magHand : which === 'muz' ? LG_SOCK.muzP : null;
+}
+// the knife's socket in a hand, fitted the same way
+function lgKnifeSock(side) {
+  const which = side === 'R' && LG_SOCK.kgripF ? 'kgripF' : 'kgrip', base = LG_SOCK[which];
+  if (typeof lghGet === 'function' && LGH.on) { const f = lghGet('knife', null, side, which, 'knife', base); if (f) return f.S; }
+  return base;
 }
 // the Operator carrying a loadout: cls is "class|primary|secondary"
 function lgOpGuns(B, K, gp, gs) {

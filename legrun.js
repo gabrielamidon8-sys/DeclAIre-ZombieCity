@@ -345,7 +345,7 @@ function lgvStep(p, B) {
 /* ---------- frames: legs, upper body, head ---------- */
 const LGV_LEGCLIP = { idle_ready: 'idle_ready', walk_tac: 'walk_tac', run: 'run', sprint: 'sprint', backpedal: 'backpedal', strafe_l: 'strafe_l', strafe_r: 'strafe_r' };
 // each layer's frame: [left, right, top, bottom] in sprite units around its centre (forward is right; the gun reaches far)
-const LGV_BOX = { legs: [-36, 36, -24, 24], up: [-30, 62, -34, 38], head: [-9, 9, -9, 9], full: [-52, 52, -52, 52] };
+const LGV_BOX = { legs: [-36, 36, -24, 24], up: [-30, 62, -34, 38], head: [-11, 14, -11, 11], full: [-52, 52, -52, 52] };   // (1.9.994: the head's frame has room for the mask's front)
 function lgvModelKey(p) {
   const cls = p === G.p ? (SET.legendClass || 'attack') : (p.lc || 'attack'), a = p.arm;
   let gp = 'm4a1', gs = 'm17';

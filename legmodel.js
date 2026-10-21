@@ -134,7 +134,7 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
 (function lgSockets() {
   // pistol space: bore along +x, origin at the back of the slide on the bore line, slide top +z
   // right hand on the grip: thumb side up, palm facing the gun's left (into the grip), knuckles forward and a little down
-  LG_SOCK.gripR = lgBasis([0.259, 0, 0.966], [0, 1, 0], [-0.966, 0, 0.259], [-0.072, -0.03, -0.05]);
+  LG_SOCK.gripR = lgBasis([0.259, 0, 0.966], [0, 1, 0], [-0.966, 0, 0.259], [-0.0488, -0.03, -0.0562]);   // (1.9.994: forward, so the front strap lies across the base of the fingers)
   // support hand: canted down, palm against the left of the grip, thumb forward under the slide
   LG_SOCK.gripL = lgBasis([0.707, 0, 0.707], [0, 1, 0], [-0.707, 0, 0.707], [-0.035, 0.052, -0.052]);
   // holster on the right hip (pelvis space): muzzle down with a little rearward cant, sights facing forward
@@ -148,13 +148,16 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
   LG_SOCK.kgripF = lgBasis([0.75, 0, 0.66], [0, 1, 0], [-0.66, 0, 0.75], [-0.0894, -0.022, 0.0411]);   // (held diagonally, heel of the palm to the index, as a real fist holds a handle)
   // carbine space: bore +x, origin over the pistol grip; on the back, muzzle up behind the left shoulder
   LG_SOCK.back = lgBasis([0, 0.5, 0.866], [0, 0.866, -0.5], [-1, 0, 0], [-0.205, -0.06, 0.02]);
-  LG_SOCK.cgripR = lgBasis([0.42, 0, 0.906], [0, 1, 0], [-0.906, 0, 0.42], [-0.085, -0.032, -0.07]);
-  LG_SOCK.cgripL = lgBasis([0, 1, 0], [0, 0, -1], [-1, 0, 0], [0.12, 0.0, -0.045]);
-  LG_SOCK.muzP = [0.214, 0, 0]; LG_SOCK.muzC = [0.535, 0, 0.002];
+  // 1.9.994: the firing hand high on the pistol grip (the index's knuckle beside the receiver, the web under the stock), and
+  // the support hand under the handguard: the handguard lies in the palm, the thumb along the near side, the fingers
+  // closing over the far side (both then fitted to the gun by leghand.js)
+  LG_SOCK.cgripR = lgBasis([0.42, 0, 0.906], [0, 1, 0], [-0.906, 0, 0.42], [-0.1154, -0.0285, -0.0516]);
+  LG_SOCK.cgripL = lgBasis([0.953, 0.301, 0], [0, 0, -1], [-0.301, 0.953, 0], [0.14, 0.0597, -0.0345]);
+  LG_SOCK.muzP = [0.214, 0, 0]; LG_SOCK.muzC = [0.469, 0, 0];
   // a fresh magazine in the left hand (hand space -> magazine geometry, which is built in the gun's space): the
   // magazine's top between the fingers, index finger along its front
   LG_SOCK.magHand = lgBasis([0, 0, 1], [0, 1, 0], [-1, 0, 0], [-0.03, -0.02, -0.1]);
-  LG_SOCK.cmagHand = lgBasis([0, 0, 1], [0, 1, 0], [-1, 0, 0], [-0.1, -0.02, -0.08]);
+  LG_SOCK.cmagHand = lgBasis([0, 0, 1], [0, 1, 0], [-1, 0, 0], [-0.098, -0.02, -0.104]);   // (1.9.994: on the M4's magazine, which the generic carbine now is)
 })();
 
 /* ---------- the Operator ---------- */
@@ -291,9 +294,10 @@ function lgOpHead(B, K) {
   // ear protection: cups with a grille, on arms up to the helmet rails
   for (const s of [1, -1]) {
     lgPush(B, lgTR(-0.004, s * 0.082, 0.083, -s * Math.PI / 2, 0, 0));
-    lgMat(B, M.poly); lgLathe(B, [[0.0, 0.0], [0.043, 0.0], [0.048, 0.006], [0.049, 0.024], [0.042, 0.034], [0.0, 0.036]], { segs: 18 });
-    lgMat(B, M.rubber); lgLathe(B, [[0.046, -0.006], [0.05, -0.002], [0.05, 0.004], [0.044, 0.006]], { segs: 18 });
-    if (hi) { lgMat(B, M.metal); lgLathe(B, [[0.0, 0.036], [0.024, 0.036], [0.026, 0.039], [0.0, 0.0395]], { segs: 14 }); }
+    // (1.9.994: oval cups like a real comms headset, a little smaller, with the volume knob and the mic boom's root)
+    lgMat(B, M.poly); lgLathe(B, [[0.0, 0.0], [0.04, 0.0], [0.044, 0.006], [0.045, 0.02], [0.039, 0.03], [0.0, 0.032]], { segs: 18, sx: 0.8 });
+    lgMat(B, M.rubber); lgLathe(B, [[0.042, -0.006], [0.046, -0.002], [0.046, 0.004], [0.04, 0.006]], { segs: 18, sx: 0.8 });
+    if (hi) { lgMat(B, M.metal); lgLathe(B, [[0.0, 0.032], [0.02, 0.032], [0.022, 0.035], [0.0, 0.0355]], { segs: 14, sx: 0.8 }); lgMat(B, M.rubber); lgBox(B, 0.024, -0.012, 0.022, 0.006, 0.006, 0.006, 0.003); }
     lgPop(B);
     lgMat(B, M.metal); lgBox(B, -0.005, s * 0.112, 0.135, 0.008, 0.005, 0.03, 0.003);
   }
@@ -352,7 +356,9 @@ function lgOpMask(B, K) {
 function lgOpArm(B, K, s) {
   const M = K.M, sg = s === 'L' ? 1 : -1, hi = B.lod < 2, ci = K.ci;
   lgBone(B, 'arm' + s); lgMat(B, M.camo);
-  lgLimb(B, 0.285, [[0, 0.063], [0.18, 0.059], [0.55, 0.05], [0.9, 0.047], [1, 0.046]], { segs: 16, rings: 9, wr: (a, z) => z < -0.22 ? Math.sin(a * 5 + z * 90) * 0.05 : Math.sin(a * 3 + z * 40) * 0.012 });
+  // 1.9.994: an arm with a shoulder: the deltoid caps the joint (so the arm turns under it), the upper arm tapers to the elbow
+  lgSphere(B, -0.004, sg * 0.004, -0.02, 0.055, 0.057, 0.06, { segs: 16, rings: 9 });
+  lgLimb(B, 0.285, [[0, 0.058], [0.14, 0.059], [0.38, 0.054], [0.66, 0.048], [0.9, 0.0445], [1, 0.044]], { segs: 16, rings: 9, sx: 1.04, wr: (a, z) => z < -0.22 ? Math.sin(a * 5 + z * 90) * 0.045 : Math.sin(a * 3 + z * 40) * 0.012 });
   // shoulder pocket, velcro, and the class patch
   lgMat(B, M.camo); lgBox(B, 0.002, sg * 0.05, -0.085, 0.036, 0.008, 0.048, 0.006);
   lgBox(B, 0.002, sg * 0.052, -0.035, 0.038, 0.009, 0.012, 0.005);
@@ -360,26 +366,69 @@ function lgOpArm(B, K, s) {
   lgMat(B, M.emblem); lgDecal(B, [0.004, sg * 0.0623, -0.088], [-sg * 0.026, 0, 0], [0, 0, 0.026], lgEmblemUV(ci), { lift: 0.0006 });
   if (K.cls === 'defense') { lgMat(B, M.ncamo); lgSphere(B, 0, sg * 0.03, -0.03, 0.07, 0.05, 0.065, { segs: 14, rings: 8, p0: -0.3, t0: sg > 0 ? -1.3 : Math.PI - 1.9, t1: sg > 0 ? 1.9 : Math.PI + 1.3 }); }
   lgBone(B, 'fore' + s); lgMat(B, M.camo);
-  lgLimb(B, 0.255, [[0, 0.05], [0.22, 0.052], [0.7, 0.043], [0.92, 0.04], [1, 0.039]], { segs: 14, rings: 9, wr: (a, z) => z > -0.06 ? Math.sin(a * 5 - z * 80) * 0.05 : z < -0.2 ? Math.sin(a * 6 + z * 120) * 0.04 : 0 });
-  lgMat(B, M.cord); lgSphere(B, -0.034, 0, -0.012, 0.024, 0.042, 0.048, { segs: 12, rings: 8, t0: Math.PI / 2, t1: Math.PI * 1.5 });
-  lgMat(B, M.camo); lgLathe(B, [[0.04, -0.258], [0.042, -0.25], [0.042, -0.232], [0.039, -0.226]], { segs: 14, sx: 1.08 });
+  // the elbow (a ball the upper arm's end turns round), a forearm that narrows to the wrist, oval in section
+  lgSphere(B, 0, 0, 0, 0.045, 0.045, 0.046, { segs: 14, rings: 8 });
+  lgLimb(B, 0.255, [[0, 0.045], [0.2, 0.0465], [0.55, 0.0405], [0.85, 0.0345], [1, 0.0335]], { segs: 14, rings: 9, sx: 1.1, wr: (a, z) => z > -0.06 ? Math.sin(a * 5 - z * 80) * 0.04 : z < -0.2 ? Math.sin(a * 6 + z * 120) * 0.035 : 0 });
+  // the elbow pad: a rubber cap on a padded base, strapped on
+  lgMat(B, M.cord); lgSphere(B, -0.026, 0, -0.004, 0.026, 0.04, 0.042, { segs: 12, rings: 7, t0: Math.PI / 2, t1: Math.PI * 1.5 });
+  lgMat(B, M.rubber); lgSphere(B, -0.04, 0, -0.004, 0.014, 0.03, 0.032, { segs: 10, rings: 6, t0: Math.PI / 2, t1: Math.PI * 1.5 });
+  lgMat(B, M.camo); lgLathe(B, [[0.034, -0.258], [0.0365, -0.25], [0.0365, -0.232], [0.034, -0.226]], { segs: 14, sx: 1.08 });
   if (hi) { lgMat(B, M.web); lgBox(B, 0.03, sg * 0.0, -0.243, 0.012, 0.024, 0.008, 0.004); }
   if (s === 'L') { lgMat(B, M.poly); lgBox(B, 0.0, 0.04, -0.215, 0.019, 0.008, 0.017, 0.005); lgMat(B, M.visor); lgBox(B, 0.0, 0.0485, -0.215, 0.014, 0.0012, 0.012, 0.003); }
   if (s === 'R' && K.cls === 'engineer') { lgMat(B, M.polyHi); lgBox(B, 0.0, -0.042, -0.15, 0.026, 0.008, 0.04, 0.005); lgMat(B, M.glowSoft); lgBox(B, 0.0, -0.0505, -0.15, 0.021, 0.001, 0.034, 0.0); }
 }
 function lgOpHand(B, K, s) {
-  const M = K.M, ps = s === 'R' ? 1 : -1, hi = B.lod < 2;   // palm faces +y on the right hand, -y on the left
+  // 1.9.994: a gloved hand built like a hand. A palm that widens from the wrist to an arched row of knuckles, padded
+  // heel and thumb pad, a hard-knuckle guard across the back, a cuff with its strap; five fingers in three segments each,
+  // tapering to rounded tips, with a ball at every joint so a bent finger stays whole; the thumb from the palm side of the
+  // wrist. The palm faces +y on the right hand, -y on the left (ps); d is the back of the hand.
+  const M = K.M, ps = s === 'R' ? 1 : -1, d = -ps, hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'hand' + s);
-  lgMat(B, M.palm); lgBox(B, 0.002, ps * 0.002, -0.05, 0.041, 0.016, 0.05, 0.013);
-  lgMat(B, M.gback); lgBox(B, 0.0, -ps * 0.01, -0.05, 0.04, 0.008, 0.046, 0.008);
-  lgMat(B, M.knuckle); lgBox(B, -0.004, -ps * 0.017, -0.086, 0.038, 0.006, 0.012, 0.005);
-  lgMat(B, M.gback); lgLathe(B, [[0.036, -0.012], [0.039, -0.005], [0.039, 0.012], [0.035, 0.018]], { segs: 12, sx: 1.15, sy: 0.65 });
-  // fingers: the index, then middle/ring/little side by side, and the thumb
-  const fing = (bone, len, r0, r1, xo) => { lgBone(B, bone); for (let k = 0; k < xo.length; k++) lgLimb(B, len[k], [[0, r0], [1, r1]], { ox: xo[k], segs: 8, rings: 3, capK: 0.9 }); };
-  lgMat(B, M.gback); fing('idx' + s, [0.045], 0.0105, 0.0097, [0]); lgMat(B, M.palm); fing('idx2' + s, [0.038], 0.0097, 0.0085, [0]);
-  lgMat(B, M.gback); fing('fin' + s, [0.046, 0.043, 0.035], 0.0102, 0.0094, [0.002, -0.017, -0.034]);
-  lgMat(B, M.palm); fing('fin2' + s, [0.04, 0.037, 0.03], 0.0094, 0.0082, [0.002, -0.017, -0.034]);
-  lgMat(B, M.gback); fing('thb' + s, [0.042], 0.0125, 0.0115, [0]); lgMat(B, M.palm); fing('thb2' + s, [0.034], 0.0115, 0.0095, [0]);
+  // the cuff over the wrist and its strap
+  lgMat(B, M.gback); lgLathe(B, [[0.0305, 0.018], [0.0335, 0.012], [0.0338, 0.0], [0.0318, -0.012]], { segs: 14, sx: 1.04, sy: 0.74 });
+  if (hi) { lgMat(B, M.knuckle); lgBox(B, 0.002, d * 0.0245, 0.004, 0.021, 0.0028, 0.0085, 0.002); lgMat(B, M.poly); lgBox(B, 0.019, d * 0.0262, 0.004, 0.0035, 0.0012, 0.006, 0.0008); }
+  // the palm: an oval slab from the wrist to the knuckles, the back of the hand a little domed
+  lgMat(B, M.gback); lgLimb(B, 0.084, [[0, 0.03], [0.45, 0.036], [0.85, 0.04], [1, 0.039]], { z0: -0.006, sx: 1.06, sy: 0.42, oy: d * 0.002, segs: 14, rings: 6, capA: false, capK: 0.32 });
+  // the palm's leather: the heel of the hand, the pad under the little finger, the thumb's pad
+  lgMat(B, M.palm);
+  lgSphere(B, -0.004, ps * 0.009, -0.03, 0.03, 0.009, 0.024, { segs: 12, rings: 6 });
+  lgSphere(B, -0.024, ps * 0.008, -0.052, 0.013, 0.009, 0.03, { segs: 10, rings: 6 });
+  lgSphere(B, 0.021, ps * 0.011, -0.036, 0.016, 0.012, 0.025, { segs: 12, rings: 6 });
+  lgBox(B, 0.002, ps * 0.0108, -0.079, 0.032, 0.0025, 0.0105, 0.0022);
+  // the hard knuckle guard across the back, and the plate over the back of the hand
+  lgMat(B, M.knuckle);
+  lgBox(B, 0.001, d * 0.0165, -0.084, 0.035, 0.005, 0.0115, 0.0045);
+  if (hi) { for (const [f, x, z] of LG_FINGERS) lgBox(B, x, d * 0.0208, -z + 0.006, 0.0072, 0.0022, 0.006, 0.002); }
+  lgBox(B, 0.0, d * 0.0142, -0.046, 0.028, 0.0035, 0.022, 0.004);
+  if (top) { lgMat(B, M.poly); for (const z of [-0.034, -0.058]) lgBox(B, 0.0, d * 0.0179, z, 0.022, 0.0006, 0.0012, 0); }
+  // the fingers: three segments each, a ball at each joint, a pad on the back of the first segment, a grippy tip
+  const R0 = { idx: [0.0094, 0.0088, 0.0083, 0.0077, 0.0069], fin: [0.0097, 0.0091, 0.0086, 0.008, 0.0071], rng: [0.0093, 0.0087, 0.0081, 0.0075, 0.0067], pnk: [0.0081, 0.0076, 0.0071, 0.0066, 0.006] };
+  for (const [f, x, z, l2, l3] of LG_FINGERS) {
+    const r = R0[f], l1 = l2, segs = 10, rings = 3;
+    lgBone(B, f + s); lgMat(B, M.gback);
+    lgSphere(B, 0, 0, 0, r[0] * 1.08, r[0] * 1.04, r[0] * 1.06, { segs: segs, rings: 5 });
+    lgLimb(B, l1, [[0, r[0]], [1, r[1]]], { segs: segs, rings: rings, capA: false, capE: false, sy: 0.94 });
+    if (hi) { lgMat(B, M.knuckle); lgBox(B, 0, d * r[0] * 0.82, -l1 * 0.5, r[0] * 0.72, 0.0022, l1 * 0.3, 0.002); }
+    lgBone(B, f + '2' + s); lgMat(B, M.gback);
+    lgSphere(B, 0, 0, 0, r[1] * 1.06, r[1] * 1.02, r[1] * 1.04, { segs: segs, rings: 5 });
+    lgLimb(B, l3, [[0, r[2]], [1, r[3]]], { segs: segs, rings: rings, capA: false, capE: false, sy: 0.94 });
+    lgBone(B, f + '3' + s); lgMat(B, M.gback);
+    lgSphere(B, 0, 0, 0, r[3] * 1.05, r[3] * 1.01, r[3] * 1.03, { segs: segs, rings: 5 });
+    lgMat(B, M.palm); lgLimb(B, l3 * 0.74, [[0, r[3]], [1, r[4]]], { segs: segs, rings: rings, capA: false, capK: 1.0, sy: 0.9 });
+  }
+  // the thumb: its metacarpal inside the thumb pad, then two segments
+  lgBone(B, 'thb' + s); lgMat(B, M.gback);
+  lgSphere(B, 0, 0, 0, 0.0128, 0.012, 0.013, { segs: 10, rings: 5 });
+  lgLimb(B, 0.04, [[0, 0.0128], [1, 0.0112]], { segs: 10, rings: 4, capA: false, capE: false, sx: 1.05, sy: 0.92 });
+  // the web between the thumb and the palm, which moves with the thumb so a thumb swung out never looks like a stick
+  lgMat(B, M.palm); lgSphere(B, -0.011, ps * 0.002, -0.02, 0.017, 0.0095, 0.025, { segs: 12, rings: 6 });
+  lgBone(B, 'thb2' + s); lgMat(B, M.gback);
+  lgSphere(B, 0, 0, 0, 0.0114, 0.011, 0.0112, { segs: 10, rings: 5 });
+  lgLimb(B, 0.031, [[0, 0.0106], [1, 0.0098]], { segs: 10, rings: 3, capA: false, capE: false, sy: 0.92 });
+  if (hi) { lgMat(B, M.knuckle); lgBox(B, 0, d * 0.0092, -0.015, 0.0075, 0.0022, 0.009, 0.002); }
+  lgBone(B, 'thb3' + s); lgMat(B, M.gback);
+  lgSphere(B, 0, 0, 0, 0.0099, 0.0096, 0.0098, { segs: 10, rings: 5 });
+  lgMat(B, M.palm); lgLimb(B, 0.025, [[0, 0.0095], [1, 0.0082]], { segs: 10, rings: 3, capA: false, capK: 1.0, sy: 0.9 });
 }
 function lgOpLeg(B, K, s) {
   const M = K.M, sg = s === 'L' ? 1 : -1, hi = B.lod < 2, top = B.lod === 0;
@@ -449,25 +498,8 @@ function lgOpKnife(B, K) {
   lgMat(B, M.poly); lgSide(B, [[-0.112, -0.0115], [0.0, -0.0128], [0.0, 0.0128], [-0.112, 0.0118], [-0.12, 0.0]], 0.019, { bev: 0.0038, smooth: 0.6 });
 }
 function lgOpCarbine(B, K) {
-  const M = K.M, hi = B.lod < 2, top = B.lod === 0;
-  lgBone(B, 'carbine'); lgMat(B, M.metal);
-  lgSide(B, [[-0.08, -0.012], [0.1, -0.012], [0.1, 0.022], [-0.08, 0.022]], 0.03, { bev: 0.003 });
-  lgSide(B, [[-0.075, -0.012], [0.07, -0.012], [0.065, -0.05], [0.02, -0.06], [-0.075, -0.048]], 0.028, { bev: 0.003 });
-  lgBox(B, 0.17, 0, 0.026, 0.25, 0.011, 0.004, 0.0015);
-  if (top) { lgMat(B, M.poly); for (let i = 0; i < 22; i++) lgBox(B, -0.07 + i * 0.022, 0, 0.0305, 0.0035, 0.0115, 0.0008, 0); }
-  lgMat(B, M.polyHi); lgBox(B, 0.26, 0, 0.004, 0.16, 0.022, 0.022, 0.009);
-  if (hi) { lgMat(B, M.visor); for (let i = 0; i < 5; i++) for (const y of [0.0222, -0.0222]) lgBox(B, 0.15 + i * 0.05, y, 0.0, 0.016, 0.0005, 0.005, 0.002); }
-  lgMat(B, M.metal); lgPush(B, lgTR(0.42, 0, 0, 0, Math.PI / 2, 0)); lgLimb(B, 0.08, [[0, 0.009], [1, 0.009]], { up: true, segs: 10 }); lgLimb(B, 0.05, [[0, 0.013], [1, 0.013]], { up: true, z0: 0.08, segs: 10 }); lgPop(B);
-  lgPush(B, lgTR(-0.08, 0, 0.004, 0, -Math.PI / 2, 0)); lgLimb(B, 0.18, [[0, 0.016], [1, 0.016]], { up: true, segs: 10 }); lgPop(B);
-  lgMat(B, M.poly); lgSide(B, [[-0.3, -0.055], [-0.18, -0.022], [-0.18, 0.022], [-0.3, 0.026], [-0.322, 0.02], [-0.322, -0.062]], 0.034, { bev: 0.005 });
-  lgMat(B, M.rubber); lgBox(B, -0.328, 0, -0.018, 0.006, 0.018, 0.045, 0.004);
-  lgMat(B, M.poly); lgSide(B, [[-0.01, -0.012], [0.02, -0.012], [0.004, -0.1], [-0.026, -0.1], [-0.03, -0.02]], 0.028, { bev: 0.004 });
-  lgTube(B, [[0.02, 0, -0.012], [0.04, 0, -0.03], [0.03, 0, -0.04], [0.0, 0, -0.038]], 0.003, { segs: 4, flat: 2, up: [0, 1, 0] });
-  // holographic sight
-  if (hi) { lgMat(B, M.metal); lgBox(B, 0.035, 0, 0.042, 0.035, 0.016, 0.01, 0.003); lgBox(B, 0.008, 0, 0.062, 0.004, 0.016, 0.014, 0.002); lgBox(B, 0.065, 0, 0.062, 0.004, 0.016, 0.014, 0.002); lgBox(B, 0.036, 0, 0.077, 0.032, 0.016, 0.003, 0.002); lgMat(B, M.lens); lgBox(B, 0.06, 0, 0.062, 0.0008, 0.013, 0.012, 0); lgMat(B, M.glow); lgSphere(B, 0.059, 0, 0.062, 0.0016, 0.0016, 0.0016, { segs: 5, rings: 3 }); }
-  lgBone(B, 'cmag'); lgMat(B, M.poly);
-  lgSide(B, [[0.028, -0.06], [0.064, -0.06], [0.076, -0.2], [0.052, -0.232], [0.026, -0.222], [0.022, -0.12]], 0.022, { bev: 0.0025, smooth: 0.5 });
-  if (hi) for (let i = 0; i < 4; i++) lgBox(B, 0.044 + i * 0.006, 0, -0.1 - i * 0.03, 0.022, 0.0115, 0.002, 0.001);
+  // 1.9.994: the generic carbine (the cinematics, the studio) is the rebuilt M4 (leggun.js), so every hand fits it the same
+  lgGunM4(B, K);
 }
 
 /* ---------- the dead: actors for the cinematics ---------- */

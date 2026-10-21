@@ -358,12 +358,23 @@ function lgAtlasSample(at, tile, u, v, o) {
 /* ---------- the skeleton ---------- */
 // x forward, y left, z up, metres. Limbs hang down (-z) from their joint at rest; the spine and head go up (+z).
 // [name, parent, offset from the parent's joint]
+// 1.9.994: a real hand. Five fingers of three bones each (the thumb's metacarpal, then two phalanges), knuckles arched
+// across the back of the hand, the thumb on the palm side of the wrist. Hand space: -z runs wrist to fingertips, +x is the
+// thumb side, the palm faces +y on the right hand and -y on the left (d: the back of the hand's side, -1 right, +1 left).
+// fin is the middle finger, rng the ring, pnk the little finger (idx and fin keep their old names for the code that uses them).
+const LG_FINGERS = [['idx', 0.029, 0.090, 0.041, 0.025], ['fin', 0.009, 0.094, 0.046, 0.029], ['rng', -0.010, 0.090, 0.043, 0.027], ['pnk', -0.027, 0.081, 0.034, 0.021]];
+function lgHandBones(s, d) {
+  const out = [];
+  for (const [f, x, z, l2, l3] of LG_FINGERS) out.push([f + s, 'hand' + s, x, d * (f === 'pnk' ? 0.0 : 0.0025), -z], [f + '2' + s, f + s, 0, 0, -l2], [f + '3' + s, f + '2' + s, 0, 0, -l3]);
+  out.push(['thb' + s, 'hand' + s, 0.025, -d * 0.007, -0.024], ['thb2' + s, 'thb' + s, 0, 0, -0.040], ['thb3' + s, 'thb2' + s, 0, 0, -0.031]);
+  return out;
+}
 const LG_SKEL = [
   ['root', null, 0, 0, 0], ['pelvis', 'root', 0, 0, 0.98], ['spine', 'pelvis', 0, 0, 0.1], ['chest', 'spine', 0, 0, 0.2], ['neck', 'chest', -0.01, 0, 0.25], ['head', 'neck', 0.015, 0, 0.09],
   ['clavL', 'chest', -0.005, 0.035, 0.2], ['armL', 'clavL', -0.012, 0.155, -0.01], ['foreL', 'armL', 0, 0, -0.285], ['handL', 'foreL', 0, 0, -0.255],
-  ['idxL', 'handL', 0.026, 0.004, -0.092], ['idx2L', 'idxL', 0, 0, -0.045], ['finL', 'handL', -0.014, 0.004, -0.09], ['fin2L', 'finL', 0, 0, -0.043], ['thbL', 'handL', 0.026, 0.014, -0.022], ['thb2L', 'thbL', 0, 0, -0.042],
+  ...lgHandBones('L', 1),
   ['clavR', 'chest', -0.005, -0.035, 0.2], ['armR', 'clavR', -0.012, -0.155, -0.01], ['foreR', 'armR', 0, 0, -0.285], ['handR', 'foreR', 0, 0, -0.255],
-  ['idxR', 'handR', 0.026, -0.004, -0.092], ['idx2R', 'idxR', 0, 0, -0.045], ['finR', 'handR', -0.014, -0.004, -0.09], ['fin2R', 'finR', 0, 0, -0.043], ['thbR', 'handR', 0.026, -0.014, -0.022], ['thb2R', 'thbR', 0, 0, -0.042],
+  ...lgHandBones('R', -1),
   ['thighL', 'pelvis', 0, 0.095, -0.045], ['shinL', 'thighL', 0, 0, -0.43], ['footL', 'shinL', 0, 0, -0.42], ['toeL', 'footL', 0.135, 0, -0.055],
   ['thighR', 'pelvis', 0, -0.095, -0.045], ['shinR', 'thighR', 0, 0, -0.43], ['footR', 'shinR', 0, 0, -0.42], ['toeR', 'footR', 0.135, 0, -0.055],
   // props (placed in the root's space every frame) and the mask's seven plates (on the head)
@@ -389,11 +400,21 @@ function lgPoseReset(P) { P.r.fill(0); P.t.fill(0); P.ik = {}; P.root[0] = P.roo
 function lgJ(P, name, rx, ry, rz) { const i = LGB[name] * 3; P.r[i] = rx || 0; P.r[i + 1] = ry || 0; P.r[i + 2] = rz || 0; }
 function lgJadd(P, name, rx, ry, rz) { const i = LGB[name] * 3; P.r[i] += rx || 0; P.r[i + 1] += ry || 0; P.r[i + 2] += rz || 0; }
 function lgJm(P, side, base, rx, ry, rz) { const s = side === 'L' ? 1 : -1; lgJ(P, base + side, (rx || 0) * s, ry || 0, (rz || 0) * s); }
-// finger grips: [idx, idx2, fin, fin2, thumb twist, thumb pitch, thumb roll, thumb2] for the right hand (left mirrors)
+// finger grips (1.9.994, five fingers): f: the curl of each finger's three joints [index, middle, ring, little];
+// t: the thumb [swing out to the thumb side (negative), across to the palm, roll, first joint, last joint]; sp: how far the
+// fingers fan apart. Right hand; the left mirrors.
+const LGH_HOLD = { pistol: 1, trigger: 1, support: 1, cup: 1, knife: 1 };
 const LG_GRIPS = {
-  relax: [0.25, 0.3, 0.45, 0.45, 0.2, -0.2, -0.35, 0.2], fist: [1.5, 1.4, 1.6, 1.5, 0.5, -0.5, -0.9, 0.7], open: [0.05, 0.05, 0.08, 0.08, 0, -0.35, -0.1, 0],
-  pistol: [0.12, 0.08, 1.45, 1.35, 0.4, -0.15, -0.95, 0.35], trigger: [0.85, 0.6, 1.45, 1.35, 0.4, -0.15, -0.95, 0.35], support: [1.1, 0.9, 1.15, 1.0, 0.1, -0.3, -0.4, 0.1],
-  knife: [1.55, 1.45, 1.6, 1.5, 0.6, -0.4, -1.05, 0.8], point: [0.05, 0.05, 1.5, 1.4, 0.4, -0.3, -0.8, 0.4], cup: [0.55, 0.5, 0.6, 0.55, 0.3, -0.3, -0.5, 0.3], claw: [0.7, 0.9, 0.8, 1.0, 0.2, -0.4, -0.3, 0.4]
+  relax: { f: [[0.22, 0.32, 0.18], [0.3, 0.42, 0.22], [0.36, 0.48, 0.26], [0.44, 0.52, 0.3]], t: [-0.22, 0.5, 0.55, 0.22, 0.16], sp: 0.35 },
+  open: { f: [[0.02, 0.04, 0.02], [0.02, 0.04, 0.02], [0.03, 0.04, 0.02], [0.04, 0.05, 0.03]], t: [-0.55, 0.2, 0.35, 0.05, 0.02], sp: 0.9 },
+  fist: { f: [[1.45, 1.6, 0.85], [1.5, 1.62, 0.85], [1.52, 1.62, 0.85], [1.55, 1.6, 0.85]], t: [-0.2, 0.95, 0.85, 0.55, 0.45], sp: 0 },
+  pistol: { f: [[0.32, 0.2, 0.08], [1.05, 1.5, 0.62], [1.12, 1.5, 0.62], [1.2, 1.48, 0.6]], t: [-0.3, 0.78, 0.65, 0.12, 0.08], sp: 0.05 },
+  trigger: { f: [[0.72, 0.95, 0.32], [1.05, 1.5, 0.62], [1.12, 1.5, 0.62], [1.2, 1.48, 0.6]], t: [-0.3, 0.78, 0.65, 0.12, 0.08], sp: 0.05 },
+  support: { f: [[0.95, 1.25, 0.5], [1.0, 1.3, 0.52], [1.05, 1.3, 0.52], [1.1, 1.28, 0.5]], t: [-0.55, 0.42, 0.35, 0.1, 0.06], sp: 0.05 },
+  knife: { f: [[1.32, 1.52, 0.8], [1.38, 1.55, 0.8], [1.42, 1.55, 0.8], [1.48, 1.52, 0.78]], t: [-0.18, 0.92, 0.9, 0.45, 0.35], sp: 0 },
+  point: { f: [[0.04, 0.05, 0.03], [1.4, 1.55, 0.8], [1.45, 1.55, 0.8], [1.5, 1.52, 0.78]], t: [-0.25, 0.85, 0.75, 0.4, 0.3], sp: 0.1 },
+  cup: { f: [[0.62, 0.78, 0.38], [0.68, 0.84, 0.42], [0.74, 0.88, 0.44], [0.8, 0.88, 0.44]], t: [-0.62, 0.48, 0.32, 0.18, 0.1], sp: 0.15 },
+  claw: { f: [[0.45, 1.0, 0.7], [0.5, 1.05, 0.72], [0.55, 1.05, 0.72], [0.6, 1.0, 0.7]], t: [-0.6, 0.42, 0.22, 0.4, 0.3], sp: 0.6 }
 };
 
 /* ---------- solving a pose: local rotations and offsets, then world matrices ---------- */
@@ -507,16 +528,29 @@ function lgSolve(P, L, W, rootM) {
 }
 function lgGripApplyL(P, L) {
   for (const side of ['L', 'R']) {
-    const v = LG_GRIPS[P.grip[side]] || LG_GRIPS.relax, s = side === 'L' ? -1 : 1;
+    let g = LG_GRIPS[P.grip[side]] || LG_GRIPS.relax; const s = side === 'L' ? -1 : 1;
+    // 1.9.994: a hand holding something closes on that thing (leghand.js), unless the clip opens it
+    if (typeof lghGet === 'function' && LGH.on && LGH_HOLD[P.grip[side]]) {
+      const ik = P.ik['hand' + side], hand = 'hand' + side;
+      const prop = ik && ik.on ? ik.on : P.pistol.at === hand ? 'pistol' : P.carbine.at === hand ? 'carbine' : P.knife.at === hand ? 'knife' : null;
+      if (prop) {
+        const which = prop === 'knife' ? (side === 'R' && LG_SOCK.kgripF ? 'kgripF' : 'kgrip') : side === 'R' ? 'gripR' : 'gripL', key = prop === 'carbine' ? LG.gunC : prop === 'pistol' ? LG.gunP : null;
+        const f = lghGet(prop, key, side, which, lghGripName(prop, side, P.grip[side]), lghBaseSock(prop, key, which)); if (f) g = f.g;
+      }
+    }
+    const F = g.f, T = g.t, sp = g.sp || 0;
     const set = (n, rx, ry, rz) => { const i = LGB[n + side]; lgR9(L.R, i * 9, P.r[i * 3] + rx, P.r[i * 3 + 1] + ry, P.r[i * 3 + 2] + rz); };
-    set('idx', v[0] * s, 0, 0); set('idx2', v[1] * s, 0, 0); set('fin', v[2] * s, 0, 0); set('fin2', v[3] * s, 0, 0); set('thb', v[6] * s, v[5], v[4] * s); set('thb2', v[7] * s, 0, 0);
+    // the fingers fan from the middle one: the index toward the thumb, the ring and the little finger away from it
+    const fan = [-0.09, -0.01, 0.07, 0.15];
+    for (let k = 0; k < 4; k++) { const f = LG_FINGERS[k][0], c = F[k]; set(f, c[0] * s, fan[k] * sp, 0); set(f + '2', c[1] * s, 0, 0); set(f + '3', c[2] * s, 0, 0); }
+    set('thb', T[1] * s, T[0], T[2] * s); set('thb2', T[3] * s, 0, 0); set('thb3', T[4] * s, 0, 0);
   }
 }
 // where a hand should go: a target the clip gave, or the grip on a prop the clip is aiming
 function lgIKtarget(P, ch, W, rootM) {
   const ik = P.ik[ch];
   if (ik.on) {
-    const pi = LGB[ik.on], PM = W.subarray(pi * 16, pi * 16 + 16), S = ik.on === 'pistol' || ik.on === 'carbine' ? lgSockFor(ik.on, ch === 'handR' ? 'gripR' : 'gripL') : ch === 'handR' && LG_SOCK.kgripF ? LG_SOCK.kgripF : LG_SOCK.kgrip;   // (each gun its own grips: leggun.js)
+    const pi = LGB[ik.on], PM = W.subarray(pi * 16, pi * 16 + 16), S = ik.on === 'pistol' || ik.on === 'carbine' ? lgSockFor(ik.on, ch === 'handR' ? 'gripR' : 'gripL') : lgKnifeSock(ch === 'handR' ? 'R' : 'L');   // (each gun its own grips: leggun.js)
     const M = lgMul(lgM4(), PM, S || lgM4());
     return { sp: 'world', p: [M[12], M[13], M[14]], M: M, pole: ik.pole ? lgDir(rootM, ik.pole[0], ik.pole[1], ik.pole[2]) : null };
   }
@@ -558,7 +592,7 @@ function lgPropsLate(P, L, W, rootM) {
   // knife
   { const st = P.knife, i = LGB.knife; let M = null;
     if (st.at === 'aim' && st.M) M = aimed(st);
-    else if (st.at === 'handL' || st.at === 'handR') { const kg = st.at === 'handR' && LG_SOCK.kgripF ? LG_SOCK.kgripF : LG_SOCK.kgrip; M = lgMul(tmp, bw(st.at), kg ? lgInv(lgM4(), kg) : lgM4()); }
+    else if (st.at === 'handL' || st.at === 'handR') { const kg = lgKnifeSock(st.at === 'handR' ? 'R' : 'L'); M = lgMul(tmp, bw(st.at), kg ? lgInv(lgM4(), kg) : lgM4()); }
     else if (st.at === 'sheath' && LG_SOCK.sheath) M = lgMul(tmp, bw('chest'), LG_SOCK.sheath);
     lgPropSet(L, W, i, M || LG_HIDE, rootM); }
   // carbine

@@ -124,7 +124,7 @@ function lgiKnifeOn(u, v, phi, tilt, lift, flip) {
   const M = lgMul(lgM4(), LGI_STONE, lgTR(u, v, 0.013 + (lift || 0) + 0.004, 0, 0, phi));
   return lgMul(lgM4(), M, lgRot(lgM4(), flip ? Math.PI / 2 + tilt : -Math.PI / 2 - tilt, 0, 0));
 }
-function lgiHandOnKnife(K) { return lgMul(lgM4(), K, LG_SOCK.kgripF); }
+function lgiHandOnKnife(K) { return lgMul(lgM4(), K, lgKnifeSock('R')); }
 function lgiIK(P, side, sp, M, pole) { P.ik['hand' + side] = { sp: sp, p: [M[12], M[13], M[14]], M: M, pole: pole }; }
 // the left hand steadying the stone at its far end, palm down
 const LGI_HOLD = lgMul(lgM4(), LGI_STONE, lgBasis([0, -1, 0], [0, 0, 1], [-1, 0, 0], [0.005, 0.012, 0.05]));
