@@ -174,7 +174,8 @@ function perfFrame(now, rawIv, work) {
   PERF.frames++;
   coreCost('WX', PERF.sec.wx || 0); coreCost('LIFE', PERF.sec.life || 0);   // (the hub's time budget: weather and plants report through PERF)
   if (document.hidden) return;
-  const live = G.mode === 'play' || G.mode === 'title' || G.mode === 'cine';
+  // (the Legends screen runs its own governor: its cinematics must not lower the city's quality)
+  const live = (G.mode === 'play' || G.mode === 'title' || G.mode === 'cine') && !legendCover();
   const w = PERF.win;
   if (G.mode !== PERF.lastMode) { PERF.lastMode = G.mode; PERF.holdT = Math.max(PERF.holdT, now + 1200); }
   if (!live || now < PERF.holdT) { w.n = w.sum = w.work = 0; w.iv.length = 0; return; }

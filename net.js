@@ -175,7 +175,7 @@ function netEach(fn) {
 function netProxy(peer) {
   if (peer.p) return peer.p;
   const p = newPlayer(); p.remote = true; p.nid = peer.id; p.tx = p.x = (NET.local || G.p || WORLD.start).x; p.ty = p.y = (NET.local || G.p || WORLD.start).y;
-  p.out = { h: [], dot: 0, heal: 0, fx: null, kv: [0, 0], rev: 0, heavy: 0 }; p.rv = 0; p.name = peer.name; p.acct = peer.acct; p.col = peer.col;
+  p.out = { h: [], dot: 0, heal: 0, fx: null, kv: [0, 0], rev: 0, heavy: 0 }; p.rv = 0; p.name = peer.name; p.acct = peer.acct; p.col = peer.col; p.lg = peer.lg || 'operator'; p.lc = peer.lc || 'attack';
   peer.p = p; return p;
 }
 // zombies hit a teammate's stand-in: the hit is sent to that player's game, which applies it (dodges, armor, dashes)
@@ -264,13 +264,27 @@ function netHostRecv(str) {
     case 'pi': hostSend(from, { t: 'po', c: m.c }); if (NUM(m.r)) { peer.rtt = clamp(Math.round(m.r), 0, 9999); NET.pings.set(from, peer.rtt); } break;
     case 'mk': if (NUM(m.x) && NUM(m.y)) { netAddMark(from, m.x, m.y); hostSend('*', { t: 'mk', id: from, x: Math.round(m.x), y: Math.round(m.y) }); } break;
     case 'bye': peer.bye = true; break;
+    // 1.9.992: which legend a teammate plays (and in which class), so everyone sees the right character
+    case 'lg': { const lg = netLegendOk(m.lg, m.lc); peer.lg = lg[0]; peer.lc = lg[1]; if (peer.p) { peer.p.lg = lg[0]; peer.p.lc = lg[1]; } netLobby(); break; }
     // a teammate checking that the host's admin name is real: the host's account writes the note they asked for
     case 'prove': if (meAdmin() && typeof m.n === 'string' && m.n.length <= 40) AcctCore.prove(m.n).then(ok => { if (ok) hostSend(from, { t: 'proved', n: m.n }); }).catch(() => { }); break;
     case 'proved': if (peer.nonce && m.n === peer.nonce) netCheckProof(peer); break;
   }
 }
+// a legend from the wire: only ones this build knows, otherwise the Operator
+function netLegendOk(lg, lc) {
+  lg = lg === 'none' ? 'none' : (typeof LG_MAKERS !== 'undefined' && LG_MAKERS[lg] && lg !== 'zombie' && lg !== 'alley' && lg !== 'alleyGround' && lg !== 'studio' && lg !== 'studioGround') ? lg : 'operator';
+  lc = typeof LG_CLASS_BY !== 'undefined' && LG_CLASS_BY[lc] ? lc : 'attack';
+  return [lg, lc];
+}
+// the deployed legend changed (or we just joined): the host updates the lobby, a client tells the host
+function netLegendChanged() {
+  if (!NET.role) return;
+  if (NET.role === 'host') { if (NET.status === 'lobby' || NET.started) netLobby(); }
+  else if (NET.me) netSend({ t: 'lg', lg: SET.legend || 'operator', lc: SET.legendClass || 'attack' });
+}
 function netLobby() {
-  NET.lobby = [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0], ping: 0, acct: meAdmin() ? ADMIN_ID : undefined }].concat(Array.from(NET.peers.values()).map(p => ({ id: p.id, name: p.name, dev: p.dev, col: p.col, ping: p.rtt || 0, away: p.away ? 1 : 0, acct: p.acct || undefined })));
+  NET.lobby = [{ id: 1, name: getTag(), dev: DEV.kind, col: NET_COLS[0], ping: 0, acct: meAdmin() ? ADMIN_ID : undefined, lg: SET.legend || 'operator', lc: SET.legendClass || 'attack' }].concat(Array.from(NET.peers.values()).map(p => ({ id: p.id, name: p.name, dev: p.dev, col: p.col, ping: p.rtt || 0, away: p.away ? 1 : 0, acct: p.acct || undefined, lg: p.lg || 'operator', lc: p.lc || 'attack' })));
   hostSend('*', { t: 'lobby', pl: NET.lobby, started: NET.started });
   renderCoop();
 }
@@ -531,7 +545,7 @@ function netClientRecv(m) {
       if (m.ver && !netVerOk(m.ver)) { const why = 'Version mismatch: the host has Zombie City ' + String(m.ver).slice(0, 12) + ' and you have ' + ZC_VERSION + '. Update so you both have the same version.'; if (G.mode !== 'title' && G.p) netEnd(why); else { netLeave(); NET.err = why; renderCoop(); } return; }
       NET.me = m.id; NET.slot = m.slot; NET.hostName = cleanTag(m.host); NET.hostVer = m.ver || ''; NET.status = 'lobby'; $('app').classList.add('coop');
       if (NET.recon) { NET.recon = 0; netReconBanner(false); toast('Co-op', 'Back in ' + NET.hostName + '’s game', '#7bd88a'); }
-      NET.piT = 0; renderCoop(); break;
+      NET.piT = 0; renderCoop(); netLegendChanged(); break;
     case 'lobby': netLobbyView(m.pl || []); for (const l of NET.lobby) if (l.id !== NET.me) NET.pings.set(l.id, l.ping || 0); renderCoop(); netUpWait(); break;
     // the host asks us to prove our admin name, or answers our check of theirs
     case 'prove': if (meAdmin() && typeof m.n === 'string' && m.n.length <= 40) AcctCore.prove(m.n).then(ok => { if (ok) netSend({ t: 'proved', n: m.n }); }).catch(() => { }); break;
@@ -666,7 +680,7 @@ function netApply(s) {
     live.add(id);
     let o = NET.others.get(id);
     if (!o) { o = { id: id, x: q[1], y: q[2], r: 12, aim: 0, walk: 0, iframe: 0, dashT: 0, dashK: 'sprint', db: { stealthT: 0 }, flashT: 0, frozenT: 0, rootT: 0, jamT: 0, weapon: WEAPONS[0], col: netCol(id) }; NET.others.set(id, o); }
-    const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.acct = info ? info.acct : undefined; o.col = info && info.col ? info.col : netCol(id);
+    const info = NET.lobby.find(l => l.id === id); o.name = info ? info.name : 'SURVIVOR'; o.acct = info ? info.acct : undefined; o.col = info && info.col ? info.col : netCol(id); { const lg = netLegendOk(info && info.lg, info && info.lc); o.lg = lg[0]; o.lc = lg[1]; }
     netVel(o, q[1], q[2]); o.tx = q[1]; o.ty = q[2]; o.aim = q[3] / 100; o.hp = q[4]; o.maxHp = q[5]; o.down = !!q[6]; o.dashT = q[7] ? 0.1 : 0; o.weapon = WEAPONS[q[8]] || o.weapon; o.rv = q[9] / 100 * 2.4; o.dashK = q[10] || 'sprint'; o.walk = q[11] / 10;
     if (Math.hypot(o.tx - o.x, o.ty - o.y) > 260) { o.x = o.tx; o.y = o.ty; }
   }

@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.991';
+const ZC_VERSION = '1.9.992';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -326,6 +326,7 @@ window.zcBack = function () {
   if (!$('engRoom').hidden) { closeEngineRoom(); return true; }
   if (!$('settings').hidden) { closeSettings(); return true; }
   if (!$('radioPanel').hidden) { closeRadio(); return true; }
+  if (legendCover()) { lgsBack(); return true; }
   if (!$('hudRadio').hidden) { toggleHudRadio(false); return true; }
   if (!$('blDetail').hidden) { $('blDetail').hidden = true; return true; }
   if (!$('bosslog').hidden) { closeBossLog(); return true; }
@@ -2089,13 +2090,16 @@ function drawPlayer(p) {
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(2, 4, 13, 12, 0, 0, TAU); ctx.fill();
   ctx.rotate(p.aim);
   // the survivor is one textured sprite per weapon and walking pose (made once by the texture engine), turned to the aim
-  const fk = (p.weapon && p.weapon.F && p.weapon.F.key) || 'pistol', gl = GUN_LEN[fk] || 20, PS = texelPlayer(p);
+  const fk = (p.weapon && p.weapon.F && p.weapon.F.key) || 'pistol', gl = GUN_LEN[fk] || 20;
   // recoil: the gun (and the shoulders behind it) kick back with each shot and settle
   if (p.kick > 0.01) { ctx.translate(-p.kick * 3.2, 0); ctx.rotate(p.kick * 0.035 * ((p.shots & 1) ? 1 : -1)); }
-  ctx.drawImage(PS.c, -PS.half, -PS.half, PS.half * 2, PS.half * 2);
+  // 1.9.992: the survivor is the chosen legend (a frame of his 3D rig, seen from above, doing what the player does);
+  // the old textured survivor is the fallback
+  const LS = legendDrawPlayer(p, ctx, fk, gl);
+  if (!LS) { const PS = texelPlayer(p); ctx.drawImage(PS.c, -PS.half, -PS.half, PS.half * 2, PS.half * 2); }
   // the light that falls on the survivor: lit toward the lamp (or the sun), shaded away from it, a rim of its colour
   if (typeof lookShade === 'function' && typeof aLight === 'function' && LUX.live && Q.lod < 3) { const L = aLight({ x: p.x, y: p.y, ang: p.aim }); lookShade(ctx, L, 14, 15, 1); }
-  if (typeof muzzleDraw === 'function') { try { muzzleDraw(ctx, p, fk, gl, 1); } catch (e) { muzzleHurt(e); } }
+  if (typeof muzzleDraw === 'function') { try { if (LS) { ctx.save(); ctx.translate(LS.mx - 8 - gl, LS.my); } muzzleDraw(ctx, p, fk, gl, 1); if (LS) ctx.restore(); } catch (e) { muzzleHurt(e); } }
   else if (p.flashT > 0 && fk !== 'flamer') { const mx = 8 + gl; ctx.fillStyle = p.weapon.M && p.weapon.M.key === 'standard' ? '#ffe9a0' : p.weapon.color; ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx + 12, -5); ctx.lineTo(mx + 16, 0); ctx.lineTo(mx + 12, 5); ctx.closePath(); ctx.fill(); }
   if (p.frozenT > 0) { ctx.fillStyle = 'rgba(200,240,255,0.55)'; ctx.fillRect(-15, -15, 30, 30); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(-15, -15, 30, 30); }
   if (p.rootT > 0) { ctx.strokeStyle = '#4d5e22'; ctx.lineWidth = 3; for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + 0.4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 18, Math.sin(a) * 18); ctx.quadraticCurveTo(Math.cos(a + 0.6) * 8, Math.sin(a + 0.6) * 8, Math.cos(a + 1.2) * 14, Math.sin(a + 1.2) * 14); ctx.stroke(); } }
@@ -2467,11 +2471,12 @@ function frame(now) {
     vzNow = VIZ_PAUSED ? null : vizFrame();
     if (G.mode === 'play') update(dt);
     else if (G.mode === 'cine') updCine(dt);
-    else if (G.mode === 'title') { G.time += dt; updAttract(dt); updWorld(dt); }
-    if (G.mode === 'play' || G.mode === 'title' || G.mode === 'cine') updWeather(dt, rdt);
+    else if (G.mode === 'title' && !legendCover()) { G.time += dt; updAttract(dt); updWorld(dt); legendIdleWarm(); }
+    // the Legends screen covers the city: it is not simulated or drawn underneath, the cinematic gets the frame
+    if ((G.mode === 'play' || G.mode === 'title' || G.mode === 'cine') && !(G.mode === 'title' && legendCover())) updWeather(dt, rdt);
     else if (G.mode === 'over') { G.time += dt; updFx(dt); }
     else if (G.mode === 'intro') introFrame(rdt);
-    if (G.mode !== 'intro') render();
+    if (G.mode !== 'intro') { if (G.mode === 'title' && legendCover()) legendFrame(rdt); else render(); }
     if (INTRO.fading) introFadeFrame(rdt);
     if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'skull' || G.mode === 'cine') { updHud(); bossMusic(); updWhere(); }
     updFpsBox(now);

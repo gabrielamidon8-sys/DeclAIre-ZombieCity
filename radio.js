@@ -273,7 +273,7 @@
     var clip = c.createWaveShaper(); clip.curve = softClip();
     var trim = c.createGain(); trim.gain.value = 0.6;
     RD.an = c.createAnalyser(); RD.an.fftSize = 1024; RD.an.smoothingTimeConstant = 0.5; spec = new Uint8Array(RD.an.frequencyBinCount); VIZ.spec = spec;
-    RD.vol = c.createGain(); RD.vol.gain.value = RD.muted ? 0 : 1;
+    RD.vol = c.createGain(); RD.vol.gain.value = RD.muted ? 0 : (RD.hold || 1);
     // the Music volume setting comes last, after the analyser, so the light show still sees the full song
     RD.uvol = c.createGain(); RD.uvol.gain.value = RD.uv; rMono();
     RD.bus.connect(comp); comp.connect(trim); trim.connect(clip); clip.connect(RD.an); RD.an.connect(RD.vol); RD.vol.connect(RD.uvol); RD.uvol.connect(c.destination);
@@ -440,12 +440,14 @@
     // the arrow keys: channels on the radio, songs on Bluetooth
     step: function (d) { if (RD.mode === 'bt') { btNext(d); return RD.bt.i; } return radioApi.channel(RD.ch + d); },
     skip: function () { if (RD.mode === 'bt') { btNext(1); return; } RD.idx[RD.ch] = (RD.idx[RD.ch] + 1) % RSONGS; if (RD.mode !== 'radio') rSetMode('radio'); else rTune(); },
-    mute: function (on) { RD.muted = on == null ? !RD.muted : !!on; if (RD.vol) { var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(RD.muted ? 0 : 1, t, 0.06); } introLevel(); rNotify(); return RD.muted; },
+    mute: function (on) { RD.muted = on == null ? !RD.muted : !!on; if (RD.vol) { var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(RD.muted ? 0 : (RD.hold || 1), t, 0.06); } introLevel(); rNotify(); return RD.muted; },
     muted: function () { return RD.muted; },
     setVolume: function (v) { RD.uv = Math.max(0, Math.min(1.2, v)); if (RD.uvol) RD.uvol.gain.setTargetAtTime(RD.uv, RD.ctx.currentTime, 0.05); },
     setMono: function (m) { RD.mono = !!m; rMono(); },
     // the radio dips under something loud (the A-10's cannon), then comes back
-    duck: function (sec) { if (!RD.vol || RD.muted) return; var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(0.4, t, 0.06); RD.vol.gain.setTargetAtTime(1, t + (sec || 2), 0.4); },
+    duck: function (sec) { if (!RD.vol || RD.muted) return; var t = RD.ctx.currentTime, h = RD.hold || 1; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(0.4 * h, t, 0.06); RD.vol.gain.setTargetAtTime(h, t + (sec || 2), 0.4); },
+    // the Legends screen holds the radio down (its own score and ambience play over it), and lets it back up
+    hold: function (on, lvl) { RD.hold = on ? (lvl == null ? 0.18 : lvl) : 0; if (!RD.vol || !RD.ctx) return; var t = RD.ctx.currentTime; RD.vol.gain.cancelScheduledValues(t); RD.vol.gain.setTargetAtTime(RD.muted ? 0 : (RD.hold || 1), t, 0.3); },
     setState: function (s) { if (!s) return; if (s.ch != null) RD.ch = (s.ch % 7 + 7) % 7; if (s.idx && s.idx.length === 7) RD.idx = s.idx.map(function (v) { return ((v | 0) % RSONGS + RSONGS) % RSONGS; }); if (s.muted != null) RD.muted = !!s.muted; if (s.mode) RD.mode = s.mode; },
     state: function () { return { ch: RD.ch, idx: RD.idx.slice(), muted: RD.muted, mode: RD.mode }; },
     btSet: function (list, play) {

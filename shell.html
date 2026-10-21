@@ -1189,6 +1189,7 @@ button.lcd{cursor:pointer}
         </form>
         <div class="btns mx-deck">
           <button class="btn primary mx-play" id="playBtn"><span class="mx-play-t">Enter the city</span><span class="mx-play-s" id="playSub">Wave 1 · the first 50 of 2.0</span><i class="mx-chev" aria-hidden="true"></i></button>
+          <button class="btn mx-tile mx-legends" id="legendsBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5C5 5.4 8.1 3 12 3s7 2.4 7 6.5V12l-2 2.2V17l-5 4-5-4v-2.8L5 12z"/><path d="M7.5 11.2h9M9 14.6h6"/></svg><span class="mx-t">Legends</span><em id="legendsEm">Operator</em><small>Characters and their whole rig</small></button>
           <button class="btn mx-tile" id="armoryBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15h11l2-3h5v3h-3l-1 2H8l-1 3H4l1-3H3z"/><path d="M9 12V9h6"/></svg><span class="mx-t">Armory</span><em id="gunCount">1/250</em><small>Weapons and dashes</small></button>
           <button class="btn mx-tile" id="codexBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span class="mx-t">Specimen log</span><em id="foundCount">0/50</em><small>Every zombie you have met</small></button>
           <button class="btn mx-tile" id="bossLogBtn"><svg class="mx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c-5 0-8 3.4-8 8 0 2.6 1.2 4.4 2.6 5.4V20h10.8v-3.6C18.8 15.4 20 13.6 20 11c0-4.6-3-8-8-8z"/><path d="M9 11.5h.01M15 11.5h.01M10 17v3M14 17v3"/></svg><span class="mx-t">Boss log</span><em id="bossCount">0/50</em><small>Resting until rebuilt</small></button>
@@ -1548,6 +1549,24 @@ button.lcd{cursor:pointer}
     <div class="in-studio"><b>Decl<span>AI</span>re</b><em>Studios</em></div>
     <p class="in-gate" hidden>Tap for sound</p>
     <p class="in-skip">Tap to skip</p>
+  </section>
+  <section id="legends" class="lg-screen" hidden aria-label="Legends" data-view="hub">
+    <div class="lg-stage" id="lgStage"></div>
+    <div class="lg-shade" aria-hidden="true"></div>
+    <header class="lg-top">
+      <button type="button" class="icon-btn lg-back" id="lgBack" aria-label="Back">&#8249;</button>
+      <div class="lg-crumbs"><b>Legends</b><span id="lgCrumb"></span></div>
+      <nav class="lg-tabs" role="tablist" aria-label="Legends"><button type="button" class="lg-tab on" role="tab" aria-selected="true">Characters</button><button type="button" class="lg-tab" role="tab" aria-selected="false" disabled>Cards <em>later</em></button></nav>
+    </header>
+    <div class="lg-hub" id="lgHub"></div>
+    <div class="lg-select" id="lgSelect" hidden>
+      <p class="lg-hint" id="lgHint"><span class="lg-hint-m">Hover a legend to watch his cinematic. Click to open him.</span><span class="lg-hint-t">Tap a legend to watch his cinematic, tap again to open him.</span></p>
+      <div class="lg-classes" id="lgClasses"></div>
+      <div class="lg-foot"><span>One base legend for every class today. More legends are classified.</span><button type="button" class="btn small ghost" id="lgWatchAll">Watch the cinematic</button></div>
+    </div>
+    <div class="lg-detail" id="lgDetail" hidden></div>
+    <div class="lg-title" id="lgTitle" hidden aria-live="polite"><p class="lg-t-eye">Base legend · <span class="lg-t-cls">Attack</span></p><h2 class="lg-t-name">OPERATOR</h2><p class="lg-t-line">Walks in first. Leaves last.</p></div>
+    <div class="lg-fade" id="lgFade" aria-hidden="true"></div>
   </section>
   <section id="radioPanel" class="ov ov-radio" hidden aria-label="Radio and sound">
     <div class="panel radio-panel">

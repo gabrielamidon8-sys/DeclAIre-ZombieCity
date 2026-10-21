@@ -112,6 +112,8 @@ function warmJobs() {
   }
   jobs.push(() => { for (const c of ['#ff8a3a', '#ffc27a', '#ffd27a', '#ff3b3b', '#3b7bff', '#b6ff6a', '#9ad7ff', '#d2ff6a', '#e8eef4', '#bcd6ff']) glowSprite(c); atmCloudSprite(); grainCanvas(); });
   jobs.push(() => { if (typeof drawWeatherScreen === 'function') drawWeatherScreen(0.016); });
+  // 1.9.992: the legend's textures and the frames of him standing and walking, so the first steps of a run are ready
+  for (const j of legendWarmJobs()) jobs.push(j);
   for (let i = 0; i < 3; i++) jobs.push(() => { render(); });
   jobs.push(() => { LUX.msAvg = 0; LUX.bad = 0; PERF.sec && (PERF.sec.lux = 0); });
   return jobs;

@@ -12,6 +12,7 @@ const SET_DEF = {
   aimKbm: 'manual', fireKbm: 'hold', aimPad: 'assist', firePad: 'stick', padDead: 18, padSwap: false, padRumble: true, xhair: 'cross', xhairSize: 100, xhairColor: 'yellow',
   motion: 'auto', flash: false, hudScale: 100, contrast: false,
   saver: 'auto', netPing: true, netArrows: true,
+  legend: 'operator', legendClass: 'attack', legendGpu: true,   // 1.9.992: the deployed legend, his class, and whether the GPU draws the Legends screen
   eng: {}   // the engine room's choices: { NAME: { effort, proc } }
 };
 const SYS_RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);

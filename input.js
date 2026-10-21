@@ -131,6 +131,7 @@ function doActions(A, repeat) {
 function goBack(esc) {
   if (!$('settings').hidden) { closeSettings(); return; }
   if (!$('radioPanel').hidden) { closeRadio(); return; }
+  if (legendCover()) { lgsBack(); return; }
   if (!$('hudRadio').hidden && esc) { toggleHudRadio(false); return; }
   if (!$('blDetail').hidden) { $('blDetail').hidden = true; return; }
   if (!$('bosslog').hidden) { closeBossLog(); return; }
@@ -253,9 +254,9 @@ function padRumble(ms) {
 }
 
 /* ---------- menus with a controller (and arrow keys) ---------- */
-const LAYERS = ['engWarn', 'engRoom', 'settings', 'radioPanel', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'coop', 'acct', 'skull', 'upgrade', 'pause', 'over', 'title'];
+const LAYERS = ['engWarn', 'engRoom', 'settings', 'radioPanel', 'legends', 'blDetail', 'arDetail', 'cxDetail', 'bosslog', 'armory', 'codex', 'lb', 'coop', 'acct', 'skull', 'upgrade', 'pause', 'over', 'title'];
 const shown = e => !!e && !e.hidden && e.getClientRects().length > 0;
-function sheetOpen() { return shown($('engWarn')) || shown($('engRoom')) || shown($('settings')) || shown($('radioPanel')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')) || shown($('coop')) || shown($('acct')); }
+function sheetOpen() { return shown($('engWarn')) || shown($('engRoom')) || shown($('settings')) || shown($('radioPanel')) || shown($('legends')) || shown($('armory')) || shown($('codex')) || shown($('bosslog')) || shown($('lb')) || shown($('coop')) || shown($('acct')); }
 function menuOpen() { if (typeof INTRO !== 'undefined' && INTRO.on) return false; return (G.mode !== 'play' && G.mode !== 'cine') || shown($('settings')) || shown($('radioPanel')) || shown($('engRoom')) || shown($('engWarn')); }
 function menuLayer() { for (const id of LAYERS) { const e = $(id); if (shown(e)) return e; } return null; }
 function focusables(L) {
