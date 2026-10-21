@@ -55,16 +55,23 @@
       for (var b2 = 0; b2 < 6; b2++) { lTom(T(6.9 + b2 * 0.18), 110 - b2 * 6); lSnare(T(6.99 + b2 * 0.18), 0.12, 1); }
       vBrass([26, 33, 38], T(7.22), 0.9, 0.06); lTimp(T(7.22), mtof(33), 0.7);
       vImpact(T(8.33)); vBrass([26, 32, 38], T(8.33), 1.2, 0.07); lTimp(T(8.33), mtof(29), 0.9);
-      // slow: the hero figure again, rising
-      vStrings([50, 57, 62], T(8.6), 1.55, 0.03); vBrass([38, 45], T(9.45), 0.5, 0.045); vBrass([45, 50], T(9.95), 0.45, 0.05); vRiser(T(9.4), 0.85);
-      // the freeze: a cold high chord, low hits, the title's shing, a last chord
-      vChoir([74, 77, 81, 86], T(10.72), 2.2, 0.03); vStrings([62, 69, 74, 77], T(10.72), 2.4, 0.032); vImpact(T(10.69)); lTimp(T(10.69), mtof(26), 1.0);
-      bell(T(11.36), 1318.5, 0.07, 2.2, CINE.mus); bell(T(11.37), 1975.5, 0.04, 1.8, CINE.mus); lTimp(T(11.36), mtof(31), 0.6);
-      vBrass([26, 33, 38, 41], T(12.6), 1.5, 0.05); vSub(26, T(12.6), 1.5, 0.18); vStrings([50, 53, 57], T(12.6), 1.4, 0.025);
+      // slow: the hero figure, the knife going in on a hit (1.9.994: the new ending)
+      vStrings([50, 57, 62], T(8.6), 1.1, 0.03); vRiser(T(9.0), 0.62);
+      vImpact(T(9.64)); lTimp(T(9.64), mtof(29), 0.8); vBrass([38, 45], T(9.64), 0.35, 0.05);
+      // the third one: a stab, the ostinato again, rising under the turn
+      vStac([49, 50, 56], T(9.8), 0.06); for (var s3 = 0; s3 < 9; s3++) vTremStr(s3 % 3 === 2 ? 41 : 38, T(9.85 + s3 * 0.055), 0.035);
+      [9.9, 10.05, 10.15, 10.25].forEach(function (x) { lTom(T(x), 120); }); vRiser(T(9.85), 0.5);
+      // the collar strike: a braam, slowed
+      vBrass([26, 33, 38], T(10.41), 0.6, 0.065); lTimp(T(10.41), mtof(31), 0.8);
+      // the freeze on the shot: a cold high chord, low hits, the title's shing, a last chord
+      vChoir([74, 77, 81, 86], T(11.0), 2.2, 0.03); vStrings([62, 69, 74, 77], T(11.0), 2.4, 0.032); vImpact(T(10.95)); lTimp(T(10.95), mtof(26), 1.0);
+      bell(T(11.64), 1318.5, 0.07, 2.2, CINE.mus); bell(T(11.65), 1975.5, 0.04, 1.8, CINE.mus); lTimp(T(11.64), mtof(31), 0.6);
+      vBrass([26, 33, 38, 41], T(12.88), 1.5, 0.05); vSub(26, T(12.88), 1.5, 0.18); vStrings([50, 53, 57], T(12.88), 1.4, 0.025);
     });
-    // slow motion: the whole score sinks under a closing filter, then opens again for the freeze
-    var lp = CINE.lp.frequency; lp.setValueAtTime(18000, T(10.15)); lp.exponentialRampToValueAtTime(380, T(10.6)); lp.setValueAtTime(380, T(10.66)); lp.exponentialRampToValueAtTime(18000, T(10.72));
-    var g = CINE.mus.gain; g.setValueAtTime(0.95 * VOL.music, T(10.55)); g.linearRampToValueAtTime(0.12 * VOL.music, T(10.64)); g.linearRampToValueAtTime(0.95 * VOL.music, T(10.7)); g.setValueAtTime(0.95 * VOL.music, T(13.1)); g.linearRampToValueAtTime(0.0001, T(14.2));
+    // slow motion: the score sinks under a closing filter for the collar strike and again into the shot, then opens for the freeze
+    var lp = CINE.lp.frequency; lp.setValueAtTime(18000, T(10.32)); lp.exponentialRampToValueAtTime(900, T(10.42)); lp.exponentialRampToValueAtTime(18000, T(10.62));
+    lp.setValueAtTime(18000, T(10.78)); lp.exponentialRampToValueAtTime(380, T(10.9)); lp.setValueAtTime(380, T(10.94)); lp.exponentialRampToValueAtTime(18000, T(11.0));
+    var g = CINE.mus.gain; g.setValueAtTime(0.95 * VOL.music, T(10.83)); g.linearRampToValueAtTime(0.12 * VOL.music, T(10.92)); g.linearRampToValueAtTime(0.95 * VOL.music, T(10.98)); g.setValueAtTime(0.95 * VOL.music, T(13.38)); g.linearRampToValueAtTime(0.0001, T(14.5));
     CINE.t0 = t0;
   }
   // foley: r is the playback rate (slow motion stretches and lowers everything)

@@ -10,8 +10,9 @@
    Scenes:
    - The alley (the Operator's cinematic, about 14 seconds): night, rain, neon in the puddles. He walks in, his mask
      clicks shut, a kitchen door bangs open and two of the dead rush him; a head shot lights the walls; the second one
-     grabs him and he throws it over his hip into the water; he drops onto it with a knee, the knife comes out in a
-     reverse grip, and as it goes up the world slows, stops, and lightning freezes the frame.
+     grabs him and he throws it over his hip into the water; he drops onto it with a knee and the knife goes in; a
+     third comes out of the dark behind him, he comes up turning, knife at its collar, the pistol past the knife arm,
+     point blank: knife, knife, shot. The world slows on the shot, stops, and lightning freezes the frame (1.9.994).
    - The line-up (behind the Legends screen): the five classes standing in the rain in the same alley, each lit by
      its colour from behind, breathing, scanning, looking up into the rain, the camera drifting. Lightning now and then.
    - The studio (a legend's own page): a dark stage with a wet floor and a turntable ring in the class colour; the
@@ -202,6 +203,55 @@ lgClip('c_mount', 'Knee mount and knife', 'Cinematic', 2.2, false, LG_SRC.knife,
   else { P.knife.at = 'handL'; P.grip.L = 'knife'; lgHandTo(P, 'L', 'root', [lgLerp(0.4, 0.12, up), lgLerp(0.12, 0.22, up), lgLerp(0.75, 1.62, up)], [0.05, lgLerp(-1.3, -1.5, up), lgLerp(0.3, 0.05, up)], [-0.6, 0.9, 0.1]); }   // (the fist up with the little finger down: the blade points down at it)
   P.mask = 1; P.glow = 1;
 }, [[0.45, 'knee'], [0.65, 'knifeOut']]);
+// 1.9.994: the new ending. Down on a knee on the thrown one and the knife into it; then the third one comes out of the
+// dark behind him: he comes up turning, the knife goes in at its collar, the pistol comes up past the knife arm and
+// fires point blank: knife, knife, shot (the in-game combo's own rhythm). Time stops on the muzzle flash.
+lgClip('c_kstab', 'Knee and knife', 'Cinematic', 1.2, false, LG_SRC.knife, 'Down onto a knee on its chest, the gun hand pinning it; the knife drawn in a reverse grip, up, and driven down.', (P, t) => {
+  const d = lgK(t, [[0, 0], [0.42, 1, 's']]), up = lgK(t, [[0, 0], [0.62, 0], [0.8, 1, 'o']]), hit = lgK(t, [[0, 0], [0.8, 0], [0.9, 1, 'i3'], [1.2, 1]]), pull = lgK(t, [[0, 0], [1.02, 0], [1.2, 1, 's']]);
+  lgPelvis(P, 0.05 * d, 0, -0.52 * d - 0.03 - 0.03 * hit, 0.05 * d, 0.38 * d + 0.08 * hit, 0.1 * d);
+  lgFoot(P, 'L', lgLerp(0.06, 0.38, d), 0.24, lgPulse(t, 0.05, 0.38) * 0.1, 0, 0.2, 0);
+  lgFoot(P, 'R', lgLerp(-0.06, -0.32, d), -0.12, 0, lgLerp(0, 1.15, d), -0.1, lgLerp(0, -0.9, d));
+  lgSpine(P, 0.45 * d - 0.2 * up + 0.32 * hit, -0.15 * d + 0.1 * hit, 0.05 * d); lgLookAt(P, 0.12, 0.55 * d - 0.1 * up + 0.2 * hit);
+  P.pistol.at = 'handR'; P.grip.R = 'pistol'; lgHandTo(P, 'R', 'root', [lgLerp(0.3, 0.62, d), lgLerp(-0.15, -0.05, d), lgLerp(0.8, 0.34, d)], [lgLerp(0, 0.2, d), lgLerp(0.4, 1.5, d), 0.3], [-0.2, -0.9, 0.3]);
+  if (t < 0.62) { const c = lgK(t, [[0, 0], [0.5, 1, 'io']]); lgHandTo(P, 'L', 'chest', [0.2, lgLerp(0.2, -0.065, c), lgLerp(-0.3, -0.11, c)], [lgLerp(0, 1.4, c), lgLerp(0, -0.2, c), lgLerp(0, 1.5, c)], [-0.3, 0.8, -0.6]); P.grip.L = c > 0.85 ? 'knife' : 'open'; P.knife.at = t < 0.52 ? 'sheath' : 'handL'; }
+  else {
+    P.knife.at = 'handL'; P.grip.L = 'knife';
+    const A = [0.4, 0.13, 0.78], Bu = [0.36, 0.2, 1.08], Cs = [0.66, 0.12, 0.36], Dp = [0.6, 0.14, 0.52], q = [0, 1, 2].map(i => { const a = lgLerp(A[i], Bu[i], up), b = lgLerp(a, Cs[i], hit); return lgLerp(b, Dp[i], pull); });
+    lgHandTo(P, 'L', 'root', q, [0.05, lgLerp(-1.3, -1.45, hit), lgLerp(0.3, 0.12, hit)], [-0.6, 0.9, 0.1]);   // (the blade down out of the little finger's side)
+  }
+  P.mask = 1; P.glow = 1;
+}, [[0.4, 'knee'], [0.56, 'knifeOut'], [0.9, 'stab']]);
+lgClip('c_kspin', 'Turn, knife, shot', 'Cinematic', 1.45, false, LG_SRC.knife, 'Up off the knee turning to the one behind him; the knife hammers in at its collar, the pistol comes up close past the knife arm and fires point blank.', (P, t) => {
+  const rise = lgK(t, [[0, 0], [0.4, 1, 'o']]), dn = 1 - rise;
+  const sk = lgK(t, [[0, 0], [0.26, 0], [0.47, 1, 'o3'], [0.7, 1], [0.98, 0, 'io'], [1.45, 0]]), gd = lgK(t, [[0, 0], [0.2, 1, 'io'], [1.45, 1]]);
+  const gun = lgK(t, [[0, 0], [0.56, 0], [0.84, 1, 'o3'], [1.45, 1]]), r = lgRecoil(t, 0.92);
+  lgPelvis(P, 0.05 * dn, 0, -0.52 * dn - 0.08 * rise, 0.05 * dn, 0.38 * dn + 0.1 * rise + 0.06 * sk, 0.1 * dn);
+  lgFoot(P, 'L', lgLerp(0.38, 0.2, rise), lgLerp(0.24, 0.14, rise), lgPulse(t, 0.05, 0.36) * 0.08, 0, 0.2, 0);
+  lgFoot(P, 'R', lgLerp(-0.32, -0.22, rise), lgLerp(-0.12, -0.15, rise), lgPulse(t, 0.12, 0.42) * 0.05, lgLerp(1.15, 0, rise), -0.1, lgLerp(-0.9, -0.25, rise));
+  lgSpine(P, 0.12 + 0.25 * sk - 0.06 * gun, -0.18 * sk + 0.12 * gun, 0.04 * sk); lgLookAt(P, -0.06 * gun, -0.04 + 0.08 * sk);
+  // the knife: guard by the shoulder, the hammer stab in at the collar, back to the chest as the gun comes past
+  P.knife.at = 'handL'; P.grip.L = 'knife';
+  const G0 = [0.6, 0.14, 0.52], G = [0.26, 0.2, 1.16], S = [0.54, 0.07, 1.36], H = [0.2, 0.17, 1.08];
+  const q = [0, 1, 2].map(i => { const a = lgLerp(G0[i], G[i], gd), b = lgLerp(a, S[i], sk); return t > 0.7 ? lgLerp(b, H[i], lgK(t, [[0.7, 0], [1.0, 1, 'io']])) : b; });
+  lgHandTo(P, 'L', 'root', q, [lgLerp(0.05, 0.12, sk), lgLerp(-1.4, -0.95, sk), lgLerp(0.2, 0.25, sk)], [-0.5, 0.9, -0.2]);
+  // the pistol: one hand, low by the hip, then up close and out past the knife arm
+  const v = lgPostMix([0.2, -0.13, -0.08, 0.3, 0.85, 0], [0.47, -0.05, 0.3, -0.08, 0.0, 0], gun); v[4] -= r * 0.28; v[0] -= r * 0.05;
+  lgPistolAt(P, v, { one: true, trigger: gun > 0.9, poleR: LG_POLE.R }); P.pistol.slide = t > 0.92 && t < 1.01 ? 1 - Math.abs(t - 0.955) / 0.045 : 0;
+  P.mask = 1; P.glow = 1;
+}, [[0.08, 'grunt'], [0.3, 'swish'], [0.47, 'stab'], [0.92, 'shot']]);
+lgClip('z_neckstab', 'Knifed at the collar (the dead)', 'Actors', 0.9, false, '', 'The blade goes in at the collar: the head jerks away, the hands claw up at the arm, the knees start to go.', (P, t) => {
+  const k = lgK(t, [[0, 0], [0.08, 1, 'o3'], [0.9, 0.85]]), sag = lgK(t, [[0, 0], [0.3, 0.4], [0.9, 0.7]]);
+  lgBase(P, { crouch: 0.08 + 0.12 * sag, lean: 0.3 - 0.35 * k, stance: false }); lgStance(P, 0.13, -0.08, 0.2);
+  lgSpine(P, -0.25 * k, 0.15 * k, 0.1 * k); lgLookAt(P, 0.35 * k, -0.5 * k + 0.1, 0.3 * k);
+  lgArm(P, 'L', lgLerp(-1.2, -1.75, k), 0.5, 0.4 * k, lgLerp(0.4, 1.7, k), -0.3); lgArm(P, 'R', lgLerp(-1.1, -1.5, k), 0.35, -0.3 * k, lgLerp(0.5, 1.5, k), -0.3); P.grip.L = P.grip.R = 'claw';
+});
+lgClip('z_stabdown', 'Knifed, pinned (the dead)', 'Actors', 1.2, false, '', 'On its back: the blade lands, the arms jerk up once, and everything goes slack.', (P, t) => {
+  lgPelvis(P, 0, 0, 0, 0, 0, 0);
+  const j = lgK(t, [[0, 0], [0.06, 1, 'o3'], [0.35, 0.55], [1.2, 0]]), sl = lgK(t, [[0, 0], [0.3, 0], [1.2, 1, 's']]);
+  for (const s of ['L', 'R']) { const sg = s === 'L' ? 1 : -1; lgJ(P, 'thigh' + s, sg * 0.15, lgLerp(-0.25, -0.05, sl) - 0.15 * j, 0); lgJ(P, 'shin' + s, 0, lgLerp(0.4, 0.12, sl) + 0.2 * j, 0); }
+  lgArm(P, 'L', lgLerp(-1.6, -0.5, sl) - 0.5 * j, 0.4 + 0.6 * sl, 0.2, lgLerp(0.6, 0.15, sl) + 0.5 * j, 0); lgArm(P, 'R', lgLerp(-1.4, -0.4, sl) - 0.4 * j, 0.5 + 0.7 * sl, -0.2, lgLerp(0.7, 0.2, sl) + 0.4 * j, 0);
+  P.grip.L = P.grip.R = sl > 0.5 ? 'relax' : 'claw'; lgLookAt(P, 0.45 * sl, 0.2 + 0.5 * j, 0.3 * sl);
+});
 
 /* ---------- the director's library ---------- */
 // Each technique: what it is for, how it is built here, and what it was studied from (no single film is copied).
@@ -304,15 +354,22 @@ function mimHideCarbine() { const h = new Uint8Array(LG_NB_MAX); h[LGB.carbine] 
 // actors' blocking (scene time); the director turns the beats into shots (real time) and a time curve
 function mimAlley(cls, S) {
   S = S || (t => t); const q = MIMQ[mimLevel()], acc = lgHex(LG_CLASS_BY[cls].col);
-  const op = mimActor({ model: 'operator', cls: cls, lod: q.lod, acc: acc, hide: mimHideCarbine(),
-    track: [[0, 'walk_tac', 0, 0], [2.75, 'mask_tap', 0, 0.45], [4.3, 'c_alert', 0, 0.35], [6.3, 'c_fire', 0, 0.16], [7.25, 'c_throw', 0, 0.2], [8.75, 'c_mount', 0, 0.42]],
-    root: [[0, 0.1, 0.12, 0, 0], [2.45, 2.75, 0.12, 0, 0, 'l'], [3.05, 3.05, 0.1, 0, 0, 'o'], [6.3, 3.05, 0.1, 0, 0], [6.55, 3.05, 0.1, 0, -0.08], [7.3, 3.05, 0.08, 0, 0.0], [7.55, 3.2, 0.05, 0, Math.PI, 'io'], [8.75, 3.2, 0.05, 0, Math.PI], [9.3, 2.95, 0.1, 0, Math.PI, 'io']] });
+  // (1.9.994: he carries your sidearm in it, his hands fitted to it; the long gun stays out of the shot)
+  const L = typeof armsLoad === 'function' && typeof ARMS_ON !== 'undefined' && ARMS_ON ? armsLoad() : null;
+  const op = mimActor({ model: 'operator', cls: cls, kit: L ? cls + '|' + L.p + '|' + L.s : cls, gp: L ? L.p : null, gs: L ? L.s : null, lod: q.lod, acc: acc, hide: mimHideCarbine(),
+    track: [[0, 'walk_tac', 0, 0], [2.75, 'mask_tap', 0, 0.45], [4.3, 'c_alert', 0, 0.35], [6.3, 'c_fire', 0, 0.16], [7.25, 'c_throw', 0, 0.2], [8.75, 'c_kstab', 0, 0.38], [9.95, 'c_kspin', 0, 0.1]],
+    root: [[0, 0.1, 0.12, 0, 0], [2.45, 2.75, 0.12, 0, 0, 'l'], [3.05, 3.05, 0.1, 0, 0, 'o'], [6.3, 3.05, 0.1, 0, 0], [6.55, 3.05, 0.1, 0, -0.08], [7.3, 3.05, 0.08, 0, 0.0], [7.55, 3.2, 0.05, 0, Math.PI, 'io'], [8.75, 3.2, 0.05, 0, Math.PI], [9.3, 2.95, 0.1, 0, Math.PI, 'io'],
+      [9.98, 2.95, 0.1, 0, Math.PI], [10.36, 3.02, 0.06, 0, 2 * Math.PI - 0.1, 'io'], [11.2, 3.05, 0.06, 0, 2 * Math.PI - 0.1]] });
   const z1 = mimActor({ model: 'zombie', cls: 'cook', lod: Math.max(1, q.lod), show: [4.55, 1e9],
     track: [[0, 'z_burst', 0, 0], [4.95, 'z_rush', 0, 0.15], [6.55, 'z_hs', 0, 0.04]],
     root: [[0, 7.5, -2.55, 0, Math.PI / 2], [4.55, 7.5, -2.55, 0, Math.PI / 2], [4.95, 7.2, -1.8, 0, 2.3, 'o'], [6.55, 5.05, -0.5, 0, 2.9, 'l'], [7.5, 5.75, -0.62, 0, 2.9, 'o']] });
   const z2 = mimActor({ model: 'zombie', cls: 'exec', lod: Math.max(1, q.lod), show: [4.85, 1e9],
-    track: [[0, 'z_rise', 0, 0], [5.3, 'z_rush', 0.2, 0.15], [7.18, 'z_grab', 0, 0.08], [7.85, 'z_thrown', 0, 0.06], [8.42, 'z_pinned', 0, 0.12]],
+    track: [[0, 'z_rise', 0, 0], [5.3, 'z_rush', 0.2, 0.15], [7.18, 'z_grab', 0, 0.08], [7.85, 'z_thrown', 0, 0.06], [8.42, 'z_pinned', 0, 0.12], [9.64, 'z_stabdown', 0, 0.05]],
     root: [[0, 10.2, 1.85, 0, Math.PI], [4.85, 10.2, 1.85, -0.25, Math.PI], [5.3, 9.6, 1.5, 0, Math.PI + 0.15, 'o'], [7.18, 3.62, 0.18, 0, Math.PI, 'l'], [7.55, 3.5, 0.12, 0, Math.PI], [7.85, 3.55, 0.08, 0.15, Math.PI], [8.35, 2.3, 0.0, 0.0, Math.PI]] });
+  // 1.9.994: the third, out of the dark at the far end: it shambles, then rushes him from behind while he is down
+  const z3 = mimActor({ model: 'zombie', cls: 'butcher', lod: Math.max(1, q.lod), show: [5.9, 1e9],
+    track: [[0, 'z_shamble', 0, 0], [8.25, 'z_rush', 0.1, 0.25], [10.38, 'z_neckstab', 0, 0.05], [10.88, 'z_hs', 0, 0.04]],
+    root: [[0, 12.2, 0.9, 0, Math.PI], [5.9, 12.2, 0.9, 0, Math.PI], [8.25, 10.9, 0.75, 0, Math.PI + 0.05, 'l'], [10.38, 3.86, 0.06, 0, Math.PI, 'l'], [10.88, 3.92, 0.06, 0, Math.PI], [11.7, 4.75, 0.2, 0, Math.PI + 0.25, 'o']] });
   // the throw: the body arcs over his hip and rotates three-quarters of a turn forward onto its back
   const tThrow = S(7.85), tPin = S(8.42);
   z2.custom = (st, a) => {
@@ -325,9 +382,10 @@ function mimAlley(cls, S) {
   z2.customPost = (st, a) => { if (st >= tPin) { a.P.t[LGB.pelvis * 3 + 2] = -0.82; lgJ(a.P, 'pelvis', 0, 1.5 * Math.PI, 0); a.P.ik.footL = a.P.ik.footR = null; } };
   // everything above was blocked in real time; the time curve turns it into scene time. The knife reaches the top of
   // its swing exactly as time stops.
-  for (const a of [op, z1, z2]) { a.track = a.track.map(k => [S(k[0]), k[1], k[2], k[3]]); a.root = a.root.map(k => [S(k[0]), k[1], k[2], k[3], k[4], k[5]]); a.show = [S(a.show[0]), a.show[1]]; }
-  const stop = S(10.65), mi = op.track.findIndex(k => k[1] === 'c_mount'); if (mi > 0) op.track[mi][0] = Math.min(op.track[mi][0], stop - 1.95);
-  return [op, z1, z2];
+  for (const a of [op, z1, z2, z3]) { a.track = a.track.map(k => [S(k[0]), k[1], k[2], k[3]]); a.root = a.root.map(k => [S(k[0]), k[1], k[2], k[3], k[4], k[5]]); a.show = [S(a.show[0]), a.show[1]]; }
+  // the shot lands exactly as time stops (the freeze holds the muzzle flash and the mist)
+  const stop = S(10.93), mi = op.track.findIndex(k => k[1] === 'c_kspin'); if (mi > 0) op.track[mi][0] = Math.min(op.track[mi][0], stop - 0.935);
+  return [op, z1, z2, z3];
 }
 // the beat sheet: what happens, and the techniques the director reaches for
 const MIM_SHEET_OPERATOR = [
@@ -336,12 +394,14 @@ const MIM_SHEET_OPERATOR = [
   { beat: 'threat', t: 4.4, tech: ['ots', 'dutch', 'whip'], what: 'A kitchen door bangs open; two of the dead come for him.' },
   { beat: 'action', t: 6.35, tech: ['ots', 'punch', 'hits'], what: 'Isosceles in a quarter second; one round; the muzzle lights the alley.' },
   { beat: 'impact', t: 7.2, tech: ['handheld', 'ramp', 'punch'], what: 'Grabbed; hips in; over and down into the water.' },
-  { beat: 'slow', t: 8.45, tech: ['hero', 'ramp'], what: 'A knee on its chest; the knife comes out in a reverse grip and goes up.' },
-  { beat: 'freeze', t: 10.65, tech: ['freeze', 'lightning', 'title'], what: 'Everything stops; lightning freezes the frame.' },
-  { beat: 'resolve', t: 12.6, tech: ['hits'], what: 'The name holds; the thunder rolls; out to black.' }
+  { beat: 'slow', t: 8.45, tech: ['hero', 'insert', 'punch'], what: 'A knee on its chest; the knife comes out in a reverse grip and goes in.' },
+  { beat: 'threat', t: 9.62, tech: ['insert', 'track'], what: 'A third one out of the dark behind him, running.' },
+  { beat: 'action', t: 9.95, tech: ['handheld', 'ramp', 'punch'], what: 'Up turning: the knife at its collar, the pistol past the knife arm, point blank.' },
+  { beat: 'freeze', t: 10.93, tech: ['freeze', 'lightning', 'title'], what: 'Everything stops on the muzzle flash; lightning freezes the frame.' },
+  { beat: 'resolve', t: 12.88, tech: ['hits'], what: 'The name holds; the thunder rolls; out to black.' }
 ];
 function mimDirectOperator() {
-  const R = MIM.reduce, A = () => MIM.actors, op = () => A()[0], z1 = () => A()[1], z2 = () => A()[2];
+  const R = MIM.reduce, A = () => MIM.actors, op = () => A()[0], z1 = () => A()[1], z2 = () => A()[2], z3 = () => A()[3];
   const opAt = () => op().root4, zAt = (z) => z.root4;
   const shots = [];
   // establish: low and in front, falling back as he comes, then a tracking shot alongside
@@ -359,19 +419,26 @@ function mimDirectOperator() {
   shots.push({ t0: 6.78, t1: 7.2, tech: ['hero'], cam: (rt) => { const P = mimBone(z1(), 'pelvis'); return { eye: [P[0] - 0.6, Math.min(2.4, P[1] + 2.1), 0.62], tgt: [P[0] + 0.15, P[1], Math.max(0.35, P[2] - 0.1)], fov: 0.74, shake: 0.4 }; } });
   // impact: grabbed and thrown, handheld, slowed at the top, a jolt on the landing
   shots.push({ t0: 7.2, t1: 8.48, tech: ['handheld', 'ramp', 'punch'], cam: (rt) => ({ eye: [1.95, -2.2, 1.05], tgt: [2.95, 0.05, 0.98], fov: 0.84, roll: R ? 0 : 0.05, shake: 0.7 + lgPulse(rt, 8.3, 8.6) * 2, punch: lgPulse(rt, 8.32, 8.55) * 0.6 }) });
-  // slow: high and down on the pin, then low in front of him as the knife goes up
-  shots.push({ t0: 8.48, t1: 9.45, tech: ['hero'], cam: () => ({ eye: [2.2, -1.25, 2.45], tgt: [2.75, 0.05, 0.45], fov: 0.72, shake: 0.3 }) });
-  shots.push({ t0: 9.45, t1: 10.65, tech: ['hero', 'ramp'], cam: (rt) => { const r = opAt(), k = lgW(rt, 9.45, 10.65), H = mimBone(op(), 'head'), K = mimBone(op(), 'handL'), c = mimMid(H, K); return { eye: [r[0] - lgLerp(1.2, 1.05, k), r[1] - lgLerp(0.85, 0.75, k), 0.32], tgt: [c[0], c[1], c[2] - 0.05], fov: lgLerp(0.78, 0.7, k), shake: 0.2 * (1 - k) }; } });
-  // freeze: bullet time round the frozen moment, lightning, the title
-  shots.push({ t0: 10.65, t1: 14.2, tech: ['freeze', 'lightning', 'title'], cam: (rt) => { const H = mimBone(op(), 'head'), K = mimBone(op(), 'handL'), c = mimMid(H, K), k = lgE.s(lgW(rt, 10.65, 13.2)), a = lgLerp(Math.PI + 0.62, Math.PI - 0.45, k), d = lgLerp(1.35, 1.75, k); return { eye: [c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d, lgLerp(0.55, 1.15, k)], tgt: [c[0], c[1], c[2] - 0.08], fov: lgLerp(0.72, 0.64, k), shake: 0 }; } });
-  // time: normal, a little slow at the top of the throw, ramping down from 10.2 to a stop at 10.65
-  const warp = mimWarp([[0, 1], [7.88, 1], [8.0, 0.62], [8.22, 0.62], [8.34, 1], [10.15, 1], [10.6, 0.12], [10.66, 0.0], [20, 0]], 14.2);
+  // slow: high and down on the pin as he drops onto it and the knife goes in (a jolt on the strike)
+  shots.push({ t0: 8.48, t1: 9.38, tech: ['hero', 'punch'], cam: (rt) => ({ eye: [2.2, -1.25, 2.45], tgt: [2.72, 0.05, 0.48], fov: 0.72, shake: 0.3 + lgPulse(rt, 9.6, 9.8) * 1.2, punch: lgPulse(rt, 9.62, 9.8) * 0.5 }) });
+  // insert: low by the blade in the chest, his eyes over it, the strike
+  shots.push({ t0: 9.38, t1: 9.78, tech: ['insert', 'punch'], cam: (rt) => { const K = mimBone(op(), 'handL'), k = lgW(rt, 9.38, 9.78), kz = Math.max(0.45, K[2]); return { eye: [K[0] - 0.3, K[1] - lgLerp(1.25, 1.1, k), kz + 0.4], tgt: [K[0] + 0.12, K[1], kz - 0.04], fov: 0.6, shake: 0.25 + lgPulse(rt, 9.62, 9.75) * 1.4, punch: lgPulse(rt, 9.63, 9.78) * 0.7 }; } });
+  // threat: the third one, running at us out of the dark, him small and down in the foreground
+  shots.push({ t0: 9.78, t1: 10.1, tech: ['track', 'ots'], cam: (rt) => { const r = opAt(), z = zAt(z3()) || [8, 0.6]; return { eye: [r[0] - 1.1, r[1] - 0.55, 0.62], tgt: [lgLerp(r[0], z[0], 0.55), lgLerp(r[1], z[1], 0.55), 1.05], fov: 0.66, roll: R ? 0 : -0.1, shake: 0.6 }; } });
+  // action: side on and low as he comes up turning and the knife goes in, the frame slowed at the strike
+  shots.push({ t0: 10.1, t1: 10.56, tech: ['handheld', 'ramp', 'punch'], cam: (rt) => { const r = opAt(), z = zAt(z3()) || [r[0] + 0.9, r[1]], m = mimMid([r[0], r[1], 1.1], [z[0], z[1], 1.1]); return { eye: [m[0] - 0.25, m[1] - 2.0, 1.12], tgt: [m[0], m[1], 1.18], fov: 0.66, shake: 0.55 + lgPulse(rt, 10.4, 10.56) * 1.5, punch: lgPulse(rt, 10.41, 10.56) * 0.6 }; } });
+  // the shot: low over the dead one's shoulder, pushing in on the pistol coming past the knife arm
+  shots.push({ t0: 10.56, t1: 10.93, tech: ['hero', 'ots'], cam: (rt) => { const H = mimBone(op(), 'head'), G = mimBone(op(), 'handR'), z = zAt(z3()) || [H[0] + 0.9, H[1]], c = mimMid(H, G), k = lgE.io(lgW(rt, 10.56, 10.93)); return { eye: [z[0] + lgLerp(1.25, 1.0, k), z[1] + lgLerp(1.15, 0.95, k), 1.22], tgt: [c[0], c[1], c[2] - 0.02], fov: lgLerp(0.66, 0.56, k), shake: 0.3 }; } });
+  // freeze: bullet time round the frozen moment (the knife, the flash, the mist), lightning, the title
+  shots.push({ t0: 10.93, t1: 14.5, tech: ['freeze', 'lightning', 'title'], cam: (rt) => { const H = mimBone(op(), 'head'), G = mimBone(op(), 'handR'), Z = z3() ? mimBone(z3(), 'head') : G, c = mimMid(mimMid(H, G), Z), k = lgE.s(lgW(rt, 10.93, 13.5)), a = lgLerp(-1.35, -2.25, k), d = lgLerp(1.25, 1.7, k); return { eye: [c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d, lgLerp(0.75, 1.3, k)], tgt: [c[0], c[1], c[2] - 0.06], fov: lgLerp(0.74, 0.64, k), shake: 0 }; } });
+  // time: normal, a little slow at the top of the throw, slow on the collar strike, ramping down to a stop on the shot
+  const warp = mimWarp([[0, 1], [7.88, 1], [8.0, 0.62], [8.22, 0.62], [8.34, 1], [10.3, 1], [10.38, 0.42], [10.5, 0.42], [10.62, 1], [10.78, 1], [10.88, 0.14], [10.935, 0.0], [20, 0]], 14.5);
   // cues (real time): score sections, hits, effects
   const cues = [
     [0, 'score'], [0, 'fadeIn'], [0.4, 'carPass'], [1.6, 'sirenFar'], [2.95, 'maskInsert'], [4.62, 'doorBang'], [4.66, 'zScream1'], [5.0, 'zScream2'], [5.25, 'whip'], [6.6, 'shotHit'],
-    [7.22, 'grab'], [8.33, 'landHit'], [10.2, 'slowmo'], [10.65, 'freeze'], [10.7, 'lightning'], [11.35, 'title'], [12.6, 'resolve'], [13.15, 'fadeOut'], [14.2, 'end']
+    [7.22, 'grab'], [8.33, 'landHit'], [9.64, 'stabHit'], [10.0, 'zScream2'], [10.32, 'slowmo'], [10.41, 'stabHit'], [10.92, 'shotHit'], [10.93, 'freeze'], [10.98, 'lightning'], [11.63, 'title'], [12.88, 'resolve'], [13.43, 'fadeOut'], [14.5, 'end']
   ];
-  return { shots: shots, warp: warp, cues: cues, dur: 14.2 };
+  return { shots: shots, warp: warp, cues: cues, dur: 14.5 };
 }
 
 /* ---------- starting, running and drawing a scene ---------- */
@@ -407,7 +474,7 @@ function mimStart(name, o) {
   }
   if (name === 'alley') mimAlleyProps(0);
   if (name === 'alley' || name === 'lineup' || name === 'hub') { MIM.phys = mimAlleyPhys(); MIM.neonNext = null; mimAlleyPhysTick(0, 0); } else MIM.phys = null;
-  for (const a of MIM.actors) { a.m = lgModel(a.model, a.lod, a.cls); a.lastSt = 0; }
+  for (const a of MIM.actors) { if (!a.m) a.m = lgModel(a.model, a.lod, a.kit || a.cls); a.lastSt = 0; }   // (the studio's carries its loadout already)
   coreEmit('cinematic', { scene: name, cls: MIM.cls });
   return true;
 }
@@ -435,7 +502,7 @@ function mimFrame(rdt, w, h) {
       if (a.player) { if (a.gp || a.gs) lgGunSet(a.gp, a.gs); lgTickPlayer(a.player, rdt, null, (e) => mimEvent(e, a)); if (a.gp || a.gs) lgGunSet(null, null); a.W = a.player.W; continue; }
       if (st < a.show[0]) { a.hidden = true; continue; } a.hidden = false;
       mimActorEvents(a, MIM.lastSt, st, (e) => mimEvent(e, a));
-      mimActorEvalFull(a, st);
+      if (a.gp || a.gs) lgGunSet(a.gp, a.gs); mimActorEvalFull(a, st); if (a.gp || a.gs) lgGunSet(null, null);
     }
     if (MIM.scene === 'stoop') { lgiTick(rdt); if (Math.random() < 0.6) vfxSteam([3.6, -1.2, 0.03], rdt); }
     if (MIM.scene === 'studio') { const sd = MIM.studio; if (sd.auto && sd.view === 'front' && rt > 1.6 && !sd.held) { sd.view = 'top'; sd.tTilt = rt; sd.from = { yaw: sd.yaw, pitch: sd.pitch, dist: sd.dist }; } }
@@ -551,7 +618,11 @@ function mimMuzzle(a) {
   const W = a.W, i = LGB.pistol * 16, M = W.subarray(i, i + 16), p = lgPt(M, LG_SOCK.muzP[0] + 0.01, 0, 0), d = lgV3n(lgDir(M, 1, 0, 0));
   vfxMuzzle(p, d); const s = lgV3n(lgDir(M, 0, -1, 0.6)); vfxBrass(lgPt(M, 0.09, -0.015, 0.012), s);
   MIM.flashUntil = MIM.rt + 0.06; MIM.flashP = p;
-  if (MIM.scene === 'alley' && MIM.actors[1]) { const z = MIM.actors[1].W, h = LGB.head * 16; vfxMist([z[h + 12], z[h + 13], z[h + 14] + 0.08], d); }
+  if (MIM.scene === 'alley') {   // the mist off whichever of the dead the muzzle points at
+    let best = null, bd = 1.2;
+    for (const z of MIM.actors) { if (z.model !== 'zombie' || z.hidden) continue; const h = LGB.head * 16, q = [z.W[h + 12] - p[0], z.W[h + 13] - p[1], z.W[h + 14] - p[2]], along = q[0] * d[0] + q[1] * d[1] + q[2] * d[2]; if (along < 0) continue; const off = Math.hypot(q[0] - d[0] * along, q[1] - d[1] * along, q[2] - d[2] * along) + along * 0.05; if (off < bd) { bd = off; best = z; } }
+    if (best) { const z = best.W, h = LGB.head * 16; vfxMist([z[h + 12], z[h + 13], z[h + 14] + 0.08], d); }
+  }
 }
 // the alley's clock: the score's when it is playing (so the hits land on the cut), otherwise the wall clock (muted, or
 // the audio not started yet): either way the film keeps real time on a slow device, skipping frames instead of slowing
@@ -570,10 +641,11 @@ function mimCue(c, rt) {
   else if (c === 'slowmo') mimSfx('slowmo');
   else if (c === 'landHit') { vfxSplash([2.3, 0.0], 1.6); mimSfx('landHit'); }
   else if (c === 'shotHit') { mimSfx('hsHit'); }
+  else if (c === 'stabHit') { mimSfx('hit'); const a = MIM.actors[0]; if (a && a.W) { const i = LGB.handL * 16; vfxMist([a.W[i + 12], a.W[i + 13], a.W[i + 14] - 0.05], [0, 0, 0.3]); } }
   else if (c === 'doorBang') { mimSfx('doorBang'); }
   else mimSfx(c);
   if (c === 'landHit' || c === 'shotHit') {}
-  if (MIM.scene === 'alley' && c === 'shotHit' && MIM.actors[1]) { const z = MIM.actors[1]; setTimeout(() => { if (MIM.scene === 'alley') vfxSplash([5.6, -0.6], 1.1); }, 450); }
+  if (MIM.scene === 'alley' && c === 'shotHit' && MIM.actors[1] && rt < 8) { setTimeout(() => { if (MIM.scene === 'alley') vfxSplash([5.6, -0.6], 1.1); }, 450); }
   if (MIM.onCue) try { MIM.onCue(c, rt); } catch (e) { }
 }
 
@@ -596,7 +668,7 @@ function mimRender(w, h, rt, st) {
   else if (scene === 'stoop') S = lgiLights();
   else { const L = mimAlleyLights(); S = Object.assign({}, L); }
   S.cam = cam; S.time = st;
-  const fl = vfxFlashAt(rt), freeze = scene === 'alley' ? lgW(rt, 10.62, 11.6) : 0;
+  const fl = vfxFlashAt(rt), freeze = scene === 'alley' ? lgW(rt, 10.9, 11.88) : 0;
   // the alley lives: the neon stutters, a car's lights sweep across the mouth of the alley now and then
   const neon = scene === 'alley' || scene === 'lineup' || scene === 'hub' ? mimNeon(rt) : 1;
   if (fl > 0) { S.flash = { dir: [0.35, 0.25, 1], col: [3.2 * fl, 3.4 * fl, 4.2 * fl] }; S.sky = S.sky.map((v, i) => v + [0.35, 0.4, 0.55][i] * fl); }
@@ -628,17 +700,17 @@ function mimRender(w, h, rt, st) {
     VX.msF += performance.now() - vx0;
     // the post chain to the screen
     if (LGR.cv.width !== w || LGR.cv.height !== h) { LGR.cv.width = w; LGR.cv.height = h; }
-    const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.6, 14.2)) * 0.12 + freeze * 0.03 : scene === 'stoop' ? 0.085 * lgW(rt, 0, 1.2) : 0.0;
-    const fade = scene === 'alley' ? Math.max(1 - lgW(rt, 0, 0.9), lgW(rt, 13.15, 14.0)) : (scene === 'studio' ? 1 - lgW(rt, 0, 0.5) : 1 - lgW(rt, 0, 1.2));
+    const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.9, 14.5)) * 0.12 + freeze * 0.03 : scene === 'stoop' ? 0.085 * lgW(rt, 0, 1.2) : 0.0;
+    const fade = scene === 'alley' ? Math.max(1 - lgW(rt, 0, 0.9), lgW(rt, 13.43, 14.3)) : (scene === 'studio' ? 1 - lgW(rt, 0, 0.5) : 1 - lgW(rt, 0, 1.2));
     const stp = scene === 'stoop';
-    const post = { bloom: 3, bloomK: scene === 'studio' ? 0.4 : stp ? 0.8 : 0.62, th: stp ? 0.5 : 0.58, streak: (look.flare || 0.4) * (scene === 'studio' ? 0.4 : 1), ca: scene === 'alley' ? 0.55 + (look.ca || 0) : stp ? 0.5 : 0.3, grain: scene === 'studio' ? 0.025 : stp ? 0.06 : 0.045, vig: scene === 'studio' ? 0.45 : stp ? 0.78 : 0.62, bars: bars, fade: fade, flash: Math.max(fl * 0.3 * (SET.flash ? 0.35 : 1), scene === 'alley' ? lgPulse(rt, 10.64, 10.78) * 0.6 * (SET.flash ? 0.3 : 1) : 0), mb: look.mb || 0, hal: stp ? 0.32 : scene === 'alley' ? 0.2 : scene === 'studio' ? 0.06 : 0.14, tone: scene === 'studio' ? 0.35 : 0.65, shd: scene === 'studio' ? [0, 0, 0] : [-0.004, 0.006, 0.018], hil: scene === 'studio' ? [0, 0, 0] : [0.02, 0.008, -0.012], sat: stp ? 0.92 : 1.05 - freeze * 0.1, expo: 1.0 + fl * 0.25, lift: stp ? [0.004, 0.014, 0.022] : [0.008, 0.012, 0.02], gain: stp ? [1.08, 0.99, 0.9] : [1.03, 1.0, 0.97] };
+    const post = { bloom: 3, bloomK: scene === 'studio' ? 0.4 : stp ? 0.8 : 0.62, th: stp ? 0.5 : 0.58, streak: (look.flare || 0.4) * (scene === 'studio' ? 0.4 : 1), ca: scene === 'alley' ? 0.55 + (look.ca || 0) : stp ? 0.5 : 0.3, grain: scene === 'studio' ? 0.025 : stp ? 0.06 : 0.045, vig: scene === 'studio' ? 0.45 : stp ? 0.78 : 0.62, bars: bars, fade: fade, flash: Math.max(fl * 0.3 * (SET.flash ? 0.35 : 1), scene === 'alley' ? lgPulse(rt, 10.92, 11.06) * 0.6 * (SET.flash ? 0.3 : 1) : 0), mb: look.mb || 0, hal: stp ? 0.32 : scene === 'alley' ? 0.2 : scene === 'studio' ? 0.06 : 0.14, tone: scene === 'studio' ? 0.35 : 0.65, shd: scene === 'studio' ? [0, 0, 0] : [-0.004, 0.006, 0.018], hil: scene === 'studio' ? [0, 0, 0] : [0.02, 0.008, -0.012], sat: stp ? 0.92 : 1.05 - freeze * 0.1, expo: 1.0 + fl * 0.25, lift: stp ? [0.004, 0.014, 0.022] : [0.008, 0.012, 0.02], gain: stp ? [1.08, 0.99, 0.9] : [1.03, 1.0, 0.97] };
     vx0 = performance.now(); vfxPost(f, w, h, post, rt); VX.msF += performance.now() - vx0;
   } else {
     const c = MIM.cv2; if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     const g = MIM.g2; lg2DScene(g, Object.assign({}, S, { items: S.items.filter(it => !it.ground) }), w, h);
     const vx0 = performance.now();
     if (scene !== 'studio') vfx2DRain(g, w, h, cam, { on: true, speed: MIM.warp ? MIM.warp.sp(rt) : 1 }, st);
-    const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.6, 14.2)) * 0.12 : 0, fade = scene === 'alley' ? Math.max(1 - lgW(rt, 0, 0.9), lgW(rt, 13.15, 14.0)) : 1 - lgW(rt, 0, 0.8);
+    const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.9, 14.5)) * 0.12 : 0, fade = scene === 'alley' ? Math.max(1 - lgW(rt, 0, 0.9), lgW(rt, 13.43, 14.3)) : 1 - lgW(rt, 0, 0.8);
     vfx2DPost(g, w, h, { vig: 0.6, grain: 0.04, bars: bars, fade: fade, flash: fl * 0.5 * (SET.flash ? 0.35 : 1) }, rt);
     VX.msF += performance.now() - vx0;
   }
