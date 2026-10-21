@@ -336,11 +336,12 @@ lgiIdle('si_coin', 'The pebble', 3.4, 'A pebble from the paving turned over in h
 // often), cross-fading in and out of the base so nothing jumps; and every so often, the can
 function lgiStart(o) {
   const q = MIMQ[mimLevel()], pl = lgPlayer(); lgPlay(pl, 'sit_sharpen', { fade: 0, t: Math.random() * 3 }); pl.ctx.inPlace = true;
-  if (o && o.idle) setTimeout(() => {}, 0);
   const D = LGI.scene = { t: 0, next: 4 + Math.random() * 4, last: [], canAt: o && o.canAt != null ? o.canAt : 9 + Math.random() * 5, can: null, w3: phy3New({ ground: 0.0, g: 9.81 }), lamp: { a: { x: 0.05, v: 0 }, b: { x: 0, v: 0 } }, flick: 0, flickT: 6 + Math.random() * 8, mothT: 0 };
   // the world for the can: the sidewalk is a box (its top at 0.12), the curb, the wall
   D.w3.boxes.push({ min: [-1.3, -12, 0], max: [1.8, 12, 0.12] }, { min: [-2, -12, 0], max: [-1.3, 12, 4] });
   if (o && o.idle && LG_ANIM_BY[o.idle]) lgPlay(pl, o.idle, { fade: 0, t: o.idleT || 0 }), D.next = 1e9;
+  // where the hovered card sits across the screen (0 left, 1 right): he is framed on the far third, clear of it
+  D.avoid = o && o.avoid != null ? clamp(+o.avoid, 0, 1) : null; D.fy = { x: lgiFrameY(D), v: 0 };
   const A = mimActor({ model: 'operator', cls: (MIM.cls || 'attack') + '|idle', lod: q.lod === 0 ? 0 : 1, acc: lgHex(LG_CLASS_BY[MIM.cls || 'attack'].col), player: pl });
   return [A];
 }
@@ -391,9 +392,17 @@ function lgiLights() {
 }
 // the camera lies on the street across from him, low, looking at him; it breathes and drifts a little; when the can
 // comes it whips a touch toward the sound and pushes in
+// the framing: the subject on a third (the rule of thirds), the third away from the card the player is hovering, so the
+// card never covers him; with no card he sits a little right of centre, looking into the street
+function lgiFrameY(D) {
+  const f = !D || D.avoid == null ? 0.56 : D.avoid < 0.45 ? 0.69 : D.avoid > 0.55 ? 0.31 : 0.29;
+  return -(f - 0.5) * 2 * 2.5;   // (screen right is +y here; 2.5 m is half the frame's width at his distance)
+}
 function lgiCam(rt) {
   const D = LGI.scene, A = MIM.actors[0], c = A && A.W ? mimBone(A, 'chest') : [0, 0, 0.9];
+  if (D && D.fy) physSpring(D.fy, lgiFrameY(D), 1.6, Math.min(0.05, Math.max(0, rt - (D.camRt || rt)))); if (D) D.camRt = rt;
+  const fy = D && D.fy ? D.fy.x : 0;
   const al = D && A.player && A.player.a && A.player.a.id === 'sit_alert', alert = al ? lgPulse(A.player.t, 1.1, 5.2) : 0, look = al ? lgPulse(A.player.t, 0.0, 1.6) : 0, side = (D && D.canSide) || 1;
   const dr = Math.sin(rt * 0.09) * 0.35, push = alert * 0.9;
-  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
+  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
 }

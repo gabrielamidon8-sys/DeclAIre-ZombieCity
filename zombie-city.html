@@ -27761,7 +27761,7 @@ function lgvDraw(p, ctx2) {
 // the run's frames painted ahead, a few at a time (the main menu, the loader): the loadout's relaxed, ready and walk
 function lgvWarm(n) {
   if (!LGV.on || SET.legend === 'none' || !LG.atlas || !LG.atlas.done || typeof armsLoad !== 'function') return 0;
-  const W0 = armsPrimary(), W1 = armsSecondary(), fake = { arm: { w: [W0, W1] }, weapon: W0 }, lgId = SET.legend || 'operator', mk = lgvModelKey(fake), px = SPR * PK;
+  const W0 = armsPrimary(), W1 = armsSecondary(), fake = { arm: { w: [W0, W1] }, weapon: W0, lc: SET.legendClass || 'attack' }, lgId = SET.legend || 'operator', mk = lgvModelKey(fake), px = SPR * PK;
   const ctx = { run: true, fam: 'c', gun: W0.arms.key, kind: W0.arms.reload.kind, rk: 'tac', keep: false, t: 0 };
   const jobs = [['up', 'relaxed', 6], ['up', 'ready', 6], ['up', 'raise', 4], ['legs1', 'idle_ready', 1], ['legs1', 'walk_tac', 16], ['head', 'h', 2]];
   let made = 0;
@@ -29132,11 +29132,12 @@ lgiIdle('si_coin', 'The pebble', 3.4, 'A pebble from the paving turned over in h
 // often), cross-fading in and out of the base so nothing jumps; and every so often, the can
 function lgiStart(o) {
   const q = MIMQ[mimLevel()], pl = lgPlayer(); lgPlay(pl, 'sit_sharpen', { fade: 0, t: Math.random() * 3 }); pl.ctx.inPlace = true;
-  if (o && o.idle) setTimeout(() => {}, 0);
   const D = LGI.scene = { t: 0, next: 4 + Math.random() * 4, last: [], canAt: o && o.canAt != null ? o.canAt : 9 + Math.random() * 5, can: null, w3: phy3New({ ground: 0.0, g: 9.81 }), lamp: { a: { x: 0.05, v: 0 }, b: { x: 0, v: 0 } }, flick: 0, flickT: 6 + Math.random() * 8, mothT: 0 };
   // the world for the can: the sidewalk is a box (its top at 0.12), the curb, the wall
   D.w3.boxes.push({ min: [-1.3, -12, 0], max: [1.8, 12, 0.12] }, { min: [-2, -12, 0], max: [-1.3, 12, 4] });
   if (o && o.idle && LG_ANIM_BY[o.idle]) lgPlay(pl, o.idle, { fade: 0, t: o.idleT || 0 }), D.next = 1e9;
+  // where the hovered card sits across the screen (0 left, 1 right): he is framed on the far third, clear of it
+  D.avoid = o && o.avoid != null ? clamp(+o.avoid, 0, 1) : null; D.fy = { x: lgiFrameY(D), v: 0 };
   const A = mimActor({ model: 'operator', cls: (MIM.cls || 'attack') + '|idle', lod: q.lod === 0 ? 0 : 1, acc: lgHex(LG_CLASS_BY[MIM.cls || 'attack'].col), player: pl });
   return [A];
 }
@@ -29187,11 +29188,19 @@ function lgiLights() {
 }
 // the camera lies on the street across from him, low, looking at him; it breathes and drifts a little; when the can
 // comes it whips a touch toward the sound and pushes in
+// the framing: the subject on a third (the rule of thirds), the third away from the card the player is hovering, so the
+// card never covers him; with no card he sits a little right of centre, looking into the street
+function lgiFrameY(D) {
+  const f = !D || D.avoid == null ? 0.56 : D.avoid < 0.45 ? 0.69 : D.avoid > 0.55 ? 0.31 : 0.29;
+  return -(f - 0.5) * 2 * 2.5;   // (screen right is +y here; 2.5 m is half the frame's width at his distance)
+}
 function lgiCam(rt) {
   const D = LGI.scene, A = MIM.actors[0], c = A && A.W ? mimBone(A, 'chest') : [0, 0, 0.9];
+  if (D && D.fy) physSpring(D.fy, lgiFrameY(D), 1.6, Math.min(0.05, Math.max(0, rt - (D.camRt || rt)))); if (D) D.camRt = rt;
+  const fy = D && D.fy ? D.fy.x : 0;
   const al = D && A.player && A.player.a && A.player.a.id === 'sit_alert', alert = al ? lgPulse(A.player.t, 1.1, 5.2) : 0, look = al ? lgPulse(A.player.t, 0.0, 1.6) : 0, side = (D && D.canSide) || 1;
   const dr = Math.sin(rt * 0.09) * 0.35, push = alert * 0.9;
-  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
+  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
 }
 
 /* ================= the Legends screen (v1), and LEGEND / MIMATIC / VFXRAY joining the ecosystem =================
@@ -29410,7 +29419,8 @@ function lgsHover(cls, delay, now) {
     LGS.watching = true; $('legends').classList.add('watching'); document.querySelectorAll('.lg-col').forEach(c => c.classList.toggle('hot', c.dataset.cls === cls));
     try { SFX.cine('uiSelect'); SFX.cineAmbDuck(0.8); } catch (e) { }
     // the stoop: he sits under a bulb sharpening his knife, mask down (legidle.js); it plays as long as you stay
-    mimStart('stoop', { cls: cls });
+    const card = document.querySelector('.lg-card[data-cls="' + cls + '"]'), r = card ? card.getBoundingClientRect() : null;
+    mimStart('stoop', { cls: cls, avoid: r && innerWidth ? (r.left + r.width / 2) / innerWidth : null });
   }, now ? 0 : (delay == null ? 220 : delay));
 }
 // "Watch the cinematic": the alley fight, with its score and its title card
@@ -29584,7 +29594,7 @@ coreDefine({ name: 'VFXRAY', kind: 'render', ver: 2, does: 'The last pass: rain 
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[355,0,4,48630],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31092],"physics":[265,23,49,25142],"arms":[369,35,49,37537],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1132,118,170,127774],"legmodel":[428,23,91,51563],"leggun":[232,20,67,27735],"leganim":[447,21,53,56045],"legrun":[466,39,94,49543],"vfxray":[269,26,37,31771],"mimatic":[560,46,109,68872],"legidle":[332,18,64,43443],"legends":[329,33,46,39118],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[355,0,4,48630],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31092],"physics":[265,23,49,25142],"arms":[369,35,49,37537],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1132,118,170,127774],"legmodel":[428,23,91,51563],"leggun":[232,20,67,27735],"leganim":[447,21,53,56045],"legrun":[466,39,94,49576],"vfxray":[269,26,37,31771],"mimatic":[560,46,109,68872],"legidle":[338,19,67,44251],"legends":[330,33,46,39312],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };

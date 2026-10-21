@@ -523,7 +523,7 @@ function lgvDraw(p, ctx2) {
 // the run's frames painted ahead, a few at a time (the main menu, the loader): the loadout's relaxed, ready and walk
 function lgvWarm(n) {
   if (!LGV.on || SET.legend === 'none' || !LG.atlas || !LG.atlas.done || typeof armsLoad !== 'function') return 0;
-  const W0 = armsPrimary(), W1 = armsSecondary(), fake = { arm: { w: [W0, W1] }, weapon: W0 }, lgId = SET.legend || 'operator', mk = lgvModelKey(fake), px = SPR * PK;
+  const W0 = armsPrimary(), W1 = armsSecondary(), fake = { arm: { w: [W0, W1] }, weapon: W0, lc: SET.legendClass || 'attack' }, lgId = SET.legend || 'operator', mk = lgvModelKey(fake), px = SPR * PK;
   const ctx = { run: true, fam: 'c', gun: W0.arms.key, kind: W0.arms.reload.kind, rk: 'tac', keep: false, t: 0 };
   const jobs = [['up', 'relaxed', 6], ['up', 'ready', 6], ['up', 'raise', 4], ['legs1', 'idle_ready', 1], ['legs1', 'walk_tac', 16], ['head', 'h', 2]];
   let made = 0;

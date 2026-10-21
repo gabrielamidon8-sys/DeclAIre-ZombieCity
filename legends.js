@@ -214,7 +214,8 @@ function lgsHover(cls, delay, now) {
     LGS.watching = true; $('legends').classList.add('watching'); document.querySelectorAll('.lg-col').forEach(c => c.classList.toggle('hot', c.dataset.cls === cls));
     try { SFX.cine('uiSelect'); SFX.cineAmbDuck(0.8); } catch (e) { }
     // the stoop: he sits under a bulb sharpening his knife, mask down (legidle.js); it plays as long as you stay
-    mimStart('stoop', { cls: cls });
+    const card = document.querySelector('.lg-card[data-cls="' + cls + '"]'), r = card ? card.getBoundingClientRect() : null;
+    mimStart('stoop', { cls: cls, avoid: r && innerWidth ? (r.left + r.width / 2) / innerWidth : null });
   }, now ? 0 : (delay == null ? 220 : delay));
 }
 // "Watch the cinematic": the alley fight, with its score and its title card
