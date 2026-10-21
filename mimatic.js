@@ -401,6 +401,7 @@ function mimStart(name, o) {
     MIM.set = lgModel('studio', 0, ''); MIM.ground = lgModel('studioGround', 0, ''); MIM.setW = mimSetW();
     const pl = lgPlayer(); lgPlay(pl, o.anim || 'idle_ready', { fade: 0 }); pl.ctx.inPlace = true;
     MIM.actors = [mimActor({ model: o.legend || 'operator', cls: MIM.cls, lod: q.lod === 0 ? 0 : 1, acc: lgHex(LG_CLASS_BY[MIM.cls].col), player: pl })];
+    mimStudioLoad(MIM.actors[0]);   // (1.9.994: he holds the guns you carry)
     MIM.studio.view = 'front'; MIM.studio.auto = true; MIM.studio.held = false; MIM.studio.from = null; MIM.studio.tTilt = 0; MIM.studio.yaw = 0; MIM.studio.pitch = 0.1; MIM.studio.dist = 3.3;
     MIM.cues = []; MIM.dur = 1e9; MIM.warp = null;
   }
@@ -431,7 +432,7 @@ function mimFrame(rdt, w, h) {
     while (MIM.cueI < MIM.cues.length && MIM.cues[MIM.cueI][0] <= rt) { const c = MIM.cues[MIM.cueI++]; mimCue(c[1], rt); }
     // actors
     for (const a of MIM.actors) {
-      if (a.player) { lgTickPlayer(a.player, rdt, null, (e) => mimEvent(e, a)); a.W = a.player.W; continue; }
+      if (a.player) { if (a.gp || a.gs) lgGunSet(a.gp, a.gs); lgTickPlayer(a.player, rdt, null, (e) => mimEvent(e, a)); if (a.gp || a.gs) lgGunSet(null, null); a.W = a.player.W; continue; }
       if (st < a.show[0]) { a.hidden = true; continue; } a.hidden = false;
       mimActorEvents(a, MIM.lastSt, st, (e) => mimEvent(e, a));
       mimActorEvalFull(a, st);
@@ -656,7 +657,7 @@ function mimStudioCam(rt) {
   const s = MIM.studio, a = MIM.actors[0];
   // auto: front for a beat, then the tilt to the game's view (straight down) over two seconds
   let yaw = s.yaw, pitch = s.pitch, dist = s.dist;
-  const goal = s.view === 'top' ? { yaw: Math.PI, pitch: 1.48, dist: 2.7 } : s.view === 'front' ? { yaw: 0, pitch: 0.1, dist: 3.3 } : null;
+  const goal = s.view === 'top' ? { yaw: Math.PI, pitch: 1.48, dist: 2.7 } : s.view === 'front' ? { yaw: 0, pitch: 0.1, dist: 3.3 } : s.view === 'arms' ? { yaw: -0.72, pitch: 0.12, dist: 2.95 } : null;   // (arms: three-quarters from his gun side, closer: the armory's pick)
   if (goal && s.from) { const k = lgE.s(clamp((rt - s.tTilt) / 2.0, 0, 1)); yaw = lgLerp(s.from.yaw, goal.yaw, k); pitch = lgLerp(s.from.pitch, goal.pitch, k); dist = lgLerp(s.from.dist, goal.dist, k); if (k >= 1) { s.yaw = goal.yaw; s.pitch = goal.pitch; s.dist = goal.dist; } }
   else if (goal && !s.from) { yaw = goal.yaw; pitch = goal.pitch; dist = goal.dist; }
   s.cur = { yaw: yaw, pitch: pitch, dist: dist };
@@ -672,8 +673,15 @@ function mimStudioView(v) { const s = MIM.studio; s.held = true; s.from = s.cur 
 function mimStudioDrag(dx, dy) { const s = MIM.studio; if (s.view !== 'orbit') { mimStudioView('orbit'); } s.yaw -= dx * 0.008; s.pitch = clamp(s.pitch + dy * 0.006, -0.15, 1.55); }
 function mimStudioZoom(d) { const s = MIM.studio; s.dist = clamp(s.dist * (1 + d * 0.001), 1.2, 6); if (s.view !== 'orbit') mimStudioView('orbit'); }
 // a seated clip (the stoop's idles) plays in the studio on his chair, with his mask down and his whetstone (the idle kit)
-function mimStudioPlay(id) { const a = MIM.actors[0]; if (!a || !a.player) return; const seat = !!(LG_ANIM_BY[id] && LG_ANIM_BY[id].seat); if (seat !== !!a.seat) { a.seat = seat; a.m = lgModel(a.model, a.lod, a.cls + (seat ? '|idle' : '')); } lgPlay(a.player, id, { restart: true, fade: seat ? 0 : 0.2 }); a.player.ctx.inPlace = true; }
-function mimStudioClass(cls) { MIM.cls = cls; const a = MIM.actors[0]; if (!a) return; a.cls = cls; a.acc = lgHex(LG_CLASS_BY[cls].col); a.m = lgModel(a.model, a.lod, cls + (a.seat ? '|idle' : '')); }
+function mimStudioPlay(id) { const a = MIM.actors[0]; if (!a || !a.player) return; const seat = !!(LG_ANIM_BY[id] && LG_ANIM_BY[id].seat); if (seat !== !!a.seat) { a.seat = seat; mimStudioLoad(a); } lgPlay(a.player, id, { restart: true, fade: seat ? 0 : 0.2 }); a.player.ctx.inPlace = true; }
+function mimStudioClass(cls) { MIM.cls = cls; const a = MIM.actors[0]; if (!a) return; a.cls = cls; a.acc = lgHex(LG_CLASS_BY[cls].col); mimStudioLoad(a); }
+// the studio's Operator carries the loadout from the armory (the seated idles: the idle kit); the guns his hands fit to
+function mimStudioLoad(a) {
+  const L = typeof armsLoad === 'function' && typeof ARMS_ON !== 'undefined' && ARMS_ON ? armsLoad() : null;
+  a.gp = !a.seat && L ? L.p : null; a.gs = !a.seat && L ? L.s : null;
+  a.m = lgModel(a.model, a.lod, a.cls + (a.seat ? '|idle' : L ? '|' + L.p + '|' + L.s : ''));
+  if (a.player) { a.player.ctx.gun = a.gp; a.player.ctx.gp = a.gp; a.player.ctx.gs = a.gs; }
+}
 function mimHurt(e) {
   const now = performance.now(); coreHurt('MIMATIC', e); try { console.error(e); } catch (x) { }
   MIM.errT.push(now); while (MIM.errT.length && now - MIM.errT[0] > 10000) MIM.errT.shift();

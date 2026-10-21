@@ -783,7 +783,15 @@ function lgExtrude(B, poly, z0, z1, o) {
     }
   };
   const lo = Math.min(z0, z1), hi = Math.max(z0, z1);
-  if (bev > 0) {
+  if (bev > 0 && o.round) {
+    // (1.9.994) a rounded edge: a quarter circle in two facets instead of one chamfer (grips, stocks, slides)
+    const k = 0.293, mid = []; for (let i = 0; i < n; i++) mid.push([poly[i][0] + (ins[i][0] - poly[i][0]) * k, poly[i][1] + (ins[i][1] - poly[i][1]) * k]);
+    if (o.capB !== false) cap(ins, lo, -1);
+    ringPair(ins, lo, mid, lo + bev * k, -2.6, -1); ringPair(mid, lo + bev * k, poly, lo + bev, -1, -0.12);
+    ringPair(poly, lo + bev, poly, hi - bev, 0, 0);
+    ringPair(poly, hi - bev, mid, hi - bev * k, 0.12, 1); ringPair(mid, hi - bev * k, ins, hi, 1, 2.6);
+    if (o.capT !== false) cap(ins, hi, 1);
+  } else if (bev > 0) {
     if (o.capB !== false) cap(ins, lo, -1);
     ringPair(ins, lo, poly, lo + bev, -0.7, -0.15); ringPair(poly, lo + bev, poly, hi - bev, 0, 0); ringPair(poly, hi - bev, ins, hi, 0.15, 0.7);
     if (o.capT !== false) cap(ins, hi, 1);
@@ -1348,5 +1356,72 @@ function lg2DScene(g, S, w, h) {
     const L = { key: [kd[0], kd[1], kd[2], S.key.col[0], S.key.col[1], S.key.col[2]], rim: [rd[0], rd[1], rd[2], S.rim.col[0], S.rim.col[1], S.rim.col[2]], sky: S.sky, gnd: S.gnd, acc: it.acc || [1, 0.3, 0.2], glow: it.glow == null ? 1 : it.glow, eye: cam.eye };
     lg2D(g, it.m, it.W, cam.VP, w, h, L, { hide: it.hide, grow: 0.6 });
   }
+}
+// 1.9.994: the same scene through a depth buffer, smooth-lit and supersampled, for pictures painted once (the guns in
+// the legend page's armory): no painter's-order slivers where a panel sits a hair proud of a grip, soft edges, a clear
+// background (alpha where nothing was drawn). Slower than lg2D (a few tens of ms for a big picture), so never per frame.
+function lgZScene(g, S, w, h, ss) {
+  ss = ss || 2; const W2 = w * ss, H2 = h * ss, cam = S.cam; lgCamUpd(cam, w / h); const VP = cam.VP, eye = cam.eye;
+  const zb = new Float32Array(W2 * H2).fill(Infinity), cr = new Float32Array(W2 * H2 * 3), cov = new Uint8Array(W2 * H2);
+  const kd = lgV3n(S.key.dir), rd = lgV3n(S.rim.dir), K = S.key.col, R = S.rim.col, SK = S.sky, GN = S.gnd;
+  for (const it of S.items) {
+    const m = it.m, C = lgCpu(m), V = m.V, I = m.I, St = LG_STRIDE, nv = m.nv, hide = it.hide, acc = it.acc || [1, 0.3, 0.2], glow = it.glow == null ? 1 : it.glow, Wm = it.W;
+    const sx = new Float32Array(nv), sy = new Float32Array(nv), sz = new Float32Array(nv).fill(NaN), wp = new Float32Array(nv * 3), lt = new Float32Array(nv * 5);
+    for (const run of m.runs) {
+      if (hide && hide[run.b]) continue;
+      const M = Wm.subarray(run.b * 16, run.b * 16 + 16);
+      for (let k = 0; k < run.nv; k++) {
+        const vi = run.v0 + k, a = vi * St, x = V[a], y = V[a + 1], z = V[a + 2];
+        const wx = M[0] * x + M[4] * y + M[8] * z + M[12], wy = M[1] * x + M[5] * y + M[9] * z + M[13], wz = M[2] * x + M[6] * y + M[10] * z + M[14];
+        let nx = M[0] * V[a + 3] + M[4] * V[a + 4] + M[8] * V[a + 5], ny = M[1] * V[a + 3] + M[5] * V[a + 4] + M[9] * V[a + 5], nz = M[2] * V[a + 3] + M[6] * V[a + 4] + M[10] * V[a + 5];
+        const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+        const cx = VP[0] * wx + VP[4] * wy + VP[8] * wz + VP[12], cy = VP[1] * wx + VP[5] * wy + VP[9] * wz + VP[13], cz = VP[2] * wx + VP[6] * wy + VP[10] * wz + VP[14], cw = VP[3] * wx + VP[7] * wy + VP[11] * wz + VP[15];
+        if (cw <= 1e-4) continue;
+        sx[vi] = (cx / cw * 0.5 + 0.5) * W2; sy[vi] = (0.5 - cy / cw * 0.5) * H2; sz[vi] = cz / cw; wp[vi * 3] = wx; wp[vi * 3 + 1] = wy; wp[vi * 3 + 2] = wz;
+        // the light at this vertex: key (wrapped), the sky and the ground, the rim, the highlight
+        let ex = eye[0] - wx, ey = eye[1] - wy, ez = eye[2] - wz; const el = Math.hypot(ex, ey, ez) || 1; ex /= el; ey /= el; ez /= el;
+        const dk = Math.max(0, (nx * kd[0] + ny * kd[1] + nz * kd[2] + 0.2) / 1.2), hz = nz * 0.5 + 0.5, f1 = 1 - Math.max(0, nx * ex + ny * ey + nz * ez);
+        const rk = f1 * f1 * Math.max(0, nx * rd[0] + ny * rd[1] + nz * rd[2]) * 0.9;
+        const hx = kd[0] + ex, hy = kd[1] + ey, hz2 = kd[2] + ez, hl = Math.hypot(hx, hy, hz2) || 1; let sp = Math.max(0, (nx * hx + ny * hy + nz * hz2) / hl); sp *= sp; sp *= sp; sp *= sp; sp = sp * sp * sp * 0.4 * (1 - V[a + 13]);
+        const o5 = vi * 5; lt[o5] = K[0] * dk + SK[0] * hz + GN[0] * (1 - hz); lt[o5 + 1] = K[1] * dk + SK[1] * hz + GN[1] * (1 - hz); lt[o5 + 2] = K[2] * dk + SK[2] * hz + GN[2] * (1 - hz); lt[o5 + 3] = rk; lt[o5 + 4] = sp;
+      }
+    }
+    for (let t = 0; t < m.tris; t++) {
+      if (C.tf[t] === 255) continue;
+      const a = I[t * 3], b = I[t * 3 + 1], c = I[t * 3 + 2];
+      if (!(sz[a] === sz[a] && sz[b] === sz[b] && sz[c] === sz[c])) continue;
+      const slot = C.tf[t]; let r = C.tc[t * 3], gg = C.tc[t * 3 + 1], bb = C.tc[t * 3 + 2];
+      if (slot === 1 || slot === 5) { const lum = (r + gg + bb) / 3 / Math.max(0.05, (V[a * St + 8] + V[a * St + 9] + V[a * St + 10]) / 3); r = acc[0] * lum; gg = acc[1] * lum; bb = acc[2] * lum; }
+      let er = 0, eg = 0, eb = 0; const em = C.te[t]; if (em > 0) { if (slot === 2 || slot === 6) { er = acc[0] * em * glow; eg = acc[1] * em * glow; eb = acc[2] * em * glow; } else { er = r * em; eg = gg * em; eb = bb * em; } }
+      const x0 = sx[a], y0 = sy[a], x1 = sx[b], y1 = sy[b], x2 = sx[c], y2 = sy[c];
+      const area = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0); if (Math.abs(area) < 1e-6) continue;
+      const ia = 1 / area;
+      let bx0 = Math.max(0, Math.floor(Math.min(x0, x1, x2))), bx1 = Math.min(W2 - 1, Math.ceil(Math.max(x0, x1, x2))), by0 = Math.max(0, Math.floor(Math.min(y0, y1, y2))), by1 = Math.min(H2 - 1, Math.ceil(Math.max(y0, y1, y2)));
+      const za = sz[a], zbv = sz[b], zc = sz[c], A5 = a * 5, B5 = b * 5, C5 = c * 5;
+      for (let py = by0; py <= by1; py++) {
+        const fy = py + 0.5;
+        for (let px = bx0; px <= bx1; px++) {
+          const fx = px + 0.5;
+          const w0 = ((x1 - fx) * (y2 - fy) - (y1 - fy) * (x2 - fx)) * ia, w1 = ((x2 - fx) * (y0 - fy) - (y2 - fy) * (x0 - fx)) * ia, w2 = 1 - w0 - w1;
+          if (w0 < -1e-4 || w1 < -1e-4 || w2 < -1e-4) continue;
+          const z = w0 * za + w1 * zbv + w2 * zc, pi = py * W2 + px; if (z >= zb[pi]) continue;
+          zb[pi] = z; cov[pi] = 1;
+          const lr = w0 * lt[A5] + w1 * lt[B5] + w2 * lt[C5], lg = w0 * lt[A5 + 1] + w1 * lt[B5 + 1] + w2 * lt[C5 + 1], lb = w0 * lt[A5 + 2] + w1 * lt[B5 + 2] + w2 * lt[C5 + 2];
+          const rk = w0 * lt[A5 + 3] + w1 * lt[B5 + 3] + w2 * lt[C5 + 3], sp = w0 * lt[A5 + 4] + w1 * lt[B5 + 4] + w2 * lt[C5 + 4];
+          const o3 = pi * 3; cr[o3] = r * lr + R[0] * rk + sp * K[0] + er; cr[o3 + 1] = gg * lg + R[1] * rk + sp * K[1] + eg; cr[o3 + 2] = bb * lb + R[2] * rk + sp * K[2] + eb;
+        }
+      }
+    }
+  }
+  // down to the picture: each pixel the average of its covered samples (the same curve as the painter), alpha the coverage
+  const img = g.createImageData(w, h), D = img.data, n2 = ss * ss, tm = v => Math.sqrt(v / (v + 0.55) * 1.45);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let n = 0, r = 0, gg = 0, bb = 0;
+    for (let j = 0; j < ss; j++) for (let i = 0; i < ss; i++) { const pi = (y * ss + j) * W2 + x * ss + i; if (!cov[pi]) continue; n++; const o3 = pi * 3; r += tm(cr[o3]); gg += tm(cr[o3 + 1]); bb += tm(cr[o3 + 2]); }
+    const o = (y * w + x) * 4; if (!n) { D[o + 3] = 0; continue; }
+    D[o] = Math.min(255, r / n * 255); D[o + 1] = Math.min(255, gg / n * 255); D[o + 2] = Math.min(255, bb / n * 255); D[o + 3] = Math.round(n / n2 * 255);
+  }
+  g.putImageData(img, 0, 0);
+  return img;
 }
 function lgDist2(it, cam) { const W = it.W, i = (it.m.runs[0] || { b: 0 }).b * 16; const dx = W[i + 12] - cam.eye[0], dy = W[i + 13] - cam.eye[1], dz = W[i + 14] - cam.eye[2]; return dx * dx + dy * dy + dz * dz; }

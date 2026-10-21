@@ -542,7 +542,15 @@ function lgvWarm(n) {
 // (with the studio's generic carbine and pistol; in a run each gun has its own model and grips)
 function lgvClip(id, name, dur, loop, desc, st, ctx0, legs) {
   lgClip(id, name, 'Arms', dur, loop, 'ARMS handling references (README > what was studied)', desc, (P, t, ctx, a) => {
-    const k = loop ? (t / dur) % 1 : clamp(t / dur, 0, 1), c = Object.assign({ run: false, fam: 'c', gun: null, kind: 'ar', rk: 'tac', keep: false, t: t }, ctx0);
+    const c = Object.assign({ run: false, fam: 'c', gun: null, kind: 'ar', rk: 'tac', keep: false, t: t }, ctx0);
+    // (1.9.994: in the studio, with the guns he carries: their own postures and fitted grips; the armory's special
+    // reload takes the technique and the time from the gun itself)
+    let gd = dur;
+    if (ctx0.slot) {
+      c.fam = ctx0.slot; const g = ctx && (c.fam === 'p' ? ctx.gs : (ctx.gp || ctx.gun)), A = g && typeof ARMS_BY !== 'undefined' && ARMS_BY[g] ? ARMS_BY[g].arms : null;
+      if (A && LG_GUN_DEF[g] && LG_GUN_DEF[g].fam === c.fam) { c.gun = g; c.kind = A.reload.kind; gd = A.reload.empty; } else { c.kind = c.fam === 'p' ? 'pistol' : 'ar'; gd = c.fam === 'p' ? 1.85 : 2.55; }
+    } else if (ctx) { const g = c.fam === 'p' ? ctx.gs : (ctx.gp || ctx.gun); if (g && LG_GUN_DEF[g] && LG_GUN_DEF[g].fam === c.fam) c.gun = g; }
+    const k = loop ? (t / dur) % 1 : clamp(t / gd, 0, 1);
     if (st === 'dodge') { lgvRoll(P, k, c); return; }
     (LGV_UP[st] || LGV_UP.relaxed)(P, k, c);
     if (legs === 'run') lgGait(P, k, { stride: 2.9, st: 0.38, lift: 0.22, crouch: 0.08, bob: 0.05, lean: 0.25, heel: 1, run: true });
@@ -562,4 +570,8 @@ lgvClip('p_reload', 'Pistol slide-lock reload', 1.85, false, 'The pistol pulled 
 lgvClip('p_draw', 'Draw', 0.62, false, 'From the holster: grip, clear, rotate at the hip, meet the support hand at the chest, press out.', 'swapIn', { fam: 'p' });
 lgvClip('ar_sling', 'Long gun to the sling', 0.5, false, 'The carbine up past the left shoulder and onto the sling across the back, the hands free for the pistol.', 'swapOut', {});
 lgvClip('ar_check', 'Press check', 1.3, false, 'A full gun and nobody close: the support hand eases the handle back an inch, a look at the brass, home.', 'inspect', {});
+// (the legend page's armory: the special reload of whichever gun he carries; not in the list of fifty)
+lgvClip('arm_special_c', 'Special reload', 3.2, false, 'The carried long gun\'s own reload, from empty.', 'reload', { slot: 'c', rk: 'empty' });
+lgvClip('arm_special_p', 'Special reload (sidearm)', 3.2, false, 'The carried sidearm\'s own reload, from empty.', 'reload', { slot: 'p', rk: 'empty' });
+LG_ANIM_BY.arm_special_c.hidden = true; LG_ANIM_BY.arm_special_p.hidden = true;
 lgvClip('dodge_roll', 'Dodge roll', 0.46, false, 'Down over the shoulder in a tuck with the gun held in tight, and up into a crouch facing the same way; untouchable for its first part.', 'dodge', {});

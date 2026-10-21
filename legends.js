@@ -28,6 +28,8 @@ function legendFrame(rdt) {
       const q = sd.getBoundingClientRect(), tb = top ? top.getBoundingClientRect().bottom - r.top : 0;
       let x0 = 0, x1 = r.width, y0 = Math.max(0, tb), y1 = r.height;
       if (q.top - r.top > r.height * 0.25) y1 = Math.min(y1, q.top - r.top); else if (q.left - r.left > r.width * 0.3) x1 = Math.min(x1, q.left - r.left);
+      // (1.9.994: and the armory on his left, on a wide screen)
+      const ar = $('lgArms'); if (ar && ar.parentNode === $('lgDetail') && !ar.hidden) { const a = ar.getBoundingClientRect(); if (a.width > 0 && a.right - r.left < r.width * 0.45 && a.right - r.left < x1 - 160) x0 = Math.max(x0, a.right - r.left); }
       const fw = Math.max(1, x1 - x0), fh = Math.max(1, y1 - y0);
       MIM.free = { sx: ((x0 + x1) / 2 / r.width - 0.5) * 2, sy: -((y0 + y1) / 2 / r.height - 0.5) * 2, kh: fh / r.height, kw: fw / r.width };
     }
@@ -169,6 +171,7 @@ function lgsBuild() {
   const story = el('details', 'lg-story'); story.innerHTML = '<summary>His story, his manner, his kit</summary><p>' + LG_LEGENDS[0].bio + '</p><ul class="lg-traits">' + LG_LEGENDS[0].personality.map(p => '<li>' + p + '</li>').join('') + '</ul><ul class="lg-gear">' + LG_LEGENDS[0].gear.map(g => '<li>' + g + '</li>').join('') + '</ul>';
   const dep = el('button', 'btn primary lg-deploy'); dep.id = 'lgDeploy'; dep.type = 'button'; dep.addEventListener('click', lgsDeploy);
   side.append(top, chips, note, views, viewNote, anim, story, dep); D.append(side);
+  lgsArmsBuild(D);   // 1.9.994: the armory, on the left
   // dragging and zooming the studio
   const st = $('lgStage');
   st.addEventListener('pointerdown', e => { if (LGS.view !== 'detail') return; LGS.drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; try { st.setPointerCapture(e.pointerId); } catch (x) { } });
@@ -248,17 +251,17 @@ function lgsCue(c) {
 function lgsOpenLegend(cls) {
   lgsStopWatch(true); LGS.cls = cls; LGS.anim = 'idle_ready'; LGS.speed = 1;
   try { SFX.cine('uiSelect'); } catch (e) { }
-  lgsGo('detail', 0.8, 80, () => { lgsView('detail'); mimStart('studio', { cls: cls, anim: 'mask_tap' }); setTimeout(() => { if (LGS.view === 'detail') lgsPlayAnim('idle_ready', true); }, 2600); lgsSetClass(cls, true); lgsAnimList(); lgsViews(); lgsDeployLabel(); });
+  lgsGo('detail', 0.8, 80, () => { lgsView('detail'); mimStart('studio', { cls: cls, anim: 'mask_tap' }); LGS.anim = 'mask_tap'; setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === 'mask_tap') lgsPlayAnim('idle_ready', true); }, 2600); lgsSetClass(cls, true); lgsAnimList(); lgsViews(); lgsDeployLabel(); });
 }
 function lgsSetClass(cls, quiet) {
   LGS.cls = cls; mimStudioClass(cls);
   document.querySelectorAll('.lg-chip').forEach(b => { b.classList.toggle('on', b.dataset.cls === cls); b.setAttribute('aria-selected', b.dataset.cls === cls ? 'true' : 'false'); });
-  $('lgDetail').style.setProperty('--cc', LG_CLASS_BY[cls].col); lgsDeployLabel();
+  $('lgDetail').style.setProperty('--cc', LG_CLASS_BY[cls].col); lgsDeployLabel(); if ($('lgArms')) lgsArmsRender();
   if (!quiet) try { SFX.cine('uiTab'); } catch (e) { }
 }
 function lgsViews() { const v = MIM.studio.view; document.querySelectorAll('.lg-vbtn').forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
 // the fifty (the scene-only clips of the cinematic and the dead are not in the browser)
-function lgsFifty() { return LG_ANIMS.filter(a => a.cat !== 'Actors' && a.cat !== 'Cinematic'); }
+function lgsFifty() { return LG_ANIMS.filter(a => a.cat !== 'Actors' && a.cat !== 'Cinematic' && !a.hidden); }
 function lgsAnimList() {
   const list = document.querySelector('.lg-anim-list'); if (!list) return; list.textContent = '';
   document.querySelectorAll('.lg-acat').forEach(b => b.classList.toggle('on', b.dataset.cat === LGS.cat));
@@ -279,6 +282,147 @@ function lgsPlayAnim(id, quiet) {
   LGS.anim = id; mimStudioPlay(id); const a = MIM.actors[0]; if (a && a.player) a.player.sp = LGS.speed;
   document.querySelectorAll('.lg-abtn').forEach(b => b.classList.toggle('on', b.dataset.a === id)); lgsAnimInfo();
   if (!quiet) try { SFX.cine('uiTab'); } catch (e) { }
+}
+/* ---------- the armory on his page (1.9.994): on the left, the guns he carries ----------
+   The same ten as the main armory (arms.js), picked here with him in front of you: each gun is drawn from its own
+   model (the one in his hands), lit by his class; choosing one puts it in his hands at once and he handles it (a press
+   check on a long gun, a draw with a sidearm); the special reload plays on demand. On a phone the panel moves into the
+   sheet under him. */
+const LGS_AR = { slot: 'primary', peek: null, peekT: 0, models: new Map(), q: [], pump: 0, mq: null, animT: 0 };
+function lgsArmsOn() { return typeof ARMS_ON !== 'undefined' && ARMS_ON && typeof ARMS_BY !== 'undefined'; }
+function lgsArmsBuild(D) {
+  if (!lgsArmsOn()) return;
+  const P = el('div', 'lg-arms'); P.id = 'lgArms';
+  const head = el('div', 'lg-ar-head'); head.innerHTML = '<p class="lg-eye">Armory</p><h3 class="lg-ar-h">Loadout</h3><span class="lg-ar-count">10 / 250 rebuilt</span>';
+  const slots = el('div', 'lg-ar-slots'); slots.setAttribute('role', 'tablist'); slots.setAttribute('aria-label', 'Slot');
+  [['primary', 'Primary'], ['secondary', 'Secondary']].forEach(([k, t]) => {
+    const b = el('button', 'lg-ar-slot'); b.type = 'button'; b.dataset.slot = k; b.setAttribute('role', 'tab'); b.innerHTML = '<small>' + t + '</small><b></b>';
+    b.addEventListener('click', () => { if (LGS_AR.slot === k) return; LGS_AR.slot = k; LGS_AR.peek = null; lgsArmsRender(); try { SFX.cine('uiTab'); } catch (e) { } });
+    slots.append(b);
+  });
+  const hero = el('div', 'lg-ar-hero'); hero.innerHTML = '<canvas aria-hidden="true"></canvas><i class="lg-ar-sheen" aria-hidden="true"></i><div class="lg-ar-hn"><b></b><small></small></div>';
+  const lists = el('div', 'lg-ar-lists');
+  for (const k of ['primary', 'secondary']) {
+    const list = el('div', 'lg-ar-list'); list.dataset.slot = k; list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', k === 'primary' ? 'Primaries' : 'Secondaries');
+    for (const w of k === 'primary' ? ARMS_PRI : ARMS_SEC) {
+      const b = el('button', 'lg-ar-gun'); b.type = 'button'; b.dataset.key = w.arms.key; b.setAttribute('role', 'option'); b.title = w.arms.full;
+      const c = el('canvas'); c.setAttribute('aria-hidden', 'true'); c.width = 240; c.height = 92;
+      b.append(c, el('b', null, w.arms.name), el('small', null, w.arms.cal), el('em', 'lg-ar-tag', 'Carried'));
+      b.addEventListener('click', () => lgsArmsPick(w));
+      b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') lgsArmsPeek(w); });
+      b.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') lgsArmsPeek(null); });
+      b.addEventListener('focus', () => { if (DEV.kind !== 'touch') lgsArmsPeek(w); });
+      b.addEventListener('blur', () => lgsArmsPeek(null));
+      list.append(b); lgsArmsQueue(c, w.arms.key, { yaw: 0.1, el: 0.06, pad: 1.06 });
+    }
+    lists.append(list);
+  }
+  const info = el('div', 'lg-ar-info'); info.id = 'lgArInfo';
+  P.append(head, slots, hero, lists, info); D.append(P);
+  // a phone: the panel lives in the sheet under him (after his name), a wide screen: on the left
+  try {
+    LGS_AR.mq = matchMedia('(max-width:820px)');
+    const place = () => { const side = D.querySelector('.lg-side'), top = side && side.querySelector('.lg-d-top'); if (LGS_AR.mq.matches && top) { if (P.parentNode !== side) top.after(P); } else if (P.parentNode !== D) D.append(P); };
+    place(); if (LGS_AR.mq.addEventListener) LGS_AR.mq.addEventListener('change', place); else LGS_AR.mq.addListener(place);
+  } catch (e) { }
+  lgsArmsRender();
+}
+// redraw the panel for the slot on show (the carried guns marked, the hero and the numbers for the one in view)
+function lgsArmsRender() {
+  const P = $('lgArms'); if (!P) return; const L = armsLoad();
+  P.querySelectorAll('.lg-ar-slot').forEach(b => { const on = b.dataset.slot === LGS_AR.slot; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.querySelector('b').textContent = ARMS_BY[b.dataset.slot === 'primary' ? L.p : L.s].arms.name; });
+  P.querySelectorAll('.lg-ar-list').forEach(l => { l.hidden = l.dataset.slot !== LGS_AR.slot; });
+  P.querySelectorAll('.lg-ar-gun').forEach(b => { const w = ARMS_BY[b.dataset.key], on = b.dataset.key === (w.slot === 'primary' ? L.p : L.s); b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+  lgsArmsShow(LGS_AR.peek || ARMS_BY[LGS_AR.slot === 'primary' ? L.p : L.s]);
+}
+// hovering a gun shows it (its picture and numbers) without carrying it; leaving goes back to the carried one
+function lgsArmsPeek(w) {
+  clearTimeout(LGS_AR.peekT);
+  LGS_AR.peekT = setTimeout(() => { if (LGS_AR.peek === w) return; LGS_AR.peek = w; const L = armsLoad(); lgsArmsShow(w || ARMS_BY[LGS_AR.slot === 'primary' ? L.p : L.s]); }, w ? 90 : 160);
+}
+function lgsArmsShow(w) {
+  const P = $('lgArms'); if (!P || !w) return; const A = w.arms, L = armsLoad(), on = A.key === (w.slot === 'primary' ? L.p : L.s);
+  const hero = P.querySelector('.lg-ar-hero');
+  if (hero.dataset.key !== A.key + '|' + (LGS.cls || '')) {
+    hero.dataset.key = A.key + '|' + (LGS.cls || ''); const c = hero.querySelector('canvas'), r = hero.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = Math.max(240, Math.round((r.width || 300) * d)); c.height = Math.max(90, Math.round((r.height || 116) * d));
+    const cl = LG_CLASS_BY[LGS.cls || 'attack'] || LG_CLASSES[0];
+    LGS_AR.q = LGS_AR.q.filter(j => j[0] !== c); lgsArmsQueue(c, A.key, { yaw: 0.36, el: 0.16, pad: 1.3, fov: 0.36, lift: 0.12, acc: lgHex(cl.col), hero: true }, true);
+    hero.classList.remove('in'); void hero.offsetWidth; hero.classList.add('in');
+  }
+  hero.querySelector('.lg-ar-hn b').textContent = A.full; hero.querySelector('.lg-ar-hn small').textContent = A.real.action;
+  const box = $('lgArInfo'); box.textContent = '';
+  const tag = el('p', 'lg-ar-sub', A.cal + ' · ' + (A.reload.kind === 'tube' ? A.mag + '+1 shells' : A.mag + (A.chamber ? '+1' : '') + ' rounds') + ' · ' + (A.auto ? A.rpm + ' rpm' : 'semi-auto'));
+  const bars = el('div', 'lg-ar-bars');
+  armsStats(w).forEach(r => { const row = el('div', 'lg-ar-bar'), t = el('div', 'lg-ar-track'), f = el('i'); f.style.width = Math.round(clamp(r[1], 0.04, 1) * 100) + '%'; t.append(f); row.append(el('span', null, r[0]), t, el('em', null, String(r[2]))); bars.append(row); });
+  const sp = el('div', 'lg-ar-sp'), spH = el('div', 'lg-ar-sph'); spH.append(el('b', null, 'Special reload'));
+  const watch = el('button', 'lg-ar-watch'); watch.type = 'button'; watch.textContent = on ? 'Watch' : 'Carry to watch'; watch.disabled = !on;
+  watch.addEventListener('click', () => lgsArmsSpecial(w)); spH.append(watch);
+  sp.append(spH, el('p', null, A.reload.special));
+  const desc = el('p', 'lg-ar-desc', A.desc), spec = el('p', 'lg-ar-spec', 'Barrel ' + A.real.barrel + ' · ' + A.real.weight + ' · ' + A.real.rate);
+  const act = el('button', 'btn lg-ar-carry' + (on ? ' done' : '')); act.type = 'button'; act.textContent = on ? 'Carried as ' + (w.slot === 'primary' ? 'primary' : 'secondary') : 'Carry as ' + (w.slot === 'primary' ? 'primary' : 'secondary'); act.disabled = on;
+  act.addEventListener('click', () => lgsArmsPick(w));
+  box.append(tag, desc, bars, sp, spec, act);
+}
+// choosing a gun: carried at once (the same loadout as the main armory and the run), in his hands in the studio, and he handles it
+function lgsArmsPick(w) {
+  const L = armsLoad(), key = w.arms.key, was = w.slot === 'primary' ? L.p : L.s;
+  if (was !== key) {
+    armsSetLoad(w.slot, key); try { KEEP.approve(); } catch (e) { }
+    if (LG.sprites) LG.sprites.clear();
+    try { if (typeof renderArmsSide === 'function' && $('arSide')) renderArmsSide(); } catch (e) { }
+    coreLog('ARMS: ' + w.arms.name + ' carried from the legend page');
+  }
+  LGS_AR.slot = w.slot; LGS_AR.peek = null;
+  const a = MIM.actors[0];
+  if (a && MIM.scene === 'studio') { a.seat = false; mimStudioLoad(a); if (MIM.studio && MIM.studio.view !== 'arms' && typeof mimStudioView === 'function') { mimStudioView('arms'); lgsViews(); } }   // (three-quarters from his gun side: you see him take it)
+  clearTimeout(LGS_AR.animT);
+  if (w.slot === 'primary') { lgsPlayAnim('ar_check', true); try { SFX.arms('chargeBack', 1, 0, 0.7); setTimeout(() => SFX.arms('chargeHome', 1, 0, 0.7), 380); } catch (e) { } LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === 'ar_check') lgsPlayAnim('idle_ready', true); }, 1450); }
+  else { lgsPlayAnim('p_draw', true); try { SFX.arms('draw', 1, 0, 0.7); setTimeout(() => SFX.arms('slideRack', 1, 0, 0.6), 520); } catch (e) { } LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === 'p_draw') lgsPlayAnim('aim_iso', true); }, 700); }
+  try { SFX.cine('uiSelect'); } catch (e) { }
+  lgsArmsRender();
+}
+// the special reload of the gun in view, with that gun in his hands
+function lgsArmsSpecial(w) {
+  clearTimeout(LGS_AR.animT);
+  const id = w.slot === 'primary' ? 'arm_special_c' : 'arm_special_p'; lgsPlayAnim(id);
+  const R = w.arms.reload; LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === id) lgsPlayAnim(w.slot === 'primary' ? 'idle_ready' : 'aim_iso', true); }, (R.empty + 0.5) * 1000);
+}
+/* the guns drawn from their own models on the processor: a picture per gun (side on), and the big one in view
+   (three-quarters, lit by his class); painted a few at a time behind the screen's own frames */
+function lgsGunModel(key, lod) {
+  const k = key + '|' + lod; let m = LGS_AR.models.get(k); if (m) return m;
+  const D = LG_GUN_DEF[key]; if (!D) return null;
+  const B = lgB(lod); try { D.mk(B, lgOpKit('attack')); } catch (e) { lgHurt(e); }
+  m = lgFinish(B, 'gun:' + key);
+  const V = m.V, S = LG_STRIDE, b = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9];
+  for (const r of m.runs) { if (key === 'm1014' && r.b === LGB.cmag) continue; for (let i = r.v0; i < r.v0 + r.nv; i++) for (let j = 0; j < 3; j++) { const v = V[i * S + j]; if (v < b[j]) b[j] = v; if (v > b[j + 3]) b[j + 3] = v; } }
+  m.bb = b; LGS_AR.models.set(k, m); return m;
+}
+function lgsGunPaint(c, key, o) {
+  o = o || {}; const D = LG_GUN_DEF[key], m = lgsGunModel(key, o.hero ? 0 : 1); if (!m || !c || !D) return false;
+  const W = new Float32Array(LG_NB_MAX * 16), I = lgM4(), hide = new Uint8Array(LG_NB_MAX);
+  for (const n of D.fam === 'c' ? ['carbine', 'cmag'] : ['pistol', 'slide', 'mag']) W.set(I, LGB[n] * 16);
+  if (key === 'm1014') hide[LGB.cmag] = 1;   // (the shell that rides his hand)
+  const b = m.bb, cx = (b[0] + b[3]) / 2, cy = (b[1] + b[4]) / 2, cz = (b[2] + b[5]) / 2, hl = (b[3] - b[0]) / 2, hh = (b[5] - b[2]) / 2, hw = (b[4] - b[1]) / 2;
+  const w = c.width, h = c.height, asp = w / h, cam = lgCam(), yaw = o.yaw || 0, elv = o.el || 0;
+  cam.fov = o.fov || 0.3;
+  // far enough that the gun (turned by yaw) fits the frame with a margin
+  const ex = hl * Math.cos(yaw) + hw * Math.sin(yaw), ez = hh + hl * Math.sin(yaw) * Math.sin(elv) * 0.5, dist = Math.max(ex / asp, ez) / Math.tan(cam.fov / 2) * (o.pad || 1.1) + hw;
+  // (lift: the gun sits low in the frame, under the name)
+  const tz = cz + (o.lift || 0) * hh * 2;
+  cam.tgt = [cx, cy, tz]; cam.eye = [cx + Math.sin(yaw) * Math.cos(elv) * dist, cy - Math.cos(yaw) * Math.cos(elv) * dist, tz + Math.sin(elv) * dist]; cam.up = [0, 0, 1];
+  const g = c.getContext('2d'), acc = o.acc || [1, 0.55, 0.3];
+  // through the depth buffer, smooth-lit and supersampled (the painter's order would leave slivers on the grips' panels)
+  lgZScene(g, { cam: cam, items: [{ m: m, W: W, acc: acc, glow: 1, hide: hide }], key: { dir: [0.25, -0.7, 0.75], col: [1.6, 1.46, 1.28] }, rim: { dir: [-0.5, 0.65, 0.5], col: acc.map(v => v * (o.hero ? 2.4 : 1.5)) }, sky: [0.24, 0.26, 0.32], gnd: [0.07, 0.065, 0.06] }, w, h, o.ss || 2);
+  c.dataset.done = '1'; return true;
+}
+function lgsArmsQueue(c, key, o, first) { if (first) LGS_AR.q.unshift([c, key, o]); else LGS_AR.q.push([c, key, o]); if (!LGS_AR.pump) LGS_AR.pump = setTimeout(lgsArmsPump, 60); }
+function lgsArmsPump() {
+  LGS_AR.pump = 0; if (!LGS_AR.q.length) return;
+  if (!LGS.open || !LG.atlas) { LGS_AR.pump = setTimeout(lgsArmsPump, 250); return; }   // (after the screen's atlas)
+  const j = LGS_AR.q.shift(); try { lgsGunPaint(j[0], j[1], j[2]); } catch (e) { lgHurt(e); }
+  if (LGS_AR.q.length) LGS_AR.pump = setTimeout(lgsArmsPump, 24);
 }
 function lgsDeployLabel() {
   const b = $('lgDeploy'); if (!b) return; const c = LG_CLASS_BY[LGS.cls || 'attack'], on = SET.legend === 'operator' && SET.legendClass === c.id;

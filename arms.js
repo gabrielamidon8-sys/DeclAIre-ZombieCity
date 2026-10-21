@@ -355,6 +355,13 @@ function renderArmsSide() {
   const tip = el('p', 'ar-tip', ['A full magazine and nobody close? Press reload anyway: he checks the chamber.', 'Sprinting is fast. Shooting is not. Pick one.', 'The revolver throws no brass until you reload it.', 'Empty magazines lie where they fall for half a minute.'][Math.floor(Math.random() * 4)]);
   tip.append(el('small', null, 'The keeper')); S.append(tip);
 }
+// a gun's six bars (the armory and the legend's page): [name, 0..1, the number]
+function armsStats(w) {
+  const A = w.arms, E0 = 0.5 * A.g / 1000 * A.v * A.v * A.pellets;
+  return [['Energy', Math.min(1, E0 / 3200), Math.round(E0) + ' J'], ['Rate', Math.min(1, A.rpm / 900), A.auto ? A.rpm + ' rpm' : 'semi'], ['Capacity', Math.min(1, A.mag / 64), A.mag + (A.chamber ? '+1' : '')],
+    ['Reload', 1 - Math.min(1, (A.reload.kind === 'tube' ? A.reload.perShell * A.mag : A.reload.tac) / 3.2), (A.reload.kind === 'tube' ? A.reload.perShell.toFixed(2) + ' s a shell' : A.reload.tac.toFixed(1) + ' / ' + A.reload.empty.toFixed(1) + ' s')],
+    ['Handling', 1 - Math.min(1, A.ready / 0.35), A.ready.toFixed(2) + ' s up'], ['Muzzle velocity', Math.min(1, A.v / 950), A.real.mv]];
+}
 function openArmsDetail(w) {
   armsCur = w; arCur = null; const A = w.arms, det = $('arDetail'), R = WRAR[w.rarity];
   det.style.setProperty('--rc', R.color);
@@ -364,11 +371,7 @@ function openArmsDetail(w) {
   $('awMod').textContent = A.desc;
   $('awReact').textContent = 'Special reload: ' + A.reload.special;
   const bars = $('awBars'); bars.textContent = '';
-  const E0 = 0.5 * A.g / 1000 * A.v * A.v * A.pellets;
-  [['Energy', Math.min(1, E0 / 3200), Math.round(E0) + ' J'], ['Rate', Math.min(1, A.rpm / 900), A.auto ? A.rpm + ' rpm' : 'semi'], ['Capacity', Math.min(1, A.mag / 64), A.mag + (A.chamber ? '+1' : '')],
-    ['Reload', 1 - Math.min(1, (A.reload.kind === 'tube' ? A.reload.perShell * A.mag : A.reload.tac) / 3.2), (A.reload.kind === 'tube' ? A.reload.perShell.toFixed(2) + ' s a shell' : A.reload.tac.toFixed(1) + ' / ' + A.reload.empty.toFixed(1) + ' s')],
-    ['Handling', 1 - Math.min(1, A.ready / 0.35), A.ready.toFixed(2) + ' s up'], ['Muzzle velocity', Math.min(1, A.v / 950), A.real.mv]]
-    .forEach(r => { const row = el('div', 'bar-row'), t = el('div', 'track'), f = el('i'); f.style.width = Math.round(clamp(r[1], 0.04, 1) * 100) + '%'; t.appendChild(f); row.append(el('span', null, r[0]), t, el('em', null, String(r[2]))); bars.appendChild(row); });
+  armsStats(w).forEach(r => { const row = el('div', 'bar-row'), t = el('div', 'track'), f = el('i'); f.style.width = Math.round(clamp(r[1], 0.04, 1) * 100) + '%'; t.appendChild(f); row.append(el('span', null, r[0]), t, el('em', null, String(r[2]))); bars.appendChild(row); });
   const spec = el('p', 'aw-spec', 'Barrel ' + A.real.barrel + ' · ' + A.real.weight + ' · ' + A.real.action + ' · ' + A.real.rate); bars.appendChild(spec);
   const L = armsLoad(), on = A.key === (w.slot === 'primary' ? L.p : L.s), eq = $('awEquip');
   eq.hidden = false; eq.disabled = on; eq.textContent = on ? 'Carried' : 'Carry as ' + (w.slot === 'primary' ? 'primary' : 'secondary');

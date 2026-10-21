@@ -2015,7 +2015,7 @@ button.lcd{cursor:pointer}
 .lg-stage{position:absolute;inset:0;z-index:0;touch-action:none}
 .lg-stage canvas{display:block;width:100%;height:100%}
 .lg-shade{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg, rgba(4,6,9,.78) 0, rgba(4,6,9,.15) 18%, rgba(4,6,9,0) 40%, rgba(4,6,9,.2) 68%, rgba(4,6,9,.86) 100%);transition:opacity .5s}
-.lg-screen[data-view="detail"] .lg-shade{background:linear-gradient(90deg, rgba(4,6,9,0) 40%, rgba(4,6,9,.55) 64%, rgba(4,6,9,.9) 100%)}
+.lg-screen[data-view="detail"] .lg-shade{background:linear-gradient(90deg, rgba(4,6,9,.88) 0, rgba(4,6,9,.5) 18%, rgba(4,6,9,0) 32%, rgba(4,6,9,0) 58%, rgba(4,6,9,.55) 72%, rgba(4,6,9,.9) 100%)}
 .lg-fade{position:absolute;inset:0;z-index:9;background:#000;opacity:0;pointer-events:none;transition:opacity .45s ease}
 .lg-fade.on{opacity:1}
 /* top bar */
@@ -2069,7 +2069,7 @@ button.lcd{cursor:pointer}
 .lg-card-act span{font-family:var(--f-num);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px rgba(235,229,214,.18)}
 .lg-card-act .lg-open{background:var(--cc);color:#0b0c0e;box-shadow:none}
 /* 1.9.993: the face card: a small square, his face and nothing else (the name shows on hover) */
-.lg-card.lg-face{display:block;width:min(100%, 132px);aspect-ratio:1;padding:0;justify-self:center;align-self:center;overflow:hidden;clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+.lg-card.lg-face{display:block;width:min(100%, 92px);aspect-ratio:1;padding:0;justify-self:center;align-self:center;overflow:hidden;clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
   background:radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--cc) 42%, #161a22), #07080b 78%)}
 .lg-face .lg-card-art{position:absolute;inset:0;min-height:0;display:block}
 .lg-face .lg-card-art canvas{width:100%;height:100%;aspect-ratio:1;filter:none}
@@ -2089,7 +2089,7 @@ button.lcd{cursor:pointer}
 .lg-screen.watching .lg-hint,.lg-screen.watching .lg-foot,.lg-screen.watching .lg-shade{opacity:.15}
 /* a legend's page */
 .lg-detail{position:absolute;inset:0;z-index:3;pointer-events:none}
-.lg-side{pointer-events:auto;position:absolute;right:0;top:0;bottom:0;width:min(400px, 44vw);overflow-y:auto;padding:68px max(18px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) 18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin}
+.lg-side{pointer-events:auto;position:absolute;right:0;top:0;bottom:0;width:min(380px, 34vw);overflow-y:auto;padding:68px max(18px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) 18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin}
 .lg-d-name{margin:0;font-family:var(--f-display);font-weight:400;font-size:48px;letter-spacing:.04em;line-height:1;text-shadow:0 0 30px color-mix(in srgb, var(--cc) 50%, transparent)}
 .lg-d-line{margin:2px 0 0;color:#cfc9bb;font-size:14px}
 .lg-chips{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:5px}
@@ -2125,6 +2125,59 @@ button.lcd{cursor:pointer}
 .lg-traits li::marker{color:var(--cc)}
 .lg-deploy{min-height:50px;font-size:14px;letter-spacing:.1em}
 .lg-deploy.done{background:linear-gradient(100deg, color-mix(in srgb, var(--cc) 70%, #fff), var(--cc));color:#0b0c0e}
+/* 1.9.994: the armory on his left: the carried guns, each drawn from its own model; the one in view big, lit by his class */
+.lg-arms{pointer-events:auto;position:absolute;left:0;top:0;bottom:0;width:min(320px, 27vw);overflow-y:auto;padding:68px 14px max(14px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));display:flex;flex-direction:column;gap:10px;scrollbar-width:thin}
+.lg-ar-head{display:grid;grid-template-columns:minmax(0, 1fr) auto;grid-template-areas:"e c" "h c";align-items:end}
+.lg-ar-head .lg-eye{grid-area:e;color:var(--cc)}
+.lg-ar-h{grid-area:h;margin:0;font-family:var(--f-display);font-weight:400;font-size:30px;letter-spacing:.05em;line-height:1}
+.lg-ar-count{grid-area:c;font-family:var(--f-num);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:3px 7px;box-shadow:inset 0 0 0 1px rgba(235,229,214,.14)}
+.lg-ar-slots{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;background:rgba(0,0,0,.45);clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)}
+.lg-ar-slot{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-height:44px;padding:5px 9px;border:0;background:transparent;color:var(--muted);text-align:left;cursor:pointer}
+.lg-ar-slot small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase}
+.lg-ar-slot b{font-size:13.5px;letter-spacing:.04em;color:#cfc9bb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.lg-ar-slot.on{background:linear-gradient(120deg, color-mix(in srgb, var(--cc) 34%, rgba(0,0,0,.4)), rgba(0,0,0,.2));box-shadow:inset 0 -2px 0 var(--cc)}
+.lg-ar-slot.on small{color:var(--cc)}
+.lg-ar-slot.on b{color:var(--bone)}
+.lg-ar-hero{position:relative;flex:none;height:118px;overflow:hidden;background:radial-gradient(ellipse 70% 80% at 50% 62%, color-mix(in srgb, var(--cc) 22%, #11141b), #07090c 75%);clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--cc) 40%, transparent)}
+.lg-ar-hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 22px), repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 22px);pointer-events:none}
+.lg-ar-hero::after{content:"";position:absolute;left:8%;right:8%;bottom:16px;height:10px;background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,.7), transparent 70%);pointer-events:none}
+.lg-ar-hero canvas{position:relative;z-index:1;display:block;width:100%;height:100%;filter:drop-shadow(0 8px 10px rgba(0,0,0,.55))}
+.lg-ar-hero.in canvas{animation:lgarin .7s cubic-bezier(.2, .8, .2, 1) both}
+.lg-ar-sheen{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(105deg, transparent 35%, rgba(255,255,255,.14) 48%, transparent 60%);background-size:250% 100%;animation:lgarsheen 5.5s ease-in-out infinite;mix-blend-mode:screen}
+.lg-ar-hn{position:absolute;left:10px;top:8px;z-index:3;display:flex;flex-direction:column;pointer-events:none}
+.lg-ar-hn b{font-family:var(--f-display);font-weight:400;font-size:17px;letter-spacing:.05em;line-height:1;text-shadow:0 2px 10px rgba(0,0,0,.8)}
+.lg-ar-hn small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lg-ar-lists{display:contents}
+.lg-ar-list{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.lg-ar-list[hidden]{display:none}
+.lg-ar-gun{position:relative;display:grid;grid-template-columns:minmax(0, 1fr);gap:0;padding:4px 6px 6px;border:0;text-align:left;color:var(--bone);cursor:pointer;background:linear-gradient(160deg, rgba(30,34,44,.82), rgba(10,12,16,.86));clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);box-shadow:inset 0 0 0 1px rgba(235,229,214,.08);transition:box-shadow .2s, transform .2s}
+.lg-ar-gun canvas{width:100%;height:auto;aspect-ratio:240/92;display:block}
+.lg-ar-gun b{font-size:12.5px;letter-spacing:.04em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-ar-gun small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.06em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-ar-gun:hover,.lg-ar-gun:focus-visible{transform:translateY(-1px);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--cc) 70%, transparent), 0 6px 20px rgba(0,0,0,.4)}
+.lg-ar-tag{position:absolute;right:6px;top:5px;font-style:normal;font-family:var(--f-num);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;padding:1px 5px;background:var(--cc);color:#0b0c0e;opacity:0;transform:translateY(-3px);transition:opacity .2s, transform .2s}
+.lg-ar-gun.on{background:linear-gradient(160deg, color-mix(in srgb, var(--cc) 28%, #141820), #0a0c10 80%);box-shadow:inset 0 0 0 2px var(--cc)}
+.lg-ar-gun.on .lg-ar-tag{opacity:1;transform:none}
+.lg-ar-info{display:flex;flex-direction:column;gap:8px;padding:10px 11px;background:rgba(8,10,14,.74);box-shadow:inset 0 0 0 1px rgba(235,229,214,.07)}
+.lg-ar-sub{margin:0;font-family:var(--f-num);font-size:10.5px;letter-spacing:.08em;color:var(--cc)}
+.lg-ar-desc{margin:0;font-size:12px;color:#cfc9bb;line-height:1.4}
+.lg-ar-bars{display:flex;flex-direction:column;gap:4px}
+.lg-ar-bar{display:grid;grid-template-columns:86px minmax(0, 1fr) auto;align-items:center;gap:7px}
+.lg-ar-bar span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lg-ar-bar em{font-style:normal;font-family:var(--f-num);font-size:10.5px;color:#cfc9bb;white-space:nowrap}
+.lg-ar-track{height:5px;background:rgba(255,255,255,.07);clip-path:polygon(0 0, 100% 0, calc(100% - 3px) 100%, 0 100%)}
+.lg-ar-track i{display:block;height:100%;background:linear-gradient(90deg, color-mix(in srgb, var(--cc) 60%, #fff), var(--cc));box-shadow:0 0 8px var(--cc);transition:width .45s cubic-bezier(.2, .8, .2, 1)}
+.lg-ar-sp{padding:8px 9px;background:color-mix(in srgb, var(--cc) 9%, rgba(0,0,0,.35));box-shadow:inset 3px 0 0 var(--cc)}
+.lg-ar-sph{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lg-ar-sph b{font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+.lg-ar-sp p{margin:4px 0 0;font-size:11.5px;color:#bdb7a8;line-height:1.4}
+.lg-ar-watch{min-height:26px;padding:0 10px;border:0;background:var(--cc);color:#0b0c0e;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.lg-ar-watch:disabled{background:rgba(255,255,255,.08);color:var(--muted);cursor:default}
+.lg-ar-spec{margin:0;font-family:var(--f-num);font-size:10px;letter-spacing:.04em;color:var(--muted);line-height:1.4}
+.lg-ar-carry{min-height:40px;font-size:12px;letter-spacing:.1em}
+.lg-ar-carry.done{opacity:.7}
+@keyframes lgarsheen{0%,55%{background-position:120% 0}100%{background-position:-120% 0}}
+@keyframes lgarin{from{opacity:0;transform:translateX(-18px) scale(.96)}to{opacity:1;transform:none}}
 /* the title card on the frozen frame */
 .lg-title{position:absolute;left:0;right:0;bottom:16%;z-index:6;text-align:center;pointer-events:none;--cc:#ff4b3e}
 .lg-title.in .lg-t-name{animation:lgtname 1.6s cubic-bezier(.2, .8, .2, 1) both}
@@ -2144,6 +2197,12 @@ button.lcd{cursor:pointer}
   .lg-col{flex:0 0 min(74vw, 300px);scroll-snap-align:center;justify-content:flex-end}
   .lg-tabs{display:none}
   .lg-side{left:0;width:auto;top:auto;height:52%;padding-top:14px;background:linear-gradient(180deg, rgba(5,7,10,.7), rgba(5,7,10,.96) 20%)}
+  /* the armory in the sheet: the guns in a row to swipe, the one in view and its numbers under them */
+  .lg-side .lg-arms{position:static;width:auto;overflow:visible;padding:10px 0 0;gap:8px;border-top:1px solid rgba(235,229,214,.08)}
+  .lg-side .lg-ar-list{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:6px;padding-bottom:4px}
+  .lg-side .lg-ar-list[hidden]{display:none}
+  .lg-side .lg-ar-gun{flex:0 0 132px;scroll-snap-align:start}
+  .lg-side .lg-ar-hero{height:104px}
   .lg-screen[data-view="detail"] .lg-shade{background:linear-gradient(180deg, rgba(4,6,9,.6) 0, rgba(4,6,9,0) 20%, rgba(4,6,9,0) 44%, rgba(4,6,9,.9) 60%)}
   .lg-d-name{font-size:34px}
   .lg-panels{grid-template-columns:1fr}
@@ -2154,13 +2213,19 @@ button.lcd{cursor:pointer}
   .lg-col-blurb,.lg-locks,.lg-foot,.lg-hint{display:none}
   .lg-card-art{min-height:0}
   .lg-card-art canvas{width:64px}
-  .lg-card.lg-face{width:72px}
+  .lg-card.lg-face{width:56px}
   .lg-face .lg-card-art canvas{width:100%}
-  .lg-side{width:min(360px, 46vw);padding-top:56px}
+  .lg-side{width:min(340px, 40vw);padding-top:56px}
+  .lg-arms{width:min(240px, 28vw);padding-top:56px;gap:7px}
+  .lg-ar-h{font-size:22px}
+  .lg-ar-count{display:none}
+  .lg-ar-hero{height:78px}
+  .lg-ar-gun small{display:none}
+  .lg-ar-desc,.lg-ar-spec{display:none}
   .lg-hub{padding-top:60px;gap:12px}
   .lg-panel{min-height:80px}
 }
-@media (prefers-reduced-motion:reduce){ .lg-p-go,.lg-title.in .lg-t-name,.lg-title.in .lg-t-eye,.lg-title.in .lg-t-line{animation:none} .lg-card{transition:none} }
+@media (prefers-reduced-motion:reduce){ .lg-ar-sheen,.lg-ar-hero.in canvas{animation:none} .lg-p-go,.lg-title.in .lg-t-name,.lg-title.in .lg-t-eye,.lg-title.in .lg-t-line{animation:none} .lg-card{transition:none} }
 .rm .lg-p-go,.rm .lg-title.in .lg-t-name{animation:none}
 
 </style>
@@ -22952,6 +23017,13 @@ function renderArmsSide() {
   const tip = el('p', 'ar-tip', ['A full magazine and nobody close? Press reload anyway: he checks the chamber.', 'Sprinting is fast. Shooting is not. Pick one.', 'The revolver throws no brass until you reload it.', 'Empty magazines lie where they fall for half a minute.'][Math.floor(Math.random() * 4)]);
   tip.append(el('small', null, 'The keeper')); S.append(tip);
 }
+// a gun's six bars (the armory and the legend's page): [name, 0..1, the number]
+function armsStats(w) {
+  const A = w.arms, E0 = 0.5 * A.g / 1000 * A.v * A.v * A.pellets;
+  return [['Energy', Math.min(1, E0 / 3200), Math.round(E0) + ' J'], ['Rate', Math.min(1, A.rpm / 900), A.auto ? A.rpm + ' rpm' : 'semi'], ['Capacity', Math.min(1, A.mag / 64), A.mag + (A.chamber ? '+1' : '')],
+    ['Reload', 1 - Math.min(1, (A.reload.kind === 'tube' ? A.reload.perShell * A.mag : A.reload.tac) / 3.2), (A.reload.kind === 'tube' ? A.reload.perShell.toFixed(2) + ' s a shell' : A.reload.tac.toFixed(1) + ' / ' + A.reload.empty.toFixed(1) + ' s')],
+    ['Handling', 1 - Math.min(1, A.ready / 0.35), A.ready.toFixed(2) + ' s up'], ['Muzzle velocity', Math.min(1, A.v / 950), A.real.mv]];
+}
 function openArmsDetail(w) {
   armsCur = w; arCur = null; const A = w.arms, det = $('arDetail'), R = WRAR[w.rarity];
   det.style.setProperty('--rc', R.color);
@@ -22961,11 +23033,7 @@ function openArmsDetail(w) {
   $('awMod').textContent = A.desc;
   $('awReact').textContent = 'Special reload: ' + A.reload.special;
   const bars = $('awBars'); bars.textContent = '';
-  const E0 = 0.5 * A.g / 1000 * A.v * A.v * A.pellets;
-  [['Energy', Math.min(1, E0 / 3200), Math.round(E0) + ' J'], ['Rate', Math.min(1, A.rpm / 900), A.auto ? A.rpm + ' rpm' : 'semi'], ['Capacity', Math.min(1, A.mag / 64), A.mag + (A.chamber ? '+1' : '')],
-    ['Reload', 1 - Math.min(1, (A.reload.kind === 'tube' ? A.reload.perShell * A.mag : A.reload.tac) / 3.2), (A.reload.kind === 'tube' ? A.reload.perShell.toFixed(2) + ' s a shell' : A.reload.tac.toFixed(1) + ' / ' + A.reload.empty.toFixed(1) + ' s')],
-    ['Handling', 1 - Math.min(1, A.ready / 0.35), A.ready.toFixed(2) + ' s up'], ['Muzzle velocity', Math.min(1, A.v / 950), A.real.mv]]
-    .forEach(r => { const row = el('div', 'bar-row'), t = el('div', 'track'), f = el('i'); f.style.width = Math.round(clamp(r[1], 0.04, 1) * 100) + '%'; t.appendChild(f); row.append(el('span', null, r[0]), t, el('em', null, String(r[2]))); bars.appendChild(row); });
+  armsStats(w).forEach(r => { const row = el('div', 'bar-row'), t = el('div', 'track'), f = el('i'); f.style.width = Math.round(clamp(r[1], 0.04, 1) * 100) + '%'; t.appendChild(f); row.append(el('span', null, r[0]), t, el('em', null, String(r[2]))); bars.appendChild(row); });
   const spec = el('p', 'aw-spec', 'Barrel ' + A.real.barrel + ' · ' + A.real.weight + ' · ' + A.real.action + ' · ' + A.real.rate); bars.appendChild(spec);
   const L = armsLoad(), on = A.key === (w.slot === 'primary' ? L.p : L.s), eq = $('awEquip');
   eq.hidden = false; eq.disabled = on; eq.textContent = on ? 'Carried' : 'Carry as ' + (w.slot === 'primary' ? 'primary' : 'secondary');
@@ -25369,7 +25437,15 @@ function lgExtrude(B, poly, z0, z1, o) {
     }
   };
   const lo = Math.min(z0, z1), hi = Math.max(z0, z1);
-  if (bev > 0) {
+  if (bev > 0 && o.round) {
+    // (1.9.994) a rounded edge: a quarter circle in two facets instead of one chamfer (grips, stocks, slides)
+    const k = 0.293, mid = []; for (let i = 0; i < n; i++) mid.push([poly[i][0] + (ins[i][0] - poly[i][0]) * k, poly[i][1] + (ins[i][1] - poly[i][1]) * k]);
+    if (o.capB !== false) cap(ins, lo, -1);
+    ringPair(ins, lo, mid, lo + bev * k, -2.6, -1); ringPair(mid, lo + bev * k, poly, lo + bev, -1, -0.12);
+    ringPair(poly, lo + bev, poly, hi - bev, 0, 0);
+    ringPair(poly, hi - bev, mid, hi - bev * k, 0.12, 1); ringPair(mid, hi - bev * k, ins, hi, 1, 2.6);
+    if (o.capT !== false) cap(ins, hi, 1);
+  } else if (bev > 0) {
     if (o.capB !== false) cap(ins, lo, -1);
     ringPair(ins, lo, poly, lo + bev, -0.7, -0.15); ringPair(poly, lo + bev, poly, hi - bev, 0, 0); ringPair(poly, hi - bev, ins, hi, 0.15, 0.7);
     if (o.capT !== false) cap(ins, hi, 1);
@@ -25934,6 +26010,73 @@ function lg2DScene(g, S, w, h) {
     const L = { key: [kd[0], kd[1], kd[2], S.key.col[0], S.key.col[1], S.key.col[2]], rim: [rd[0], rd[1], rd[2], S.rim.col[0], S.rim.col[1], S.rim.col[2]], sky: S.sky, gnd: S.gnd, acc: it.acc || [1, 0.3, 0.2], glow: it.glow == null ? 1 : it.glow, eye: cam.eye };
     lg2D(g, it.m, it.W, cam.VP, w, h, L, { hide: it.hide, grow: 0.6 });
   }
+}
+// 1.9.994: the same scene through a depth buffer, smooth-lit and supersampled, for pictures painted once (the guns in
+// the legend page's armory): no painter's-order slivers where a panel sits a hair proud of a grip, soft edges, a clear
+// background (alpha where nothing was drawn). Slower than lg2D (a few tens of ms for a big picture), so never per frame.
+function lgZScene(g, S, w, h, ss) {
+  ss = ss || 2; const W2 = w * ss, H2 = h * ss, cam = S.cam; lgCamUpd(cam, w / h); const VP = cam.VP, eye = cam.eye;
+  const zb = new Float32Array(W2 * H2).fill(Infinity), cr = new Float32Array(W2 * H2 * 3), cov = new Uint8Array(W2 * H2);
+  const kd = lgV3n(S.key.dir), rd = lgV3n(S.rim.dir), K = S.key.col, R = S.rim.col, SK = S.sky, GN = S.gnd;
+  for (const it of S.items) {
+    const m = it.m, C = lgCpu(m), V = m.V, I = m.I, St = LG_STRIDE, nv = m.nv, hide = it.hide, acc = it.acc || [1, 0.3, 0.2], glow = it.glow == null ? 1 : it.glow, Wm = it.W;
+    const sx = new Float32Array(nv), sy = new Float32Array(nv), sz = new Float32Array(nv).fill(NaN), wp = new Float32Array(nv * 3), lt = new Float32Array(nv * 5);
+    for (const run of m.runs) {
+      if (hide && hide[run.b]) continue;
+      const M = Wm.subarray(run.b * 16, run.b * 16 + 16);
+      for (let k = 0; k < run.nv; k++) {
+        const vi = run.v0 + k, a = vi * St, x = V[a], y = V[a + 1], z = V[a + 2];
+        const wx = M[0] * x + M[4] * y + M[8] * z + M[12], wy = M[1] * x + M[5] * y + M[9] * z + M[13], wz = M[2] * x + M[6] * y + M[10] * z + M[14];
+        let nx = M[0] * V[a + 3] + M[4] * V[a + 4] + M[8] * V[a + 5], ny = M[1] * V[a + 3] + M[5] * V[a + 4] + M[9] * V[a + 5], nz = M[2] * V[a + 3] + M[6] * V[a + 4] + M[10] * V[a + 5];
+        const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+        const cx = VP[0] * wx + VP[4] * wy + VP[8] * wz + VP[12], cy = VP[1] * wx + VP[5] * wy + VP[9] * wz + VP[13], cz = VP[2] * wx + VP[6] * wy + VP[10] * wz + VP[14], cw = VP[3] * wx + VP[7] * wy + VP[11] * wz + VP[15];
+        if (cw <= 1e-4) continue;
+        sx[vi] = (cx / cw * 0.5 + 0.5) * W2; sy[vi] = (0.5 - cy / cw * 0.5) * H2; sz[vi] = cz / cw; wp[vi * 3] = wx; wp[vi * 3 + 1] = wy; wp[vi * 3 + 2] = wz;
+        // the light at this vertex: key (wrapped), the sky and the ground, the rim, the highlight
+        let ex = eye[0] - wx, ey = eye[1] - wy, ez = eye[2] - wz; const el = Math.hypot(ex, ey, ez) || 1; ex /= el; ey /= el; ez /= el;
+        const dk = Math.max(0, (nx * kd[0] + ny * kd[1] + nz * kd[2] + 0.2) / 1.2), hz = nz * 0.5 + 0.5, f1 = 1 - Math.max(0, nx * ex + ny * ey + nz * ez);
+        const rk = f1 * f1 * Math.max(0, nx * rd[0] + ny * rd[1] + nz * rd[2]) * 0.9;
+        const hx = kd[0] + ex, hy = kd[1] + ey, hz2 = kd[2] + ez, hl = Math.hypot(hx, hy, hz2) || 1; let sp = Math.max(0, (nx * hx + ny * hy + nz * hz2) / hl); sp *= sp; sp *= sp; sp *= sp; sp = sp * sp * sp * 0.4 * (1 - V[a + 13]);
+        const o5 = vi * 5; lt[o5] = K[0] * dk + SK[0] * hz + GN[0] * (1 - hz); lt[o5 + 1] = K[1] * dk + SK[1] * hz + GN[1] * (1 - hz); lt[o5 + 2] = K[2] * dk + SK[2] * hz + GN[2] * (1 - hz); lt[o5 + 3] = rk; lt[o5 + 4] = sp;
+      }
+    }
+    for (let t = 0; t < m.tris; t++) {
+      if (C.tf[t] === 255) continue;
+      const a = I[t * 3], b = I[t * 3 + 1], c = I[t * 3 + 2];
+      if (!(sz[a] === sz[a] && sz[b] === sz[b] && sz[c] === sz[c])) continue;
+      const slot = C.tf[t]; let r = C.tc[t * 3], gg = C.tc[t * 3 + 1], bb = C.tc[t * 3 + 2];
+      if (slot === 1 || slot === 5) { const lum = (r + gg + bb) / 3 / Math.max(0.05, (V[a * St + 8] + V[a * St + 9] + V[a * St + 10]) / 3); r = acc[0] * lum; gg = acc[1] * lum; bb = acc[2] * lum; }
+      let er = 0, eg = 0, eb = 0; const em = C.te[t]; if (em > 0) { if (slot === 2 || slot === 6) { er = acc[0] * em * glow; eg = acc[1] * em * glow; eb = acc[2] * em * glow; } else { er = r * em; eg = gg * em; eb = bb * em; } }
+      const x0 = sx[a], y0 = sy[a], x1 = sx[b], y1 = sy[b], x2 = sx[c], y2 = sy[c];
+      const area = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0); if (Math.abs(area) < 1e-6) continue;
+      const ia = 1 / area;
+      let bx0 = Math.max(0, Math.floor(Math.min(x0, x1, x2))), bx1 = Math.min(W2 - 1, Math.ceil(Math.max(x0, x1, x2))), by0 = Math.max(0, Math.floor(Math.min(y0, y1, y2))), by1 = Math.min(H2 - 1, Math.ceil(Math.max(y0, y1, y2)));
+      const za = sz[a], zbv = sz[b], zc = sz[c], A5 = a * 5, B5 = b * 5, C5 = c * 5;
+      for (let py = by0; py <= by1; py++) {
+        const fy = py + 0.5;
+        for (let px = bx0; px <= bx1; px++) {
+          const fx = px + 0.5;
+          const w0 = ((x1 - fx) * (y2 - fy) - (y1 - fy) * (x2 - fx)) * ia, w1 = ((x2 - fx) * (y0 - fy) - (y2 - fy) * (x0 - fx)) * ia, w2 = 1 - w0 - w1;
+          if (w0 < -1e-4 || w1 < -1e-4 || w2 < -1e-4) continue;
+          const z = w0 * za + w1 * zbv + w2 * zc, pi = py * W2 + px; if (z >= zb[pi]) continue;
+          zb[pi] = z; cov[pi] = 1;
+          const lr = w0 * lt[A5] + w1 * lt[B5] + w2 * lt[C5], lg = w0 * lt[A5 + 1] + w1 * lt[B5 + 1] + w2 * lt[C5 + 1], lb = w0 * lt[A5 + 2] + w1 * lt[B5 + 2] + w2 * lt[C5 + 2];
+          const rk = w0 * lt[A5 + 3] + w1 * lt[B5 + 3] + w2 * lt[C5 + 3], sp = w0 * lt[A5 + 4] + w1 * lt[B5 + 4] + w2 * lt[C5 + 4];
+          const o3 = pi * 3; cr[o3] = r * lr + R[0] * rk + sp * K[0] + er; cr[o3 + 1] = gg * lg + R[1] * rk + sp * K[1] + eg; cr[o3 + 2] = bb * lb + R[2] * rk + sp * K[2] + eb;
+        }
+      }
+    }
+  }
+  // down to the picture: each pixel the average of its covered samples (the same curve as the painter), alpha the coverage
+  const img = g.createImageData(w, h), D = img.data, n2 = ss * ss, tm = v => Math.sqrt(v / (v + 0.55) * 1.45);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let n = 0, r = 0, gg = 0, bb = 0;
+    for (let j = 0; j < ss; j++) for (let i = 0; i < ss; i++) { const pi = (y * ss + j) * W2 + x * ss + i; if (!cov[pi]) continue; n++; const o3 = pi * 3; r += tm(cr[o3]); gg += tm(cr[o3 + 1]); bb += tm(cr[o3 + 2]); }
+    const o = (y * w + x) * 4; if (!n) { D[o + 3] = 0; continue; }
+    D[o] = Math.min(255, r / n * 255); D[o + 1] = Math.min(255, gg / n * 255); D[o + 2] = Math.min(255, bb / n * 255); D[o + 3] = Math.round(n / n2 * 255);
+  }
+  g.putImageData(img, 0, 0);
+  return img;
 }
 function lgDist2(it, cam) { const W = it.W, i = (it.m.runs[0] || { b: 0 }).b * 16; const dx = W[i + 12] - cam.eye[0], dy = W[i + 13] - cam.eye[1], dz = W[i + 14] - cam.eye[2]; return dx * dx + dy * dy + dz * dz; }
 
@@ -26547,12 +26690,20 @@ function lgRail(B, M, x0, x1, z, w, hi, top) {
 }
 // a curved box magazine drawn side-on: top at (mx, mz), length L (down), curve forward c, width w, depth d
 function lgCurvedMag(B, mx, mz, L, c, d, w, o) {
-  o = o || {}; const n = 6, F = [], Bk = [];
-  for (let i = 0; i <= n; i++) { const k = i / n, z = mz - k * L, x = mx + c * k * k * L; F.push([x + d / 2, z]); Bk.push([x - d / 2, z]); }
-  lgSide(B, F.concat(Bk.reverse()), w, { bev: o.bev == null ? 0.0025 : o.bev, smooth: 0.5 });
-  if (o.plate !== false) { const k = 1, x = mx + c * L; lgBox(B, x + 0.002, 0, mz - L - 0.004, d / 2 + 0.004, w / 2 + 0.002, 0.005, 0.002); }
+  // a box magazine drawn side-on: top at (mx, mz), length L down, curving forward by c*L at the bottom, d deep, w wide;
+  // rounded edges, a base plate with its lip, the ribs down each side (1.9.994)
+  o = o || {}; const n = 8, F = [], Bk = [], at = k => mx + c * k * k * L;
+  for (let i = 0; i <= n; i++) { const k = i / n, zz = mz - k * L, x = at(k), dd = d * (1 + (o.flare || 0) * k); F.push([x + dd / 2, zz]); Bk.push([x - dd / 2, zz]); }
+  lgSide(B, F.concat(Bk.reverse()), w, { bev: o.bev == null ? Math.min(0.004, w * 0.16) : o.bev, smooth: 0.5, round: true });
+  if (o.plate !== false) {
+    const x = at(1), dd = d * (1 + (o.flare || 0)), zb = mz - L;
+    lgSide(B, [[x - dd / 2 - 0.004, zb + 0.001], [x + dd / 2 + 0.006, zb + 0.001], [x + dd / 2 + 0.007, zb - 0.004], [x + dd / 2 + 0.002, zb - 0.009], [x - dd / 2 - 0.003, zb - 0.009], [x - dd / 2 - 0.006, zb - 0.004]], w + 0.004, { bev: 0.0018, round: true });
+  }
+  if (o.ribs && B.lod < 2) for (const [k0, k1] of o.ribs) for (const s of [1, -1]) {
+    const pts = []; for (let i = 0; i <= 4; i++) { const k = k0 + (k1 - k0) * i / 4; pts.push([at(k) + d * (o.ribF == null ? 0.06 : o.ribF), s * (w / 2 + 0.0006), mz - k * L]); }
+    lgTube(B, pts, 0.0016, { segs: 4, flat: 3, up: [0, 1, 0] });
+  }
 }
-
 /* ---------- long guns (carbine bone) ---------- */
 // 1.9.994: rebuilt from the real guns' proportions with the pistol grip where a hand can hold it (a trigger guard's
 // length behind the magazine, raked back), and much more of each gun: pins, levers, ports, sights, sling points.
@@ -26562,9 +26713,17 @@ function lgPin(B, x, z, r, w) { lgPush(B, lgTR(x, -w / 2, z, Math.PI / 2, 0, 0))
 function lgKnob(B, x, y, z, r, l, s) { lgPush(B, lgTR(x, y, z, -s * Math.PI / 2, 0, 0)); lgLimb(B, l, [[0, r], [0.7, r], [1, r * 1.25]], { segs: 8, rings: 3, capK: 0.5 }); lgPop(B); }
 // a raked pistol grip: its top front at (x, z), a finger hump, a beavertail at the back; w wide
 function lgARGrip(B, x, z, w, o) {
-  o = o || {}; const k = o.k || 1;
-  const P = [[0, 0], [-0.006, -0.024], [-0.003, -0.034], [-0.011, -0.045], [-0.022, -0.067], [-0.033, -0.088], [-0.038, -0.093], [-0.069, -0.089], [-0.072, -0.083], [-0.062, -0.044], [-0.051, -0.012], [-0.056, -0.002], [-0.044, 0.003]];
-  lgSide(B, P.map(p => [x + p[0], z + p[1] * k]), w, { bev: 0.0045, smooth: 0.55 });
+  // (1.9.994: slimmer, with rounded edges, a finger swell on the front strap and a texture panel on each side; the AK's
+  // is a plain slender one without a beavertail)
+  o = o || {}; const k = o.k || 1, ak = !!o.ak;
+  const P = ak ? [[0, 0], [-0.005, -0.03], [-0.013, -0.06], [-0.019, -0.083], [-0.024, -0.091], [-0.031, -0.094], [-0.049, -0.091], [-0.053, -0.085], [-0.045, -0.05], [-0.039, -0.022], [-0.037, 0]]
+    : [[0, 0], [-0.004, -0.014], [-0.0005, -0.025], [-0.007, -0.036], [-0.017, -0.06], [-0.026, -0.083], [-0.029, -0.09], [-0.035, -0.094], [-0.061, -0.091], [-0.065, -0.085], [-0.055, -0.048], [-0.045, -0.016], [-0.05, -0.006], [-0.044, 0.002]];
+  const Q = P.map(p => [x + p[0], z + p[1] * k]);
+  lgSide(B, Q, w, { bev: Math.min(0.006, w * 0.22), smooth: 0.55, round: true });
+  if (B.lod === 0 && !o.plain) {   // the textured panel (a hair proud, a shade darker)
+    const cx = x - (ak ? 0.026 : 0.031), cz = z - 0.05 * k, sh = (p) => [cx + (p[0] - cx) * 0.72, cz + (p[1] - cz) * 0.78];
+    lgMat(B, B.M && B.M.dk ? B.M.dk : B.M); lgSide(B, Q.slice(ak ? 1 : 2, ak ? 9 : 11).map(sh), w + 0.0016, { bev: 0.0008 });
+  }
 }
 // the trigger guard (a strap from the grip to the front of the guard) and the trigger blade
 function lgTrigger(B, M, xg, xf, z, zt, o) {
@@ -26600,24 +26759,29 @@ function lgGunM4(B, K) {
   lgBone(B, 'carbine');
   // the upper receiver, flat-top, its rail
   lgMat(B, M.gunBlk);
-  lgSide(B, [[-0.088, -0.009], [0.1, -0.009], [0.1, 0.018], [0.094, 0.022], [-0.083, 0.022], [-0.088, 0.016]], 0.028, { bev: 0.0028 });
+  lgSide(B, [[-0.088, -0.009], [0.1, -0.009], [0.1, 0.018], [0.094, 0.022], [-0.083, 0.022], [-0.088, 0.016]], 0.028, { bev: 0.0028, round: true });
   lgRail(B, M, -0.083, 0.096, 0.026, 0.0105, hi, top);
   if (hi) {
     lgMat(B, M.visor); lgBox(B, 0.03, -0.0143, 0.004, 0.024, 0.0008, 0.0062, 0.001);                    // the ejection port
+    lgMat(B, M.brass); lgBox(B, 0.032, -0.0136, 0.004, 0.012, 0.0006, 0.0035, 0.001);                    // the bolt carrier showing in it
     lgMat(B, M.gunBlk); lgBox(B, 0.03, -0.0172, -0.0055, 0.024, 0.0035, 0.0011, 0.0008);                // its dust cover, hanging open
     lgBox(B, -0.006, -0.0158, 0.016, 0.009, 0.0025, 0.0045, 0.002);                                     // the brass deflector
     lgKnob(B, -0.052, -0.014, 0.011, 0.0048, 0.012, -1); lgBox(B, -0.052, -0.016, 0.011, 0.012, 0.004, 0.0052, 0.002);   // the forward assist
     lgPin(B, 0.094, -0.004, 0.0028, 0.03); lgPin(B, -0.078, -0.004, 0.0028, 0.03);                         // takedown and pivot pins
+    lgBox(B, 0.098, 0, 0.004, 0.003, 0.0145, 0.016, 0.001);                                              // the barrel nut's face
   }
-  // the lower receiver and its magazine well (flared at the bottom)
-  lgSide(B, [[-0.085, -0.009], [0.104, -0.009], [0.104, -0.02], [0.098, -0.062], [0.102, -0.068], [0.044, -0.068], [0.046, -0.044], [0.02, -0.046], [-0.058, -0.046], [-0.085, -0.03]], 0.0272, { bev: 0.0028 });
+  // the lower receiver and its magazine well (flared at the bottom, its front ribbed)
+  lgSide(B, [[-0.085, -0.009], [0.104, -0.009], [0.104, -0.02], [0.098, -0.062], [0.102, -0.068], [0.04, -0.068], [0.042, -0.046], [0.02, -0.046], [-0.058, -0.046], [-0.085, -0.03]], 0.0272, { bev: 0.0028, round: true });
   if (hi) {
     lgMat(B, M.metal); lgBox(B, 0.028, 0.0145, -0.017, 0.007, 0.0016, 0.0045, 0.0012);                  // the bolt catch (left)
     lgKnob(B, 0.032, -0.0137, -0.03, 0.0035, 0.0035, -1);                                                 // the magazine release (right)
     lgMat(B, M.gunBlk); lgPush(B, lgTR(-0.038, 0.0148, -0.024, Math.PI / 2, 0, 0)); lgSide(B, [[-0.002, -0.003], [0.016, -0.002], [0.017, 0.002], [-0.002, 0.003]], 0.0018, { bev: 0.0005 }); lgPop(B);   // the safety selector (left)
     lgPin(B, 0.0, -0.032, 0.0022, 0.029); lgPin(B, -0.02, -0.032, 0.0022, 0.029);                          // trigger and hammer pins
+    if (top) for (let i = 0; i < 4; i++) lgBox(B, 0.1015, 0, -0.032 - i * 0.008, 0.0012, 0.0125, 0.0018, 0.0005);   // the well's front grooves
+    lgBox(B, -0.07, 0, -0.04, 0.008, 0.0145, 0.004, 0.002);                                              // the buffer detent's boss
   }
-  lgMat(B, M.gunPoly); lgARGrip(B, -0.02, -0.044, 0.0285);
+  M.gunPoly.dk = M.gunPoly.dk || lgMtl({ c: '#141516', t: LT.poly, r: 0.78, w: 0.06, n: 1.0, k: 0.04 }); M.gunPoly.dk.dk = M.gunPoly.dk;
+  lgMat(B, M.gunPoly); B.M.dk = M.gunPoly.dk; lgARGrip(B, -0.02, -0.044, 0.0285);
   lgTrigger(B, M, -0.024, 0.044, -0.064, -0.046, { tx: 0.004 });
   // the quad-rail handguard and its delta ring, the barrel, the front sight base, the birdcage
   lgMat(B, M.gunBlk); lgBore(B, 0.1, 0.008, 0.024); lgBox(B, 0.195, 0, 0.004, 0.087, 0.0205, 0.0205, 0.006);
@@ -26625,88 +26789,121 @@ function lgGunM4(B, K) {
     lgRail(B, M, 0.11, 0.28, 0.026, 0.0105, hi, top);
     for (const s of [1, -1]) { lgMat(B, M.gunBlk); lgBox(B, 0.195, s * 0.0215, 0.004, 0.082, 0.0028, 0.0055, 0.001); if (top) { lgMat(B, M.poly); for (let i = 0; i < 12; i++) lgBox(B, 0.118 + i * 0.0142, s * 0.0244, 0.004, 0.0028, 0.0006, 0.0058, 0); } }
     lgMat(B, M.gunBlk); lgBox(B, 0.195, 0, -0.0175, 0.082, 0.0055, 0.0028, 0.001);
+    lgMat(B, M.visor); for (let i = 0; i < 6; i++) for (const s of [1, -1]) lgBox(B, 0.13 + i * 0.026, s * 0.0207, -0.009, 0.006, 0.0006, 0.0028, 0.0012);   // the vents along the bottom
+    lgMat(B, M.gunBlk); lgBore(B, 0.276, 0.01, 0.0215);                                                     // the handguard cap
   }
   lgMat(B, M.gunBlk); lgBore(B, 0.282, 0.145, [[0, 0.0078], [0.25, 0.0074], [1, 0.0072]]);
   lgBox(B, 0.31, 0, 0.014, 0.011, 0.0095, 0.018, 0.002);                                                  // the front sight base
   lgPush(B, lgTR(0.31, 0, 0.032, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.008, 0], [0.003, 0.018], [-0.003, 0.018]], 0.009, { bev: 0.001 }); lgPop(B);   // its A-frame
-  if (hi) { lgBox(B, 0.31, 0, 0.049, 0.0014, 0.0014, 0.004, 0); lgBox(B, 0.326, 0, -0.012, 0.004, 0.004, 0.006, 0.0015); }   // the post, the bayonet lug
+  if (hi) { lgBox(B, 0.31, 0, 0.049, 0.0014, 0.0014, 0.004, 0); lgBox(B, 0.326, 0, -0.012, 0.004, 0.004, 0.006, 0.0015); lgBox(B, 0.302, 0, -0.008, 0.0035, 0.008, 0.004, 0.0012); }   // the post, the bayonet lug, the sling swivel's boss
   lgBirdcage(B, 0.427, 0.042, 0.0108, top);
-  // the buffer tube and its castle nut, the six-position stock, the butt pad, the sling loop
+  // the buffer tube and its castle nut, the stock: a narrow body with the latch, the sling slot and the butt
   lgMat(B, M.gunBlk); lgBore(B, -0.088, 0.17, 0.0145, 0, 0.002, { up: false }); lgBore(B, -0.096, 0.008, 0.0175, 0, 0.002, { up: false });
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.33, -0.058], [-0.21, -0.03], [-0.198, -0.012], [-0.198, 0.022], [-0.33, 0.029], [-0.345, 0.022], [-0.345, -0.064]], 0.036, { bev: 0.005, smooth: 0.3 });
-  if (hi) { lgBox(B, -0.25, 0, -0.03, 0.012, 0.0185, 0.008, 0.003); lgMat(B, M.metal); lgTube(B, [[-0.31, 0.019, -0.04], [-0.3, 0.025, -0.05], [-0.29, 0.019, -0.04]], 0.0016, { segs: 4 }); }
-  lgMat(B, M.rubber); lgBox(B, -0.35, 0, -0.018, 0.006, 0.019, 0.047, 0.004);
+  if (top) { lgMat(B, M.metal); for (let i = 0; i < 6; i++) lgBox(B, -0.17 - i * 0.012, 0, -0.0125, 0.0022, 0.004, 0.0015, 0.0006); }   // the adjustment holes
+  lgMat(B, M.gunPoly); lgSide(B, [[-0.198, -0.015], [-0.198, 0.021], [-0.29, 0.026], [-0.338, 0.03], [-0.347, 0.025], [-0.347, -0.088], [-0.337, -0.096], [-0.31, -0.08], [-0.262, -0.048], [-0.218, -0.024]], 0.031, { bev: 0.006, smooth: 0.35, round: true });
+  if (hi) {
+    lgMat(B, M.gunPoly.dk); lgSide(B, [[-0.306, -0.058], [-0.29, -0.046], [-0.29, -0.034], [-0.322, -0.04], [-0.33, -0.056]], 0.0335, { bev: 0.0008 });   // the sling slot, through
+    lgMat(B, M.gunPoly); lgSide(B, [[-0.2, -0.018], [-0.24, -0.03], [-0.252, -0.04], [-0.232, -0.04], [-0.2, -0.03]], 0.012, { bev: 0.002 });           // the adjustment latch under it
+    lgMat(B, M.metal); lgTube(B, [[-0.31, 0.017, -0.076], [-0.3, 0.023, -0.088], [-0.29, 0.017, -0.076]], 0.0016, { segs: 4 });
+  }
+  lgMat(B, M.rubber); lgSide(B, [[-0.347, 0.025], [-0.353, 0.023], [-0.356, 0.0], [-0.356, -0.08], [-0.352, -0.094], [-0.347, -0.088]], 0.034, { bev: 0.003, round: true });
   // the charging handle, and the sight
   lgMat(B, M.gunBlk); lgBox(B, -0.092, 0, 0.017, 0.006, 0.017, 0.0035, 0.0015); if (hi) lgBox(B, -0.093, 0.016, 0.017, 0.004, 0.003, 0.004, 0.001);
   if (hi) lgHolo(B, M, 0.022, 0.03, hi); else { lgMat(B, M.gunBlk); lgBox(B, 0.022, 0, 0.045, 0.034, 0.016, 0.016, 0.004); }
-  // the magazine: a curved 30-rounder with its ribs, its base plate, the round at the lips
-  lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.07, -0.058, 0.172, 0.13, 0.034, 0.0215);
-  if (hi) { for (const s of [1, -1]) for (let i = 0; i < 3; i++) lgBox(B, 0.071 + i * 0.002, s * 0.011, -0.09 - i * 0.03, 0.012, 0.0008, 0.011, 0.001); lgMagTop(B, M, 0.07, -0.058, 0.034, 0.022); }
+  // the magazine: a curved 30-rounder (as deep as a 5.56 round is long), its ribs, its base plate, the round at the lips
+  lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.071, -0.05, 0.158, 0.2, 0.058, 0.0225, { ribs: [[0.22, 0.42], [0.5, 0.7], [0.76, 0.92]], ribF: -0.05 });
+  if (hi) lgMagTop(B, M, 0.07, -0.05, 0.05, 0.022);
 }
 function lgGunAK(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
-  // the stamped receiver and the ribbed dust cover, the rear trunnion rivets
-  lgMat(B, M.blued); lgSide(B, [[-0.07, -0.048], [0.2, -0.048], [0.21, -0.012], [0.2, 0.012], [-0.07, 0.012]], 0.029, { bev: 0.002 });
-  lgSide(B, [[-0.065, 0.012], [0.19, 0.012], [0.2, 0.024], [-0.05, 0.03], [-0.07, 0.022]], 0.027, { bev: 0.004, smooth: 0.6 });
-  if (top) { for (let i = 0; i < 9; i++) lgBox(B, -0.03 + i * 0.022, 0, 0.0285, 0.003, 0.0125, 0.0012, 0.001); for (const [x, z] of [[-0.05, -0.03], [-0.05, -0.01], [0.17, -0.03], [0.17, -0.012], [0.185, -0.02]]) for (const s of [1, -1]) lgSphere(B, x, s * 0.0148, z, 0.0022, 0.001, 0.0022, { segs: 6, rings: 3 }); }
+  // the stamped receiver and the ribbed dust cover, the rear trunnion rivets, the magazine catch behind the well
+  lgMat(B, M.blued); lgSide(B, [[-0.07, -0.046], [0.2, -0.046], [0.21, -0.012], [0.2, 0.012], [-0.07, 0.012]], 0.029, { bev: 0.0022, round: true });
+  lgSide(B, [[-0.065, 0.012], [0.19, 0.012], [0.2, 0.024], [-0.05, 0.03], [-0.07, 0.022]], 0.027, { bev: 0.004, smooth: 0.6, round: true });
+  if (top) { for (let i = 0; i < 9; i++) lgBox(B, -0.03 + i * 0.022, 0, 0.0285, 0.003, 0.0125, 0.0012, 0.001); for (const [x, z] of [[-0.05, -0.03], [-0.05, -0.01], [0.17, -0.03], [0.17, -0.012], [0.185, -0.02], [0.12, -0.038], [0.02, -0.038]]) for (const s of [1, -1]) lgSphere(B, x, s * 0.0148, z, 0.0022, 0.001, 0.0022, { segs: 6, rings: 3 }); }
+  if (hi) { lgMat(B, M.blued); lgSide(B, [[0.046, -0.046], [0.056, -0.046], [0.054, -0.06], [0.046, -0.062]], 0.012, { bev: 0.001 }); lgBox(B, 0.19, 0, -0.046, 0.012, 0.0125, 0.003, 0.001); }   // the catch, the front of the well
   // the big safety lever on the right, the charging handle on the carrier, the rear sight leaf, the side rail (left)
-  if (hi) { lgMat(B, M.blued); lgPush(B, lgTR(0, -0.0165, 0, 0, 0, 0)); lgSide(B, [[-0.03, 0.0], [0.16, -0.004], [0.16, -0.018], [0.0, -0.02], [-0.045, -0.008]], 0.003, { bev: 0.0006 }); lgPop(B); lgBox(B, 0.0, 0.016, -0.025, 0.05, 0.003, 0.01, 0.001); }
+  if (hi) { lgMat(B, M.blued); lgPush(B, lgTR(0, -0.0165, 0, 0, 0, 0)); lgSide(B, [[-0.03, 0.0], [0.16, -0.004], [0.16, -0.018], [0.0, -0.02], [-0.045, -0.008]], 0.003, { bev: 0.0006 }); lgPop(B); lgBox(B, 0.0, 0.016, -0.025, 0.05, 0.003, 0.01, 0.001); if (top) for (let i = 0; i < 8; i++) lgBox(B, -0.04 + i * 0.012, 0.019, -0.025, 0.002, 0.0008, 0.009, 0); }
   lgMat(B, M.blued); lgBox(B, 0.17, -0.026, 0.004, 0.006, 0.012, 0.005, 0.003); lgSphere(B, 0.17, -0.039, 0.004, 0.006, 0.004, 0.006, { segs: 8, rings: 4 });
-  lgBox(B, 0.215, 0, 0.03, 0.02, 0.012, 0.005, 0.002); if (hi) lgBox(B, 0.215, 0, 0.037, 0.014, 0.004, 0.002, 0.001);
-  // the polymer grip behind a short trigger guard; the magazine well's lip in front of it
-  lgMat(B, M.gunPoly); lgARGrip(B, 0.006, -0.048, 0.027, { k: 0.95 });
-  lgMat(B, M.blued); lgTrigger(B, M, 0.0, 0.056, -0.068, -0.05, { gm: M.blued, tx: 0.024 });
-  // the plum handguard (lower) with its vents, the gas tube with its upper handguard
-  lgMat(B, M.plum); lgBox(B, 0.315, 0, -0.006, 0.09, 0.02, 0.018, 0.008);
-  lgBox(B, 0.305, 0, 0.026, 0.085, 0.013, 0.011, 0.007);
-  if (hi) { lgMat(B, M.visor); for (let i = 0; i < 4; i++) for (const s of [1, -1]) lgBox(B, 0.265 + i * 0.03, s * 0.0205, -0.006, 0.006, 0.0005, 0.009, 0.002); lgMat(B, M.blued); lgBox(B, 0.225, 0, 0.01, 0.006, 0.022, 0.024, 0.002); lgBox(B, 0.405, 0, 0.01, 0.006, 0.021, 0.022, 0.002); }
-  // the barrel, the gas block, the front sight post, the two-chamber brake
-  lgMat(B, M.blued); lgBore(B, 0.2, 0.32, 0.0078); lgBox(B, 0.41, 0, 0.02, 0.012, 0.009, 0.016, 0.003);
-  lgBox(B, 0.49, 0, 0.016, 0.01, 0.008, 0.02, 0.002); if (hi) { lgBox(B, 0.49, 0, 0.04, 0.0025, 0.002, 0.01, 0.0008); }
+  lgBox(B, 0.215, 0, 0.03, 0.02, 0.012, 0.005, 0.002); if (hi) { lgBox(B, 0.215, 0, 0.037, 0.014, 0.004, 0.002, 0.001); lgBox(B, 0.228, 0, 0.034, 0.003, 0.009, 0.006, 0.001); }
+  // the slender polymer grip behind a short trigger guard
+  M.plum.dk = M.plum.dk || lgMtl({ c: '#43201a', t: LT.poly, r: 0.6, w: 0.12, n: 0.8, k: 0.05 });
+  M.gunPoly.dk = M.gunPoly.dk || lgMtl({ c: '#141516', t: LT.poly, r: 0.78, w: 0.06, n: 1.0, k: 0.04 });
+  lgMat(B, M.gunPoly); B.M.dk = M.gunPoly.dk; lgARGrip(B, 0.004, -0.046, 0.026, { ak: true });
+  lgMat(B, M.blued); lgTrigger(B, M, 0.0, 0.056, -0.066, -0.048, { gm: M.blued, tx: 0.024 });
+  // the plum handguard (lower) with its ribs and vents, the gas tube with its upper handguard
+  lgMat(B, M.plum); lgSide(B, [[0.228, -0.026], [0.4, -0.026], [0.404, -0.018], [0.404, 0.008], [0.4, 0.012], [0.228, 0.012], [0.224, 0.004], [0.224, -0.018]], 0.04, { bev: 0.008, round: true });
+  lgSide(B, [[0.228, 0.017], [0.39, 0.017], [0.394, 0.024], [0.388, 0.036], [0.234, 0.036], [0.226, 0.026]], 0.026, { bev: 0.007, round: true });
+  if (hi) {
+    lgMat(B, M.plum.dk); for (let i = 0; i < 4; i++) for (const s of [1, -1]) lgBox(B, 0.265 + i * 0.03, s * 0.0202, -0.007, 0.006, 0.0006, 0.009, 0.002);
+    if (top) { lgMat(B, M.plum); for (let i = 0; i < 6; i++) lgBox(B, 0.242 + i * 0.028, 0, -0.0268, 0.0018, 0.016, 0.0012, 0.0005); }   // the ribs underneath
+    lgMat(B, M.blued); lgBox(B, 0.224, 0, 0.01, 0.005, 0.0215, 0.026, 0.002); lgBox(B, 0.408, 0, 0.01, 0.006, 0.021, 0.022, 0.002);
+    lgBore(B, 0.39, 0.02, 0.0072, 0, 0.026);   // the gas tube's end showing
+  }
+  // the barrel, the gas block, the front sight block and its post with the ears, the two-chamber brake
+  lgMat(B, M.blued); lgBore(B, 0.2, 0.32, 0.0078); lgBox(B, 0.415, 0, 0.018, 0.012, 0.009, 0.018, 0.003);
+  lgPush(B, lgTR(0.49, 0, 0.0, 0, 0, 0)); lgSide(B, [[-0.012, -0.012], [0.012, -0.012], [0.012, 0.024], [0.004, 0.036], [-0.004, 0.036], [-0.012, 0.024]], 0.017, { bev: 0.002, round: true }); lgPop(B);
+  if (hi) { lgBox(B, 0.49, 0, 0.042, 0.0022, 0.002, 0.008, 0.0008); for (const s of [1, -1]) lgBox(B, 0.49, s * 0.006, 0.042, 0.003, 0.0015, 0.008, 0.001); lgBox(B, 0.5, 0, -0.018, 0.008, 0.006, 0.006, 0.002); }
   lgBore(B, 0.52, 0.065, [[0, 0.0115], [0.35, 0.0125], [0.4, 0.0105], [0.55, 0.0125], [1, 0.0118]], 0, 0, { wr: hi ? (a, z) => (z > 0.02 && z < 0.06 && Math.abs(Math.sin(a)) > 0.92 ? -0.3 : 0) : null });
-  // the side-folding stock, unfolded, its cheek and the sling loop
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.07, -0.038], [-0.07, 0.018], [-0.32, 0.01], [-0.335, -0.004], [-0.335, -0.09], [-0.31, -0.095], [-0.2, -0.052]], 0.03, { bev: 0.005, smooth: 0.4 });
-  if (hi) { lgMat(B, M.blued); lgTube(B, [[-0.3, 0.016, -0.075], [-0.29, 0.022, -0.085], [-0.28, 0.016, -0.075]], 0.0016, { segs: 4 }); }
-  lgMat(B, M.rubber); lgBox(B, -0.34, 0, -0.04, 0.005, 0.016, 0.052, 0.003);
+  // the side-folding stock, unfolded: the skeleton polymer stock with its cheek, the hinge and the sling loop
+  lgMat(B, M.gunPoly); lgSide(B, [[-0.07, -0.036], [-0.07, 0.016], [-0.31, 0.008], [-0.332, 0.003], [-0.336, -0.006], [-0.336, -0.112], [-0.328, -0.12], [-0.31, -0.112], [-0.2, -0.058], [-0.1, -0.04]], 0.027, { bev: 0.006, smooth: 0.4, round: true });
+  if (hi) {
+    lgMat(B, M.gunPoly.dk); lgSide(B, [[-0.12, -0.022], [-0.29, -0.012], [-0.3, -0.03], [-0.29, -0.074], [-0.22, -0.046]], 0.0285, { bev: 0.0015 });   // the cut-out through the stock (darker: you see the other side's wall)
+    lgMat(B, M.blued); lgBox(B, -0.07, 0, -0.01, 0.006, 0.0155, 0.024, 0.002); lgTube(B, [[-0.3, 0.015, -0.1], [-0.29, 0.021, -0.11], [-0.28, 0.015, -0.1]], 0.0016, { segs: 4 });
+  }
+  lgMat(B, M.rubber); lgBox(B, -0.341, 0, -0.058, 0.005, 0.0155, 0.06, 0.003);
   if (hi) lgHolo(B, M, 0.06, 0.03, hi);
-  lgBone(B, 'cmag'); lgMat(B, M.plum); lgCurvedMag(B, 0.085, -0.048, 0.19, 0.32, 0.036, 0.024);
-  if (hi) { lgMat(B, M.plum); lgBox(B, 0.087, 0, -0.053, 0.02, 0.0135, 0.006, 0.002); for (const s of [1, -1]) lgBox(B, 0.095, s * 0.0125, -0.12, 0.012, 0.0008, 0.03, 0.001); lgMagTop(B, M, 0.084, -0.048, 0.034, 0.022); }
+  // the 30-round magazine in plum polymer: deep and strongly curved, the lug at its back, the reinforced lips
+  lgBone(B, 'cmag'); lgMat(B, M.plum); lgCurvedMag(B, 0.085, -0.046, 0.188, 0.4, 0.054, 0.024, { flare: 0.08, ribs: [[0.1, 0.9]], ribF: 0.32 });
+  if (hi) { lgMat(B, M.plum); lgBox(B, 0.087, 0, -0.052, 0.03, 0.0135, 0.006, 0.002); lgBox(B, 0.055, 0, -0.05, 0.004, 0.01, 0.006, 0.0015); lgMagTop(B, M, 0.084, -0.046, 0.046, 0.022); }
 }
 function lgGunMk17(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
-  // the monolithic upper, a rail its whole length, the side rails, the reciprocating charging handle on the left
-  lgMat(B, M.fde); lgSide(B, [[-0.12, -0.014], [0.37, -0.014], [0.37, 0.02], [-0.12, 0.02]], 0.034, { bev: 0.004 });
+  // the monolithic upper (its front stepping down to the barrel), a rail its whole length, the side rails, the
+  // reciprocating charging handle on the left
+  lgMat(B, M.fde); lgSide(B, [[-0.12, -0.014], [0.3, -0.014], [0.34, -0.012], [0.37, -0.008], [0.37, 0.016], [0.36, 0.02], [-0.12, 0.02]], 0.034, { bev: 0.004, round: true });
   lgRail(B, M, -0.115, 0.36, 0.024, 0.011, hi, top);
-  if (hi) { for (const s of [1, -1]) { lgMat(B, M.gunBlk); lgBox(B, 0.27, s * 0.0185, 0.0, 0.09, 0.0028, 0.006, 0.001); } lgMat(B, M.visor); lgBox(B, 0.06, -0.0172, 0.004, 0.026, 0.0008, 0.007, 0.001); }
+  if (hi) {
+    for (const s of [1, -1]) { lgMat(B, M.gunBlk); lgBox(B, 0.29, s * 0.0185, 0.002, 0.07, 0.0028, 0.006, 0.001); if (top) { lgMat(B, M.poly); for (let i = 0; i < 9; i++) lgBox(B, 0.226 + i * 0.016, s * 0.0215, 0.002, 0.003, 0.0006, 0.0062, 0); } }
+    lgMat(B, M.visor); lgBox(B, 0.06, -0.0172, 0.004, 0.026, 0.0008, 0.007, 0.001); lgMat(B, M.brass); lgBox(B, 0.062, -0.0166, 0.004, 0.012, 0.0006, 0.004, 0.001);
+    lgMat(B, M.fdeDk); for (let i = 0; i < 3; i++) for (const s of [1, -1]) lgBox(B, 0.19 + i * 0.02, s * 0.0172, -0.004, 0.006, 0.0006, 0.004, 0.0015);   // the vents in the upper
+  }
   lgMat(B, M.gunBlk); lgBox(B, 0.15, 0.024, 0.008, 0.008, 0.008, 0.005, 0.003); lgKnob(B, 0.15, 0.03, 0.008, 0.004, 0.006, 1);
   // the lower: magazine well, the raked grip behind a full trigger guard, the ambidextrous safety
-  lgMat(B, M.fde); lgSide(B, [[-0.09, -0.014], [0.1, -0.014], [0.1, -0.024], [0.094, -0.06], [0.098, -0.066], [0.024, -0.066], [0.026, -0.05], [0.0, -0.052], [-0.06, -0.052], [-0.09, -0.032]], 0.03, { bev: 0.004 });
-  if (hi) { lgMat(B, M.gunBlk); for (const s of [1, -1]) lgBox(B, -0.04, s * 0.0158, -0.03, 0.008, 0.0015, 0.003, 0.001); lgPin(B, 0.07, -0.01, 0.0028, 0.034); }
-  lgMat(B, M.fdeDk); lgARGrip(B, -0.026, -0.05, 0.029);
+  lgMat(B, M.fde); lgSide(B, [[-0.09, -0.014], [0.106, -0.014], [0.106, -0.024], [0.1, -0.06], [0.104, -0.066], [0.022, -0.066], [0.024, -0.05], [0.0, -0.052], [-0.06, -0.052], [-0.09, -0.032]], 0.03, { bev: 0.004, round: true });
+  if (hi) { lgMat(B, M.gunBlk); for (const s of [1, -1]) lgBox(B, -0.04, s * 0.0158, -0.03, 0.008, 0.0015, 0.003, 0.001); lgPin(B, 0.07, -0.01, 0.0028, 0.034); lgKnob(B, 0.03, -0.015, -0.036, 0.0035, 0.004, -1); }
+  M.fdeDk.dk = M.fdeDk.dk || lgMtl({ c: '#5a503c', t: LT.poly, r: 0.75, w: 0.08, n: 0.9, k: 0.05 });
+  lgMat(B, M.fdeDk); B.M.dk = M.fdeDk.dk; lgARGrip(B, -0.026, -0.05, 0.029);
   lgTrigger(B, M, -0.03, 0.022, -0.07, -0.052, { gm: M.fdeDk, tx: -0.002 });
-  // the barrel and the flash hider, the gas block
+  // the barrel and the flash hider, the gas block with its regulator, the folded-down front sight
   lgMat(B, M.gunBlk); lgBore(B, 0.37, 0.15, 0.0095); lgBox(B, 0.4, 0, 0.0, 0.01, 0.012, 0.012, 0.003);
+  if (hi) { lgBore(B, 0.392, 0.016, 0.0055, 0, -0.016); lgBox(B, 0.355, 0, 0.032, 0.012, 0.007, 0.004, 0.0015); }
   lgBore(B, 0.52, 0.06, [[0, 0.012], [1, 0.0115]], 0, 0, { wr: top ? (a, z) => (Math.sin(a * 5) > 0.5 && z > 0.015 ? -0.3 : 0) : null });
-  // the folding stock with its cheek riser and the hinge
-  lgMat(B, M.fde); lgSide(B, [[-0.12, -0.036], [-0.12, 0.018], [-0.3, 0.03], [-0.36, 0.034], [-0.37, 0.02], [-0.37, -0.075], [-0.34, -0.08], [-0.22, -0.04]], 0.034, { bev: 0.005, smooth: 0.4 });
-  if (hi) { lgMat(B, M.fdeDk); lgBox(B, -0.29, 0, 0.034, 0.05, 0.016, 0.006, 0.004); lgMat(B, M.gunBlk); lgBore(B, -0.12, 0.012, 0.012, 0, -0.01, { up: false }); }
-  lgMat(B, M.rubber); lgBox(B, -0.375, 0, -0.022, 0.006, 0.019, 0.05, 0.004);
+  // the folding stock: the hinge, the open skeleton with its cheek riser, the butt
+  lgMat(B, M.fde); lgSide(B, [[-0.12, -0.036], [-0.12, 0.018], [-0.3, 0.028], [-0.36, 0.032], [-0.372, 0.02], [-0.372, -0.078], [-0.346, -0.084], [-0.22, -0.042]], 0.033, { bev: 0.005, smooth: 0.4, round: true });
+  if (hi) {
+    lgMat(B, M.fdeDk.dk); lgSide(B, [[-0.16, -0.022], [-0.33, -0.008], [-0.345, -0.024], [-0.345, -0.062], [-0.25, -0.036]], 0.0345, { bev: 0.0012 });   // the skeleton's window
+    lgMat(B, M.fdeDk); lgSide(B, [[-0.245, 0.028], [-0.34, 0.034], [-0.345, 0.044], [-0.25, 0.04]], 0.03, { bev: 0.003, round: true });               // the cheek riser
+    lgMat(B, M.gunBlk); lgBore(B, -0.12, 0.012, 0.012, 0, -0.01, { up: false }); lgBox(B, -0.128, 0, -0.03, 0.006, 0.018, 0.006, 0.002);
+  }
+  lgMat(B, M.rubber); lgBox(B, -0.377, 0, -0.024, 0.006, 0.019, 0.052, 0.004);
   if (hi) lgHolo(B, M, 0.04, 0.028, hi); else { lgMat(B, M.gunBlk); lgBox(B, 0.04, 0, 0.045, 0.032, 0.016, 0.016, 0.004); }
-  lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.06, -0.06, 0.138, 0.05, 0.04, 0.026);
-  if (hi) { for (const s of [1, -1]) lgBox(B, 0.062, s * 0.0135, -0.12, 0.014, 0.0008, 0.035, 0.001); lgMagTop(B, M, 0.06, -0.06, 0.04, 0.026); }
+  // the 20-round 7.62 magazine: deep, nearly straight, its ribbed sides and the witness holes
+  lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.063, -0.058, 0.136, 0.06, 0.07, 0.0265, { ribs: [[0.2, 0.85]], ribF: 0.36 });
+  if (hi) { if (top) { lgMat(B, M.visor); for (let i = 0; i < 4; i++) for (const s of [1, -1]) lgBox(B, 0.044, s * 0.0137, -0.085 - i * 0.022, 0.0035, 0.0005, 0.0035, 0.001); } lgMagTop(B, M, 0.06, -0.058, 0.06, 0.026); }
 }
 function lgGunM1014(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
   // the receiver with the loading port underneath and the charging handle on the right, its rail
-  lgMat(B, M.gunBlk); lgSide(B, [[-0.08, -0.036], [0.19, -0.036], [0.2, -0.004], [0.19, 0.022], [-0.07, 0.024], [-0.08, 0.01]], 0.032, { bev: 0.004 });
+  lgMat(B, M.gunBlk); lgSide(B, [[-0.08, -0.036], [0.19, -0.036], [0.2, -0.004], [0.19, 0.022], [-0.07, 0.024], [-0.08, 0.01]], 0.032, { bev: 0.004, round: true });
   lgRail(B, M, -0.06, 0.16, 0.027, 0.011, hi, top);
   lgBox(B, 0.08, -0.024, 0.0, 0.007, 0.009, 0.006, 0.003); lgKnob(B, 0.08, -0.03, 0.0, 0.004, 0.006, -1);
   if (hi) { lgMat(B, M.visor); lgBox(B, 0.105, 0, -0.036, 0.04, 0.012, 0.0008, 0.002); lgMat(B, M.shellRed); lgBox(B, 0.115, 0, -0.035, 0.03, 0.009, 0.0008, 0.001); lgMat(B, M.metal); lgBox(B, 0.07, 0.0168, -0.01, 0.01, 0.0015, 0.004, 0.001); lgPin(B, -0.06, -0.02, 0.0028, 0.033); lgPin(B, 0.0, -0.02, 0.0028, 0.033); }
   // the raked grip behind its guard
-  lgMat(B, M.gunPoly); lgARGrip(B, -0.016, -0.036, 0.029);
+  M.gunPoly.dk = M.gunPoly.dk || lgMtl({ c: '#141516', t: LT.poly, r: 0.78, w: 0.06, n: 1.0, k: 0.04 });
+  lgMat(B, M.gunPoly); B.M.dk = M.gunPoly.dk; lgARGrip(B, -0.016, -0.036, 0.029);
   lgTrigger(B, M, -0.02, 0.05, -0.058, -0.038, { tx: 0.008 });
   // the barrel above, the magazine tube below with its cap and the forend over it
   lgMat(B, M.gunBlk); lgBore(B, 0.2, 0.42, [[0, 0.0105], [1, 0.0098]], 0, 0.006);
@@ -26718,7 +26915,8 @@ function lgGunM1014(B, K) {
   lgBox(B, 0.6, 0, 0.022, 0.006, 0.006, 0.014, 0.002); if (hi) { lgMat(B, M.glow); lgSphere(B, 0.6, 0, 0.037, 0.0016, 0.0016, 0.0016, { segs: 5, rings: 3 }); }
   // the collapsible stock and its pad
   lgMat(B, M.gunBlk); lgBore(B, -0.08, 0.17, 0.0135, 0, 0.0, { up: false });
-  lgMat(B, M.gunPoly); lgSide(B, [[-0.33, -0.064], [-0.2, -0.03], [-0.19, 0.022], [-0.33, 0.026], [-0.345, 0.018], [-0.345, -0.068]], 0.038, { bev: 0.005 });
+  lgMat(B, M.gunPoly); lgSide(B, [[-0.33, -0.07], [-0.2, -0.03], [-0.19, 0.022], [-0.33, 0.028], [-0.345, 0.022], [-0.345, -0.074]], 0.036, { bev: 0.006, round: true });
+  if (hi) { lgMat(B, M.gunPoly.dk); lgSide(B, [[-0.31, -0.05], [-0.23, -0.026], [-0.23, 0.006], [-0.31, 0.01]], 0.0375, { bev: 0.0012 }); }   // the stock's open frame
   lgMat(B, M.rubber); lgBox(B, -0.352, 0, -0.022, 0.007, 0.02, 0.05, 0.004);
   // the "magazine" bone carries a shell (the one going in, and the port load)
   lgBone(B, 'cmag'); lgMat(B, M.shellRed); lgBore(B, 0.05, 0.05, 0.0105, 0, -0.06); lgMat(B, M.brass); lgBore(B, 0.04, 0.012, 0.0112, 0, -0.06);
@@ -26726,12 +26924,13 @@ function lgGunM1014(B, K) {
 function lgGunPP19(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'carbine');
-  lgMat(B, M.blued); lgSide(B, [[-0.07, -0.038], [0.17, -0.038], [0.18, -0.01], [0.17, 0.012], [-0.07, 0.012]], 0.028, { bev: 0.002 });
+  lgMat(B, M.blued); lgSide(B, [[-0.07, -0.038], [0.17, -0.038], [0.18, -0.01], [0.17, 0.012], [-0.07, 0.012]], 0.028, { bev: 0.0022, round: true });
   lgSide(B, [[-0.065, 0.012], [0.16, 0.012], [0.17, 0.022], [-0.05, 0.028], [-0.07, 0.02]], 0.026, { bev: 0.004, smooth: 0.6 });
   if (top) for (const [x, z] of [[-0.05, -0.025], [0.15, -0.025], [0.15, -0.008]]) for (const s of [1, -1]) lgSphere(B, x, s * 0.0143, z, 0.0021, 0.001, 0.0021, { segs: 6, rings: 3 });
   lgBox(B, 0.14, -0.024, 0.004, 0.006, 0.011, 0.005, 0.003);
   if (hi) { lgPush(B, lgTR(0, -0.0155, 0, 0, 0, 0)); lgSide(B, [[-0.02, 0.0], [0.13, -0.004], [0.13, -0.016], [0.0, -0.018], [-0.03, -0.008]], 0.003, { bev: 0.0006 }); lgPop(B); }
-  lgMat(B, M.gunPoly); lgARGrip(B, 0.0, -0.038, 0.027, { k: 0.95 });
+  M.gunPoly.dk = M.gunPoly.dk || lgMtl({ c: '#141516', t: LT.poly, r: 0.78, w: 0.06, n: 1.0, k: 0.04 });
+  lgMat(B, M.gunPoly); B.M.dk = M.gunPoly.dk; lgARGrip(B, 0.0, -0.038, 0.026, { ak: true });
   lgMat(B, M.blued); lgTrigger(B, M, -0.004, 0.05, -0.06, -0.04, { gm: M.blued, tx: 0.02 });
   // the short barrel and the slant brake, the front sight
   lgBore(B, 0.18, 0.15, 0.0078); lgBore(B, 0.33, 0.035, [[0, 0.011], [1, 0.0105]]);
@@ -26748,64 +26947,112 @@ function lgGunPP19(B, K) {
 }
 /* ---------- handguns (pistol, slide, mag bones) ---------- */
 // a polymer-framed striker pistol (M17) or a hammer gun (M9, 1911, APS): slide, frame, grip, trigger guard, magazine
+// 1.9.994: rebuilt on the real guns' proportions: a slide a full inch wide and as tall as the real one, serrations front
+// and back, the ejection port with the barrel hood in it, sights with their dots; the frame's dust cover and rail, a
+// squared trigger guard, and a grip raked at its real angle (about 18 degrees), as deep as a hand, with its beavertail,
+// its texture and its panels; the magazine's base plate under it
 function lgPistolFrame(B, M, o) {
-  const hi = B.lod < 2, top = B.lod === 0, L = o.L, sm = o.slideM, fm = o.frameM, gm = o.gripM || fm, h = o.h || 0.0168, ga = o.ga || 0;
+  const hi = B.lod < 2, top = B.lod === 0, L = o.L, sm = o.slideM, fm = o.frameM, gm = o.gripM || fm, h = o.h || 0.019, sw = o.w || 0.0256;
+  const ga = o.rake == null ? 0.31 : o.rake, gd = o.gd || 0.047, gl = o.gl || 0.098, gw = o.gw || 0.03, ca = Math.cos(ga), sa = Math.sin(ga);
+  // the grip's frame: down its axis from the top of the front strap; n points back and up across it
+  const F0 = [0.046, -0.03], dn = [-sa, -ca], nb = [-ca, sa], at = (u, v) => [F0[0] + dn[0] * u + nb[0] * v, F0[1] + dn[1] * u + nb[1] * v];
   lgBone(B, 'slide'); lgMat(B, sm);
+  const nose = o.nose == null ? 0.006 : o.nose;
   if (o.open) {   // the M9's open-top slide: the barrel shows between the slide's front and its rear
-    lgSide(B, [[0.0, -0.01], [L, -0.01], [L + 0.002, -0.006], [L + 0.002, 0.012], [L - 0.006, h], [L * 0.62, h], [L * 0.6, 0.004], [L * 0.32, 0.004], [L * 0.3, h], [0.006, h], [0.0, 0.012]], o.w || 0.026, { bev: 0.0022 });
+    lgSide(B, [[0.0, -0.012], [L, -0.012], [L + 0.002, -0.007], [L + 0.002, 0.011], [L - nose, h], [L * 0.62, h], [L * 0.6, 0.004], [L * 0.32, 0.004], [L * 0.3, h], [0.005, h], [0.0, h - 0.004]], sw, { bev: 0.0026, round: true });
     lgMat(B, M.steel); lgBore(B, L * 0.3, L * 0.32, 0.0085, 0, 0.006);
-  } else lgSide(B, [[0.0, -0.01], [L, -0.01], [L + 0.002, -0.006], [L + 0.002, 0.01], [L - 0.007, h], [0.006, h], [0.0, 0.012]], o.w || 0.0262, { bev: 0.0022 });
+  } else lgSide(B, [[0.0, -0.012], [L, -0.012], [L + 0.002, -0.007], [L + 0.002, 0.009], [L - nose, h], [0.005, h], [0.0, h - 0.004]], sw, { bev: 0.0026, round: true });
   if (hi) {
-    lgMat(B, M.visor); lgBox(B, L * 0.46, -0.0132, 0.006, 0.019, 0.0006, 0.0058, 0.001);
-    lgMat(B, sm); for (let i = 0; i < (top ? 7 : 3); i++) for (const y of [0.0133, -0.0133]) lgBox(B, 0.01 + i * (top ? 0.0042 : 0.009), y, 0.004, 0.0011, 0.0004, 0.0095, 0);
-    if (o.front) for (let i = 0; i < (top ? 5 : 2); i++) for (const y of [0.0133, -0.0133]) lgBox(B, L - 0.035 + i * 0.005, y, 0.004, 0.0011, 0.0004, 0.0095, 0);
-    lgMat(B, M.gunBlk); lgBox(B, L - 0.006, 0, h + 0.0025, 0.003, 0.0018, 0.0028, 0.001); lgBox(B, 0.01, 0, h + 0.0025, 0.004, 0.006, 0.003, 0.001);
-    if (o.optic) { lgMat(B, M.gunBlk); lgBox(B, 0.05, 0, h + 0.0028, 0.022, 0.0125, 0.003, 0.0015); lgBox(B, 0.032, 0, h + 0.015, 0.003, 0.0125, 0.011, 0.002); lgBox(B, 0.068, 0, h + 0.017, 0.004, 0.0135, 0.013, 0.003); lgMat(B, M.lens); lgBox(B, 0.066, 0, h + 0.017, 0.0008, 0.011, 0.011, 0); lgMat(B, M.glow); lgSphere(B, 0.0655, 0, h + 0.018, 0.0012, 0.0012, 0.0012, { segs: 5, rings: 3 }); }
-    if (o.decock) { lgMat(B, M.blued); for (const s of [1, -1]) lgBox(B, 0.012, s * 0.0145, 0.008, 0.006, 0.002, 0.004, 0.0015); }
+    // the ejection port (right), the barrel's hood showing in it, the extractor
+    lgMat(B, M.visor); lgBox(B, L * 0.45, -sw / 2 - 0.0002, 0.006, 0.019, 0.0006, 0.0062, 0.001);
+    lgMat(B, M.steel); lgBox(B, L * 0.45, 0, h - 0.0012, 0.018, 0.0062, 0.0016, 0.0008); lgBox(B, L * 0.45, -sw / 2 + 0.0035, 0.007, 0.016, 0.003, 0.0045, 0.001);
+    lgMat(B, sm); lgBox(B, L * 0.32, -sw / 2 - 0.0004, 0.006, 0.008, 0.0008, 0.0018, 0.0006);
+    // the serrations: deep cuts at the back (and the front on a modern slide), both sides
+    lgMat(B, o.serM || M.gunBlk); const nr = top ? 8 : 3, nf = o.front ? (top ? 6 : 2) : 0;
+    for (let i = 0; i < nr; i++) for (const s of [1, -1]) lgBox(B, 0.008 + i * (top ? 0.0042 : 0.01), s * (sw / 2 + 0.0001), 0.004, 0.0011, 0.0005, 0.011, 0);
+    for (let i = 0; i < nf; i++) for (const s of [1, -1]) lgBox(B, L - 0.038 + i * (top ? 0.0042 : 0.012), s * (sw / 2 + 0.0001), 0.004, 0.0011, 0.0005, 0.011, 0);
+    // the sights: a rear sight with its notch, the front post, their dots
+    lgMat(B, M.gunBlk); for (const s of [1, -1]) lgBox(B, 0.011, s * 0.0058, h + 0.0034, 0.0045, 0.0034, 0.0034, 0.0012);
+    lgBox(B, 0.011, 0, h + 0.0012, 0.0045, 0.0092, 0.0012, 0.0008); lgBox(B, L - 0.008, 0, h + 0.003, 0.003, 0.0018, 0.003, 0.001);
+    if (top) { lgMat(B, M.glow); for (const s of [1, -1]) lgBox(B, 0.0068, s * 0.0058, h + 0.0045, 0.0003, 0.0012, 0.0012, 0); lgBox(B, L - 0.011, 0, h + 0.0045, 0.0003, 0.0012, 0.0012, 0); }
+    if (o.optic) {   // a red dot cut into the slide: its housing, the window, the dot
+      lgMat(B, M.gunBlk); lgPush(B, lgTR(0, 0, h, 0, 0, 0));
+      lgSide(B, [[0.026, 0], [0.07, 0], [0.069, 0.007], [0.062, 0.021], [0.036, 0.022], [0.03, 0.012], [0.026, 0.006]], 0.023, { bev: 0.0022, round: true });
+      lgMat(B, M.lens); lgSide(B, [[0.038, 0.007], [0.06, 0.007], [0.058, 0.018], [0.04, 0.019]], 0.0235, { bev: 0 });
+      lgMat(B, M.glow); lgSphere(B, 0.049, 0, 0.012, 0.0012, 0.0012, 0.0012, { segs: 5, rings: 3 });
+      lgMat(B, M.rubber); lgBox(B, 0.066, 0.0118, 0.006, 0.0025, 0.0008, 0.0025, 0.0008); lgPop(B);
+    }
+    if (o.decock) { lgMat(B, M.blued); for (const s of [1, -1]) { lgBox(B, 0.014, s * (sw / 2 + 0.002), 0.009, 0.007, 0.002, 0.0042, 0.0015); lgBox(B, 0.01, s * (sw / 2 + 0.003), 0.012, 0.003, 0.0016, 0.004, 0.001); } }
   }
   lgBone(B, 'pistol');
-  lgMat(B, M.steel); lgBore(B, L, o.bx || 0.012, 0.0068);
-  // frame / dust cover, then the grip at its angle
-  lgMat(B, fm); lgSide(B, [[0.05, -0.024], [L - 0.004, -0.024], [L - 0.002, -0.01], [0.05, -0.01]], 0.0242, { bev: 0.002 });
-  const c = Math.cos(ga), s = Math.sin(ga), rot = (x, z) => [0.03 + (x - 0.03) * c + (z + 0.03) * s, -0.03 + (z + 0.03) * c - (x - 0.03) * s];
-  const G = o.grip || [[0.035, -0.024], [0.06, -0.024], [0.044, -0.055], [0.034, -0.08], [0.024, -0.124], [-0.012, -0.129], [-0.028, -0.03], [-0.036, -0.014], [0.0, -0.01]];
-  lgMat(B, gm); lgSide(B, G.map(p => rot(p[0], p[1])), o.gw || 0.03, { bev: 0.0045, smooth: 0.5 });
-  if (o.panels && hi) { lgMat(B, o.panels); lgSide(B, G.slice(2, 6).concat([[0.0, -0.04], [0.02, -0.035]]).map(p => rot(p[0], p[1])), (o.gw || 0.03) + 0.003, { bev: 0.002 }); }
-  lgMat(B, fm); lgTube(B, [[0.06, 0, -0.024], [0.084, 0, -0.03], [0.088, 0, -0.045], [0.074, 0, -0.053], [0.05, 0, -0.051], [0.042, 0, -0.046]], 0.0028, { segs: 5, flat: 2.4, up: [0, 1, 0] });
-  lgMat(B, M.metal); lgTube(B, [[0.062, 0, -0.026], [0.066, 0, -0.035], [0.064, 0, -0.045]], 0.0028, { segs: 4, flat: 0.6, up: [0, 1, 0] });
-  if (o.hammer) { lgMat(B, M.blued); lgSide(B, [[-0.004, 0.004], [0.004, 0.006], [0.0, 0.02], [-0.012, 0.022], [-0.014, 0.016]], 0.006, { bev: 0.001 }); }
-  if (o.beaver && hi) { lgMat(B, fm); lgSide(B, [[-0.03, -0.01], [-0.005, -0.012], [-0.012, -0.03], [-0.038, -0.02]].map(p => rot(p[0], p[1])), 0.022, { bev: 0.002 }); }
-  if (o.light) { lgMat(B, M.gunBlk); lgBox(B, L - 0.042, 0, -0.035, 0.032, 0.0135, 0.012, 0.005); lgPush(B, lgTR(L - 0.008, 0, -0.035, 0, Math.PI / 2, 0)); lgLimb(B, 0.006, [[0, 0.012], [1, 0.012]], { up: true, segs: 12, capE: false }); lgMat(B, M.lens); lgSphere(B, 0, 0, 0.007, 0.0105, 0.0105, 0.002, { segs: 10, rings: 3 }); lgPop(B); }
+  lgMat(B, M.steel); lgBore(B, L, o.bx || 0.003, 0.0068);
+  if (hi) { lgMat(B, M.gunBlk); lgBore(B, L + 0.0005, 0.0026, 0.0045); }   // the bore's dark mouth
+  // the frame: the dust cover under the slide's front (its rail, its light), the frame rails along the slide
+  lgMat(B, fm); lgSide(B, [[0.048, -0.026], [L - 0.004, -0.026], [L - 0.001, -0.016], [L - 0.003, -0.012], [0.048, -0.012]], sw - 0.0008, { bev: 0.002, round: true });
+  lgSide(B, [[-0.002, -0.012], [0.05, -0.012], [0.05, -0.02], [0.0, -0.02]], sw - 0.002, { bev: 0.0015 });
+  if (hi && !o.light && !o.nor) { lgMat(B, fm); for (let i = 0; i < 3; i++) lgBox(B, L - 0.06 + i * 0.016, 0, -0.0275, 0.004, sw / 2 - 0.002, 0.0015, 0.0005); }
+  // the trigger guard (squared, the front of it hooked), the trigger with its safety blade, the slide stop and the takedown
+  lgMat(B, fm); const tg = o.round ? [[0.05, -0.026], [0.074, -0.028], [0.088, -0.036], [0.088, -0.048], [0.078, -0.055], [0.056, -0.054], [0.044, -0.046]]
+    : [[0.05, -0.026], [0.086, -0.028], [0.092, -0.034], [0.09, -0.05], [0.084, -0.055], [0.056, -0.054], [0.044, -0.046]];
+  lgTube(B, tg, 0.003, { segs: 6, flat: 2.6, up: [0, 1, 0] });
+  lgMat(B, o.trigM || M.metal); lgTube(B, [[0.063, 0, -0.026], [0.068, 0, -0.035], [0.067, 0, -0.043], [0.062, 0, -0.048]], 0.0026, { segs: 5, flat: 1.6, up: [0, 1, 0] });
+  if (hi) {
+    lgMat(B, o.ctlM || M.blued); lgBox(B, 0.06, sw / 2 + 0.0006, -0.016, 0.012, 0.0012, 0.0032, 0.001); lgBox(B, 0.07, sw / 2 + 0.0008, -0.014, 0.0035, 0.0015, 0.0035, 0.001);   // the slide stop (left)
+    lgMat(B, fm); lgKnob(B, 0.044, -sw / 2 + 0.0004, -0.04, 0.0042, 0.003, -1);   // the magazine release
+  }
+  if (o.hammer) { lgMat(B, M.blued); lgSide(B, [[-0.004, 0.002], [0.004, 0.006], [0.0, 0.022], [-0.008, 0.026], [-0.016, 0.024], [-0.016, 0.018], [-0.008, 0.014]], 0.0065, { bev: 0.0012, round: true }); }
+  if (o.safety && hi) { lgMat(B, M.blued); lgBox(B, 0.012, sw / 2 + 0.0015, -0.014, 0.012, 0.0014, 0.0034, 0.0012); lgBox(B, 0.02, sw / 2 + 0.003, -0.011, 0.005, 0.0024, 0.002, 0.001); }
+  // the grip: the front strap (with a finger swell), the base, the back strap, the beavertail over the web of the hand
+  const fs = o.swell == null ? 0.0018 : o.swell, bt = o.bt == null ? 0.012 : o.bt;
+  const G = [[0.05, -0.026], at(0.004, -0.002), at(0.018, -fs), at(0.034, 0.0006), at(0.05, -fs * 0.6), at(0.068, 0.0004), at(gl - 0.004, 0), at(gl, 0.004), at(gl + 0.002, gd * 0.5), at(gl, gd - 0.003), at(gl - 0.004, gd),
+    at(0.05, gd + 0.0012), at(0.012, gd - 0.002), [F0[0] + nb[0] * gd + 0.001, -0.021], [-bt * 0.6, -0.019], [-bt, -0.0155], [-bt - 0.0015, -0.012], [-bt + 0.003, -0.0095], [0.0, -0.011], [0.046, -0.012]];
+  lgMat(B, gm); lgSide(B, G, gw, { bev: Math.min(0.0065, gw * 0.21), smooth: 0.55, round: true });
+  if (o.panels && hi) { lgMat(B, o.panels); lgSide(B, [at(0.016, 0.006), at(0.076, 0.006), at(0.078, gd - 0.007), at(0.016, gd - 0.008), at(0.008, gd * 0.5)], gw + 0.0034, { bev: 0.0022, round: true }); if (top && o.screws) { lgMat(B, M.steel); for (const u of [0.024, 0.07]) { const q = at(u, gd * 0.52); lgBox(B, q[0], 0, q[1], 0.0026, gw / 2 + 0.0019, 0.0026, 0.0012); } } }
+  else if (hi && o.tex !== false) { lgMat(B, o.texM || gm); const c = (p) => p; lgSide(B, [at(0.02, 0.006), at(0.08, 0.006), at(0.082, gd - 0.008), at(0.02, gd - 0.009)].map(c), gw + 0.0014, { bev: 0.0008 }); }
+  // the magazine: its body up the grip (seen when it comes out), the base plate under the grip
   lgBone(B, 'mag'); lgMat(B, o.magM || M.poly);
-  const mt = rot(0.027, -0.03), mb = rot(0.004, -0.128 - (o.ext || 0));
-  lgSide(B, [[mt[0] - 0.009, mt[1]], [mt[0] + 0.007, mt[1]], [mb[0] + 0.011, mb[1]], [mb[0] - 0.012, mb[1]]], 0.022, { bev: 0.002 });
-  lgBox(B, mb[0], 0, mb[1] - 0.006, 0.021, 0.0165, 0.007, 0.003);
+  const mt = [0.027, -0.03], m0 = at(0.0, 0.0), uu = (mt[0] - m0[0]) * nb[0] + (mt[1] - m0[1]) * nb[1];   // (the magazine's top stays where the reloads expect it)
+  const mb = at(gl - 0.004 + (o.ext || 0), uu + 0.0);
+  const md = 0.032 * Math.max(0.8, gd / 0.047), mq = (p, v) => [p[0] + nb[0] * v, p[1] + nb[1] * v];
+  lgSide(B, [mq(mt, -md * 0.42), mq(mt, md * 0.58), mq(mb, md * 0.58), mq(mb, -md * 0.42)], 0.022, { bev: 0.002 });
+  const pb = at(gl + 0.0005 + (o.ext || 0), 0), pe = at(gl + 0.0005 + (o.ext || 0), gd), dd = [dn[0] * 0.007, dn[1] * 0.007];
+  lgMat(B, o.plateM || o.magM || gm); lgSide(B, [[pb[0] + 0.002, pb[1]], [pe[0] - 0.001, pe[1]], [pe[0] + dd[0] - 0.002, pe[1] + dd[1]], [pb[0] + dd[0] + 0.001, pb[1] + dd[1]]], gw - 0.001, { bev: 0.0022, round: true });
   return { magTop: mt };
 }
-function lgGunM17(B, K) { const M = lgGunMats(K); return lgPistolFrame(B, M, { L: 0.19, slideM: M.coyoteSl, frameM: M.coyote, optic: true, front: true, light: true }); }
-function lgGunM9(B, K) { const M = lgGunMats(K); return lgPistolFrame(B, M, { L: 0.205, slideM: M.gunBlk, frameM: M.gunBlk, open: true, decock: true, hammer: true, gw: 0.032, panels: M.gunPoly, grip: [[0.035, -0.024], [0.062, -0.024], [0.046, -0.056], [0.036, -0.082], [0.028, -0.13], [-0.014, -0.135], [-0.03, -0.03], [-0.038, -0.014], [0.0, -0.01]] }); }
-function lgGunM1911(B, K) { const M = lgGunMats(K); return lgPistolFrame(B, M, { L: 0.19, slideM: M.park, frameM: M.park, h: 0.0145, w: 0.023, gw: 0.027, hammer: true, beaver: true, panels: M.bakelite, ga: -0.06, magM: M.park,
-  grip: [[0.035, -0.024], [0.058, -0.024], [0.042, -0.056], [0.032, -0.08], [0.02, -0.122], [-0.016, -0.126], [-0.026, -0.03], [-0.034, -0.014], [0.0, -0.01]] }); }
-function lgGunAPS(B, K) { const M = lgGunMats(K); return lgPistolFrame(B, M, { L: 0.21, slideM: M.blued, frameM: M.blued, hammer: true, panels: M.bakelite, gw: 0.031, magM: M.blued, ext: 0.01, decock: true }); }
+function lgGunM17(B, K) { const M = lgGunMats(K); return lgPistolFrame(B, M, { L: 0.19, slideM: M.coyoteSl, frameM: M.coyote, optic: true, front: true, light: true, texM: M.fdeDk, plateM: M.gunBlk, trigM: M.gunBlk }); }
+function lgGunM9(B, K) { const M = lgGunMats(K); return lgPistolFrame(B, M, { L: 0.205, slideM: M.gunBlk, frameM: M.gunBlk, open: true, decock: true, hammer: true, gw: 0.033, gd: 0.05, bt: 0.004, panels: M.gunPoly, screws: true, round: true, nor: false, ext: 0.002 }); }
+function lgGunM1911(B, K) { const M = lgGunMats(K); return lgPistolFrame(B, M, { L: 0.198, slideM: M.park, frameM: M.park, h: 0.016, w: 0.023, gw: 0.028, gd: 0.044, gl: 0.094, hammer: true, safety: true, bt: 0.02, panels: M.walnut, screws: true, magM: M.park, swell: 0, rake: 0.29, nor: true, round: true, nose: 0.004, serM: M.blued }); }
+function lgGunAPS(B, K) { const M = lgGunMats(K); return lgPistolFrame(B, M, { L: 0.21, slideM: M.blued, frameM: M.blued, hammer: true, panels: M.bakelite, gw: 0.032, gd: 0.05, gl: 0.108, magM: M.blued, ext: 0.008, decock: true, safety: true, swell: 0, nor: true, round: true, bt: 0.012 }); }
 function lgGunM1917(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   // the hammer rides on the slide bone; the frame, the barrel, the cylinder and the grip on the pistol bone
-  lgBone(B, 'slide'); lgMat(B, M.blued); lgSide(B, [[-0.006, 0.004], [0.004, 0.008], [0.0, 0.024], [-0.016, 0.028], [-0.02, 0.02]], 0.007, { bev: 0.001 });
+  lgBone(B, 'slide'); lgMat(B, M.blued); lgSide(B, [[-0.006, 0.004], [0.004, 0.008], [0.002, 0.022], [-0.008, 0.03], [-0.02, 0.031], [-0.022, 0.026], [-0.012, 0.018]], 0.007, { bev: 0.0012, round: true });
+  if (top) for (let i = 0; i < 4; i++) lgBox(B, -0.014 + i * 0.003, 0, 0.0305, 0.0006, 0.0034, 0.0008, 0);
   lgBone(B, 'pistol'); lgMat(B, M.blued);
-  lgSide(B, [[0.0, -0.025], [0.072, -0.025], [0.075, -0.012], [0.075, 0.018], [0.064, 0.024], [0.0, 0.02], [-0.006, 0.0]], 0.024, { bev: 0.0025 });
-  lgBore(B, 0.072, 0.142, [[0, 0.0095], [0.1, 0.0085], [1, 0.0082]], 0, 0.004);
-  lgBox(B, 0.205, 0, 0.016, 0.006, 0.0018, 0.006, 0.001);
-  // the ejector rod housing under the barrel and the cylinder with its flutes
-  lgBore(B, 0.072, 0.06, 0.0045, 0, -0.012);
-  lgMat(B, M.blued); lgBore(B, 0.022, 0.046, 0.0205, 0, -0.002, { segs: 12, wr: hi ? (a) => (Math.cos(a * 6) > 0.7 ? -0.14 : 0) : null });
-  if (hi) { lgMat(B, M.brass); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; lgSphere(B, 0.0205, Math.cos(a) * 0.013, -0.002 + Math.sin(a) * 0.013, 0.0012, 0.0045, 0.0045, { segs: 6, rings: 3 }); } }
-  // trigger guard, and the round-butt walnut grip with the lanyard ring
-  lgTube(B, [[0.03, 0, -0.025], [0.05, 0, -0.035], [0.05, 0, -0.05], [0.03, 0, -0.054], [0.01, 0, -0.04]], 0.0026, { segs: 5, flat: 2.2, up: [0, 1, 0] });
-  lgMat(B, M.walnut); lgSide(B, [[0.008, -0.022], [-0.006, -0.06], [-0.012, -0.095], [-0.026, -0.112], [-0.046, -0.108], [-0.05, -0.08], [-0.036, -0.03], [-0.012, -0.004]], 0.029, { bev: 0.005, smooth: 0.7 });
-  if (hi) { lgMat(B, M.steel); lgLathe(B, [[0.006, -0.002], [0.008, 0], [0.008, 0.002], [0.006, 0.004]], { segs: 10, ox: -0.036 }); }
+  // the frame: the window round the cylinder (bottom bar, top strap, the standing breech with the recoil shield), the
+  // barrel's shoulder; the cylinder sits in the window
+  lgSide(B, [[-0.012, -0.004], [0.004, -0.026], [0.074, -0.026], [0.078, -0.018], [0.078, 0.02], [0.07, 0.026], [0.0, 0.024], [-0.012, 0.016]], 0.012, { bev: 0.002, round: true });
+  lgSide(B, [[-0.002, 0.016], [0.078, 0.018], [0.078, 0.026], [0.0, 0.026], [-0.008, 0.022]], 0.022, { bev: 0.003, round: true });   // the top strap, full width over the cylinder
+  lgSide(B, [[-0.002, -0.026], [0.074, -0.026], [0.074, -0.02], [-0.002, -0.022]], 0.022, { bev: 0.003, round: true });                // the bottom bar
+  lgSide(B, [[-0.012, -0.024], [0.002, -0.024], [0.002, 0.024], [-0.012, 0.018]], 0.044, { bev: 0.004, round: true });                 // the recoil shield
+  if (hi) { lgMat(B, M.blued); lgBox(B, 0.03, 0, 0.0262, 0.034, 0.0022, 0.0008, 0); }   // the sighting groove in the strap
+  lgBore(B, 0.072, 0.142, [[0, 0.0098], [0.08, 0.0092], [0.1, 0.0085], [1, 0.0082]], 0, 0.004);
+  lgPush(B, lgTR(0.206, 0, 0.012, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.004, 0], [0.002, 0.008], [-0.004, 0.009]], 0.004, { bev: 0.0008 }); lgPop(B);   // the half-moon front sight
+  // the ejector rod and its shroud under the barrel, the crane, the latch on the left
+  lgBore(B, 0.076, 0.07, 0.0042, 0, -0.012); lgBore(B, 0.146, 0.006, 0.0055, 0, -0.012);
+  if (hi) { lgBox(B, 0.074, 0, -0.016, 0.004, 0.009, 0.006, 0.0015); lgBox(B, 0.004, 0.012, 0.008, 0.006, 0.0016, 0.004, 0.0012); if (top) for (let i = 0; i < 4; i++) lgBox(B, 0.0, 0.0135, 0.006 + i * 0.0014, 0.0042, 0.0006, 0.0004, 0); }
+  // the cylinder: six chambers, fluted, the bolt notches; the chamber mouths at its front
+  lgMat(B, M.blued); lgBore(B, 0.006, 0.066, [[0, 0.0195], [0.06, 0.0212], [0.94, 0.0212], [1, 0.0198]], 0, -0.001, { segs: 18, wr: hi ? (a, z) => (Math.cos(a * 6) > 0.72 && z > 0.01 && z < 0.056 ? -0.13 : 0) : null });
+  if (hi) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + TAU / 12; lgBore(B, 0.0715, 0.0016, 0.0049, Math.cos(a) * 0.0128, -0.001 + Math.sin(a) * 0.0128, { segs: 8 }); } }
+  // the trigger guard, the trigger, and the round-butt walnut grip with its lanyard ring
+  lgMat(B, M.blued); lgTube(B, [[0.04, 0, -0.026], [0.056, 0, -0.034], [0.058, 0, -0.048], [0.044, 0, -0.056], [0.024, 0, -0.05], [0.016, 0, -0.036]], 0.0028, { segs: 6, flat: 2.2, up: [0, 1, 0] });
+  lgMat(B, M.steel); lgTube(B, [[0.036, 0, -0.026], [0.042, 0, -0.035], [0.04, 0, -0.044], [0.034, 0, -0.048]], 0.0024, { segs: 5, flat: 1.6, up: [0, 1, 0] });
+  lgMat(B, M.blued); lgSide(B, [[0.012, -0.026], [-0.002, -0.06], [-0.01, -0.094], [-0.022, -0.11], [-0.044, -0.108], [-0.05, -0.084], [-0.04, -0.034], [-0.022, -0.006], [-0.012, -0.004]], 0.02, { bev: 0.003, round: true });   // the grip frame
+  lgMat(B, M.walnut); lgSide(B, [[0.008, -0.03], [-0.004, -0.06], [-0.011, -0.092], [-0.022, -0.104], [-0.04, -0.102], [-0.045, -0.082], [-0.036, -0.036], [-0.02, -0.012], [-0.006, -0.012]], 0.031, { bev: 0.0065, smooth: 0.7, round: true });
+  if (hi) { lgMat(B, M.steel); lgLathe(B, [[0.0055, -0.002], [0.0075, 0], [0.0075, 0.002], [0.0055, 0.004]], { segs: 10, ox: -0.034, oy: 0 }); if (top) { lgBox(B, -0.022, 0, -0.06, 0.0028, 0.0165, 0.0028, 0.0012); } }
   // two half-moon clips with their three rounds each (on the magazine bone: they come out together)
-  lgBone(B, 'mag'); lgMat(B, M.steel); lgBore(B, 0.0, 0.002, 0.017, 0, -0.002, { segs: 10 });
-  if (hi) { lgMat(B, M.brass); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; lgBore(B, 0.002, 0.03, 0.0058, Math.cos(a) * 0.013, -0.002 + Math.sin(a) * 0.013, { segs: 6 }); } }
+  lgBone(B, 'mag'); lgMat(B, M.steel); lgBore(B, 0.0, 0.002, 0.017, 0, -0.002, { segs: 12 });
+  if (hi) { lgMat(B, M.brass); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + TAU / 12; lgBore(B, 0.002, 0.03, 0.0058, Math.cos(a) * 0.0128, -0.001 + Math.sin(a) * 0.0128, { segs: 6 }); } }
   return { magTop: [0.0, -0.002] };
 }
 // each gun: its builder, the bone family, its muzzle, the support hand, where its magazine's top is, a hand-off for the
@@ -28085,7 +28332,15 @@ function lgvWarm(n) {
 // (with the studio's generic carbine and pistol; in a run each gun has its own model and grips)
 function lgvClip(id, name, dur, loop, desc, st, ctx0, legs) {
   lgClip(id, name, 'Arms', dur, loop, 'ARMS handling references (README > what was studied)', desc, (P, t, ctx, a) => {
-    const k = loop ? (t / dur) % 1 : clamp(t / dur, 0, 1), c = Object.assign({ run: false, fam: 'c', gun: null, kind: 'ar', rk: 'tac', keep: false, t: t }, ctx0);
+    const c = Object.assign({ run: false, fam: 'c', gun: null, kind: 'ar', rk: 'tac', keep: false, t: t }, ctx0);
+    // (1.9.994: in the studio, with the guns he carries: their own postures and fitted grips; the armory's special
+    // reload takes the technique and the time from the gun itself)
+    let gd = dur;
+    if (ctx0.slot) {
+      c.fam = ctx0.slot; const g = ctx && (c.fam === 'p' ? ctx.gs : (ctx.gp || ctx.gun)), A = g && typeof ARMS_BY !== 'undefined' && ARMS_BY[g] ? ARMS_BY[g].arms : null;
+      if (A && LG_GUN_DEF[g] && LG_GUN_DEF[g].fam === c.fam) { c.gun = g; c.kind = A.reload.kind; gd = A.reload.empty; } else { c.kind = c.fam === 'p' ? 'pistol' : 'ar'; gd = c.fam === 'p' ? 1.85 : 2.55; }
+    } else if (ctx) { const g = c.fam === 'p' ? ctx.gs : (ctx.gp || ctx.gun); if (g && LG_GUN_DEF[g] && LG_GUN_DEF[g].fam === c.fam) c.gun = g; }
+    const k = loop ? (t / dur) % 1 : clamp(t / gd, 0, 1);
     if (st === 'dodge') { lgvRoll(P, k, c); return; }
     (LGV_UP[st] || LGV_UP.relaxed)(P, k, c);
     if (legs === 'run') lgGait(P, k, { stride: 2.9, st: 0.38, lift: 0.22, crouch: 0.08, bob: 0.05, lean: 0.25, heel: 1, run: true });
@@ -28105,6 +28360,10 @@ lgvClip('p_reload', 'Pistol slide-lock reload', 1.85, false, 'The pistol pulled 
 lgvClip('p_draw', 'Draw', 0.62, false, 'From the holster: grip, clear, rotate at the hip, meet the support hand at the chest, press out.', 'swapIn', { fam: 'p' });
 lgvClip('ar_sling', 'Long gun to the sling', 0.5, false, 'The carbine up past the left shoulder and onto the sling across the back, the hands free for the pistol.', 'swapOut', {});
 lgvClip('ar_check', 'Press check', 1.3, false, 'A full gun and nobody close: the support hand eases the handle back an inch, a look at the brass, home.', 'inspect', {});
+// (the legend page's armory: the special reload of whichever gun he carries; not in the list of fifty)
+lgvClip('arm_special_c', 'Special reload', 3.2, false, 'The carried long gun\'s own reload, from empty.', 'reload', { slot: 'c', rk: 'empty' });
+lgvClip('arm_special_p', 'Special reload (sidearm)', 3.2, false, 'The carried sidearm\'s own reload, from empty.', 'reload', { slot: 'p', rk: 'empty' });
+LG_ANIM_BY.arm_special_c.hidden = true; LG_ANIM_BY.arm_special_p.hidden = true;
 lgvClip('dodge_roll', 'Dodge roll', 0.46, false, 'Down over the shoulder in a tuck with the gun held in tight, and up into a crouch facing the same way; untouchable for its first part.', 'dodge', {});
 
 /* ================= VFXRAY: the last pass of a cinematic (1.9.992) =================
@@ -28821,6 +29080,7 @@ function mimStart(name, o) {
     MIM.set = lgModel('studio', 0, ''); MIM.ground = lgModel('studioGround', 0, ''); MIM.setW = mimSetW();
     const pl = lgPlayer(); lgPlay(pl, o.anim || 'idle_ready', { fade: 0 }); pl.ctx.inPlace = true;
     MIM.actors = [mimActor({ model: o.legend || 'operator', cls: MIM.cls, lod: q.lod === 0 ? 0 : 1, acc: lgHex(LG_CLASS_BY[MIM.cls].col), player: pl })];
+    mimStudioLoad(MIM.actors[0]);   // (1.9.994: he holds the guns you carry)
     MIM.studio.view = 'front'; MIM.studio.auto = true; MIM.studio.held = false; MIM.studio.from = null; MIM.studio.tTilt = 0; MIM.studio.yaw = 0; MIM.studio.pitch = 0.1; MIM.studio.dist = 3.3;
     MIM.cues = []; MIM.dur = 1e9; MIM.warp = null;
   }
@@ -28851,7 +29111,7 @@ function mimFrame(rdt, w, h) {
     while (MIM.cueI < MIM.cues.length && MIM.cues[MIM.cueI][0] <= rt) { const c = MIM.cues[MIM.cueI++]; mimCue(c[1], rt); }
     // actors
     for (const a of MIM.actors) {
-      if (a.player) { lgTickPlayer(a.player, rdt, null, (e) => mimEvent(e, a)); a.W = a.player.W; continue; }
+      if (a.player) { if (a.gp || a.gs) lgGunSet(a.gp, a.gs); lgTickPlayer(a.player, rdt, null, (e) => mimEvent(e, a)); if (a.gp || a.gs) lgGunSet(null, null); a.W = a.player.W; continue; }
       if (st < a.show[0]) { a.hidden = true; continue; } a.hidden = false;
       mimActorEvents(a, MIM.lastSt, st, (e) => mimEvent(e, a));
       mimActorEvalFull(a, st);
@@ -29076,7 +29336,7 @@ function mimStudioCam(rt) {
   const s = MIM.studio, a = MIM.actors[0];
   // auto: front for a beat, then the tilt to the game's view (straight down) over two seconds
   let yaw = s.yaw, pitch = s.pitch, dist = s.dist;
-  const goal = s.view === 'top' ? { yaw: Math.PI, pitch: 1.48, dist: 2.7 } : s.view === 'front' ? { yaw: 0, pitch: 0.1, dist: 3.3 } : null;
+  const goal = s.view === 'top' ? { yaw: Math.PI, pitch: 1.48, dist: 2.7 } : s.view === 'front' ? { yaw: 0, pitch: 0.1, dist: 3.3 } : s.view === 'arms' ? { yaw: -0.72, pitch: 0.12, dist: 2.95 } : null;   // (arms: three-quarters from his gun side, closer: the armory's pick)
   if (goal && s.from) { const k = lgE.s(clamp((rt - s.tTilt) / 2.0, 0, 1)); yaw = lgLerp(s.from.yaw, goal.yaw, k); pitch = lgLerp(s.from.pitch, goal.pitch, k); dist = lgLerp(s.from.dist, goal.dist, k); if (k >= 1) { s.yaw = goal.yaw; s.pitch = goal.pitch; s.dist = goal.dist; } }
   else if (goal && !s.from) { yaw = goal.yaw; pitch = goal.pitch; dist = goal.dist; }
   s.cur = { yaw: yaw, pitch: pitch, dist: dist };
@@ -29092,8 +29352,15 @@ function mimStudioView(v) { const s = MIM.studio; s.held = true; s.from = s.cur 
 function mimStudioDrag(dx, dy) { const s = MIM.studio; if (s.view !== 'orbit') { mimStudioView('orbit'); } s.yaw -= dx * 0.008; s.pitch = clamp(s.pitch + dy * 0.006, -0.15, 1.55); }
 function mimStudioZoom(d) { const s = MIM.studio; s.dist = clamp(s.dist * (1 + d * 0.001), 1.2, 6); if (s.view !== 'orbit') mimStudioView('orbit'); }
 // a seated clip (the stoop's idles) plays in the studio on his chair, with his mask down and his whetstone (the idle kit)
-function mimStudioPlay(id) { const a = MIM.actors[0]; if (!a || !a.player) return; const seat = !!(LG_ANIM_BY[id] && LG_ANIM_BY[id].seat); if (seat !== !!a.seat) { a.seat = seat; a.m = lgModel(a.model, a.lod, a.cls + (seat ? '|idle' : '')); } lgPlay(a.player, id, { restart: true, fade: seat ? 0 : 0.2 }); a.player.ctx.inPlace = true; }
-function mimStudioClass(cls) { MIM.cls = cls; const a = MIM.actors[0]; if (!a) return; a.cls = cls; a.acc = lgHex(LG_CLASS_BY[cls].col); a.m = lgModel(a.model, a.lod, cls + (a.seat ? '|idle' : '')); }
+function mimStudioPlay(id) { const a = MIM.actors[0]; if (!a || !a.player) return; const seat = !!(LG_ANIM_BY[id] && LG_ANIM_BY[id].seat); if (seat !== !!a.seat) { a.seat = seat; mimStudioLoad(a); } lgPlay(a.player, id, { restart: true, fade: seat ? 0 : 0.2 }); a.player.ctx.inPlace = true; }
+function mimStudioClass(cls) { MIM.cls = cls; const a = MIM.actors[0]; if (!a) return; a.cls = cls; a.acc = lgHex(LG_CLASS_BY[cls].col); mimStudioLoad(a); }
+// the studio's Operator carries the loadout from the armory (the seated idles: the idle kit); the guns his hands fit to
+function mimStudioLoad(a) {
+  const L = typeof armsLoad === 'function' && typeof ARMS_ON !== 'undefined' && ARMS_ON ? armsLoad() : null;
+  a.gp = !a.seat && L ? L.p : null; a.gs = !a.seat && L ? L.s : null;
+  a.m = lgModel(a.model, a.lod, a.cls + (a.seat ? '|idle' : L ? '|' + L.p + '|' + L.s : ''));
+  if (a.player) { a.player.ctx.gun = a.gp; a.player.ctx.gp = a.gp; a.player.ctx.gs = a.gs; }
+}
 function mimHurt(e) {
   const now = performance.now(); coreHurt('MIMATIC', e); try { console.error(e); } catch (x) { }
   MIM.errT.push(now); while (MIM.errT.length && now - MIM.errT[0] > 10000) MIM.errT.shift();
@@ -29540,6 +29807,8 @@ function legendFrame(rdt) {
       const q = sd.getBoundingClientRect(), tb = top ? top.getBoundingClientRect().bottom - r.top : 0;
       let x0 = 0, x1 = r.width, y0 = Math.max(0, tb), y1 = r.height;
       if (q.top - r.top > r.height * 0.25) y1 = Math.min(y1, q.top - r.top); else if (q.left - r.left > r.width * 0.3) x1 = Math.min(x1, q.left - r.left);
+      // (1.9.994: and the armory on his left, on a wide screen)
+      const ar = $('lgArms'); if (ar && ar.parentNode === $('lgDetail') && !ar.hidden) { const a = ar.getBoundingClientRect(); if (a.width > 0 && a.right - r.left < r.width * 0.45 && a.right - r.left < x1 - 160) x0 = Math.max(x0, a.right - r.left); }
       const fw = Math.max(1, x1 - x0), fh = Math.max(1, y1 - y0);
       MIM.free = { sx: ((x0 + x1) / 2 / r.width - 0.5) * 2, sy: -((y0 + y1) / 2 / r.height - 0.5) * 2, kh: fh / r.height, kw: fw / r.width };
     }
@@ -29681,6 +29950,7 @@ function lgsBuild() {
   const story = el('details', 'lg-story'); story.innerHTML = '<summary>His story, his manner, his kit</summary><p>' + LG_LEGENDS[0].bio + '</p><ul class="lg-traits">' + LG_LEGENDS[0].personality.map(p => '<li>' + p + '</li>').join('') + '</ul><ul class="lg-gear">' + LG_LEGENDS[0].gear.map(g => '<li>' + g + '</li>').join('') + '</ul>';
   const dep = el('button', 'btn primary lg-deploy'); dep.id = 'lgDeploy'; dep.type = 'button'; dep.addEventListener('click', lgsDeploy);
   side.append(top, chips, note, views, viewNote, anim, story, dep); D.append(side);
+  lgsArmsBuild(D);   // 1.9.994: the armory, on the left
   // dragging and zooming the studio
   const st = $('lgStage');
   st.addEventListener('pointerdown', e => { if (LGS.view !== 'detail') return; LGS.drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; try { st.setPointerCapture(e.pointerId); } catch (x) { } });
@@ -29760,17 +30030,17 @@ function lgsCue(c) {
 function lgsOpenLegend(cls) {
   lgsStopWatch(true); LGS.cls = cls; LGS.anim = 'idle_ready'; LGS.speed = 1;
   try { SFX.cine('uiSelect'); } catch (e) { }
-  lgsGo('detail', 0.8, 80, () => { lgsView('detail'); mimStart('studio', { cls: cls, anim: 'mask_tap' }); setTimeout(() => { if (LGS.view === 'detail') lgsPlayAnim('idle_ready', true); }, 2600); lgsSetClass(cls, true); lgsAnimList(); lgsViews(); lgsDeployLabel(); });
+  lgsGo('detail', 0.8, 80, () => { lgsView('detail'); mimStart('studio', { cls: cls, anim: 'mask_tap' }); LGS.anim = 'mask_tap'; setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === 'mask_tap') lgsPlayAnim('idle_ready', true); }, 2600); lgsSetClass(cls, true); lgsAnimList(); lgsViews(); lgsDeployLabel(); });
 }
 function lgsSetClass(cls, quiet) {
   LGS.cls = cls; mimStudioClass(cls);
   document.querySelectorAll('.lg-chip').forEach(b => { b.classList.toggle('on', b.dataset.cls === cls); b.setAttribute('aria-selected', b.dataset.cls === cls ? 'true' : 'false'); });
-  $('lgDetail').style.setProperty('--cc', LG_CLASS_BY[cls].col); lgsDeployLabel();
+  $('lgDetail').style.setProperty('--cc', LG_CLASS_BY[cls].col); lgsDeployLabel(); if ($('lgArms')) lgsArmsRender();
   if (!quiet) try { SFX.cine('uiTab'); } catch (e) { }
 }
 function lgsViews() { const v = MIM.studio.view; document.querySelectorAll('.lg-vbtn').forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
 // the fifty (the scene-only clips of the cinematic and the dead are not in the browser)
-function lgsFifty() { return LG_ANIMS.filter(a => a.cat !== 'Actors' && a.cat !== 'Cinematic'); }
+function lgsFifty() { return LG_ANIMS.filter(a => a.cat !== 'Actors' && a.cat !== 'Cinematic' && !a.hidden); }
 function lgsAnimList() {
   const list = document.querySelector('.lg-anim-list'); if (!list) return; list.textContent = '';
   document.querySelectorAll('.lg-acat').forEach(b => b.classList.toggle('on', b.dataset.cat === LGS.cat));
@@ -29791,6 +30061,147 @@ function lgsPlayAnim(id, quiet) {
   LGS.anim = id; mimStudioPlay(id); const a = MIM.actors[0]; if (a && a.player) a.player.sp = LGS.speed;
   document.querySelectorAll('.lg-abtn').forEach(b => b.classList.toggle('on', b.dataset.a === id)); lgsAnimInfo();
   if (!quiet) try { SFX.cine('uiTab'); } catch (e) { }
+}
+/* ---------- the armory on his page (1.9.994): on the left, the guns he carries ----------
+   The same ten as the main armory (arms.js), picked here with him in front of you: each gun is drawn from its own
+   model (the one in his hands), lit by his class; choosing one puts it in his hands at once and he handles it (a press
+   check on a long gun, a draw with a sidearm); the special reload plays on demand. On a phone the panel moves into the
+   sheet under him. */
+const LGS_AR = { slot: 'primary', peek: null, peekT: 0, models: new Map(), q: [], pump: 0, mq: null, animT: 0 };
+function lgsArmsOn() { return typeof ARMS_ON !== 'undefined' && ARMS_ON && typeof ARMS_BY !== 'undefined'; }
+function lgsArmsBuild(D) {
+  if (!lgsArmsOn()) return;
+  const P = el('div', 'lg-arms'); P.id = 'lgArms';
+  const head = el('div', 'lg-ar-head'); head.innerHTML = '<p class="lg-eye">Armory</p><h3 class="lg-ar-h">Loadout</h3><span class="lg-ar-count">10 / 250 rebuilt</span>';
+  const slots = el('div', 'lg-ar-slots'); slots.setAttribute('role', 'tablist'); slots.setAttribute('aria-label', 'Slot');
+  [['primary', 'Primary'], ['secondary', 'Secondary']].forEach(([k, t]) => {
+    const b = el('button', 'lg-ar-slot'); b.type = 'button'; b.dataset.slot = k; b.setAttribute('role', 'tab'); b.innerHTML = '<small>' + t + '</small><b></b>';
+    b.addEventListener('click', () => { if (LGS_AR.slot === k) return; LGS_AR.slot = k; LGS_AR.peek = null; lgsArmsRender(); try { SFX.cine('uiTab'); } catch (e) { } });
+    slots.append(b);
+  });
+  const hero = el('div', 'lg-ar-hero'); hero.innerHTML = '<canvas aria-hidden="true"></canvas><i class="lg-ar-sheen" aria-hidden="true"></i><div class="lg-ar-hn"><b></b><small></small></div>';
+  const lists = el('div', 'lg-ar-lists');
+  for (const k of ['primary', 'secondary']) {
+    const list = el('div', 'lg-ar-list'); list.dataset.slot = k; list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', k === 'primary' ? 'Primaries' : 'Secondaries');
+    for (const w of k === 'primary' ? ARMS_PRI : ARMS_SEC) {
+      const b = el('button', 'lg-ar-gun'); b.type = 'button'; b.dataset.key = w.arms.key; b.setAttribute('role', 'option'); b.title = w.arms.full;
+      const c = el('canvas'); c.setAttribute('aria-hidden', 'true'); c.width = 240; c.height = 92;
+      b.append(c, el('b', null, w.arms.name), el('small', null, w.arms.cal), el('em', 'lg-ar-tag', 'Carried'));
+      b.addEventListener('click', () => lgsArmsPick(w));
+      b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') lgsArmsPeek(w); });
+      b.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') lgsArmsPeek(null); });
+      b.addEventListener('focus', () => { if (DEV.kind !== 'touch') lgsArmsPeek(w); });
+      b.addEventListener('blur', () => lgsArmsPeek(null));
+      list.append(b); lgsArmsQueue(c, w.arms.key, { yaw: 0.1, el: 0.06, pad: 1.06 });
+    }
+    lists.append(list);
+  }
+  const info = el('div', 'lg-ar-info'); info.id = 'lgArInfo';
+  P.append(head, slots, hero, lists, info); D.append(P);
+  // a phone: the panel lives in the sheet under him (after his name), a wide screen: on the left
+  try {
+    LGS_AR.mq = matchMedia('(max-width:820px)');
+    const place = () => { const side = D.querySelector('.lg-side'), top = side && side.querySelector('.lg-d-top'); if (LGS_AR.mq.matches && top) { if (P.parentNode !== side) top.after(P); } else if (P.parentNode !== D) D.append(P); };
+    place(); if (LGS_AR.mq.addEventListener) LGS_AR.mq.addEventListener('change', place); else LGS_AR.mq.addListener(place);
+  } catch (e) { }
+  lgsArmsRender();
+}
+// redraw the panel for the slot on show (the carried guns marked, the hero and the numbers for the one in view)
+function lgsArmsRender() {
+  const P = $('lgArms'); if (!P) return; const L = armsLoad();
+  P.querySelectorAll('.lg-ar-slot').forEach(b => { const on = b.dataset.slot === LGS_AR.slot; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.querySelector('b').textContent = ARMS_BY[b.dataset.slot === 'primary' ? L.p : L.s].arms.name; });
+  P.querySelectorAll('.lg-ar-list').forEach(l => { l.hidden = l.dataset.slot !== LGS_AR.slot; });
+  P.querySelectorAll('.lg-ar-gun').forEach(b => { const w = ARMS_BY[b.dataset.key], on = b.dataset.key === (w.slot === 'primary' ? L.p : L.s); b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+  lgsArmsShow(LGS_AR.peek || ARMS_BY[LGS_AR.slot === 'primary' ? L.p : L.s]);
+}
+// hovering a gun shows it (its picture and numbers) without carrying it; leaving goes back to the carried one
+function lgsArmsPeek(w) {
+  clearTimeout(LGS_AR.peekT);
+  LGS_AR.peekT = setTimeout(() => { if (LGS_AR.peek === w) return; LGS_AR.peek = w; const L = armsLoad(); lgsArmsShow(w || ARMS_BY[LGS_AR.slot === 'primary' ? L.p : L.s]); }, w ? 90 : 160);
+}
+function lgsArmsShow(w) {
+  const P = $('lgArms'); if (!P || !w) return; const A = w.arms, L = armsLoad(), on = A.key === (w.slot === 'primary' ? L.p : L.s);
+  const hero = P.querySelector('.lg-ar-hero');
+  if (hero.dataset.key !== A.key + '|' + (LGS.cls || '')) {
+    hero.dataset.key = A.key + '|' + (LGS.cls || ''); const c = hero.querySelector('canvas'), r = hero.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = Math.max(240, Math.round((r.width || 300) * d)); c.height = Math.max(90, Math.round((r.height || 116) * d));
+    const cl = LG_CLASS_BY[LGS.cls || 'attack'] || LG_CLASSES[0];
+    LGS_AR.q = LGS_AR.q.filter(j => j[0] !== c); lgsArmsQueue(c, A.key, { yaw: 0.36, el: 0.16, pad: 1.3, fov: 0.36, lift: 0.12, acc: lgHex(cl.col), hero: true }, true);
+    hero.classList.remove('in'); void hero.offsetWidth; hero.classList.add('in');
+  }
+  hero.querySelector('.lg-ar-hn b').textContent = A.full; hero.querySelector('.lg-ar-hn small').textContent = A.real.action;
+  const box = $('lgArInfo'); box.textContent = '';
+  const tag = el('p', 'lg-ar-sub', A.cal + ' · ' + (A.reload.kind === 'tube' ? A.mag + '+1 shells' : A.mag + (A.chamber ? '+1' : '') + ' rounds') + ' · ' + (A.auto ? A.rpm + ' rpm' : 'semi-auto'));
+  const bars = el('div', 'lg-ar-bars');
+  armsStats(w).forEach(r => { const row = el('div', 'lg-ar-bar'), t = el('div', 'lg-ar-track'), f = el('i'); f.style.width = Math.round(clamp(r[1], 0.04, 1) * 100) + '%'; t.append(f); row.append(el('span', null, r[0]), t, el('em', null, String(r[2]))); bars.append(row); });
+  const sp = el('div', 'lg-ar-sp'), spH = el('div', 'lg-ar-sph'); spH.append(el('b', null, 'Special reload'));
+  const watch = el('button', 'lg-ar-watch'); watch.type = 'button'; watch.textContent = on ? 'Watch' : 'Carry to watch'; watch.disabled = !on;
+  watch.addEventListener('click', () => lgsArmsSpecial(w)); spH.append(watch);
+  sp.append(spH, el('p', null, A.reload.special));
+  const desc = el('p', 'lg-ar-desc', A.desc), spec = el('p', 'lg-ar-spec', 'Barrel ' + A.real.barrel + ' · ' + A.real.weight + ' · ' + A.real.rate);
+  const act = el('button', 'btn lg-ar-carry' + (on ? ' done' : '')); act.type = 'button'; act.textContent = on ? 'Carried as ' + (w.slot === 'primary' ? 'primary' : 'secondary') : 'Carry as ' + (w.slot === 'primary' ? 'primary' : 'secondary'); act.disabled = on;
+  act.addEventListener('click', () => lgsArmsPick(w));
+  box.append(tag, desc, bars, sp, spec, act);
+}
+// choosing a gun: carried at once (the same loadout as the main armory and the run), in his hands in the studio, and he handles it
+function lgsArmsPick(w) {
+  const L = armsLoad(), key = w.arms.key, was = w.slot === 'primary' ? L.p : L.s;
+  if (was !== key) {
+    armsSetLoad(w.slot, key); try { KEEP.approve(); } catch (e) { }
+    if (LG.sprites) LG.sprites.clear();
+    try { if (typeof renderArmsSide === 'function' && $('arSide')) renderArmsSide(); } catch (e) { }
+    coreLog('ARMS: ' + w.arms.name + ' carried from the legend page');
+  }
+  LGS_AR.slot = w.slot; LGS_AR.peek = null;
+  const a = MIM.actors[0];
+  if (a && MIM.scene === 'studio') { a.seat = false; mimStudioLoad(a); if (MIM.studio && MIM.studio.view !== 'arms' && typeof mimStudioView === 'function') { mimStudioView('arms'); lgsViews(); } }   // (three-quarters from his gun side: you see him take it)
+  clearTimeout(LGS_AR.animT);
+  if (w.slot === 'primary') { lgsPlayAnim('ar_check', true); try { SFX.arms('chargeBack', 1, 0, 0.7); setTimeout(() => SFX.arms('chargeHome', 1, 0, 0.7), 380); } catch (e) { } LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === 'ar_check') lgsPlayAnim('idle_ready', true); }, 1450); }
+  else { lgsPlayAnim('p_draw', true); try { SFX.arms('draw', 1, 0, 0.7); setTimeout(() => SFX.arms('slideRack', 1, 0, 0.6), 520); } catch (e) { } LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === 'p_draw') lgsPlayAnim('aim_iso', true); }, 700); }
+  try { SFX.cine('uiSelect'); } catch (e) { }
+  lgsArmsRender();
+}
+// the special reload of the gun in view, with that gun in his hands
+function lgsArmsSpecial(w) {
+  clearTimeout(LGS_AR.animT);
+  const id = w.slot === 'primary' ? 'arm_special_c' : 'arm_special_p'; lgsPlayAnim(id);
+  const R = w.arms.reload; LGS_AR.animT = setTimeout(() => { if (LGS.view === 'detail' && LGS.anim === id) lgsPlayAnim(w.slot === 'primary' ? 'idle_ready' : 'aim_iso', true); }, (R.empty + 0.5) * 1000);
+}
+/* the guns drawn from their own models on the processor: a picture per gun (side on), and the big one in view
+   (three-quarters, lit by his class); painted a few at a time behind the screen's own frames */
+function lgsGunModel(key, lod) {
+  const k = key + '|' + lod; let m = LGS_AR.models.get(k); if (m) return m;
+  const D = LG_GUN_DEF[key]; if (!D) return null;
+  const B = lgB(lod); try { D.mk(B, lgOpKit('attack')); } catch (e) { lgHurt(e); }
+  m = lgFinish(B, 'gun:' + key);
+  const V = m.V, S = LG_STRIDE, b = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9];
+  for (const r of m.runs) { if (key === 'm1014' && r.b === LGB.cmag) continue; for (let i = r.v0; i < r.v0 + r.nv; i++) for (let j = 0; j < 3; j++) { const v = V[i * S + j]; if (v < b[j]) b[j] = v; if (v > b[j + 3]) b[j + 3] = v; } }
+  m.bb = b; LGS_AR.models.set(k, m); return m;
+}
+function lgsGunPaint(c, key, o) {
+  o = o || {}; const D = LG_GUN_DEF[key], m = lgsGunModel(key, o.hero ? 0 : 1); if (!m || !c || !D) return false;
+  const W = new Float32Array(LG_NB_MAX * 16), I = lgM4(), hide = new Uint8Array(LG_NB_MAX);
+  for (const n of D.fam === 'c' ? ['carbine', 'cmag'] : ['pistol', 'slide', 'mag']) W.set(I, LGB[n] * 16);
+  if (key === 'm1014') hide[LGB.cmag] = 1;   // (the shell that rides his hand)
+  const b = m.bb, cx = (b[0] + b[3]) / 2, cy = (b[1] + b[4]) / 2, cz = (b[2] + b[5]) / 2, hl = (b[3] - b[0]) / 2, hh = (b[5] - b[2]) / 2, hw = (b[4] - b[1]) / 2;
+  const w = c.width, h = c.height, asp = w / h, cam = lgCam(), yaw = o.yaw || 0, elv = o.el || 0;
+  cam.fov = o.fov || 0.3;
+  // far enough that the gun (turned by yaw) fits the frame with a margin
+  const ex = hl * Math.cos(yaw) + hw * Math.sin(yaw), ez = hh + hl * Math.sin(yaw) * Math.sin(elv) * 0.5, dist = Math.max(ex / asp, ez) / Math.tan(cam.fov / 2) * (o.pad || 1.1) + hw;
+  // (lift: the gun sits low in the frame, under the name)
+  const tz = cz + (o.lift || 0) * hh * 2;
+  cam.tgt = [cx, cy, tz]; cam.eye = [cx + Math.sin(yaw) * Math.cos(elv) * dist, cy - Math.cos(yaw) * Math.cos(elv) * dist, tz + Math.sin(elv) * dist]; cam.up = [0, 0, 1];
+  const g = c.getContext('2d'), acc = o.acc || [1, 0.55, 0.3];
+  // through the depth buffer, smooth-lit and supersampled (the painter's order would leave slivers on the grips' panels)
+  lgZScene(g, { cam: cam, items: [{ m: m, W: W, acc: acc, glow: 1, hide: hide }], key: { dir: [0.25, -0.7, 0.75], col: [1.6, 1.46, 1.28] }, rim: { dir: [-0.5, 0.65, 0.5], col: acc.map(v => v * (o.hero ? 2.4 : 1.5)) }, sky: [0.24, 0.26, 0.32], gnd: [0.07, 0.065, 0.06] }, w, h, o.ss || 2);
+  c.dataset.done = '1'; return true;
+}
+function lgsArmsQueue(c, key, o, first) { if (first) LGS_AR.q.unshift([c, key, o]); else LGS_AR.q.push([c, key, o]); if (!LGS_AR.pump) LGS_AR.pump = setTimeout(lgsArmsPump, 60); }
+function lgsArmsPump() {
+  LGS_AR.pump = 0; if (!LGS_AR.q.length) return;
+  if (!LGS.open || !LG.atlas) { LGS_AR.pump = setTimeout(lgsArmsPump, 250); return; }   // (after the screen's atlas)
+  const j = LGS_AR.q.shift(); try { lgsGunPaint(j[0], j[1], j[2]); } catch (e) { lgHurt(e); }
+  if (LGS_AR.q.length) LGS_AR.pump = setTimeout(lgsArmsPump, 24);
 }
 function lgsDeployLabel() {
   const b = $('lgDeploy'); if (!b) return; const c = LG_CLASS_BY[LGS.cls || 'attack'], on = SET.legend === 'operator' && SET.legendClass === c.id;
@@ -29902,7 +30313,7 @@ coreDefine({ name: 'VFXRAY', kind: 'render', ver: 2, does: 'The last pass: rain 
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[355,0,4,48780],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31089],"physics":[265,23,49,25142],"arms":[372,35,50,37953],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1158,119,178,130523],"legmodel":[443,23,108,53998],"leggun":[295,28,79,36201],"leghand":[131,12,27,10276],"leganim":[447,21,53,56045],"legrun":[466,39,94,49643],"vfxray":[269,26,37,31771],"mimatic":[561,46,109,68981],"legidle":[339,19,67,44465],"legends":[331,33,46,39448],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[355,0,4,48780],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[648,66,108,55168],"roster":[149,8,36,36227],"anima":[1099,57,120,99413],"anilook":[427,30,56,57921],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31089],"physics":[265,23,49,25142],"arms":[374,36,51,38090],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1227,120,184,137424],"legmodel":[443,23,108,53998],"leggun":[379,28,100,49901],"leghand":[131,12,27,10276],"leganim":[447,21,53,56045],"legrun":[475,39,97,50880],"vfxray":[269,26,37,31771],"mimatic":[568,47,110,69703],"legidle":[339,19,67,44465],"legends":[459,44,62,52354],"engroom":[363,17,34,43398],"loader":[119,11,22,10067],"input":[517,56,34,39077],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1015,87,108,82943],"intro":[660,32,55,48814],"sfx2":[447,76,53,43659],"cinesfx":[180,14,31,26117],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[73,7,4,5035]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };

@@ -5,7 +5,7 @@
 .lg-stage{position:absolute;inset:0;z-index:0;touch-action:none}
 .lg-stage canvas{display:block;width:100%;height:100%}
 .lg-shade{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg, rgba(4,6,9,.78) 0, rgba(4,6,9,.15) 18%, rgba(4,6,9,0) 40%, rgba(4,6,9,.2) 68%, rgba(4,6,9,.86) 100%);transition:opacity .5s}
-.lg-screen[data-view="detail"] .lg-shade{background:linear-gradient(90deg, rgba(4,6,9,0) 40%, rgba(4,6,9,.55) 64%, rgba(4,6,9,.9) 100%)}
+.lg-screen[data-view="detail"] .lg-shade{background:linear-gradient(90deg, rgba(4,6,9,.88) 0, rgba(4,6,9,.5) 18%, rgba(4,6,9,0) 32%, rgba(4,6,9,0) 58%, rgba(4,6,9,.55) 72%, rgba(4,6,9,.9) 100%)}
 .lg-fade{position:absolute;inset:0;z-index:9;background:#000;opacity:0;pointer-events:none;transition:opacity .45s ease}
 .lg-fade.on{opacity:1}
 /* top bar */
@@ -59,7 +59,7 @@
 .lg-card-act span{font-family:var(--f-num);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px rgba(235,229,214,.18)}
 .lg-card-act .lg-open{background:var(--cc);color:#0b0c0e;box-shadow:none}
 /* 1.9.993: the face card: a small square, his face and nothing else (the name shows on hover) */
-.lg-card.lg-face{display:block;width:min(100%, 132px);aspect-ratio:1;padding:0;justify-self:center;align-self:center;overflow:hidden;clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+.lg-card.lg-face{display:block;width:min(100%, 92px);aspect-ratio:1;padding:0;justify-self:center;align-self:center;overflow:hidden;clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
   background:radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--cc) 42%, #161a22), #07080b 78%)}
 .lg-face .lg-card-art{position:absolute;inset:0;min-height:0;display:block}
 .lg-face .lg-card-art canvas{width:100%;height:100%;aspect-ratio:1;filter:none}
@@ -79,7 +79,7 @@
 .lg-screen.watching .lg-hint,.lg-screen.watching .lg-foot,.lg-screen.watching .lg-shade{opacity:.15}
 /* a legend's page */
 .lg-detail{position:absolute;inset:0;z-index:3;pointer-events:none}
-.lg-side{pointer-events:auto;position:absolute;right:0;top:0;bottom:0;width:min(400px, 44vw);overflow-y:auto;padding:68px max(18px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) 18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin}
+.lg-side{pointer-events:auto;position:absolute;right:0;top:0;bottom:0;width:min(380px, 34vw);overflow-y:auto;padding:68px max(18px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) 18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin}
 .lg-d-name{margin:0;font-family:var(--f-display);font-weight:400;font-size:48px;letter-spacing:.04em;line-height:1;text-shadow:0 0 30px color-mix(in srgb, var(--cc) 50%, transparent)}
 .lg-d-line{margin:2px 0 0;color:#cfc9bb;font-size:14px}
 .lg-chips{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:5px}
@@ -115,6 +115,59 @@
 .lg-traits li::marker{color:var(--cc)}
 .lg-deploy{min-height:50px;font-size:14px;letter-spacing:.1em}
 .lg-deploy.done{background:linear-gradient(100deg, color-mix(in srgb, var(--cc) 70%, #fff), var(--cc));color:#0b0c0e}
+/* 1.9.994: the armory on his left: the carried guns, each drawn from its own model; the one in view big, lit by his class */
+.lg-arms{pointer-events:auto;position:absolute;left:0;top:0;bottom:0;width:min(320px, 27vw);overflow-y:auto;padding:68px 14px max(14px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));display:flex;flex-direction:column;gap:10px;scrollbar-width:thin}
+.lg-ar-head{display:grid;grid-template-columns:minmax(0, 1fr) auto;grid-template-areas:"e c" "h c";align-items:end}
+.lg-ar-head .lg-eye{grid-area:e;color:var(--cc)}
+.lg-ar-h{grid-area:h;margin:0;font-family:var(--f-display);font-weight:400;font-size:30px;letter-spacing:.05em;line-height:1}
+.lg-ar-count{grid-area:c;font-family:var(--f-num);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:3px 7px;box-shadow:inset 0 0 0 1px rgba(235,229,214,.14)}
+.lg-ar-slots{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;background:rgba(0,0,0,.45);clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)}
+.lg-ar-slot{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-height:44px;padding:5px 9px;border:0;background:transparent;color:var(--muted);text-align:left;cursor:pointer}
+.lg-ar-slot small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase}
+.lg-ar-slot b{font-size:13.5px;letter-spacing:.04em;color:#cfc9bb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.lg-ar-slot.on{background:linear-gradient(120deg, color-mix(in srgb, var(--cc) 34%, rgba(0,0,0,.4)), rgba(0,0,0,.2));box-shadow:inset 0 -2px 0 var(--cc)}
+.lg-ar-slot.on small{color:var(--cc)}
+.lg-ar-slot.on b{color:var(--bone)}
+.lg-ar-hero{position:relative;flex:none;height:118px;overflow:hidden;background:radial-gradient(ellipse 70% 80% at 50% 62%, color-mix(in srgb, var(--cc) 22%, #11141b), #07090c 75%);clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--cc) 40%, transparent)}
+.lg-ar-hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 22px), repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 22px);pointer-events:none}
+.lg-ar-hero::after{content:"";position:absolute;left:8%;right:8%;bottom:16px;height:10px;background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,.7), transparent 70%);pointer-events:none}
+.lg-ar-hero canvas{position:relative;z-index:1;display:block;width:100%;height:100%;filter:drop-shadow(0 8px 10px rgba(0,0,0,.55))}
+.lg-ar-hero.in canvas{animation:lgarin .7s cubic-bezier(.2, .8, .2, 1) both}
+.lg-ar-sheen{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(105deg, transparent 35%, rgba(255,255,255,.14) 48%, transparent 60%);background-size:250% 100%;animation:lgarsheen 5.5s ease-in-out infinite;mix-blend-mode:screen}
+.lg-ar-hn{position:absolute;left:10px;top:8px;z-index:3;display:flex;flex-direction:column;pointer-events:none}
+.lg-ar-hn b{font-family:var(--f-display);font-weight:400;font-size:17px;letter-spacing:.05em;line-height:1;text-shadow:0 2px 10px rgba(0,0,0,.8)}
+.lg-ar-hn small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lg-ar-lists{display:contents}
+.lg-ar-list{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.lg-ar-list[hidden]{display:none}
+.lg-ar-gun{position:relative;display:grid;grid-template-columns:minmax(0, 1fr);gap:0;padding:4px 6px 6px;border:0;text-align:left;color:var(--bone);cursor:pointer;background:linear-gradient(160deg, rgba(30,34,44,.82), rgba(10,12,16,.86));clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);box-shadow:inset 0 0 0 1px rgba(235,229,214,.08);transition:box-shadow .2s, transform .2s}
+.lg-ar-gun canvas{width:100%;height:auto;aspect-ratio:240/92;display:block}
+.lg-ar-gun b{font-size:12.5px;letter-spacing:.04em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-ar-gun small{font-family:var(--f-num);font-size:9.5px;letter-spacing:.06em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-ar-gun:hover,.lg-ar-gun:focus-visible{transform:translateY(-1px);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--cc) 70%, transparent), 0 6px 20px rgba(0,0,0,.4)}
+.lg-ar-tag{position:absolute;right:6px;top:5px;font-style:normal;font-family:var(--f-num);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;padding:1px 5px;background:var(--cc);color:#0b0c0e;opacity:0;transform:translateY(-3px);transition:opacity .2s, transform .2s}
+.lg-ar-gun.on{background:linear-gradient(160deg, color-mix(in srgb, var(--cc) 28%, #141820), #0a0c10 80%);box-shadow:inset 0 0 0 2px var(--cc)}
+.lg-ar-gun.on .lg-ar-tag{opacity:1;transform:none}
+.lg-ar-info{display:flex;flex-direction:column;gap:8px;padding:10px 11px;background:rgba(8,10,14,.74);box-shadow:inset 0 0 0 1px rgba(235,229,214,.07)}
+.lg-ar-sub{margin:0;font-family:var(--f-num);font-size:10.5px;letter-spacing:.08em;color:var(--cc)}
+.lg-ar-desc{margin:0;font-size:12px;color:#cfc9bb;line-height:1.4}
+.lg-ar-bars{display:flex;flex-direction:column;gap:4px}
+.lg-ar-bar{display:grid;grid-template-columns:86px minmax(0, 1fr) auto;align-items:center;gap:7px}
+.lg-ar-bar span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lg-ar-bar em{font-style:normal;font-family:var(--f-num);font-size:10.5px;color:#cfc9bb;white-space:nowrap}
+.lg-ar-track{height:5px;background:rgba(255,255,255,.07);clip-path:polygon(0 0, 100% 0, calc(100% - 3px) 100%, 0 100%)}
+.lg-ar-track i{display:block;height:100%;background:linear-gradient(90deg, color-mix(in srgb, var(--cc) 60%, #fff), var(--cc));box-shadow:0 0 8px var(--cc);transition:width .45s cubic-bezier(.2, .8, .2, 1)}
+.lg-ar-sp{padding:8px 9px;background:color-mix(in srgb, var(--cc) 9%, rgba(0,0,0,.35));box-shadow:inset 3px 0 0 var(--cc)}
+.lg-ar-sph{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lg-ar-sph b{font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+.lg-ar-sp p{margin:4px 0 0;font-size:11.5px;color:#bdb7a8;line-height:1.4}
+.lg-ar-watch{min-height:26px;padding:0 10px;border:0;background:var(--cc);color:#0b0c0e;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.lg-ar-watch:disabled{background:rgba(255,255,255,.08);color:var(--muted);cursor:default}
+.lg-ar-spec{margin:0;font-family:var(--f-num);font-size:10px;letter-spacing:.04em;color:var(--muted);line-height:1.4}
+.lg-ar-carry{min-height:40px;font-size:12px;letter-spacing:.1em}
+.lg-ar-carry.done{opacity:.7}
+@keyframes lgarsheen{0%,55%{background-position:120% 0}100%{background-position:-120% 0}}
+@keyframes lgarin{from{opacity:0;transform:translateX(-18px) scale(.96)}to{opacity:1;transform:none}}
 /* the title card on the frozen frame */
 .lg-title{position:absolute;left:0;right:0;bottom:16%;z-index:6;text-align:center;pointer-events:none;--cc:#ff4b3e}
 .lg-title.in .lg-t-name{animation:lgtname 1.6s cubic-bezier(.2, .8, .2, 1) both}
@@ -134,6 +187,12 @@
   .lg-col{flex:0 0 min(74vw, 300px);scroll-snap-align:center;justify-content:flex-end}
   .lg-tabs{display:none}
   .lg-side{left:0;width:auto;top:auto;height:52%;padding-top:14px;background:linear-gradient(180deg, rgba(5,7,10,.7), rgba(5,7,10,.96) 20%)}
+  /* the armory in the sheet: the guns in a row to swipe, the one in view and its numbers under them */
+  .lg-side .lg-arms{position:static;width:auto;overflow:visible;padding:10px 0 0;gap:8px;border-top:1px solid rgba(235,229,214,.08)}
+  .lg-side .lg-ar-list{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:6px;padding-bottom:4px}
+  .lg-side .lg-ar-list[hidden]{display:none}
+  .lg-side .lg-ar-gun{flex:0 0 132px;scroll-snap-align:start}
+  .lg-side .lg-ar-hero{height:104px}
   .lg-screen[data-view="detail"] .lg-shade{background:linear-gradient(180deg, rgba(4,6,9,.6) 0, rgba(4,6,9,0) 20%, rgba(4,6,9,0) 44%, rgba(4,6,9,.9) 60%)}
   .lg-d-name{font-size:34px}
   .lg-panels{grid-template-columns:1fr}
@@ -144,11 +203,17 @@
   .lg-col-blurb,.lg-locks,.lg-foot,.lg-hint{display:none}
   .lg-card-art{min-height:0}
   .lg-card-art canvas{width:64px}
-  .lg-card.lg-face{width:72px}
+  .lg-card.lg-face{width:56px}
   .lg-face .lg-card-art canvas{width:100%}
-  .lg-side{width:min(360px, 46vw);padding-top:56px}
+  .lg-side{width:min(340px, 40vw);padding-top:56px}
+  .lg-arms{width:min(240px, 28vw);padding-top:56px;gap:7px}
+  .lg-ar-h{font-size:22px}
+  .lg-ar-count{display:none}
+  .lg-ar-hero{height:78px}
+  .lg-ar-gun small{display:none}
+  .lg-ar-desc,.lg-ar-spec{display:none}
   .lg-hub{padding-top:60px;gap:12px}
   .lg-panel{min-height:80px}
 }
-@media (prefers-reduced-motion:reduce){ .lg-p-go,.lg-title.in .lg-t-name,.lg-title.in .lg-t-eye,.lg-title.in .lg-t-line{animation:none} .lg-card{transition:none} }
+@media (prefers-reduced-motion:reduce){ .lg-ar-sheen,.lg-ar-hero.in canvas{animation:none} .lg-p-go,.lg-title.in .lg-t-name,.lg-title.in .lg-t-eye,.lg-title.in .lg-t-line{animation:none} .lg-card{transition:none} }
 .rm .lg-p-go,.rm .lg-title.in .lg-t-name{animation:none}
