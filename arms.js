@@ -96,7 +96,10 @@ function armsTick(p, dt, moving) {
     // sprint: held (Shift, or the dodge button held on a phone), or latched with the left stick
     const want = (typeof held === 'function' && (held('sprint') || held('dash'))) || a.latch || !!G.touchSprint;   // (the dodge held: he sprints out of the roll)
     if (!moving) a.latch = false;
-    if (want && moving && armsCanSprint(p)) { if (a.st !== 'sprint') { armsSet(p, 'sprint'); ARMS.sprintS++; armsSnd('sling', 1); } }
+    // (1.9.997: the trigger wins over the sprint key: holding both used to flip sprint and sprint-out every frame, with the
+    // sling and ready-up sounds stuttering under it; now a held trigger keeps him out of the sprint until it is let go)
+    const firing = (G.time || 0) - (a.fireT == null ? -9 : a.fireT) < 0.2;
+    if (want && moving && !firing && armsCanSprint(p)) { if (a.st !== 'sprint' && (G.time || 0) - (a.sprintAt || -9) > 0.35) { armsSet(p, 'sprint'); ARMS.sprintS++; a.sprintAt = G.time || 0; armsSnd('sling', 1); } }
     else if (a.st === 'sprint' && (!want || !moving)) { armsSet(p, 'sprintOut', A.ready * 1.15); armsSnd('readyUp', 1); }
     if (a.st === 'sprint' && Math.floor((p.walk || 0) / 3.2) !== a.sprStep) { a.sprStep = Math.floor((p.walk || 0) / 3.2); armsSnd('sprintStep', 1, 0.6); }
     // the bolt has locked back: reload on its own a beat later
@@ -120,7 +123,7 @@ function armsTick(p, dt, moving) {
 function armsFire(p, target, ang, auto) {
   const a = p.arm; if (!a) { fireWeapon(target, ang); return true; }
   const w = p.weapon, A = w.arms;
-  armsEngage(p);
+  armsEngage(p); a.fireT = G.time || 0;
   if (a.st === 'knife') { if (typeof bladeShot === 'function') bladeShot(p, target, auto); return false; }   // (in the chain: the point-blank shot, knife.js)
   if (a.st === 'sprint') { a.latch = false; G.touchSprint = false; armsSet(p, 'sprintOut', A.ready * 1.15); armsSnd('readyUp', 1); return false; }
   if (a.st === 'relaxed') { armsSet(p, 'raise', A.ready); armsSnd('readyUp', 1); return false; }

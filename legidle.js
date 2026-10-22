@@ -150,7 +150,7 @@ function lgiWork(P, u, v, k) {
   P.knife.at = 'handR'; P.grip.R = 'knife'; lgiIK(P, 'R', 'thighL', lgiHandOnKnife(K), lgiTW(-0.2, -0.9, -0.3));
 }
 // a hand somewhere in the root's space (the chair's), palm turned by a rotation
-function lgiHand(P, side, p, r, pole) { lgHandTo(P, side, 'root', p, r, pole || (side === 'L' ? [-0.3, 0.8, -0.5] : [-0.3, -0.8, -0.5])); }
+function lgiHand(P, side, p, r, pole) { lgHandTo(P, side, 'root', p, r, pole || (side === 'L' ? LG_POLE.L : LG_POLE.R)); }
 
 /* ---------- the clips: the sharpening loop, the can, and twenty-five things between ---------- */
 const LGI_SRC = 'Sharpening on a whetstone (GearJunkie: 15 to 20 degrees, trailing strokes, tip to heel); startle and orienting responses';

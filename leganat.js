@@ -226,7 +226,7 @@ function lgaArmSearch(W, L, ia, ib, ic, T, ps, rootM, free) {
   const tp = curV3.add(S, curV3.mul(d, dd)), out = ps > 0 ? -1 : 1;
   // (LEGEND v5: the arm stays out of the body: the torso as a capsule from the pelvis to the neck, 12.5 cm thick, and the
   // elbow end of the upper arm and the forearm 4 cm; the part of the upper arm by the shoulder lies against the side)
-  const tA = lgaP(W, 'pelvis'), tB = curV3.lerp(tA, lgaP(W, 'neck'), 0.8), hA = lgaP(W, 'head'), hB = lgaMark(W, 'headTop'), inBody = (e) => { const m = curV3.lerp(S, e, 0.55); return Math.max(0, 0.165 - lgqSegDistA(m, e, tA, tB), 0.162 - lgqSegDistA(e, tp, tA, tB), 0.125 - lgqSegDistA(m, e, hA, hB), 0.118 - lgqSegDistA(e, tp, hA, hB)); };
+  const inBody = (e) => { const m = curV3.lerp(S, e, 0.5); return Math.max(0, lgaTrunkPen(W, m, e, 0.05), lgaTrunkPen(W, e, tp, 0.042)); };
   const ev = (phi) => {
     const p = curV3.add(curV3.mul(p0, Math.cos(phi)), curV3.mul(q0, Math.sin(phi))), e = curV3.add(S, curV3.add(curV3.mul(d, a * ca), curV3.mul(p, a * sa)));
     const f = curV3.norm(curV3.sub(tp, e)), nf = [-f[0], -f[1], -f[2]], u = curV3.norm(curV3.sub(e, S));
@@ -238,11 +238,19 @@ function lgaArmSearch(W, L, ia, ib, ic, T, ps, rootM, free) {
     // (a free hand's wrist is turned back into range afterwards, so for it the arm only has to suit the shoulder)
     const wex = lgaExc(flex, LGA_WR.flex[0], LGA_WR.flex[1]) + lgaExc(dev, LGA_WR.dev[0], LGA_WR.dev[1]) + lgaExc(pro, LGA_WR.pro[0], LGA_WR.pro[1]), sex = lgaExc(ext, 0, 60) + lgaExc(cross, 0, 55);
     const exc = (free ? wex * 0.15 : wex) + sex * 1.5;
-    const comfort = (flex / 80) * (flex / 80) * 0.6 + (dev / 25) * (dev / 25) * 0.6 + (pro / 90) * (pro / 90) * 0.5 + Math.max(0, e[2] - S[2]) / a * 0.8 + (phi / Math.PI) * (phi / Math.PI) * 1.2;
+    // (1.9.997: the elbow hangs. Gravity and the shoulder's own comfort keep an elbow low and near the ribs: a term on how
+    // high the elbow sits on its circle, not only on whether it is above the shoulder; an elbow out wide at shoulder
+    // height is the pose the old cost chose for every hold)
+    const hang = (e[2] - S[2]) / a;
+    // the author's pole is the default (a strong pull toward it); the wrist's comfort and gravity move it only as far as they must
+    const comfort = (flex / 80) * (flex / 80) * 0.35 + (dev / 25) * (dev / 25) * 0.35 + (pro / 90) * (pro / 90) * 0.3 + Math.max(0, hang) * 1.4 + (hang + 1) * 0.7 + (phi / Math.PI) * (phi / Math.PI) * 2.4;
     const body = LGA.body ? inBody(e) : 0;
-    return { cost: exc * exc * 0.05 + exc * 0.5 + (exc > 1.5 ? 20 : 0) + comfort + (body < 0.05 ? (body / 0.025) * (body / 0.025) * 2 : 8 + (body - 0.05) * 100), exc: exc, wex: wex, flex: flex, dev: dev, pro: pro, p: p, F: [xf, curV3.cross(nf, xf), nf], body: body };
+    // (1.9.997: the body's cost saturates: an arm the clip put against the chest keeps its natural elbow, it is not thrown
+    // out wide to clear a wall that is not there)
+    return { cost: exc * exc * 0.05 + exc * 0.5 + (exc > 1.5 ? 20 : 0) + comfort + 2.5 * (1 - Math.exp(-body / 0.02)), exc: exc, wex: wex, flex: flex, dev: dev, pro: pro, p: p, F: [xf, curV3.cross(nf, xf), nf], body: body };
   };
   let best = ev(0), bphi = 0;
+  if (LGA.trace) { for (let i = -12; i <= 12; i++) { const phi = i * Math.PI / 13, r = ev(phi), e = curV3.add(S, curV3.add(curV3.mul(d, a * ca), curV3.mul(r.p, a * sa))); LGA.trace.push({ phi: +phi.toFixed(2), cost: +r.cost.toFixed(2), exc: +r.exc.toFixed(1), flex: Math.round(r.flex), dev: Math.round(r.dev), pro: Math.round(r.pro), body: +r.body.toFixed(3), ez: +(e[2] - S[2]).toFixed(2), ey: +(e[1] - S[1]).toFixed(2) }); } }
   for (let i = -12; i <= 12; i++) { if (!i) continue; const phi = i * Math.PI / 13, r = ev(phi); if (r.cost < best.cost) { best = r; bphi = phi; } }
   for (let step = Math.PI / 26; step > 0.004; step *= 0.5) for (const s of [-1, 1]) { const r = ev(bphi + s * step); if (r.cost < best.cost) { best = r; bphi += s * step; } }
   best.phi = bphi; return best;
@@ -381,15 +389,45 @@ function lgaPostFix(P, L, W, rootM) {
   LGA.inFix = (LGA.inFix || 0) + 1; try { lgSolve(P, L, W, rootM); } finally { LGA.inFix--; }
   LGA.fkFix++; return true;
 }
+// 1.9.997: how far an arm segment goes into the trunk or the head, measured against the body as modelled: the trunk's
+// section is an ellipse (14 cm deep, 18.5 cm wide at the chest, narrower at the hips), in the chest's own frame, with
+// the arm's radius and 1.5 cm of cloth and give allowed; the head an ellipsoid. The old test was a 16.5 cm circle,
+// fatter in front than the chest is, so an elbow or forearm in its natural place in front of the chest counted as
+// inside the body and the search drove the elbow out wide (the "chicken wing" on every gun hold).
+const LGA_TRUNK = { dx: 0.14, dy: 0.185, hipDx: 0.12, hipDy: 0.165, give: 0.015 };
+function lgaTrunkPen(W, a, b, armR) {
+  const tA = lgaP(W, 'pelvis'), tN = lgaP(W, 'neck'), tB = curV3.lerp(tA, tN, 0.82);
+  const fx = lgaAx(W, 'chest', 0), fy = lgaAx(W, 'chest', 1);
+  // the closest approach of the segment to the trunk's axis, sampled along the segment
+  let worst = 0;
+  for (let i = 0; i <= 6; i++) {
+    const p = curV3.lerp(a, b, i / 6), ax = curV3.sub(tB, tA), al = curV3.len(ax) || 1e-6, u = clamp(curV3.dot(curV3.sub(p, tA), ax) / (al * al), 0, 1), q = curV3.add(tA, curV3.mul(ax, u)), d = curV3.sub(p, q);
+    const ex = curV3.dot(d, fx), ey = curV3.dot(d, fy), hz = curV3.dot(d, curV3.norm(ax));
+    const t = u, DX = lgLerp(LGA_TRUNK.hipDx, LGA_TRUNK.dx, t), DY = lgLerp(LGA_TRUNK.hipDy, LGA_TRUNK.dy, t);
+    // the ellipse radius along this direction, and how far the arm's centre sits inside it
+    const r = Math.hypot(ex, ey) || 1e-6, rE = DX * DY / (Math.hypot(DY * ex, DX * ey) / r || 1e-6);
+    const pen = rE + armR * 0.7 - LGA_TRUNK.give - Math.hypot(r, hz * 0);
+    if (pen > worst) worst = pen;
+  }
+  // the head: an ellipsoid 10 cm half-deep, 8 cm half-wide, 11 cm half-tall about its centre
+  const hc = lgaMark(W, 'headCenter'), hx = lgaAx(W, 'head', 0), hy = lgaAx(W, 'head', 1), hzz = lgaAx(W, 'head', 2);
+  for (let i = 0; i <= 6; i++) {
+    const p = curV3.lerp(a, b, i / 6), d = curV3.sub(p, hc), ex = curV3.dot(d, hx) / 0.1, ey = curV3.dot(d, hy) / 0.08, ez = curV3.dot(d, hzz) / 0.11, n = Math.hypot(ex, ey, ez) || 1e-6;
+    const pen = (1 - n) * 0.09 + armR * 0.7 - LGA_TRUNK.give; if (pen > worst) worst = pen;
+  }
+  return worst;
+}
 function lgaArmPen(W, s) {
-  const S = lgaP(W, 'arm' + s), E = lgaP(W, 'fore' + s), H = lgaP(W, 'hand' + s), tA = lgaP(W, 'pelvis'), tB = curV3.lerp(tA, lgaP(W, 'neck'), 0.8), hA = lgaP(W, 'head'), hB = lgaMark(W, 'headTop'), m = curV3.lerp(S, E, 0.55);
-  return Math.max(0, 0.165 - lgqSegDistA(m, E, tA, tB), 0.162 - lgqSegDistA(E, H, tA, tB), 0.125 - lgqSegDistA(m, E, hA, hB), 0.118 - lgqSegDistA(E, H, hA, hB));
+  const S = lgaP(W, 'arm' + s), E = lgaP(W, 'fore' + s), H = lgaP(W, 'hand' + s), m = curV3.lerp(S, E, 0.5);
+  return Math.max(0, lgaTrunkPen(W, m, E, 0.05), lgaTrunkPen(W, E, H, 0.042));
 }
 function lgaArmOut(P, L, W, rootM, s) {
   const ia = LGB['arm' + s], chain = [ia, LGB['fore' + s], LGB['hand' + s]], re = () => { for (const i of chain) { lgR9(L.R, i * 9, P.r[i * 3], P.r[i * 3 + 1], P.r[i * 3 + 2]); lgWorldOne(W, L, i, rootM); } };
-  let pen = lgaArmPen(W, s); if (pen < 0.012) return false;
-  const st = 0.05, moves = [[0, st], [0, -st], [1, st], [1, -st], [2, st], [2, -st]]; let changed = false;
-  for (let it = 0; it < 10 && pen > 0.008; it++) {
+  let pen = lgaArmPen(W, s); if (pen < 0.015) return false;
+  // (1.9.997: the shoulder is turned out or forward by a few degrees at a time, never twisted, and at most 14 degrees in
+  // all: an arm an author put through the body is eased out, not thrown wide)
+  const st = 0.035, moves = [[0, st], [0, -st], [1, st], [1, -st]]; let changed = false;
+  for (let it = 0; it < 7 && pen > 0.01; it++) {
     let best = null, bp = pen;
     for (const [ax, v] of moves) { P.r[ia * 3 + ax] += v; re(); const q = lgaArmPen(W, s); if (q < bp - 1e-4) { bp = q; best = [ax, v]; } P.r[ia * 3 + ax] -= v; }
     if (!best) break; P.r[ia * 3 + best[0]] += best[1]; pen = bp; changed = true;
@@ -411,6 +449,7 @@ function lgaMark(W, n) {
   const at = (b, x, y, z) => lgPt(W.subarray(LGB[b] * 16, LGB[b] * 16 + 16), x, y, z);
   switch (n) {
     case 'headTop': return at('head', 0.01, 0, 0.19);
+    case 'headCenter': return at('head', 0.015, 0, 0.09);
     case 'hips': { const a = lgaP(W, 'thighL'), b = lgaP(W, 'thighR'); return curV3.lerp(a, b, 0.5); }
     case 'chestTop': return curV3.lerp(lgaP(W, 'pelvis'), lgaP(W, 'neck'), 0.8);   // the top of the ribcage (the trunk narrows into the neck above it)
     case 'knuckleL': return at('handL', 0, 0, -0.092); case 'knuckleR': return at('handR', 0, 0, -0.092);

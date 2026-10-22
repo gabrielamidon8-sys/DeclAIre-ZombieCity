@@ -221,7 +221,7 @@ function lgmHandover(o) {
     { const P = lgPose(); lgPoseReset(P); P.root = rootA.slice(); lgBase(P, {});
       const kOff = lgmS(LGM_BELL, clamp(t / tOffer, 0, 1)), kBack = lgmS(LGM_SYM, clamp((t - tFree) / 0.6, 0, 1));
       let M = t < tFree ? path(holdA0, HA, kOff, [1, 0, 0]) : path(HA, A0, kBack, [-1, 0, 0]);
-      P.ik.handR = { sp: 'world', p: [M[12], M[13], M[14]], M: M, pole: [-0.35, -0.75, -0.6] };
+      P.ik.handR = { sp: 'world', p: [M[12], M[13], M[14]], M: M, pole: LG_POLE.R };
       const sh = share(t); P.grip.R = t < tTouch ? gA.g : t < tFree ? lgmMix(gA.g, lgmMix(gA.g, LGM_OPEN, 0.45), sh) : lgmMix(lgmMix(gA.g, LGM_OPEN, 0.45), LGM_RELAX, kBack);
       lgJadd(P, 'spine', 0, 0.06 * kOff * (1 - kBack), 0); out.push(P); }
     // receiver

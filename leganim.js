@@ -68,9 +68,14 @@ function lgAimM(x, y, z, yaw, pitch, cant) { const M = lgRot(lgM4(), 0, 0, yaw |
 const LG_POST = {
   low: [0.4, -0.035, -0.14, 0.0, 0.62, 0], high: [0.21, -0.035, 0.08, 0.0, 0.04, 0], sul: [0.15, -0.02, -0.04, 0.0, 1.38, 0.0], iso: [0.53, -0.01, 0.32, 0.0, 0.0, 0.0],
   car: [0.3, 0.0, 0.22, 0.0, 0.0, -0.75], cmp: [0.36, -0.035, 0.2, 0.0, 0.0, 0.0], hip: [0.27, -0.14, -0.04, 0.04, 0.05, 0.0], workspace: [0.27, -0.01, 0.1, 0.25, -0.15, -0.55],
-  rlow: [0.36, -0.135, 0.16, 0.0, 0.55, 0.0], raim: [0.41, -0.125, 0.32, 0.0, 0.0, 0.0], rwork: [0.35, -0.06, 0.18, 0.3, 0.1, -0.7]
+  // (1.9.997: the stock in the shoulder pocket, high near the collarbone, the head brought down to it: the aim used to float
+  // the butt 13 cm above the shoulder, the grip above it, and the firing elbow out level to reach it)
+  rlow: [0.324, -0.14, 0.064, 0.0, 0.55, 0.0], raim: [0.376, -0.14, 0.25, 0.0, 0.0, 0.0], rwork: [0.35, -0.06, 0.18, 0.3, 0.1, -0.7]
 };
-const LG_POLE = { R: [-0.35, -0.75, -0.6], L: [-0.35, 0.75, -0.6], Rt: [-0.1, -0.35, -1], Lt: [-0.1, 0.35, -1], Rw: [0.05, -0.85, -0.5], Lw: [0.05, 0.85, -0.5] };
+// (1.9.997: the elbows hang: the firing elbow down and a little out, the modern hold, not winged out level with the
+// shoulder; the support elbow under the handguard. The anatomical search starts from these and moves only as far as the
+// wrist's range needs.)
+const LG_POLE = { R: [-0.25, -0.45, -0.85], L: [-0.25, 0.45, -0.85], Rt: [-0.1, -0.3, -1], Lt: [-0.1, 0.3, -1], Rw: [0.05, -0.55, -0.8], Lw: [0.05, 0.55, -0.8], Rc: [-0.15, -0.45, -0.88], Lc: [-0.1, 0.3, -0.95] };
 function lgPost(name) { return LG_POST[name]; }
 function lgPostMix(a, b, k) { const A = typeof a === 'string' ? LG_POST[a] : a, Bq = typeof b === 'string' ? LG_POST[b] : b; return A.map((v, i) => v + (Bq[i] - v) * k); }
 // hold the pistol in a posture (both hands, or one): v = [x, y, z, yaw, pitch, cant]
@@ -81,8 +86,8 @@ function lgPistolAt(P, v, o) {
 }
 function lgCarbineAt(P, v, o) {
   o = o || {}; P.carbine.at = 'aim'; P.carbine.sp = 'chest'; P.carbine.M = lgAimM(v[0], v[1], v[2], v[3], v[4], v[5]);
-  P.ik.handR = { on: 'carbine', pole: o.poleR || [-0.2, -0.8, -0.6] }; P.grip.R = o.trigger ? 'trigger' : 'pistol';
-  if (!o.one) { P.ik.handL = { on: 'carbine', pole: o.poleL || [-0.1, 0.6, -0.8] }; P.grip.L = 'cup'; }
+  P.ik.handR = { on: 'carbine', pole: o.poleR || LG_POLE.Rc }; P.grip.R = o.trigger ? 'trigger' : 'pistol';
+  if (!o.one) { P.ik.handL = { on: 'carbine', pole: o.poleL || LG_POLE.Lc }; P.grip.L = 'cup'; }
 }
 // a hand to a point in the space of a bone (chest, pelvis, root...), palm turned by a rotation
 function lgHandTo(P, side, sp, p, rot, pole) { const M = rot ? lgRot(lgM4(), rot[0], rot[1], rot[2]) : null; P.ik['hand' + side] = { sp: sp, p: p, M: M, pole: pole || (side === 'L' ? LG_POLE.L : LG_POLE.R) }; }
@@ -123,8 +128,11 @@ function lgGait(P, ph, o) {
 // the weapon a clip uses when it is drawn in a run (top-down, aiming where the player aims): pistol or long gun
 function lgRunAim(P, ctx, t, sway) {
   const s = sway == null ? 1 : sway, v = (ctx.wc === 'r' ? LG_POST.raim : LG_POST.cmp).slice(); v[3] += lgN1(t * 0.7, 1) * 0.01 * s; v[4] += lgN1(t * 0.6, 2) * 0.01 * s;
-  if (ctx.wc === 'r') lgCarbineAt(P, v); else lgPistolAt(P, v);
+  if (ctx.wc === 'r') { lgCarbineAt(P, v); lgCheekWeld(P, 0.8); } else lgPistolAt(P, v);
 }
+// 1.9.997: the cheek weld: the head comes down and over to the stock (never the stock up to the head): the neck flexes,
+// the head tilts toward the right shoulder and the eye settles behind the optic
+function lgCheekWeld(P, k) { k = k == null ? 1 : k; lgJadd(P, 'neck', 0.1 * k, 0.26 * k, -0.03 * k); lgJadd(P, 'head', 0.14 * k, 0.2 * k, -0.03 * k); }
 function lgClip(id, name, cat, dur, loop, ref, desc, fn, ev, o) { lgAnimDef(Object.assign({ id: id, name: name, cat: cat, dur: dur, loop: loop, ref: ref, desc: desc, fn: fn, ev: ev || [] }, o || {})); }
 const LG_SRC = {
   walk: 'American Rifleman: Moving with a carbine', pistol: 'Primary & Secondary: Movement with a pistol', pie: 'SOFREP: How to slice the pie', scan: 'Sniper Central: Scanning while stalking',
@@ -317,13 +325,13 @@ lgClip('rifle_low', 'Carbine low ready', 'Long gun', 3.0, true, LG_SRC.ready, 'T
 lgClip('rifle_aim', 'Carbine aim', 'Long gun', 2.5, true, LG_SRC.walk, 'Shouldered with a cheek weld: the head comes to the stock, never the stock to the head; elbows down, weight forward.', (P, t, ctx, a) => {
   lgBase(P, { crouch: 0.07, lean: 0.18, stance: false }); lgStance(P, 0.15, 0.18, 0.15);
   const v = LG_POST.raim.slice(); v[3] += lgN1(t * 0.7, 3) * 0.004; v[4] += lgN1(t * 0.8, 6) * 0.004; lgCarbineAt(P, v, { trigger: true }); lgBreath(P, t, 0.25, a.dur);
-  lgLookAt(P, -0.08, 0.16, 0.18);
+  lgCheekWeld(P, 1);
 });
 lgClip('rifle_burst', 'Carbine burst', 'Long gun', 0.75, false, LG_SRC.walk, 'Three rounds into the shoulder: each push is soaked up by the lean, the muzzle climbs a little and comes back.', (P, t, ctx, a) => {
   lgBase(P, { crouch: 0.07, lean: 0.18, stance: false }); lgStance(P, 0.15, 0.18, 0.15);
   let r = 0; for (const s of [0.02, 0.1, 0.18]) r += lgRecoil(t, s) * 0.7;
   const v = LG_POST.raim.slice(); v[0] -= r * 0.03; v[4] -= r * 0.06; lgCarbineAt(P, v, { trigger: true }); lgJadd(P, 'chest', 0, -r * 0.035, 0);
-  lgLookAt(P, -0.08, 0.16, 0.18);
+  lgCheekWeld(P, 1);
 }, [[0.02, 'rshot'], [0.1, 'rshot'], [0.18, 'rshot']]);
 lgClip('rifle_reload', 'Carbine reload', 'Long gun', 2.7, false, LG_SRC.walk, 'Carbine turned in to see the magazine well, the empty stripped out, a fresh one from the placard, a tug to check it seated, the bolt release slapped.', (P, t, ctx, a) => {
   lgBase(P, { crouch: 0.06, lean: 0.14, stance: false }); lgStance(P, 0.15, 0.16, 0.14);
@@ -333,7 +341,7 @@ lgClip('rifle_reload', 'Carbine reload', 'Long gun', 2.7, false, LG_SRC.walk, 'C
   const reach = lgK(t, [[0, 0], [0.4, 0], [0.75, 1, 'io'], [0.85, 1], [1.2, 0, 'io']]);
   if (t < 1.42) { lgHandTo(P, 'L', 'chest', [lgLerp(0.3, 0.215, reach), lgLerp(0.02, 0.0, reach), lgLerp(0.05, 0.0, reach)], [0, 0.4, 0.2], LG_POLE.L); P.grip.L = reach > 0.8 ? 'cup' : 'fist'; }
   else if (t < 1.8) { lgHandTo(P, 'L', 'carbine', [0.02, 0.025, -0.01], [1.4, 0, 0], LG_POLE.L); P.grip.L = 'open'; }
-  else { P.ik.handL = { on: 'carbine', pole: [-0.1, 0.6, -0.8] }; P.grip.L = 'cup'; }
+  else { P.ik.handL = { on: 'carbine', pole: LG_POLE.Lc }; P.grip.L = 'cup'; }
   lgLookAt(P, 0.15 * k, 0.3 * k - 0.2 * reach);
 }, [[0.4, 'magOut'], [0.78, 'pouch'], [1.42, 'magIn'], [1.62, 'tug'], [1.78, 'boltHome']]);
 

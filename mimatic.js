@@ -384,8 +384,8 @@ function mimAlley(cls, S) {
   const L = typeof armsLoad === 'function' && typeof ARMS_ON !== 'undefined' && ARMS_ON ? armsLoad() : null;
   const op = mimActor({ model: 'operator', cls: cls, kit: L ? cls + '|' + L.p + '|' + L.s : cls, gp: L ? L.p : null, gs: L ? L.s : null, lod: q.lod, acc: acc, hide: mimHideCarbine(),
     track: [[0, 'walk_tac', 0, 0], [2.75, 'mask_tap', 0, 0.45], [4.3, 'c_alert', 0, 0.35], [6.3, 'c_fire', 0, 0.16], [7.25, 'c_throw', 0, 0.2], [8.75, 'c_kstab', 0, 0.38], [9.95, 'c_kspin', 0, 0.1]],
-    root: [[0, 0.1, 0.12, 0, 0], [2.45, 2.75, 0.12, 0, 0, 'l'], [3.05, 3.05, 0.1, 0, 0, 'o'], [6.3, 3.05, 0.1, 0, 0], [6.55, 3.05, 0.1, 0, -0.08], [7.3, 3.05, 0.08, 0, 0.0], [7.55, 3.2, 0.05, 0, Math.PI, 'io'], [8.75, 3.2, 0.05, 0, Math.PI], [9.3, 2.95, 0.1, 0, Math.PI, 'io'],
-      [9.98, 2.95, 0.1, 0, Math.PI], [10.36, 3.02, 0.06, 0, 2 * Math.PI - 0.1, 'io'], [11.2, 3.05, 0.06, 0, 2 * Math.PI - 0.1]] });
+    root: [[0, 0.1, 0.12, 0, 0], [2.45, 2.75, 0.12, 0, 0, 'l'], [3.05, 3.05, 0.1, 0, 0, 'o'], [6.3, 3.05, 0.1, 0, 0], [6.55, 3.05, 0.1, 0, -0.08], [7.3, 3.05, 0.08, 0, 0.0], [7.55, 3.2, 0.05, 0, Math.PI, 'io'], [8.75, 3.2, 0.05, 0, Math.PI], [9.3, 3.17, 0.2, 0, Math.PI, 'io'],
+      [9.98, 3.17, 0.2, 0, Math.PI], [10.36, 3.15, 0.1, 0, 2 * Math.PI - 0.1, 'io'], [11.2, 3.15, 0.08, 0, 2 * Math.PI - 0.1]] });   // (1.9.997: he kneels at its shoulders, so the knife goes into the chest, not the belly)
   const z1 = mimActor({ model: 'zombie', cls: 'cook', lod: Math.max(1, q.lod), show: [4.55, 1e9],
     track: [[0, 'z_burst', 0, 0], [4.95, 'z_lunge', 0, 0.15], [6.55, 'z_hs', 0, 0.04]],
     root: [[0, 7.5, -2.55, 0, Math.PI / 2], [4.55, 7.5, -2.55, 0, Math.PI / 2], [4.95, 7.2, -1.8, 0, 2.3, 'o'], [6.55, 5.05, -0.5, 0, 2.9, 'l'], [7.5, 5.75, -0.62, 0, 2.9, 'o']] });

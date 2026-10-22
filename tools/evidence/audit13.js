@@ -20,6 +20,8 @@ window.auClipSheet = async function (o) {
   const P = lgPose(), L = lgLocalNew(), Wd = lgWorldNew(), data = [];
   const dur = o.dur || a.dur, t0 = o.t0 || 0;
   const model = evModel(o.model || 'operator', o.kit || 'attack');
+  if (o.body != null && typeof LGA !== 'undefined') LGA.body = !!o.body;
+  if (o.gun) lgGunSet(o.gun[0], o.gun[1]);
   views.forEach(([az, el], vi) => {
     for (let i = 0; i < n; i++) {
       const t = t0 + (a.loop ? i / n : i / Math.max(1, n - 1)) * dur;
@@ -38,10 +40,13 @@ window.auClipSheet = async function (o) {
         g.lineWidth = 1.5;
         for (const [s, col] of [['L', 'rgba(90,220,255,0.85)'], ['R', 'rgba(255,170,60,0.85)']]) { g.strokeStyle = col; g.beginPath(); const q = ['thigh' + s, 'shin' + s, 'foot' + s, 'toe' + s].map(pr); g.moveTo(q[0][0], q[0][1]); for (const p of q.slice(1)) g.lineTo(p[0], p[1]); g.stroke(); }
         g.strokeStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); const tq = ['pelvis', 'spine', 'chest', 'neck', 'head'].map(pr); g.moveTo(tq[0][0], tq[0][1]); for (const p of tq.slice(1)) g.lineTo(p[0], p[1]); g.stroke();
+        for (const [s, col] of [['L', 'rgba(90,220,255,0.95)'], ['R', 'rgba(255,170,60,0.95)']]) { g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath(); const q = ['clav' + s, 'arm' + s, 'fore' + s, 'hand' + s].map(pr); g.moveTo(q[0][0], q[0][1]); for (const p of q.slice(1)) g.lineTo(p[0], p[1]); g.stroke(); g.fillStyle = col; g.beginPath(); g.arc(q[2][0], q[2][1], 4, 0, TAU); g.fill(); }
       }
       evLabel(g, x + 3, y + 3, (vi === 0 ? '' : '') + (a.loop ? Math.round(i / n * 100) + '%' : t.toFixed(2) + 's'), { size: 11 });
     }
   });
+  if (o.body != null && typeof LGA !== 'undefined') LGA.body = true;
+  if (o.gun) lgGunSet(null, null);
   return { id: o.id, dur: a.dur, data: data };
 };
 // the numbers of a clip over its cycle (no render): joint angles and contact heights at m samples

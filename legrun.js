@@ -56,11 +56,11 @@ function lgvTrack(k, keys) {
   for (let i = 1; i < keys.length; i++) { if (k > keys[i][0]) continue; const a = keys[i - 1], b = keys[i], u = (k - a[0]) / ((b[0] - a[0]) || 1); return lgvMix(a[1], b[1], lgvE(u)); }
   return keys[keys.length - 1][1];
 }
-function lgvHand(P, side, M, pole) { P.ik['hand' + side] = { sp: 'chest', p: [M[12], M[13], M[14]], M: M, pole: pole || (side === 'L' ? [-0.1, 0.6, -0.8] : [-0.2, -0.8, -0.6]) }; }
+function lgvHand(P, side, M, pole) { P.ik['hand' + side] = { sp: 'chest', p: [M[12], M[13], M[14]], M: M, pole: pole || (side === 'L' ? LG_POLE.Lc : LG_POLE.Rc) }; }
 function lgvPost(a, b, k) { k = lgvE(clamp(k, 0, 1)); return a.map((x, i) => x + (b[i] - x) * k); }
 // postures, chest space [x, y, z, yaw, pitch (+ muzzle down), cant (+ top right)]
 const LGV_POST = {
-  rReady: [0.41, -0.125, 0.32, 0.0, 0.0, 0.0], rLow: [0.36, -0.135, 0.14, 0.06, 0.6, 0.0], rSprint: [0.24, -0.02, 0.05, 0.78, 1.0, -0.3], rWork: [0.33, -0.05, 0.17, 0.3, 0.12, -0.72],
+  rReady: [0.376, -0.14, 0.25, 0.0, 0.0, 0.0], rLow: [0.31, -0.14, 0.05, 0.06, 0.6, 0.0], rSprint: [0.24, -0.02, 0.05, 0.78, 1.0, -0.3], rWork: [0.33, -0.05, 0.17, 0.3, 0.12, -0.72],
   rPort: [0.33, -0.05, 0.17, 0.2, 0.05, 0.55], rUp: [0.3, -0.04, 0.3, 0.15, -0.35, -0.2], rCheck: [0.35, -0.07, 0.2, 0.22, 0.1, -0.5], rSling: [0.12, 0.08, 0.36, 0.6, -1.15, 0.2],
   pReady: [0.53, -0.01, 0.32, 0.0, 0.0, 0.0], pLow: [0.4, -0.035, -0.08, 0.0, 0.55, 0.0], pSul: [0.15, -0.02, -0.04, 0.0, 1.38, 0.0], pWork: [0.27, -0.01, 0.12, 0.25, -0.15, -0.55],
   pHigh: [0.21, -0.035, 0.08, 0.0, 0.04, 0.0], pUp: [0.28, -0.02, 0.2, 0.15, -0.9, -0.4], pDown: [0.3, -0.01, 0.06, 0.1, 0.9, 0.2]
@@ -87,9 +87,9 @@ function lgvC(ctx) { return ctx.fam === 'c'; }
 function lgvRifle(P, v, ctx, free, kL) {
   const g = ctx.fk || ctx.gun || '', vv = lgvFix(g, v);
   P.carbine.at = 'aim'; P.carbine.sp = 'chest'; P.carbine.M = lgvGunM(vv);
-  P.ik.handR = { on: 'carbine', pole: [-0.2, -0.8, -0.6] }; P.grip.R = ctx.trigger ? 'trigger' : 'pistol';
+  P.ik.handR = { on: 'carbine', pole: LG_POLE.Rc }; P.grip.R = ctx.trigger ? 'trigger' : 'pistol';
   if (free && kL > 0) { const on = lgvOnGun(vv, lgSockFor('carbine', 'gripL')); lgvHand(P, 'L', lgvMix(on, free, kL)); P.grip.L = kL > 0.6 ? (ctx.gripL || 'cup') : 'cup'; }
-  else { P.ik.handL = { on: 'carbine', pole: [-0.1, 0.6, -0.8] }; P.grip.L = 'cup'; }
+  else { P.ik.handL = { on: 'carbine', pole: LG_POLE.Lc }; P.grip.L = 'cup'; }
   if (ctx.fam === 'c') { P.pistol.at = 'holster'; }
   return vv;
 }

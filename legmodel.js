@@ -208,7 +208,10 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
   // 1.9.994: the firing hand high on the pistol grip (the index's knuckle beside the receiver, the web under the stock), and
   // the support hand under the handguard: the handguard lies in the palm, the thumb along the near side, the fingers
   // closing over the far side (both then fitted to the gun by leghand.js)
-  LG_SOCK.cgripR = lgBasis([0.42, 0, 0.906], [0, 1, 0], [-0.906, 0, 0.42], [-0.1154, -0.0285, -0.0516]);
+  // (1.9.997: the knuckles point forward and a little up, along a forearm that rises from an elbow held down, with the grip
+  // crossing the palm on the diagonal, as a hand really takes a raked rifle grip; they used to point down the grip, which
+  // asked the wrist for 70 degrees of flexion and forced the elbow up level with the shoulder to ease it)
+  LG_SOCK.cgripR = lgBasis([-0.5, 0, 0.866], [0, 1, 0], [-0.866, 0, -0.5], [-0.1136, -0.0285, -0.093]);
   LG_SOCK.cgripL = lgBasis([0.953, 0.301, 0], [0, 0, -1], [-0.301, 0.953, 0], [0.14, 0.0597, -0.0345]);
   LG_SOCK.muzP = [0.214, 0, 0]; LG_SOCK.muzC = [0.469, 0, 0];
   // a fresh magazine in the left hand (hand space -> magazine geometry, which is built in the gun's space): the

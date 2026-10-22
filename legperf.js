@@ -15,9 +15,12 @@
    lgpEval(clip, t, P, ctx, o) poses P like lgEvalClip, with the layer on. */
 const LGP = { on: true, n: 0 };
 // the spring per part: [frequency Hz, damping ratio]; parts not listed are left as the clip has them
+// (1.9.997: stiffer than at first. A hand-keyed clip already carries its follow-through; the layer adds the last few
+// hundredths of a second of lag and settle a captured body has, not a second swing on top. The arms at 3.8 Hz lagged a
+// sprint's swing by a quarter of its cycle and overshot it: they read as wider and later than the clip.)
 const LGP_SPRING = {
-  pelvis: [8, 0.85], spine: [7, 0.8], chest: [6, 0.72], neck: [4.6, 0.62], head: [3.8, 0.58],
-  clavL: [5, 0.62], clavR: [5, 0.62], armL: [3.8, 0.55], armR: [3.8, 0.55], foreL: [4.2, 0.55], foreR: [4.2, 0.55], handL: [5, 0.6], handR: [5, 0.6]
+  pelvis: [10, 0.9], spine: [9, 0.85], chest: [8, 0.8], neck: [6.5, 0.72], head: [5.5, 0.68],
+  clavL: [7, 0.72], clavR: [7, 0.72], armL: [7, 0.7], armR: [7, 0.7], foreL: [8, 0.7], foreR: [8, 0.7], handL: [9, 0.68], handR: [9, 0.68]
 };
 const LGP_TAUS = [0, 0.012, 0.025, 0.04, 0.058, 0.08, 0.105, 0.135, 0.17, 0.21, 0.26, 0.32];
 // the filter weights for a spring: the impulse response of a damped second-order system sampled at the taus (trapezoid
@@ -53,15 +56,21 @@ function lgpSprings(a, t, P, ctx, o) {
   for (let k = 1; k < LGP_TAUS.length; k++) lgEvalClip(a, a.loop ? tc - LGP_TAUS[k] : Math.max(0, tc - LGP_TAUS[k]), LGP_TMP[k], ctx);
   LGP_RAW.r.set(P.r); LGP_RAW.t.set(P.t);
   const sk = o.springs == null ? 1 : o.springs;
+  // an arm held by reach is placed by its target, not its angles: leave it; and an arm that has just let go (any past
+  // sample still held) is left to the clip too: its angles in those samples were never meaningful, and blending them in
+  // swung the freed arm out wide and late (1.9.997)
+  const heldL = !!P.ik.handL, heldR = !!P.ik.handR; let wasL = heldL, wasR = heldR;
+  for (let k = 1; k < LGP_TAUS.length && !(wasL && wasR); k++) { if (LGP_TMP[k].ik.handL) wasL = true; if (LGP_TMP[k].ik.handR) wasR = true; }
   for (const [bi, w, name] of LGP_IDX) {
     if (bi == null) continue;
-    // an arm held by reach is placed by its target, not its angles: leave it
-    if ((name === 'armL' || name === 'foreL' || name === 'handL') && P.ik.handL) continue;
-    if ((name === 'armR' || name === 'foreR' || name === 'handR') && P.ik.handR) continue;
+    if ((name === 'armL' || name === 'foreL' || name === 'handL') && wasL) continue;
+    if ((name === 'armR' || name === 'foreR' || name === 'handR') && wasR) continue;
     for (let c = 0; c < 3; c++) {
-      const i = bi * 3 + c; let y = P.r[i] * w[0];
-      for (let k = 1; k < LGP_TAUS.length; k++) y += LGP_TMP[k].r[i] * w[k];
-      P.r[i] += (y - P.r[i]) * sk;
+      // (angles are blended by their wrapped differences from the present, so a joint that turns through a full circle,
+      // or a clip that wraps an angle, never blends across the seam into an inverted pose)
+      const i = bi * 3 + c, cur = P.r[i]; let y = 0;
+      for (let k = 1; k < LGP_TAUS.length; k++) { let d = LGP_TMP[k].r[i] - cur; if (d > Math.PI) d -= TAU; else if (d < -Math.PI) d += TAU; y += d * w[k]; }
+      P.r[i] += y * sk;
     }
     if (name === 'pelvis') for (let c = 0; c < 3; c++) { const i = bi * 3 + c; let y = P.t[i] * w[0]; for (let k = 1; k < LGP_TAUS.length; k++) y += LGP_TMP[k].t[i] * w[k]; P.t[i] += (y - P.t[i]) * sk; }
   }
