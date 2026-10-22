@@ -27,6 +27,23 @@ const TR_GUN = {
   launcher: { w: 0, len: 0, glow: 0.5, heat: 0.3, grenade: 1 },
   flamer: { w: 0, len: 0, glow: 0.8, heat: 1, flame: 1 }
 };
+// 1.9.997: the rebuilt guns' rounds by calibre (the research notes, part C): a ball round in flight is a grey-copper smear
+// with a glint at its head, as wide as its bullet, not a glowing tracer; a real tracer (the M249's belt, one in five) is
+// an orange-red streak that wobbles a little and lights the street; a shotgun's nine pellets are a loose grey cloud with
+// the wad tumbling behind; a .50 or a .44 is fat and slow, a 5.7 thin and quick with a bluish glint; the 7.62 marksman's
+// round leaves a vapour trail in wet air
+const TR_CAL = {
+  m4a1: { w: 0.95, len: 0.03, glow: 0.35, heat: 0.25, ball: 1 }, aug: { w: 0.95, len: 0.03, glow: 0.35, heat: 0.25, ball: 1 },
+  m249: { w: 0.95, len: 0.03, glow: 0.6, heat: 0.3, ball: 1, every: 5, tcol: '#ff8a3a', light: 1 },
+  ak74m: { w: 0.95, len: 0.03, glow: 0.35, heat: 0.25, ball: 1 },
+  mk17: { w: 1.2, len: 0.034, glow: 0.45, heat: 0.4, ball: 1 }, mk14: { w: 1.2, len: 0.036, glow: 0.45, heat: 0.45, ball: 1, wake: 1 },
+  m17: { w: 1.25, len: 0.02, glow: 0.3, heat: 0.12, ball: 1 }, m9: { w: 1.25, len: 0.02, glow: 0.3, heat: 0.12, ball: 1 }, g17: { w: 1.25, len: 0.02, glow: 0.3, heat: 0.12, ball: 1 }, mp5a3: { w: 1.2, len: 0.018, glow: 0.3, heat: 0.1, ball: 1 },
+  pp19: { w: 1.2, len: 0.017, glow: 0.3, heat: 0.08, ball: 1 }, aps: { w: 1.2, len: 0.017, glow: 0.3, heat: 0.08, ball: 1 },
+  m1911: { w: 1.45, len: 0.022, glow: 0.35, heat: 0.1, ball: 1 }, m1917: { w: 1.45, len: 0.022, glow: 0.35, heat: 0.1, ball: 1 },
+  deagle: { w: 1.7, len: 0.026, glow: 0.5, heat: 0.4, ball: 1 }, m29: { w: 1.5, len: 0.026, glow: 0.5, heat: 0.4, ball: 1 },
+  fiveseven: { w: 0.75, len: 0.028, glow: 0.4, heat: 0.3, ball: 1, blue: 1 },
+  m1014: { w: 0.85, len: 0.012, glow: 0.2, heat: 0.05, ball: 1, wad: 1 }, m590a1: { w: 0.85, len: 0.012, glow: 0.2, heat: 0.05, ball: 1, wad: 1 }, coach: { w: 0.85, len: 0.012, glow: 0.2, heat: 0.05, ball: 1, wad: 1 }
+};
 // the mod's touch: what it sheds along the way
 const TR_MOD = {
   incendiary: 'embers', cryo: 'frost', toxic: 'drip', shock: 'arc', thunderclap: 'arc', seeker: 'curve', boomerang: 'curve',
@@ -41,6 +58,7 @@ function tracerRgb(col) { let v = trRgb.get(col); if (v) return v; const n = par
 function tracerTag(b, shotNo) {
   const P = TR_GUN[b.fk] || TR_GUN.pistol;
   b.tr = P && P.every ? ((shotNo == null ? (Math.random() * P.every) | 0 : shotNo) % P.every === 0) : true;
+  if (P.ball) { b.ball = 1; if (P.every && b.tr) b.tcol = P.tcol || '#ff8a3a'; }   // (1.9.997: a ball round, or a belt's tracer)
 }
 // every frame: remember where each round has been (for curved trails and heat), age the vapour trails and puffs
 function tracerTick(dt) {
@@ -83,7 +101,8 @@ function tracerSoft() {
   g.fillStyle = gr; g.fillRect(0, 0, 64, 64); TRACER.soft = c; return c;
 }
 // one round's streak: glow, tapered body, white-hot head (k scales everything; glowOnly for the night pass)
-function tracerStreak(b, P, rgb, k, glowOnly, dt) {
+function tracerStreak(b, P, rgb0, k, glowOnly, dt) {
+  let rgb = rgb0;
   const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, bright = b.tr === false ? 0.55 : 1;
   // as long as a camera shutter would smear it, never back past the muzzle
   let L = Math.min(Math.max(P.len, dt * 0.85) * (b.tr === false ? 0.8 : 1) * (b.crit ? 1.25 : 1), b.age || 0) * sp;
@@ -95,6 +114,17 @@ function tracerStreak(b, P, rgb, k, glowOnly, dt) {
     ctx.strokeStyle = b.crit ? '#ffffff' : b.col; ctx.globalAlpha = k * (b.tr === false ? 0.6 : 1); ctx.lineWidth = P.w || 1.6; ctx.beginPath(); ctx.moveTo(b.x - ux * L, b.y - uy * L); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.globalAlpha = 1; return;
   }
   const tx = b.x - ux * L, ty = b.y - uy * L, w = (b.shard ? 1.2 : P.w) * (b.crit ? 1.3 : 1) * (b.tr === false ? 0.8 : 1);
+  // 1.9.997: a ball round of the standard load is grey copper with a glint, not fire (a mod's round keeps its colour); a
+  // real tracer is orange-red and wobbles a little as it flies
+  const plain = b.ball && (!b.mk || b.mk === 'standard' || b.mk === 'heavy');
+  if (plain && !b.tcol) {
+    const bl = P.blue, core2 = bl ? '236,244,255' : '240,232,214', body = bl ? '170,190,230' : '176,160,132', a0 = b.crit ? 1 : 0.62;
+    const g3 = ctx.createLinearGradient(tx, ty, b.x, b.y); g3.addColorStop(0, 'rgba(' + body + ',0)'); g3.addColorStop(0.7, 'rgba(' + body + ',' + (0.45 * a0 * k).toFixed(3) + ')'); g3.addColorStop(1, 'rgba(' + core2 + ',' + (0.8 * a0 * k).toFixed(3) + ')');
+    ctx.strokeStyle = g3; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke();
+    if (!glowOnly) { ctx.fillStyle = 'rgba(' + core2 + ',' + (0.9 * k).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(b.x, b.y, w * 0.55, 0, TAU); ctx.fill(); }
+    return;
+  }
+  if (b.tcol) { rgb = tracerRgb(b.tcol); const wob = Math.sin((b.age || 0) * 90) * 0.5 * PK; ctx.translate(-uy * wob, ux * wob); }
   const core = b.crit ? '255,255,255' : Math.round(200 + rgb[0] * 0.22) + ',' + Math.round(190 + rgb[1] * 0.25) + ',' + Math.round(170 + rgb[2] * 0.3);
   const tint = rgb[0] + ',' + rgb[1] + ',' + rgb[2];
   // the glow round it (wider, soft)
@@ -102,12 +132,13 @@ function tracerStreak(b, P, rgb, k, glowOnly, dt) {
     const g = ctx.createLinearGradient(tx, ty, b.x, b.y); g.addColorStop(0, 'rgba(' + tint + ',0)'); g.addColorStop(1, 'rgba(' + tint + ',' + (P.glow * 0.45 * k * bright).toFixed(3) + ')');
     ctx.strokeStyle = g; ctx.lineWidth = w * 3.2; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
-  if (glowOnly) return;
+  if (glowOnly) { if (b.tcol) { const wob = Math.sin((b.age || 0) * 90) * 0.5 * PK; ctx.translate(uy * wob, -ux * wob); } return; }
   // the body: tapered from nothing at the tail to the head's colour
   const g2 = ctx.createLinearGradient(tx, ty, b.x, b.y); g2.addColorStop(0, 'rgba(' + tint + ',0)'); g2.addColorStop(0.6, 'rgba(' + tint + ',' + (0.75 * k * bright).toFixed(3) + ')'); g2.addColorStop(1, 'rgba(' + core + ',' + (0.95 * k).toFixed(3) + ')');
   ctx.strokeStyle = g2; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke();
   // the white-hot head
   ctx.fillStyle = 'rgba(' + core + ',' + (0.9 * k).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(b.x, b.y, w * 0.62, 0, TAU); ctx.fill();
+  if (b.tcol) { const wob = Math.sin((b.age || 0) * 90) * 0.5 * PK; ctx.translate(uy * wob, -ux * wob); }
 }
 // the curve a seeker or a boomerang flew
 function tracerCurve(b, rgb, k) {
@@ -195,7 +226,7 @@ function tracerEmissive(a) {
       const P = TR_GUN[b.fk] || TR_GUN.pistol, rgb = tracerRgb(b.col);
       tracerStreak(b, P, rgb, k, false, dt);
       // the brightest rounds light the street (and cast shadows) as they pass
-      if (lights < lightMax && (P.light || (P.every && b.tr)) && typeof luxFlash === 'function') { luxFlash(b.x, b.y, (P.light ? 150 : 90) * (0.55 + 0.45 * SCL), rgb[0] + ',' + rgb[1] + ',' + rgb[2], P.light ? 0.7 : 0.4, 0.04, { shade: lights === 0 }); lights++; }
+      if (lights < lightMax && ((P.light && !(P.every && !b.tr)) || (P.every && b.tr)) && typeof luxFlash === 'function') { const lr = b.tcol ? tracerRgb(b.tcol) : rgb; luxFlash(b.x, b.y, (P.light ? 150 : 90) * (0.55 + 0.45 * SCL), lr[0] + ',' + lr[1] + ',' + lr[2], P.light ? 0.7 : 0.4, 0.04, { shade: lights === 0 }); lights++; }   // (1.9.997: a belt's tracers light the street, its ball rounds do not)
     }
     // hot rounds bend the air: hand the shader engine a few hot spots along the sniper's path
     if (F.hot && TRACER.perf > -2 && typeof coreToScreen === 'function') {

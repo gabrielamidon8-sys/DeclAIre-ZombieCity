@@ -160,7 +160,7 @@ var ZW = (function () {
       reload: { tac: 2.1, empty: 2.5, kind: 'pistol', special: 'Two kilos of steel: the magazine is short and fat, the slide heavy enough that the whole hand goes over the top to run it.' },
       real: { barrel: '6 in (152 mm)', weight: '2.0 kg', action: 'Gas-operated, rotating bolt, single action', rate: 'semi-automatic', mv: '~470 m/s' },
       eject: { a: 1.6, s: 3.6, up: 2.4, kind: 'case50' }, tags: ['damage', 'crit'], desc: 'A rifle round in a pistol frame. Seven shots, each one lights the street.' },
-    { key: 'm29', slot: 'secondary', name: 'Model 29', full: 'Smith & Wesson Model 29 .44 Magnum', cls: 'revolver', base: 'revolver', snd: ['revolver', 1.0], mz: 'magnum', tier: 3,
+    { key: 'm29', slot: 'secondary', name: 'Model 29', full: 'Smith & Wesson Model 29 .44 Magnum', cls: 'revolver', base: 'revolver', snd: ['revolver', 1.0], mz: 'magnumR', tier: 3,
       cal: '.44 Remington Magnum', mag: 6, chamber: 0, auto: 0, rpm: 150, dmg: 30, pellets: 1, spread: 0.03, speed: 360, range: 420, pierce: 0, crit: 0.18, knock: 190, move: 1.0,
       v: 360, g: 16, cd: 0.002, kick: 0.08, rec: 1.6, max: 0.2, cam: 0.85, len: 20, ready: 0.21, draw: 0.56, holster: 0.5,
       reload: { tac: 2.8, empty: 2.8, kind: 'speed', special: 'The speedloader: thumb latch, the cylinder out to the left, muzzle up and one stroke of the ejector, six rounds in together with a twist, and the cylinder closed with the left thumb.' },

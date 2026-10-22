@@ -37,12 +37,8 @@ function armsSecondary() { return ARMS_BY[armsLoad().s]; }
 function armsCap(w) { const A = w.arms; return A.mag + (A.chamber || 0); }
 
 /* ---------- the shared tables: every engine that looks guns up by name learns the new ten ---------- */
-const ARMS_MZ = {
-  ak: { len: 22, w: 12, prong: 2, brake: true, sparks: 4, smoke: 0.55, brass: '', light: [285, 1.05, 0.07] },
-  battle: { len: 28, w: 12, prong: 3, cage: true, sparks: 4, smoke: 0.85, brass: '', light: [325, 1.18, 0.08] },
-  pistol45: { len: 16, w: 12, prong: 3, sparks: 4, smoke: 0.75, brass: '', light: [272, 1.02, 0.08] },
-  pistolA: { len: 13, w: 9, prong: 4, sparks: 2, smoke: 0.4, brass: '', light: [238, 0.9, 0.05] }
-};
+// (1.9.997: every flash now lives in MUZZLE's own table, by the gun's device and round)
+const ARMS_MZ = {};
 // how far each gun is heard by the dead (1.9.997: the twenty)
 const ARMS_EAR = { mk17: 110, mk14: 110, m249: 105, m1014: 80, m590a1: 80, coach: 78, m1911: 70, m1917: 70, deagle: 74, m29: 74, pp19: 55, mp5a3: 58, aps: 60 };
 // the reload kinds that load shell by shell, and the ones that do the whole load whatever is left (a cylinder, a belt,
@@ -53,7 +49,7 @@ const ARMS_TUBE = { tube: 1, pump: 1 }, ARMS_FULL = { moon: 1, speed: 1, break: 
     const A = w.arms, k = A.key;
     BAL_GUN[k] = { v: A.v, g: A.g, cd: A.cd, kick: A.kick, rec: A.rec, max: A.max, cal: A.cal };
     MZ[k] = Object.assign({}, ARMS_MZ[A.mz] || MZ[A.mz] || MZ[A.base], { brass: '' });   // (PHYSICS throws the brass now)
-    TR_GUN[k] = Object.assign({}, TR_GUN[A.base] || TR_GUN.pistol);
+    TR_GUN[k] = Object.assign({}, TR_GUN[A.base] || TR_GUN.pistol, typeof TR_CAL !== 'undefined' && TR_CAL[k] ? TR_CAL[k] : {});   // (1.9.997: its own calibre's round)
     GORE_GUN[k] = Object.assign({}, GORE_GUN[A.base] || GORE_GUN.pistol);
     if (A.key === 'mk17') GORE_GUN[k] = Object.assign({}, GORE_GUN.sniper || GORE_GUN.rifle);
     SW_EAR[k] = ARMS_EAR[k] || (A.slot === 'secondary' ? 60 : 90);
