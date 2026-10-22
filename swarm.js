@@ -99,18 +99,42 @@ function swarmNear(x, y, rad, fn) {
 function swarmArrays(n) {
   if (SWARM.A && SWARM.cap2 >= n) return SWARM.A;
   const m = Math.max(1024, n * 2), F = () => new Float32Array(m);
-  SWARM.A = { X: F(), Y: F(), R: F(), VX: F(), VY: F(), SX: F(), SY: F(), AVX: F(), AVY: F(), PT: F(), PNX: F(), PNY: F(), FL: new Uint8Array(m), NB: new Uint16Array(m), AL: new Uint16Array(m), PK: new Uint16Array(m), PD: new Uint8Array(m) };
+  SWARM.A = { X: F(), Y: F(), R: F(), VX: F(), VY: F(), SX: F(), SY: F(), AVX: F(), AVY: F(), PT: F(), PNX: F(), PNY: F(), FL: new Uint8Array(m), NB: new Uint16Array(m), AL: new Uint16Array(m), PK: new Uint16Array(m), PD: new Uint8Array(m),
+    // 1.9.998 (HORDE): solid bodies with weight and momentum, the frenzy passing body to body, piles
+    MS: F(), DVX: F(), DVY: F(), IMP: F(), IX: F(), IY: F(), IM: F(), PR: F(), PZ: F(), PT2: F(), CN: new Uint8Array(m), FZ: new Uint8Array(m), FZ0: new Uint8Array(m), SUP: new Uint8Array(m), ON: new Uint8Array(m), HO: new Uint8Array(m) };
   SWARM.cap2 = m; return SWARM.A;
 }
 // one pair of neighbours: weight-shared push apart, falling in step, and passing a push along
 function swarmPair(i, j, A) {
   const X = A.X, Y = A.Y, ex = X[i] - X[j], ey = Y[i] - Y[j], d2 = ex * ex + ey * ey;
   if (d2 < 4096) { A.PK[i]++; A.PK[j]++; }
-  const ra = A.R[i], rb = A.R[j], rr = ra + rb, Rf = rr * 2.2; if (d2 > Rf * Rf) return;
+  const ra = A.R[i], rb = A.R[j], hb = A.HO[i] && A.HO[j], rr = hb ? (ra + rb) * 0.8 : ra + rb, Rf = (ra + rb) * 2.2; if (d2 > Rf * Rf) return;
   const d = Math.sqrt(d2) || 0.01, nx = ex / d, ny = ey / d;
-  if (d < rr) { const push = (rr - d) / rr, ma = ra * ra, mb = rb * rb, wa = 2 * mb / (ma + mb), wb = 2 * ma / (ma + mb); A.SX[i] += nx * push * wa; A.SY[i] += ny * push * wa; A.SX[j] -= nx * push * wb; A.SY[j] -= ny * push * wb; }
-  A.NB[i]++; A.NB[j]++;
   const avx = A.VX[i], avy = A.VY[i], bvx = A.VX[j], bvy = A.VY[j], av = avx * avx + avy * avy, bv = bvx * bvx + bvy * bvy;
+  if (hb) {
+    // 1.9.998: one up on a pile over the other: it stands on it (it holds it up; the one under is pinned)
+    const dz = A.PZ[i] - A.PZ[j];
+    if (dz > 0.5 || dz < -0.5) { if (d < rr * 1.1) { if (dz > 0) { A.SUP[i]++; A.ON[j]++; } else { A.SUP[j]++; A.ON[i]++; } } return; }
+    if (d < rr) {
+      // solid bodies: pushed apart by weight, and the momentum of the closing speed passed on between them
+      const push = (rr - d) / rr, ma = A.MS[i], mb = A.MS[j], wa = 2 * mb / (ma + mb), wb = 2 * ma / (ma + mb);
+      A.SX[i] += nx * push * wa; A.SY[i] += ny * push * wa; A.SX[j] -= nx * push * wb; A.SY[j] -= ny * push * wb; A.PR[i] += push; A.PR[j] += push;
+      const vrn = (avx - bvx) * nx + (avy - bvy) * ny;
+      if (A.CN[i] < 250) A.CN[i]++; if (A.CN[j] < 250) A.CN[j]++;
+      if (vrn < 0) {
+        const J = -vrn / (1 / ma + 1 / mb), di = J / ma, dj = J / mb;
+        A.DVX[i] += nx * di; A.DVY[i] += ny * di; A.DVX[j] -= nx * dj; A.DVY[j] -= ny * dj;
+        if (di > A.IMP[i]) { A.IMP[i] = di; A.IX[i] = nx; A.IY[i] = ny; A.IM[i] = mb / ma; }
+        if (dj > A.IMP[j]) { A.IMP[j] = dj; A.IX[j] = -nx; A.IY[j] = -ny; A.IM[j] = ma / mb; }
+      }
+      // the height of the bodies in front of each (what a climber has to get on top of)
+      if (-(avx * nx + avy * ny) > 0 && A.PZ[j] + 0.01 > A.PT2[i]) A.PT2[i] = A.PZ[j] + 0.01;
+      if ((bvx * nx + bvy * ny) > 0 && A.PZ[i] + 0.01 > A.PT2[j]) A.PT2[j] = A.PZ[i] + 0.01;
+    }
+    // the frenzy passes from body to body
+    if (A.FZ0[j] && A.FZ[i] < 250) A.FZ[i]++; if (A.FZ0[i] && A.FZ[j] < 250) A.FZ[j]++;
+  } else if (d < rr) { const push = (rr - d) / rr, ma = ra * ra, mb = rb * rb, wa = 2 * mb / (ma + mb), wb = 2 * ma / (ma + mb); A.SX[i] += nx * push * wa; A.SY[i] += ny * push * wa; A.SX[j] -= nx * push * wb; A.SY[j] -= ny * push * wb; }
+  A.NB[i]++; A.NB[j]++;
   if (av > 64 && bv > 64) {
     const dot = avx * bvx + avy * bvy;
     if (dot > 0.72 * Math.sqrt(av * bv)) { A.AL[i]++; A.AL[j]++; A.AVX[i] += bvx; A.AVY[i] += bvy; A.AVX[j] += avx; A.AVY[j] += avy; }
@@ -128,9 +152,12 @@ function swarmCrowd(dt) {
   const bigR = SWARM.bigR = SWARM.cs * 0.38, big = SWARM.big; big.length = 0; let maxR = 0;
   const A = swarmArrays(n), X = A.X, Y = A.Y, R = A.R, FL = A.FL, PV = SWARM.PV; PV.length = n;
   A.SX.fill(0, 0, n); A.SY.fill(0, 0, n); A.AVX.fill(0, 0, n); A.AVY.fill(0, 0, n); A.NB.fill(0, 0, n); A.AL.fill(0, 0, n); A.PK.fill(0, 0, n);
+  A.DVX.fill(0, 0, n); A.DVY.fill(0, 0, n); A.IMP.fill(0, 0, n); A.CN.fill(0, 0, n); A.PR.fill(0, 0, n); A.PT2.fill(0, 0, n); A.FZ.fill(0, 0, n); A.SUP.fill(0, 0, n); A.ON.fill(0, 0, n);
+  const hOn = typeof hordeOn === 'function';
   for (let i = 0; i < n; i++) {
-    const z = L[i], sk = swSkip(z);
+    const z = L[i], sk = swSkip(z) || !!z.xing;
     X[i] = z.x; Y[i] = z.y; R[i] = z.r; A.VX[i] = z.vx || 0; A.VY[i] = z.vy || 0;
+    const ho = hOn && hordeOn(z); A.HO[i] = ho ? 1 : 0; if (ho) { A.MS[i] = hordeMass(z); A.PZ[i] = z.pz || 0; A.FZ0[i] = z.gear === 2 && z.fz ? 1 : 0; } else { A.PZ[i] = 0; A.FZ0[i] = 0; }
     const pt = z.pt > 0 ? z.pt - dt : 0; A.PT[i] = pt; A.PD[i] = pt > 0 ? z.pd | 0 : 0; PV[i] = pt > 0 ? z.pv : null; A.PNX[i] = z.pnx || 0; A.PNY[i] = z.pny || 0;
     FL[i] = sk || z.r > bigR ? 1 : 0;   // left out of the cell pass: flying, underground, illusions, the big ones
     if (!sk && z.r > bigR) { big.push(z); if (z.r > maxR) maxR = z.r; }
@@ -153,6 +180,7 @@ function swarmCrowd(dt) {
   }
   for (let i = 0; i < n; i++) {
     const z = L[i]; z.swF = fr; z.sepX = A.SX[i]; z.sepY = A.SY[i]; z.nbN = A.NB[i]; z.alN = A.AL[i]; z.avX = A.AVX[i]; z.avY = A.AVY[i]; z.pk = A.PK[i];
+    if (A.HO[i]) { const cn = Math.max(1, A.CN[i]); z.dvX = A.DVX[i] / cn; z.dvY = A.DVY[i] / cn; z.impV = A.IMP[i]; z.impX = A.IX[i]; z.impY = A.IY[i]; z.impM = A.IM[i]; z.press = A.PR[i]; z.fzN = A.FZ[i]; z.sup = A.SUP[i]; z.onN = A.ON[i]; z.pileTop = A.PT2[i]; }
     z.pt = A.PT[i]; if (z.pt > 0) { z.pd = A.PD[i]; z.pv = PV[i]; z.pnx = A.PNX[i]; z.pny = A.PNY[i]; } else z.pv = null;
   }
 }
@@ -631,8 +659,11 @@ function swarmDraw(vis, hw, hh) {
   const crowd = nv > 70 ? 1 : 0, mob = nv > 220 ? 1 : 0, strain = -SWARM.adapt, hi = SET.crowd === 'high' || TUNE.SWARM > 0, low = SET.crowd === 'low' || TUNE.SWARM < 0;
   const tier = clamp(PERF.tier | 0, 0, 3); SWARM.budF = [2, 3, 5, 8][tier] + (strain ? 0 : 1); SWARM.budL = [6, 10, 16, 24][tier]; SWARM.keys.clear();
   const T = ctx.getTransform(), s = T.a, e = T.e, f = T.f, setT = () => ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f), FL = SWARM.fl, FS = SWARM.flS, OV = SWARM.ov, OL = SWARM.ovL; FL.length = 0; FS.length = 0; OV.length = 0; OL.length = 0;
+  const UP = SWARM.up || (SWARM.up = []); UP.length = 0;
   for (let i = 0; i < nv; i++) {
     const z = V[i], far = z.swD > nr2; z.swRk = i; z.swRkF = frameNo;
+    // 1.9.998: up on a pile, a car roof or mid-vault: drawn after everything on the ground (higher ones last)
+    if (z.pz > 0.15 && !z.upD) { UP.push(z); continue; }
     let lod = Q.lod + (far ? 1 + crowd : 0);
     if (!hi) { if (mob && i > 60) lod++; if (strain >= 2 && i > 30) lod++; if (low) lod++; }
     lod = Math.min(3, lod); ln[lod]++;
@@ -657,6 +688,14 @@ function swarmDraw(vis, hw, hh) {
     if (lod < 2 && (z.wnd || z.charK || z.frostK) && typeof goreWounds === 'function') goreWounds(ctx, z, z.r);
     if (z.flash > 0 && lod < 3) { FL.push(z); FS.push(sp.c, sp.sx, sp.sy, sp.sw, sp.sh, sp.ox, sp.oy, sp.w, sp.h, an, a); }
     if (lod < 3 || z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0) || z.shield > 1 || z.st.aim > 0) { OV.push(z); OL.push(lod, far ? 1 : 0); }
+  }
+  if (UP.length) {
+    UP.sort((a, b) => (a.pz || 0) - (b.pz || 0));
+    for (const z of UP) { z.upD = 1; try { hordeShadow(z, s, e, f); } catch (er) { } }
+    // (drawn again through the same loop body: the flag stops them being set aside a second time)
+    const keep = V.slice(); V.length = 0; for (const z of UP) V.push(z);
+    for (let i = 0; i < V.length; i++) { const z = V[i], lod = Math.min(3, Q.lod), a = swarmAlpha(z); if (z.m.v2 && animaDraw(z, lod, Math.max(0, z.swRk | 0), s, e, f, a)) { OV.push(z); OL.push(lod, 0); } z.upD = 0; }
+    V.length = 0; for (const z of keep) V.push(z);
   }
   if (FL.length) {
     ctx.globalCompositeOperation = 'lighter';
@@ -748,7 +787,7 @@ function swarmReset() {
 function swarmHordeFx(n, k, ang) { swarmAnnounce(n | 0, k === 2 ? 'drove' : k === 1 ? 'horde' : 'pack', (+ang || 0) / 100, G.p); }
 coreAdd({
   name: 'SWARM', kind: 'sim', ver: 1, needs: ['FLOW', 'PERF', 'TEXEL'], provides: ['crowd', 'hordes', 'zombieLod', 'vehiclePhysics'],
-  does: 'Crowd engine: hordes and droves of hundreds that gather out of sight, march together at one pace and surge when they see you; zombies moving the same way fall in step and go faster together; bodies push each other by weight and a crowd pushing through each other can shove a car (about 50 zombies) or a semi (about 460), but only when 30 or more are after you within 18 m and the vehicle stands between you and them within 9 m of you, otherwise they go round it; hordes spread out to surround you and come to gunfire they hear; zombie levels of detail so 500 and more can be on screen; one shared grid that the whole game finds zombies with.',
+  does: 'Crowd engine (with HORDE, 1.9.998): real speeds in three gears (an amble, a pursuit, a World War Z frenzy that comes in bursts and spreads body to body, never faster than your sprint), momentum (they cannot turn on the spot at a run, so at corners the leaders slam into the wall and the rest glance off them), solid bodies that crush together and pass momentum on by weight, cars, dumpsters, benches and fences crossed (vaulted, climbed, dived through, crawled under), the pack sent round to cut you off where you are running to, and pile-ups that climb over what stops them; hordes and droves of hundreds that gather out of sight, march together at one pace and surge when they see you; zombies moving the same way fall in step and go faster together; bodies push each other by weight and a crowd pushing through each other can shove a car (about 50 zombies) or a semi (about 460), but only when 30 or more are after you within 18 m and the vehicle stands between you and them within 9 m of you, otherwise they go round it; hordes spread out to surround you and come to gunfire they hear; zombie levels of detail so 500 and more can be on screen; one shared grid that the whole game finds zombies with.',
   state: () => swarmUp() ? (SWARM.hordes.length ? 'hordes' : 'on') : 'off',
   level: () => SWARM.n + ' zombies (cap ' + SWARM.capLive + '/' + SWARM.cap + '), ' + SWARM.hordes.length + ' hordes, ' + SWDYN.size + ' vehicles moved' + (SWARM.adapt ? ', detail ' + SWARM.adapt : '') + ', drawn ' + PERF.lodN.join('/'),
   canTrim: () => SWARM.adapt > -3, trim: () => { if (SWARM.adapt <= -3) return false; SWARM.adapt--; return true; }, boost: () => { if (SWARM.adapt >= 0) return false; SWARM.adapt++; return true; },
@@ -762,6 +801,7 @@ coreAdd({
 coreMeta('SWARM', { helps: { TEXEL: () => swarmForget() } });
 coreOn('engineDown', 'SWARM', d => { if (d && d.name === 'TEXEL') SWARM.partOff.full = performance.now() + 60000; });
 // CORE v3: the crowd's cost by how many are alive; CORE looks ahead when a horde sets off (zload: each zombie adds one)
+coreMeta('SWARM', { selfTest: () => typeof hordeSelfTest === 'function' ? hordeSelfTest() : { ok: true, n: 0, pass: 0, why: '' } });
 coreMeta('SWARM', { ver: 2, trimAny: true, lv: () => SWARM.adapt + 3, adaptGet: () => SWARM.adapt * 10000 + (SWARM.capLive | 0), loadNow: () => G.zs.length, loadName: 'zombies', zload: 1,
   alive: () => G.mode === 'play' && swarmUp() && G.zs.length > 0, stallS: 4,
   reset: () => { swarmForget(); SWARM.good = 0; SWARM.adapt = clamp(SWARM.adapt | 0, -3, 0); swarmCaps(); } });

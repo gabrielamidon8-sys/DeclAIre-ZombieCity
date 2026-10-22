@@ -3,8 +3,14 @@
    elbow, each foot's stride and lift, a fall, a spin and so on); forward kinematics turns a pose into a skeleton in three
    dimensions (x forward, y to the right, z up, in units of the zombie's radius) and the look engine (anilook.js) draws it
    seen from above, things higher up drawn a little bigger, so a falling body really stretches out along the ground.
-   Each zombie has 60 animations of its own: 10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths and 6
-   specials, and (1.9.994) the knife's ten kills. They are built from motion families shaped by the zombie's personality (its gait, how it holds its arms,
+   Each zombie has 75 animations of its own: 10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths and 6
+   specials, (1.9.994) the knife's ten kills and (1.9.998) fifteen contacts with the world and the crowd: a shoulder bump,
+   shoved from behind, a wall slam, scraping along a wall, skidding round a corner, vaulting a car, climbing over one,
+   diving through its windows, climbing a pile-up and tumbling off it, trampled, tripping on a body, squeezing sideways
+   through a gap, bowled over and pinned by the crowd. (1.9.998) Real proportions (a 16 cm head, 47 cm across the
+   shoulders, limbs their real thickness), shoulders that come forward when the arms reach, and a body that answers to
+   its own momentum: a spring on the torso tips it when it speeds up, stops short or turns hard, and every shove and
+   collision from the crowd engine kicks it. They are built from motion families shaped by the zombie's personality (its gait, how it holds its arms,
    how it carries its head, its build, injuries, what it holds, and a seed that gives every zombie its own timing,
    amplitudes and quirks), so the Night Jogger's sprint, the Mail Carrier's march and the Rotter's one-armed drag share
    nothing but the names. Transitions cross-fade with the walk cycle's phase kept, attacks play on the upper body while
@@ -35,16 +41,20 @@ const AC = { walk: 0, walkFast: 1, run: 2, strafeL: 3, strafeR: 4, turn: 5, stum
   dieHead: 36, dieFwd: 37, dieBack: 38, dieSpin: 39, dieKnees: 40, dieCollapse: 41, dieBlast: 42, dieSide: 43,
   emerge: 44, windup: 45, action: 46, recover: 47, roar: 48, getUp: 49,
   // 1.9.994: the knife's ten kills (BLADE, knife.js): each combo its own death
-  kStick: 50, kNeck: 51, kPointBlank: 52, kThroat: 53, kHammer: 54, kPair: 55, kWhip: 56, kJaw: 57, kLunge: 58, kReaper: 59 };
-const AC_N = 60;
+  kStick: 50, kNeck: 51, kPointBlank: 52, kThroat: 53, kHammer: 54, kPair: 55, kWhip: 56, kJaw: 57, kLunge: 58, kReaper: 59,
+  // 1.9.998: contacts with the world and the crowd (the crowd engine plays them from the physics; cs is the side it came from)
+  bump: 60, shoved: 61, wallSlam: 62, wallScrape: 63, cornerSkid: 64, vault: 65, climbOver: 66, diveThrough: 67, pileClimb: 68, pileTumble: 69,
+  trampled: 70, trip: 71, squeeze: 72, bowled: 73, pinned: 74 };
+const AC_N = 75;
 const AC_KIND = []; const AC_GROUP = [];
-for (let i = 0; i < AC_N; i++) { AC_KIND[i] = i < 18 ? 'loop' : i < 28 ? 'once' : i < 35 ? 'add' : i === 35 ? 'once' : i < 44 ? 'death' : i >= 50 ? 'death' : i === 45 || i === 46 ? 'hold' : 'once'; AC_GROUP[i] = i < 10 ? 'Moving' : i < 18 ? 'Idle' : i < 28 ? 'Attacks' : i < 36 ? 'Hit reactions' : i < 44 ? 'Deaths' : i >= 50 ? 'Knife kills' : 'Specials'; }
+for (let i = 0; i < AC_N; i++) { AC_KIND[i] = i < 18 ? 'loop' : i < 28 ? 'once' : i < 35 ? 'add' : i === 35 ? 'once' : i < 44 ? 'death' : i >= 60 ? (i === 60 ? 'add' : 'once') : i >= 50 ? 'death' : i === 45 || i === 46 ? 'hold' : 'once'; AC_GROUP[i] = i < 10 ? 'Moving' : i < 18 ? 'Idle' : i < 28 ? 'Attacks' : i < 36 ? 'Hit reactions' : i < 44 ? 'Deaths' : i >= 60 ? 'Contact' : i >= 50 ? 'Knife kills' : 'Specials'; }
+const aIsDeath = ci => (ci >= 36 && ci < 44) || (ci >= 50 && ci < 60);
 
 const ANIMA = {
   live: 0, liveCap: 14, cached: 0, made: 0, hits: 0, miss: 0, ms: 0, msAvg: 0, adapt: 0, good: 0, watchT: 0,
   cache: new Map(), corpses: [], corpseCap: 80, bud: 0, statsF: 0, errT: [], offUntil: 0, bad: 0, badWhy: '', sev: 0,
   J: new Float32Array(NJ * 3), P2: new Float32Array(NJ * 3), tmp: new Float32Array(AN), tmp2: new Float32Array(AN), tmp3: new Float32Array(AN),
-  shadowN: 0, deadN: 0, lastCorpseClean: 0
+  shadowN: 0, deadN: 0, lastCorpseClean: 0, cs: 1, contacts: 0
 };
 const A_SIN = Math.sin, A_COS = Math.cos;
 const aSm = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
@@ -57,22 +67,24 @@ function animaUp() { return !(ANIMA.offUntil && performance.now() < ANIMA.offUnt
 
 /* ---------- each zombie's body and personality ---------- */
 const A_BODY = {
-  avg: { H: 5.6, shW: 0.76, chW: 0.95, chD: 0.52, belly: 0.12, limb: 0.34, leg: 0.4, head: 0.42, arm: 1 },
-  thin: { H: 5.75, shW: 0.7, chW: 0.86, chD: 0.44, belly: 0, limb: 0.28, leg: 0.33, head: 0.4, arm: 1.02 },
-  small: { H: 5.05, shW: 0.7, chW: 0.86, chD: 0.48, belly: 0.1, limb: 0.3, leg: 0.34, head: 0.42, arm: 0.96 },
-  heavy: { H: 5.5, shW: 0.8, chW: 0.98, chD: 0.6, belly: 0.42, limb: 0.38, leg: 0.45, head: 0.42, arm: 0.98 },
-  stocky: { H: 5.3, shW: 0.84, chW: 1, chD: 0.58, belly: 0.2, limb: 0.4, leg: 0.45, head: 0.43, arm: 0.98 },
-  lanky: { H: 6.2, shW: 0.72, chW: 0.88, chD: 0.46, belly: 0, limb: 0.29, leg: 0.34, head: 0.4, arm: 1.14 },
-  hunch: { H: 5.4, shW: 0.76, chW: 0.94, chD: 0.54, belly: 0.1, limb: 0.33, leg: 0.38, head: 0.42, arm: 1.03, hunch: 0.45 },
-  buff: { H: 5.7, shW: 0.86, chW: 1.04, chD: 0.62, belly: 0.05, limb: 0.46, leg: 0.48, head: 0.41, arm: 1.02 },
-  legless: { H: 5.6, shW: 0.76, chW: 0.94, chD: 0.52, belly: 0.05, limb: 0.32, leg: 0.4, head: 0.44, arm: 1.05, legless: 1 },
-  bloat: { H: 5.5, shW: 0.8, chW: 0.98, chD: 0.68, belly: 0.95, limb: 0.38, leg: 0.47, head: 0.36, arm: 0.96 },
-  brute: { H: 5.9, shW: 0.88, chW: 1.06, chD: 0.68, belly: 0.25, limb: 0.58, leg: 0.56, head: 0.35, arm: 1.12, hunch: 0.35 }
+  // 1.9.998: real proportions, in units of the zombie's radius (about 31 cm): a head 16 cm wide and 20 deep, 40 cm between
+  // the shoulder joints and 47 across the deltoids, a chest 24 cm deep, an upper arm 10 cm thick, a thigh 16
+  avg: { H: 5.6, shW: 0.66, chW: 0.78, chD: 0.4, belly: 0.12, limb: 0.32, leg: 0.5, head: 0.26, arm: 1 },
+  thin: { H: 5.75, shW: 0.62, chW: 0.72, chD: 0.34, belly: 0, limb: 0.27, leg: 0.42, head: 0.25, arm: 1.02 },
+  small: { H: 5.05, shW: 0.6, chW: 0.72, chD: 0.37, belly: 0.1, limb: 0.28, leg: 0.44, head: 0.26, arm: 0.96 },
+  heavy: { H: 5.5, shW: 0.7, chW: 0.84, chD: 0.5, belly: 0.42, limb: 0.36, leg: 0.56, head: 0.27, arm: 0.98 },
+  stocky: { H: 5.3, shW: 0.72, chW: 0.86, chD: 0.46, belly: 0.2, limb: 0.37, leg: 0.56, head: 0.27, arm: 0.98 },
+  lanky: { H: 6.2, shW: 0.64, chW: 0.74, chD: 0.36, belly: 0, limb: 0.28, leg: 0.43, head: 0.25, arm: 1.14 },
+  hunch: { H: 5.4, shW: 0.66, chW: 0.78, chD: 0.42, belly: 0.1, limb: 0.31, leg: 0.48, head: 0.26, arm: 1.03, hunch: 0.45 },
+  buff: { H: 5.7, shW: 0.76, chW: 0.92, chD: 0.5, belly: 0.05, limb: 0.44, leg: 0.6, head: 0.26, arm: 1.02 },
+  legless: { H: 5.6, shW: 0.66, chW: 0.78, chD: 0.42, belly: 0.05, limb: 0.3, leg: 0.5, head: 0.27, arm: 1.05, legless: 1 },
+  bloat: { H: 5.5, shW: 0.72, chW: 0.86, chD: 0.6, belly: 0.95, limb: 0.36, leg: 0.58, head: 0.25, arm: 0.96 },
+  brute: { H: 5.9, shW: 0.84, chW: 1.02, chD: 0.62, belly: 0.25, limb: 0.56, leg: 0.68, head: 0.23, arm: 1.12, hunch: 0.35 }
 };
 function animaDims(def) {
   const B = A_BODY[def.body] || A_BODY.avg, H = B.H;
   const D = { H: H, shW: B.shW, chW: B.chW, chD: B.chD, belly: B.belly, limb: B.limb, fore: B.limb * 0.85, leg: B.leg, shin: B.leg * 0.82,
-    headR: B.head, hunch0: B.hunch || 0, legless: !!B.legless, spine: 0.3 * H, neck: 0.075 * H, shDrop: 0.05 * H,
+    headR: B.head, headL: B.head * 1.25, hunch0: B.hunch || 0, legless: !!B.legless, spine: 0.3 * H, neck: 0.075 * H, shDrop: 0.05 * H,
     hipW: B.shW * 0.5, legL: 0.52 * H, armU: 0.19 * H * B.arm, armF: 0.235 * H * B.arm, foot: 0.13 * H, hand: B.limb * 0.62 };
   D.thigh = D.legL * 0.53; D.shinL = D.legL * 0.53;
   if (D.legless) D.legL = 0.5;
@@ -96,9 +108,11 @@ const A_GAIT = {
   stagger: { stride: 0.9, bob: 0.014, sway: 0.24, lean: 0.12, hunch: 0.2, twist: 0.22, armSw: 0.35, asym: 0.5, stiff: 0.2, lift: 0.15, drag: 0.3, jerk: 0.3, hip: 0.1 },
   scuttle: { stride: 1.0, bob: 0.01, sway: 0.06, lean: 1.2, hunch: 0, twist: 0.24, armSw: 1, asym: 0.1, stiff: 0, lift: 0.25, drag: 0, jerk: 0.1, hip: 0.14 },
   hop: { stride: 1.2, bob: 0.05, sway: 0.03, lean: 0.25, hunch: 0.1, twist: 0.08, armSw: 0.4, asym: 0.05, stiff: 0.2, lift: 0.5, drag: 0, jerk: 0, hip: 0.04 },
-  limp: { stride: 0.8, bob: 0.02, sway: 0.16, lean: 0.12, hunch: 0.15, twist: 0.18, armSw: 0.3, asym: 0.9, stiff: 0.5, lift: 0.2, drag: 0.4, jerk: 0, hip: 0.1 }
+  limp: { stride: 0.8, bob: 0.02, sway: 0.16, lean: 0.12, hunch: 0.15, twist: 0.18, armSw: 0.3, asym: 0.9, stiff: 0.5, lift: 0.2, drag: 0.4, jerk: 0, hip: 0.1 },
+  // 1.9.998: the Linebacker's drive: low, short powerful strides, the knees high, the arms pumping wide
+  drive: { stride: 1.3, bob: 0.022, sway: 0.05, lean: 0.4, hunch: 0.16, twist: 0.22, armSw: 0.65, asym: 0.05, stiff: 0.2, lift: 0.45, drag: 0, jerk: 0, hip: 0.1, wide: 0.12 }
 };
-const A_GAIT_NAME = { shamble: 'Shamble', sprint: 'Sprint', march: 'March', waddle: 'Waddle', stomp: 'Stomp', lope: 'Lope', drag: 'Drag', crawl: 'Crawl', jerk: 'Jerking walk', glide: 'Glide', stagger: 'Stagger', scuttle: 'Scuttle', hop: 'Bound', limp: 'Limp' };
+const A_GAIT_NAME = { shamble: 'Shamble', sprint: 'Sprint', march: 'March', waddle: 'Waddle', stomp: 'Stomp', lope: 'Lope', drag: 'Drag', crawl: 'Crawl', jerk: 'Jerking walk', glide: 'Glide', stagger: 'Stagger', scuttle: 'Scuttle', hop: 'Bound', limp: 'Limp', drive: 'Drive' };
 function animaPersona(m) {
   const d = m.def, R = Z.mulberry32((m.seed ^ 0xa11ce) >>> 0), G0 = A_GAIT[d.gait] || A_GAIT.shamble, v = (b, k) => b * (1 + (R() - 0.5) * 2 * (k || 0.18));
   const P = { gait: d.gait, arms: d.arms, look: d.look, body: d.body, ab: d.ab, prop: d.hold || null,
@@ -114,11 +128,12 @@ function animaPersona(m) {
 // what each zombie calls its animations (the slot names, made its own)
 const A_SIG = { cleaver: 'Cleaver chop', iceaxe: 'Ice axe swing', wrench: 'Wrench smash', hook: 'Hook slash', mop: 'Mop sweep', briefcase: 'Briefcase swing', bag: 'Mailbag swing',
   camera: 'Camera smash', medbag: 'Medbag swing', shield: 'Shield bash', scalpel: 'Scalpel stabs', bouquet: 'Bridal embrace', whistle: 'Rescue tackle' };
+const A_SIG_ARMS = { tackle: 'Form tackle' };
 const A_ABN = { pounce: ['Crouch', 'Pounce'], sprinter: ['Set', 'Burst'], charger: ['Paw the ground', 'Charge'], spitter: ['Gather acid', 'Spit'], screamer: ['Draw breath', 'Scream'], bomber: ['Swell', 'Burst'],
-  shocker: ['Build charge', 'Discharge'], thrower: ['Wind up', 'Throw'], medic: ['Reach out', 'Mend'], magnet: ['Swing the hook', 'Reel in'], carrier: ['Heave', 'Shed crawlers'], hive: ['Shudder', 'Release swarm'],
+  shocker: ['Build charge', 'Discharge'], thrower: ['Wind up', 'Throw'], medic: ['Reach out', 'Mend'], blitz: ['Three-point stance', 'Blitz'], carrier: ['Heave', 'Shed crawlers'], hive: ['Shudder', 'Release swarm'],
   oozer: ['Drip', 'Ooze'], regrower: ['Knit', 'Regrow'], berserker: ['Seethe', 'Frenzy'], chiller: ['Frost breath', 'Freeze'], relentless: ['Fix on you', 'Press on'], swimmer: ['Dive', 'Swim'], none: ['Brace', 'Lurch'] };
 function animaNames(m) {
-  const P = m.an, g = A_GAIT_NAME[P.gait] || 'Walk', ab = A_ABN[P.ab] || A_ABN.none, sig = A_SIG[P.prop] || (P.arms === 'claw' ? 'Claw rake' : P.arms === 'hug' ? 'Embrace' : 'Double rake');
+  const P = m.an, g = A_GAIT_NAME[P.gait] || 'Walk', ab = A_ABN[P.ab] || A_ABN.none, sig = A_SIG[P.prop] || A_SIG_ARMS[P.arms] || (P.arms === 'claw' ? 'Claw rake' : P.arms === 'hug' ? 'Embrace' : 'Double rake');
   const legless = P.gait === 'crawl';
   return [g, legless ? 'Fast crawl' : 'Hurried ' + g.toLowerCase(), legless ? 'Scramble' : P.gait === 'sprint' ? 'Flat-out sprint' : 'Run', legless ? 'Crawl left' : 'Sidestep left', legless ? 'Crawl right' : 'Sidestep right',
     'Turn', 'Stumble', legless ? 'Drag' : 'Limp', legless ? 'Belly crawl' : 'Crawl', legless ? 'Recoil' : 'Back away',
@@ -127,7 +142,14 @@ function animaNames(m) {
     'Head hit', 'Body hit (front)', 'Body hit (back)', 'Left arm hit', 'Right arm hit', 'Left leg hit', 'Right leg hit', 'Stagger',
     'Head shot death', 'Falls forward', 'Falls backward', 'Spinning fall', 'Drops to its knees', 'Collapses', 'Blown off its feet', 'Falls sideways',
     'Rise', ab[0], ab[1], 'Recover', 'Roar', 'Get back up',
-    'Knifed in the gut', 'Knifed in the neck', 'Shot point blank', 'Throat cut', 'Hammer stab', 'Two rounds point blank', 'Pistol-whipped', 'Knife under the jaw', 'Lunged through', 'Reaped'];
+    'Knifed in the gut', 'Knifed in the neck', 'Shot point blank', 'Throat cut', 'Hammer stab', 'Two rounds point blank', 'Pistol-whipped', 'Knife under the jaw', 'Lunged through', 'Reaped'].concat(aContactNames(m));
+}
+// 1.9.998: the contacts, named for who does them (a crawler is shoved along, a bloater bounces off the wall)
+function aContactNames(m) {
+  const P = m.an, legless = P.gait === 'crawl', heavy = m.def.body === 'bloat' || m.def.body === 'heavy' || m.def.body === 'brute', fast = P.gait === 'sprint' || P.gait === 'lope' || P.gait === 'drive' || P.gait === 'scuttle';
+  return [legless ? 'Knocked aside' : 'Shoulder bump', legless ? 'Shoved along' : 'Shoved from behind', heavy ? 'Bounces off a wall' : fast ? 'Slams into a wall' : 'Walks into a wall', legless ? 'Drags along a wall' : 'Scrapes along a wall',
+    legless ? 'Slides round a corner' : 'Skids round a corner', legless ? 'Hauls over a hood' : heavy ? 'Rolls over a hood' : 'Vaults a car', legless ? 'Drags over a roof' : 'Climbs over a car', legless ? 'Crawls under a car' : 'Dives through the windows',
+    'Climbs the pile', 'Tumbles off the pile', legless ? 'Trampled flat' : 'Trampled, then up', legless ? 'Snagged on a body' : 'Trips on a body', legless ? 'Squeezes through' : 'Squeezes sideways', heavy ? 'Knocked off balance' : 'Bowled over', 'Pinned by the crowd'];
 }
 // clip lengths in seconds (loops: one cycle at walking pace, used for idles; the walk itself follows the ground)
 function animaDur(m, ci) {
@@ -138,6 +160,7 @@ function animaDur(m, ci) {
   if (ci < 35) return 0.42;
   if (ci === 35) return 0.8;
   if (ci < 44) return [1.25, 1.45, 1.4, 1.6, 1.9, 1.3, 1.5, 1.4][ci - 36];
+  if (ci >= 60) return [0.55, 0.9, 1.15, 1.0, 0.95, 0.95, 1.6, 1.25, 1.3, 1.5, 2.0, 1.4, 0.9, 1.7, 1.2][ci - 60] * (ci === 62 && P.gait === 'sprint' ? 1.15 : 1) || 1;
   if (ci >= 50) return [1.55, 1.7, 1.15, 1.75, 1.6, 1.3, 1.5, 1.65, 1.35, 1.8][ci - 50] || 1.5;
   return [1.3, 0.5, 0.6, 0.7, 1.6, 1.5][ci - 44];
 }
@@ -208,6 +231,8 @@ function aArms(o, ph, t, P, D, k) {
     case 'hug': set(-1, -0.1 + n1 * 0.04, -0.06 + 0.06 * c, 0.62); set(1, -0.1 + n2 * 0.04, -0.06 - 0.06 * c, 0.62); o[AP.grip] = 0.2; break;
     case 'hook': reach(-1, 0.1); set(1, 0.32, 0.2 + 0.08 * c, 1.5); o[AP.grip] = 1; break;
     case 'shield': set(-1, -0.45, -0.32 + 0.04 * c, 1.5); set(1, 0.16, -1.15 + 0.15 * c, 0.6); o[AP.grip] = 1; break;
+    // 1.9.998: the Linebacker's ready hands: low and out front, elbows bent, pumping with the stride
+    case 'tackle': set(-1, 0.42 + n1 * 0.04, -0.7 - 0.22 * c * Math.min(1.4, k), 1.15); set(1, 0.42 + n2 * 0.04, -0.7 + 0.22 * c * Math.min(1.4, k), 1.15); o[AP.grip] = 0.35; break;
     default: dangle(-1); dangle(1);
   }
   if (D.noArmL) { o[AP.alP] = -1.3 + 0.2 * c; o[AP.alE] = 0; }
@@ -265,7 +290,7 @@ const A_SIGN = { office: 'Phone to its ear', jogger: 'Jogs in place', mail: 'Rif
   cook: 'Chops at nothing', exec: 'Checks its watch', farm: 'Scratches its head', janitor: 'Mops', cop: 'Reaches for its holster', gym: 'Flexes', medic: 'Kneels over a patient', inmate: 'Rattles its chains',
   mech: 'Wipes its hands', punk: 'Headbangs', lifeguard: 'Shades its eyes', crawler: 'Claws the ground', biker: 'Revs a throttle', surgeon: 'Holds up scrubbed hands', clown: 'Juggles', hazmat: 'Pats down its suit',
   hunter: 'Crouches and listens', diver: 'Clears its mask', skipatrol: 'Stamps and shivers', drowned: 'Coughs up water', rotter: 'Wobbles', soldier: 'Sweeps its sector', bride: 'Dances alone', lab: 'Seizes',
-  burnt: 'Beats out flames', lineman: 'Jolts with current', butcher: 'Swings its hook', bugman: 'Sprays', spitter: 'Gargles acid', riot: 'Raps its shield', screamer: 'Silent scream', bloater: 'Heaves',
+  burnt: 'Beats out flames', lineman: 'Jolts with current', linebacker: 'Slaps its helmet', bugman: 'Sprays', spitter: 'Gargles acid', riot: 'Raps its shield', screamer: 'Silent scream', bloater: 'Heaves',
   ravager: 'Sniffs the ground', leaper: 'Bounces on its springs', husk: 'Creaks round', astro: 'Floats in place', stalker: 'Tilts its head', climber: 'Hugs itself', fungal: 'Shudders', brute: 'Pounds its chest',
   glow: 'Reads its dosimeter', stitched: 'Flexes its big arm', carrier: 'Heaves its sacs' };
 function aSigIdle(o, m, t) {
@@ -305,7 +330,7 @@ function aSigIdle(o, m, t) {
     case 'lab': { const sz = Math.max(0, w(t * 2.6 + s)) ** 8; o[AP.shake] = 0.3 + 0.9 * sz; o[AP.headY] = 0.8 * sz * (P.rnd[40] - 0.5) * 2; o[AP.headP] = 0.5 * sz; arm(-1, 0.6 * sz + 0.2, -0.8 + 0.8 * sz, 1.3); arm(1, 0.7 * sz + 0.2, -0.8 + 0.9 * sz, 1.3); o[AP.jaw] = 0.7 * sz; break; }
     case 'burnt': arm(-1, -0.6 + 0.5 * a2, -0.4, 1.6); arm(1, -0.6 - 0.5 * a2, -0.4, 1.6); o[AP.leanS] = 0.12 * a1; o[AP.headP] = -0.3; o[AP.shake] = 0.3; break;
     case 'lineman': { const j = Math.max(0, w(t * 1.9 + s)) ** 10; o[AP.shake] = 0.2 + 1.2 * j; arm(-1, 0.6, -0.7 + 1.2 * j, 0.5); arm(1, 0.6, -0.7 + 1.2 * j, 0.5); o[AP.headP] = 0.6 * j; o[AP.jaw] = j; o[AP.grip] = 0; break; }
-    case 'butcher': { const q = t * 4.5; arm(1, 0.6 + 0.9 * w(q), 0.25, 1.0); o[AP.twist] = 0.2 * w(q); o[AP.headY] = 0.3 * w(q); break; }
+    case 'linebacker': { const q = Math.max(0, w(t * 3.2 + s)) ** 3; arm(-1, 0.55, 0.9 + 0.25 * q, 2.0 - 0.3 * q); arm(1, 0.55, 0.9 + 0.25 * q, 2.0 - 0.3 * q); o[AP.headP] = 0.15 + 0.2 * q; o[AP.shake] = 0.35 * q; o[AP.crouch] = 0.15 + 0.1 * q; break; }
     case 'bugman': arm(1, 0.1 + 0.5 * w(t * 1.5), -0.2, 0.5); arm(-1, -0.1, -0.5, 1.3); o[AP.twist] = 0.3 * w(t * 1.5); break;
     case 'spitter': o[AP.headP] = 0.8; o[AP.jaw] = 0.3 + 0.15 * fast; o[AP.sq] = 0.4 + 0.3 * a2; o[AP.shake] = 0.25; break;
     case 'riot': arm(1, -0.3, -0.35, 1.5 - 0.6 * Math.max(0, w(t * 4))); o[AP.headP] = -0.15; break;
@@ -338,7 +363,7 @@ function animaEval(o, m, ci, u, t) {
       case AC.run: {
         aGait(o, u, t, P, D, 1.9); aHead(o, t, P, 1.5);
         if (P.arms === 'reach' || P.arms === 'claw' || P.arms === 'hug') { aArms(o, u, t, P, D, 1.6); o[AP.alP] += 0.15; o[AP.arP] += 0.15; o[AP.alY] += 0.1; o[AP.arY] += 0.1; }
-        else if (P.arms === 'carry' || P.arms === 'shield' || P.arms === 'hook') aArms(o, u, t, P, D, 1.6);
+        else if (P.arms === 'carry' || P.arms === 'shield' || P.arms === 'tackle') aArms(o, u, t, P, D, 1.6);
         else { const P2 = P.arms; P.arms = 'pump'; aArms(o, u, t, P, D, 1.6); P.arms = P2; }
         o[AP.lean] += 0.18; o[AP.headP] += 0.15; o[AP.jaw] = 0.45 + 0.2 * A_SIN(t * 7); break;
       }
@@ -394,6 +419,7 @@ function animaEval(o, m, ci, u, t) {
   }
   if (ci < 28) { aAttack(o, m, ci, u, t); return; }
   if (ci < 36) { aHit(o, m, ci, u, t); return; }
+  if (ci >= 60) { aContact(o, m, ci, u, t); return; }
   if (ci < 44 || ci >= 50) { aDeath(o, m, ci, u, t); return; }
   aSpecial(o, m, ci, u, t);
 }
@@ -453,7 +479,13 @@ const AT_TMP = new Float32Array(AN);
 // the attack that is the zombie's own (what it holds decides it)
 function aSignature(o, m, u, an, st, rc, arm, k) {
   const P = m.an, pr = P.prop;
-  if (pr === 'cleaver' || pr === 'iceaxe' || pr === 'wrench' || pr === 'hook') {
+  if (P.arms === 'tackle' && !pr) {
+    // a form tackle: low, the shoulder driven in, both arms wrapping round
+    const y = 0.75 * aSm(an) - 1.0 * aSm(st); arm(-1, y + 0.25, -0.35 + 0.2 * aSm(st), 0.9 + 0.5 * aSm(st)); arm(1, y + 0.25, -0.35 + 0.2 * aSm(st), 0.9 + 0.5 * aSm(st));
+    o[AP.lean] += -0.1 * aSm(an) + 0.65 * aSm(st) * (1 - aSm(rc)); o[AP.crouch] = 0.45 * aSm(an) * (1 - aSm(rc)); o[AP.twist] = 0.35 * aSm(st) * (1 - aSm(rc)); o[AP.offX] = 0.5 * aSm(st) * (1 - aSm(rc)); o[AP.headP] = -0.2 * aSm(st); o[AP.grip] = aSm(st);
+    return;
+  }
+  if (pr === 'cleaver' || pr === 'iceaxe' || pr === 'wrench') {
     // an overhead chop: raised high, brought down hard
     const p = -0.6 + 2.0 * aSm(an) - 2.4 * aSm(st) + 1.0 * aSm(rc) * 0.6;
     arm(1, 0.35 - 0.45 * aSm(st), p, 1.3 * (1 - aSm(st)) + 0.25); arm(-1, 0.3, -0.7, 0.6);
@@ -566,7 +598,7 @@ function aDeath(o, m, ci, u, t) {
       o[AP.fall] = aFallK(u, 0.22, 0.6); o[AP.fallA] = s * (Math.PI / 2 + (R[35] - 0.5) * 0.4); splay(aSm(aSeg(u, 0.5, 0.85)) * 0.75); break;
     }
   }
-  if (ci >= 50) aDeathMelee(o, m, ci, u, t, s, splay);
+  if (ci >= 50 && ci < 60) aDeathMelee(o, m, ci, u, t, s, splay);
   if (D.legless) { o[AP.fall] = Math.max(o[AP.fall], 0.8); o[AP.lean] = 0; o[AP.crouch] = 0; }
 }
 // 1.9.994: the knife's ten kills. Each starts with what the blow does to the body (where it went in, which way it was
@@ -674,6 +706,166 @@ function aSpecial(o, m, ci, u, t) {
     }
   }
 }
+/* ---------- 1.9.998: contacts with the world and the crowd ---------- */
+// The crowd engine plays these from its physics: who hit what, how hard and from which side (ANIMA.cs: +1 the right,
+// -1 the left). Each is the zombie's own (its gait, build and seed shape it) and ends on its feet so the walk takes over.
+function aContact(o, m, ci, u, t) {
+  const P = m.an, D = m.ad, R = P.rnd, cs = ANIMA.cs || 1, S = (a, b) => aSm(aSeg(u, a, b)), heavy = m.def.body === 'bloat' || m.def.body === 'heavy' || m.def.body === 'brute';
+  const fast = P.gait === 'sprint' || P.gait === 'lope' || P.gait === 'drive' || P.gait === 'scuttle', legless = P.gait === 'crawl';
+  const arm = (side, y, p, e) => { if (side < 0 && D.noArmL) return; const b = side < 0 ? AP.alY : AP.arY; o[b] = y; o[b + 1] = p; o[b + 2] = e; };
+  if (ci === AC.bump) {
+    // a glancing shoulder: knocked round and sideways, the struck arm flung out, a quick step to catch itself (layered)
+    const e = u < 0.15 ? aSm(u / 0.15) : 1 - aSm((u - 0.15) / 0.85), k = (heavy ? 0.6 : 1) * (0.85 + R[40] * 0.3);
+    o.fill(0);
+    o[AP.twist] = -cs * 0.45 * e * k; o[AP.leanS] = -cs * 0.26 * e * k; o[AP.headY] = cs * 0.35 * e; o[AP.headR] = -cs * 0.2 * e; o[AP.jaw] = 0.3 * e;
+    if (cs > 0) { o[AP.arY] = 0.55 * e; o[AP.arP] = 0.35 * e; o[AP.lrW] = 0.18 * e; } else { o[AP.alY] = 0.55 * e; o[AP.alP] = 0.35 * e; o[AP.llW] = 0.18 * e; }
+    o[AP.offY] = -cs * 0.18 * e * k; return;
+  }
+  aIdle(o, t, P, D);
+  switch (ci) {
+    case AC.shoved: {
+      // pushed in the back: pitched forward, arms thrown out ahead, a run of quick steps to stay up
+      const p = S(0, 0.15), rc = S(0.5, 1), k = p * (1 - rc), q = u * TAU * 3.2;
+      if (legless) { aCrawl(o, (u * 2.2) % 1, t, P, D, 1.4); o[AP.offX] = 0.5 * k; o[AP.headP] = 0.6 + 0.4 * (1 - k); break; }
+      o[AP.lean] += 0.55 * k; o[AP.hunch] += 0.15 * k; o[AP.headP] = 0.3 * k; o[AP.jaw] = 0.5 * k;
+      o[AP.llS] = 0.55 * A_SIN(q) * k + o[AP.llS] * (1 - k); o[AP.lrS] = -0.55 * A_SIN(q) * k + o[AP.lrS] * (1 - k); o[AP.llL] = Math.max(0, A_COS(q)) * 0.35 * k; o[AP.lrL] = Math.max(0, -A_COS(q)) * 0.35 * k;
+      arm(-1, 0.35, -0.25 + 0.35 * k, 0.35); arm(1, 0.4, -0.25 + 0.3 * k, 0.35); o[AP.offX] = 0.35 * k; o[AP.grip] = 0;
+      break;
+    }
+    case AC.wallSlam: {
+      // into a wall at a run: squashed against it, the head snaps back, hands slap the wall, then the rebound and a stagger
+      const im = S(0, 0.06) * (1 - S(0.08, 0.2)), rb = S(0.06, 0.34) * (1 - S(0.45, 1)), st = A_SIN(u * TAU * 2.4) * rb, kn = fast && !heavy ? S(0.25, 0.4) * (1 - S(0.65, 0.95)) : 0;
+      const bounce = heavy ? 1.5 : 1;
+      o[AP.offX] = 0.16 * im - 0.38 * rb * bounce; o[AP.lean] = 0.35 * im - 0.4 * rb * bounce + 0.2 * kn; o[AP.headP] = 0.7 * im + 0.3 * rb - 0.3 * kn; o[AP.headR] = (R[41] - 0.5) * 0.6 * rb; o[AP.jaw] = 0.7 * (im + rb);
+      arm(-1, 0.18 + 0.7 * rb, 0.15 * im - 1.25 * (1 - im) + 0.9 * rb * A_SIN(u * 20), 1.1 * im + 0.3); arm(1, 0.18 + 0.7 * rb, 0.15 * im - 1.25 * (1 - im) + 0.9 * rb * A_COS(u * 20), 1.1 * im + 0.3);
+      o[AP.llS] = -0.35 * rb + 0.25 * st; o[AP.lrS] = 0.2 * rb - 0.25 * st; o[AP.llL] = Math.max(0, st) * 0.25; o[AP.lrL] = Math.max(0, -st) * 0.25;
+      o[AP.crouch] = 0.25 * im + 0.75 * kn; o[AP.shake] = 0.5 * im + 0.25 * rb; o[AP.leanS] = (R[42] - 0.5) * 0.4 * rb;
+      if (legless) { o[AP.lean] = 1.3 - 0.2 * rb; o[AP.crouch] = 0; }
+      break;
+    }
+    case AC.wallScrape: {
+      // grinding along a wall it was carried into: the shoulder on that side pressed to it, that arm dragging along it
+      aGait(o, (u * 2) % 1, t, P, D, 1.1); aHead(o, t, P, 1);
+      const k = S(0, 0.15) * (1 - S(0.75, 1));
+      o[AP.leanS] += cs * 0.32 * k; o[AP.twist] += -cs * 0.22 * k; o[AP.headY] = -cs * 0.35 * k; o[AP.shake] = 0.18 * k;
+      arm(cs, 1.15 * k + 0.32 * (1 - k), 0.15 * k - 1.25 * (1 - k), 0.35 + 0.15 * A_SIN(u * 25)); arm(-cs, 0.3, -0.8, 0.8); o[AP.jaw] = 0.4 * k;
+      if (legless) { aCrawl(o, (u * 2) % 1, t, P, D, 1); o[AP.leanS] = cs * 0.2 * k; }
+      break;
+    }
+    case AC.cornerSkid: {
+      // too fast for the corner: the feet skid out, it leans in hard, the arms windmill, it catches itself
+      const k = S(0, 0.12) * (1 - S(0.6, 1)), w = A_SIN(u * TAU * 2.2);
+      o[AP.leanS] = cs * 0.48 * k; o[AP.lean] = -0.12 * k + o[AP.lean] * (1 - k); o[AP.crouch] = 0.35 * k; o[AP.twist] = cs * 0.3 * k;
+      o[AP.llW] = -cs * 0.3 * k + 0.05; o[AP.lrW] = -cs * 0.3 * k + 0.05; o[AP.llS] = 0.3 * k; o[AP.lrS] = 0.1 * k;
+      arm(-1, 0.6 + 0.4 * w * k, -0.5 + 0.8 * w * k, 0.5); arm(1, 0.6 - 0.4 * w * k, -0.5 - 0.8 * w * k, 0.5);
+      o[AP.offY] = -cs * 0.3 * S(0, 0.4) * (1 - S(0.5, 1)); o[AP.headY] = cs * 0.4 * k; o[AP.jaw] = 0.5 * k;
+      if (legless) { o[AP.lean] = 1.3; o[AP.crouch] = 0; }
+      break;
+    }
+    case AC.vault: {
+      // hands down on the hood, the legs swing over to one side, a landing in a crouch (the heavy ones roll over it)
+      const pl = S(0, 0.25), sw = S(0.22, 0.62), ld = S(0.62, 0.8), up = S(0.8, 1), air = sw * (1 - ld);
+      if (heavy) {
+        o[AP.fall] = 0.55 * air; o[AP.fallA] = cs * Math.PI / 2; o[AP.spin] = cs * Math.PI * sw * (1 - up); o[AP.rise] = 0.1 * A_SIN(sw * Math.PI);
+        arm(-1, 0.9, -0.4, 0.5); arm(1, 0.9, -0.4, 0.5); o[AP.crouch] = 0.5 * ld * (1 - up); o[AP.jaw] = 0.5; break;
+      }
+      if (legless) { aCrawl(o, (u * 2.5) % 1, t, P, D, 1.2); o[AP.rise] = 0.06 * A_SIN(u * Math.PI); break; }
+      o[AP.lean] = 0.6 * pl * (1 - ld) + 0.3 * ld * (1 - up) + o[AP.lean] * up; o[AP.crouch] = 0.4 * pl * (1 - sw) + 0.6 * ld * (1 - up);
+      arm(-1, 0.25, -0.95 + 0.2 * pl, 0.2); arm(1, 0.25, -0.95 + 0.2 * pl, 0.2);
+      if (ld > 0) { arm(-1, 0.8 * (1 - up) + 0.3, -0.6, 0.5); arm(1, 0.8 * (1 - up) + 0.3, -0.6, 0.5); }
+      o[AP.rise] = 0.14 * A_SIN(sw * Math.PI); o[AP.llL] = o[AP.lrL] = 0.5 * air; o[AP.llS] = o[AP.lrS] = 0.15 * air; o[AP.llW] = o[AP.lrW] = cs * 0.45 * air;
+      o[AP.leanS] = -cs * 0.3 * air; o[AP.twist] = cs * 0.45 * air; o[AP.headP] = 0.3 * air;
+      break;
+    }
+    case AC.climbOver: {
+      // a scramble over a car: hands up onto the roof, across on hands and knees, then it slides off the far side
+      const up = S(0, 0.2), on = S(0.2, 0.7) * (1 - S(0.7, 0.85)), off = S(0.7, 0.92), st = S(0.88, 1);
+      if (legless) { aCrawl(o, (u * 3) % 1, t, P, D, 1); o[AP.rise] = 0.1 * on; break; }
+      if (on > 0.02) { const T0 = AT_TMP; aScuttle(T0, (u * 3.2) % 1, t, P, D, 1); for (let i = 0; i < AN; i++) o[i] += (T0[i] - o[i]) * on; }
+      o[AP.lean] += 0.7 * up * (1 - on) * (1 - off) + 0.5 * off * (1 - st); o[AP.crouch] += 0.6 * up * (1 - on) + 0.7 * off * (1 - st);
+      if (up > 0 && on < 0.5) { arm(-1, 0.3, 0.3 * up, 1.4 * (1 - on)); arm(1, 0.3, 0.3 * up, 1.4 * (1 - on)); o[AP.llL] = 0.6 * up * (1 - on); }
+      if (off > 0) { arm(-1, 0.5, -0.4 * (1 - st) - 1.2 * st, 0.4); arm(1, 0.5, -0.4 * (1 - st) - 1.2 * st, 0.4); }
+      o[AP.headP] = 0.5 * on + 0.3 * up; o[AP.jaw] = 0.4;
+      break;
+    }
+    case AC.diveThrough: {
+      // through the car's broken windows head first: a crouch, the dive (arms ahead, the body flat, the legs kicking), a
+      // tumble out on the far side and up again (the legless crawl under it instead)
+      const cr = S(0, 0.15), dv = S(0.12, 0.5), out = S(0.5, 0.78), up = S(0.78, 1), fl = dv * (1 - out);
+      if (legless) { aCrawl(o, (u * 3) % 1, t, P, D, 1); o[AP.lean] = 1.42; o[AP.headP] = 0.35; o[AP.hunch] = -0.2; break; }
+      o[AP.crouch] = 0.5 * cr * (1 - dv) + 0.9 * out * (1 - up); o[AP.lean] = 0.4 * cr + 0.4 * out * (1 - up) + o[AP.lean] * up;
+      o[AP.fall] = 0.88 * fl; o[AP.fallA] = (R[43] - 0.5) * 0.2; o[AP.rise] = 0.12 * fl;
+      arm(-1, 0.12 + 0.6 * out * (1 - up), 0.15 * fl - 1.2 * (1 - fl) * (1 - out) - 0.9 * out, 0.15 + 0.4 * out); arm(1, 0.12 + 0.6 * out * (1 - up), 0.15 * fl - 1.2 * (1 - fl) * (1 - out) - 0.9 * out, 0.15 + 0.4 * out);
+      o[AP.llL] = Math.max(0, A_SIN(u * 30)) * 0.4 * fl; o[AP.lrL] = Math.max(0, -A_SIN(u * 30)) * 0.4 * fl; o[AP.headP] = -0.3 * fl + 0.3 * out; o[AP.jaw] = 0.6; o[AP.shake] = 0.25 * out * (1 - up);
+      break;
+    }
+    case AC.pileClimb: {
+      // up the backs of the others: hand over hand, the knees high, the head craned up at you
+      const q = u * TAU * 1.8, a = A_SIN(q), b = A_COS(q);
+      o[AP.lean] = 0.85 + 0.12 * a; o[AP.crouch] = 0.4; o[AP.hunch] += 0.1; o[AP.headP] = 0.75; o[AP.jaw] = 0.6 + 0.3 * Math.abs(b);
+      arm(-1, 0.3, 0.15 + 0.45 * Math.max(0, a), 0.6 + 0.9 * Math.max(0, -a)); arm(1, 0.3, 0.15 + 0.45 * Math.max(0, -a), 0.6 + 0.9 * Math.max(0, a)); o[AP.grip] = 0.6;
+      o[AP.llL] = 0.45 * Math.max(0, b); o[AP.lrL] = 0.45 * Math.max(0, -b); o[AP.llS] = 0.3 * b; o[AP.lrS] = -0.3 * b; o[AP.twist] = 0.18 * a;
+      if (legless) { o[AP.lean] = 1.2; o[AP.crouch] = 0; }
+      break;
+    }
+    case AC.pileTumble: {
+      // off the top of the pile: a slip, a roll down the side, a moment sprawled, a scramble up
+      const sl = S(0, 0.15), rl = S(0.12, 0.55), dn = S(0.55, 0.82), up = S(0.82, 1);
+      arm(-1, 0.4 + 0.8 * sl * (1 - rl), 0.6 * sl * (1 - rl) - 0.6 * rl, 0.5); arm(1, 0.4 + 0.8 * sl * (1 - rl), 0.6 * sl * (1 - rl) - 0.6 * rl, 0.5);
+      o[AP.leanS] = cs * 0.4 * sl * (1 - rl); o[AP.fall] = (rl * 0.95) * (1 - up); o[AP.fallA] = cs * Math.PI / 2 + (R[44] - 0.5) * 0.6; o[AP.spin] = cs * 1.4 * rl * (1 - up);
+      o[AP.rise] = 0.12 * A_SIN(rl * Math.PI); o[AP.crouch] = 0.9 * dn * (1 - up); o[AP.headP] = 0.5 * sl - 0.4 * dn * (1 - up); o[AP.jaw] = 0.6; o[AP.llL] = 0.4 * rl * (1 - dn);
+      break;
+    }
+    case AC.trampled: {
+      // knocked flat and run over by the ones behind: down on its face, jolted with every foot, then it pushes up
+      const kn = S(0, 0.12), dn = S(0.1, 0.3), up = S(0.74, 1), jolt = Math.max(0, A_SIN(u * 47 + R[45] * 6)) ** 6 * dn * (1 - up);
+      o[AP.lean] = 0.6 * kn * (1 - dn); arm(-1, 0.3 + 0.6 * dn, -0.3 * (1 - dn) - 0.2 * dn, 0.5 + 0.8 * dn * (1 - up)); arm(1, 0.3 + 0.6 * dn, -0.3 * (1 - dn) - 0.2 * dn, 0.5 + 0.8 * dn * (1 - up));
+      o[AP.fall] = dn * (1 - up); o[AP.fallA] = (R[46] - 0.5) * 0.5; o[AP.shake] = 0.9 * jolt + 0.2 * dn * (1 - up); o[AP.headP] = -0.4 * dn + 0.5 * jolt; o[AP.jaw] = 0.4 + 0.5 * jolt;
+      o[AP.crouch] = 1.1 * up * (1 - S(0.9, 1)); o[AP.hunch] += 0.4 * up * (1 - S(0.92, 1));
+      if (legless) { o[AP.fall] = Math.max(o[AP.fall], 0.8); o[AP.crouch] = 0; }
+      break;
+    }
+    case AC.trip: {
+      // a foot caught on a body: pitched forward onto its hands, then back up
+      const c = S(0, 0.1), f = S(0.08, 0.32), up = S(0.5, 0.88);
+      o[AP.llS] = -0.6 * c * (1 - up); o[AP.lean] = 0.45 * c + o[AP.lean]; o[AP.fall] = 0.58 * f * (1 - up); o[AP.fallA] = (R[47] - 0.5) * 0.4;
+      arm(-1, 0.25, -0.4 * (1 - f) + 0.05 * f, 0.15); arm(1, 0.25, -0.4 * (1 - f) + 0.05 * f, 0.15); o[AP.grip] = 0;
+      o[AP.crouch] = 0.7 * f * (1 - S(0.75, 1)); o[AP.headP] = 0.4 * f * (1 - up); o[AP.jaw] = 0.5 * f; o[AP.shake] = 0.2 * f * (1 - up);
+      if (legless) { aCrawl(o, (u * 2) % 1, t, P, D, 0.8); o[AP.offX] = -0.2 * f * (1 - up); }
+      break;
+    }
+    case AC.squeeze: {
+      // turned side on to fit through a gap: shoulders square to the way it goes, shuffling sideways, arms tucked in
+      const k = S(0, 0.2) * (1 - S(0.8, 1)), q = u * TAU * 2;
+      if (legless) { aCrawl(o, (u * 2) % 1, t, P, D, 0.9); o[AP.twist] = cs * 0.5 * k; break; }
+      o[AP.hipY] = cs * 1.0 * k; o[AP.twist] = cs * 0.45 * k; o[AP.headY] = -cs * 1.25 * k; o[AP.llW] = 0.22 * A_SIN(q) * k + 0.05; o[AP.lrW] = -0.22 * A_SIN(q) * k + 0.05;
+      o[AP.llS] = 0.1 * A_COS(q) * k; o[AP.lrS] = -0.1 * A_COS(q) * k; o[AP.llL] = Math.max(0, A_COS(q)) * 0.15 * k; o[AP.lrL] = Math.max(0, -A_COS(q)) * 0.15 * k;
+      arm(-1, -0.05, -1.25, 1.1 * k + 0.3); arm(1, -0.05, -1.25, 1.1 * k + 0.3); o[AP.jaw] = 0.3;
+      break;
+    }
+    case AC.bowled: {
+      // hit by something heavy (the Linebacker, a Brute): lifted, thrown with a turn, down, and up again
+      const im = S(0, 0.06), fl = S(0.04, 0.5), dn = S(0.5, 0.76), up = S(0.76, 1);
+      o[AP.lean] = -0.4 * im * (1 - fl); o[AP.rise] = 0.18 * A_SIN(fl * Math.PI) * (heavy ? 0.4 : 1); o[AP.spin] = cs * (1.2 + R[48] * 1.2) * fl * (heavy ? 0.4 : 1) * (1 - up);
+      o[AP.fall] = aFallK(u, 0.08, 0.5) * (1 - up) * (heavy ? 0.55 : 1); o[AP.fallA] = Math.PI + cs * 0.8;
+      arm(-1, 1.2 * fl * (1 - dn) + 0.3, 0.5 * fl * (1 - dn) - 0.6 * dn, 0.4); arm(1, 1.2 * fl * (1 - dn) + 0.3, 0.5 * fl * (1 - dn) - 0.6 * dn, 0.4);
+      o[AP.llL] = 0.5 * A_SIN(fl * Math.PI); o[AP.lrL] = 0.35 * A_SIN(fl * Math.PI); o[AP.headP] = 0.6 * im * (1 - dn); o[AP.jaw] = 0.8 * (1 - up);
+      o[AP.crouch] = 1.0 * up * (1 - S(0.92, 1)) + 0.3 * dn * (1 - up);
+      if (legless) { o[AP.fall] = Math.max(o[AP.fall], 0.8); o[AP.crouch] = 0; }
+      break;
+    }
+    case AC.pinned: {
+      // crushed in the press: arms forced up by its face, pushed back, struggling, the head twisting for air
+      const k = S(0, 0.15) * (1 - S(0.85, 1)), w = A_SIN(u * TAU * 2.2 + R[49] * 6);
+      arm(-1, -0.15 + 0.1 * w, 0.35 * k - 1.2 * (1 - k), 1.8 * k + 0.3); arm(1, -0.15 - 0.1 * w, 0.35 * k - 1.2 * (1 - k), 1.8 * k + 0.3);
+      o[AP.lean] = -0.22 * k + o[AP.lean] * (1 - k); o[AP.shake] = 0.45 * k; o[AP.headY] = 0.6 * w * k; o[AP.headP] = 0.35 * k; o[AP.jaw] = 0.3 + 0.6 * Math.abs(w) * k;
+      o[AP.leanS] = 0.12 * w * k; o[AP.crouch] = 0.12 * k; o[AP.sq] = 0.4 * k;
+      if (legless) { o[AP.lean] = 1.3; o[AP.crouch] = 0; }
+      break;
+    }
+  }
+  if (legless && ci !== AC.trampled && ci !== AC.bowled) { o[AP.lean] = Math.max(o[AP.lean], 1.1); o[AP.crouch] = 0; }
+}
 // an ability's tell (held while the game says the zombie is winding up)
 function aWind(o, m, u, t, arm) {
   const P = m.an, ab = P.ab, j = A_SIN(t * 40) * 0.04;
@@ -681,6 +873,10 @@ function aWind(o, m, u, t, arm) {
     case 'pounce': case 'sprinter':
       o[AP.crouch] = 0.85; o[AP.lean] = 0.62; arm(-1, 0.55, -0.7 + j, 0.8); arm(1, 0.55, -0.7 - j, 0.8); o[AP.headP] = 0.75; o[AP.llS] = 0.4; o[AP.lrS] = -0.5; o[AP.shake] = 0.3; o[AP.jaw] = 0.5;
       if (P.gait === 'scuttle' || P.gait === 'crawl') { o[AP.lean] = 1.25; o[AP.headP] = 1.1; arm(-1, 0.5, -1.25, 0.6); arm(1, 0.5, -1.25, 0.6); }
+      break;
+    case 'blitz':
+      // a three-point stance: down low, one fist on the ground, the other arm cocked back, the head up and eyes on you
+      o[AP.crouch] = 0.95; o[AP.lean] = 0.95; o[AP.hunch] = 0.1; arm(1, 0.15, -1.45, 0.05); arm(-1, 0.55, -1.05 + j, 1.2); o[AP.headP] = 0.95; o[AP.llS] = 0.45; o[AP.lrS] = -0.55; o[AP.llW] = 0.12; o[AP.lrW] = 0.12; o[AP.shake] = 0.15; o[AP.jaw] = 0.3;
       break;
     case 'charger': o[AP.lean] = 0.65; o[AP.headP] = -0.4; o[AP.twist] = 0.35; arm(-1, 0.7, -0.9, 0.5); arm(1, 0.7, -0.9, 0.5); o[AP.lrS] = 0.3 * A_SIN(t * 14); o[AP.lrL] = Math.max(0, A_SIN(t * 14)) * 0.2; o[AP.crouch] = 0.35; o[AP.jaw] = 0.6; o[AP.shake] = 0.4; break;
     case 'spitter': o[AP.headP] = 0.95; o[AP.lean] = -0.2; o[AP.jaw] = 0.35 + j; o[AP.sq] = 0.5 + 0.5 * u; o[AP.shake] = 0.35; break;
@@ -700,6 +896,11 @@ function aAct(o, m, u, t, arm) {
       o[AP.rise] = 0.06 + 0.04 * A_SIN(u * Math.PI); o[AP.headP] = 0.35; o[AP.jaw] = 0.9; o[AP.grip] = 0;
       if (P.gait === 'scuttle') { o[AP.lean] = 0.9; o[AP.rise] = 0.05; }
       break;
+    case 'blitz': {
+      // the drive: low, short and fast, the lead shoulder dropped, the far arm pumping
+      const ph = (t * 3.6) % 1; aGait(o, ph, t, P, D, 2.2); o[AP.lean] = 0.72; o[AP.hunch] += 0.1; o[AP.headP] = 0.2; o[AP.twist] = 0.32 + 0.08 * A_SIN(ph * TAU);
+      arm(-1, 0.2, -0.75, 1.5); arm(1, 0.45, -0.9 + 0.35 * A_COS(ph * TAU), 1.2); o[AP.jaw] = 0.5; o[AP.crouch] = 0.2; break;
+    }
     case 'charger': case 'sprinter': {
       const ph = (t * 3.2) % 1; aGait(o, ph, t, P, D, 2.1); o[AP.lean] = 0.62; o[AP.headP] = -0.35; o[AP.twist] += 0.2;
       arm(-1, 0.6, -0.85, 0.5); arm(1, 0.6, -0.85, 0.5); o[AP.jaw] = 0.7; if (ab === 'sprinter') { const P2 = P.arms; aArms(o, ph, t, P, D, 2); } break;
@@ -709,7 +910,6 @@ function aAct(o, m, u, t, arm) {
     case 'thrower': { const k = aSm(aSeg(u, 0, 0.35)); arm(1, 1.05 - 1.5 * k, 0.6 - 1.1 * k, 1.25 - 1.0 * k); o[AP.twist] = 0.65 - 1.25 * k; o[AP.lean] = -0.2 + 0.45 * k; break; }
     case 'shocker': arm(-1, 0.2, 0.0, 0.1); arm(1, 0.2, 0.0, 0.1); o[AP.shake] = 1; o[AP.headP] = 0.5; o[AP.jaw] = 1; o[AP.grip] = 0; break;
     case 'medic': { const k = aEnv(u, 0.3, 0.7); arm(-1, 0.7, -1.2 + 1.6 * k, 0.4); arm(1, 0.7, -1.2 + 1.6 * k, 0.4); o[AP.headP] = 0.4 * k; break; }
-    case 'magnet': { const k = aSm(aSeg(u, 0, 0.3)), back = aSm(aSeg(u, 0.4, 1)); arm(1, 0.3 - 0.4 * k + 0.6 * back, 0.3 - 0.4 * k, 1.4 - 1.2 * k + 1.0 * back); o[AP.twist] = 0.4 - 0.8 * k + 0.5 * back; o[AP.lean] = 0.3 * k - 0.3 * back; break; }
     case 'carrier': case 'hive': o[AP.hunch] += 0.4; o[AP.shake] = 0.8; o[AP.crouch] = 0.3; o[AP.jaw] = 0.6; o[AP.sq] = 0.6; break;
     default: { const k = aEnv(u, 0.2, 0.6); o[AP.lean] = 0.45 * k; arm(-1, 0.3, -0.2 * k, 0.4); arm(1, 0.3, -0.2 * k, 0.4); o[AP.jaw] = k; }
   }
@@ -751,6 +951,10 @@ function animaFK(D, p, J) {
     const b = side < 0 ? AP.alY : AP.arY, si = side < 0 ? JN.shL : JN.shR, ei = si + 1, hi = si + 2, k3 = si * 3;
     const hA = yawU + side * p[b], pt = p[b + 1], e = p[b + 2], cp = A_COS(pt);
     let au = D.armU, af = D.armF; if ((side < 0 && D.noArmL) || (ANIMA.sev & (side < 0 ? 1 : 2))) { au *= 0.38; af = 0.01; } if (side > 0 && D.bigArm) { au *= 1.1; af *= 1.12; }
+    // 1.9.998: the shoulder girdle follows the arm: reaching forward brings the shoulder blade round and forward,
+    // a raised arm shrugs it up
+    const fwd = Math.max(0, A_COS(hA - yawU) * cp), pro = fwd * clamp((pt + 1.3) / 1.0, 0, 1) * 0.1, shr = Math.max(0, pt - 0.25) * 0.09;
+    J[k3] += c2 * pro; J[k3 + 1] += s2 * pro; J[k3 + 2] += shr;
     const ex = J[k3] + A_COS(hA) * cp * au, ey = J[k3 + 1] + A_SIN(hA) * cp * au, ez = J[k3 + 2] + A_SIN(pt) * au;
     aSetJ(J, ei, ex, ey, ez);
     // the forearm folds toward the body's midline: its plane turns in with the bend (the turn flips with the fold, so a
@@ -819,6 +1023,7 @@ function animaState(z) {
 }
 function animaPlay(z, ci, o) {
   const A = animaState(z), m = z.m; if (!m.v2) return;
+  if (ci >= 60) { ANIMA.contacts++; if (o && o.cs) A.cs = o.cs < 0 ? -1 : 1; }
   if (AC_KIND[ci] === 'add') { A.add = ci; A.au = 0; A.ad = m.adur[ci] * (o && o.k ? 0.8 + 0.4 * o.k : 1); A.ak = o && o.k != null ? Math.min(1.6, 0.6 + o.k) : 1; return; }
   // a move that is already playing is not restarted by a weaker one
   if (A.one >= 0 && A.ou < 0.6 && (ci === A.one || (A.one === AC.emerge || A.one === AC.getUp))) return;
@@ -871,7 +1076,7 @@ function animaTick(z, dt, full) {
   if (z.hitT && z.hitT !== A.lastHit) { A.lastHit = z.hitT; aOnHit(z, A); }
   const st = z.st;
   if (st) {
-    const cd = st.cd || 0; if (cd > A.lastCd + 0.5 && A.lastCd >= 0 && G.time > 0.5) { if (P.ab !== 'pounce' && P.ab !== 'charger' && P.ab !== 'sprinter') animaPlay(z, AC.action); } A.lastCd = cd;
+    const cd = st.cd || 0; if (cd > A.lastCd + 0.5 && A.lastCd >= 0 && G.time > 0.5) { if (P.ab !== 'pounce' && P.ab !== 'charger' && P.ab !== 'sprinter' && P.ab !== 'blitz') animaPlay(z, AC.action); } A.lastCd = cd;
     if (st.castT && st.castT !== A.lastCast) { A.lastCast = st.castT; animaPlay(z, AC.action); }
     if (st.down > 0) { A.wasDown = true; }
     else if (A.wasDown) { A.wasDown = false; animaPlay(z, AC.getUp); }
@@ -906,9 +1111,9 @@ function animaTick(z, dt, full) {
     A.ou += dt / A.od;
     if (A.ou >= 1 && !(A.one === AC.action && actOn) && !(A.one === AC.windup && warnOn)) { const was = A.one; A.one = -1; if ((was === AC.stagger && A.rec) || (was === AC.action && P.ab !== 'pounce')) { A.rec = 0; if (Math.random() < 0.7) animaPlay(z, AC.recover); } }
     else {
-      const ci = A.one, u = Math.min(1, A.ou); animaEval(A.pO, m, ci, AC_KIND[ci] === 'hold' ? (ci === AC.action ? (t * 0.8) % 1 : u) : u, t);
+      const ci = A.one, u = Math.min(1, A.ou); ANIMA.cs = A.cs || 1; animaEval(A.pO, m, ci, AC_KIND[ci] === 'hold' ? (ci === AC.action ? (t * 0.8) % 1 : u) : u, t); ANIMA.cs = 1;
       const w = Math.min(aSm(Math.min(1, u * A.od / A.oin)), AC_KIND[ci] === 'hold' && (actOn || warnOn) ? 1 : aSm(Math.min(1, (1 - u) * A.od / A.oout)));
-      const M = (ci >= 18 && ci < 28) || ci === AC.recover || ci === AC.roar || (ci === AC.action && (P.ab === 'spitter' || P.ab === 'screamer' || P.ab === 'thrower' || P.ab === 'medic' || P.ab === 'magnet' || P.ab === 'shocker')) || (ci === AC.windup && (P.ab === 'spitter' || P.ab === 'screamer' || P.ab === 'thrower' || P.ab === 'shocker')) ? AM_UP : AM_FULL;
+      const M = (ci >= 18 && ci < 28) || ci === AC.recover || ci === AC.roar || (ci === AC.action && (P.ab === 'spitter' || P.ab === 'screamer' || P.ab === 'thrower' || P.ab === 'medic' || P.ab === 'shocker')) || (ci === AC.windup && (P.ab === 'spitter' || P.ab === 'screamer' || P.ab === 'thrower' || P.ab === 'shocker')) ? AM_UP : AM_FULL;
       for (let i = 0; i < AN; i++) { const k = w * M[i]; if (k) pose[i] += (A.pO[i] - pose[i]) * k; }
     }
   }
@@ -916,7 +1121,21 @@ function animaTick(z, dt, full) {
   if (A.add >= 0) {
     A.au += dt / A.ad;
     if (A.au >= 1) A.add = -1;
-    else { animaEval(A.pD, m, A.add, A.au, t); const k = A.ak; for (let i = 0; i < AN; i++) pose[i] += A.pD[i] * k; }
+    else { ANIMA.cs = A.cs || 1; animaEval(A.pD, m, A.add, A.au, t); ANIMA.cs = 1; const k = A.ak; for (let i = 0; i < AN; i++) pose[i] += A.pD[i] * k; }
+  }
+  // 1.9.998: the body answers its momentum: a damped spring on the torso, pushed by how hard it speeds up, stops and
+  // turns (it tips forward when it stops short, leans out of a hard turn) and kicked by the crowd's shoves (z.pushIx/Iy)
+  if (dt > 0 && !(st && st.down > 0)) {
+    const pvx = A.pvx == null ? A.vx : A.pvx, pvy = A.pvy == null ? A.vy : A.pvy, ax = (A.vx - pvx) / dt, ay = (A.vy - pvy) / dt; A.pvx = A.vx; A.pvy = A.vy;
+    const c = Math.cos(z.ang), s = Math.sin(z.ang), af = ax * c + ay * s, al = -ax * s + ay * c, kk = 1 / (2600 * Math.max(0.6, z.r / 10));
+    const tf = clamp(-af * kk, -0.55, 0.65), tl = clamp(-al * kk, -0.5, 0.5), w = 11, zt = 0.42;
+    if (z.pushIx || z.pushIy) { const ix = z.pushIx || 0, iy = z.pushIy || 0, f = (ix * c + iy * s) * 0.004, l = (-ix * s + iy * c) * 0.004; A.swvF = (A.swvF || 0) + clamp(f, -2.5, 2.5); A.swvS = (A.swvS || 0) + clamp(l, -2.5, 2.5); z.pushIx = z.pushIy = 0; }
+    A.swvF = (A.swvF || 0) + ((tf - (A.swF || 0)) * w * w - 2 * zt * w * (A.swvF || 0)) * dt; A.swF = clamp((A.swF || 0) + A.swvF * dt, -0.7, 0.8);
+    A.swvS = (A.swvS || 0) + ((tl - (A.swS || 0)) * w * w - 2 * zt * w * (A.swvS || 0)) * dt; A.swS = clamp((A.swS || 0) + A.swvS * dt, -0.6, 0.6);
+    if (P.gait !== 'crawl') {
+      pose[AP.lean] += A.swF; pose[AP.leanS] += A.swS; pose[AP.headP] -= A.swF * 0.45; pose[AP.headR] -= A.swS * 0.4;
+      const fl = Math.max(0, A.swF); pose[AP.alP] += fl * 0.7; pose[AP.arP] += fl * 0.7; pose[AP.alY] += Math.abs(A.swS) * 0.6; pose[AP.arY] += Math.abs(A.swS) * 0.6;
+    }
   }
   // the head turns toward its prey (the nearest player), within what a neck allows
   const tg = aTarget(z);
@@ -971,7 +1190,7 @@ function animaDeathClip(z) {
   if (z.m.ad.legless) return r < 0.5 ? AC.dieFwd : AC.dieCollapse;
   if (src === 'blast' || src === 'a10' || src === 'car') return pw > 0.6 || r < 0.7 ? AC.dieBlast : AC.dieSpin;
   if (src === 'fire' || src === 'burn') return r < 0.6 ? AC.dieKnees : AC.dieCollapse;
-  if (src === 'melee' && z.meleeCi >= 50 && z.meleeCi < AC_N) return z.meleeCi;   // (the knife chose it: knife.js)
+  if (src === 'melee' && z.meleeCi >= 50 && z.meleeCi < 60) return z.meleeCi;   // (the knife chose it: knife.js)
   if (src === 'dash' || src === 'melee') return r < 0.5 ? AC.dieSpin : AC.dieSide;
   if (reg === 'head') return pw > 1.3 && r < 0.4 ? AC.dieBack : r < 0.75 ? AC.dieHead : AC.dieCollapse;
   if (reg === 'legL' || reg === 'legR') return r < 0.5 ? AC.dieSide : AC.dieFwd;
@@ -987,7 +1206,7 @@ function animaDeath(z, forceCi) {
   if (z.st && z.st.boomed) { if (typeof goreGib === 'function') for (let i = 0; i < 6; i++) goreGib(z.x, z.y, Math.random() * TAU, (120 + Math.random() * 160) * PK, 'flesh', [120, 120, 60], (3 + Math.random() * 3) * PK); return -1; }
   try {
     const A = animaState(z); A.upF = -1; animaTick(z, 0.0001, true);
-    const ci = (forceCi >= 36 && forceCi < 44) || (forceCi >= 50 && forceCi < AC_N) ? forceCi : animaDeathClip(z), C = { m: z.m, x: z.x, y: z.y, ang: z.ang, r: z.r, ci: ci, t: 0, dur: z.m.adur[ci] * rand(0.92, 1.1), start: new Float32Array(A.pose), pose: new Float32Array(AN), done: false, life: 0, off: 0, seed: Math.random() * 100,
+    const ci = aIsDeath(forceCi) ? forceCi : animaDeathClip(z), C = { m: z.m, x: z.x, y: z.y, ang: z.ang, r: z.r, ci: ci, t: 0, dur: z.m.adur[ci] * rand(0.92, 1.1), start: new Float32Array(A.pose), pose: new Float32Array(AN), done: false, life: 0, off: 0, seed: Math.random() * 100,
       vx: (z.vx || 0) * 0.35 + Math.cos(z.hitA || 0) * (z.hitP || 0.5) * 22, vy: (z.vy || 0) * 0.35 + Math.sin(z.hitA || 0) * (z.hitP || 0.5) * 22, burn: z.burnT > 0 || z.lastSrc === 'fire' ? 1 : 0, frost: z.frostK || 0, char: z.charK || 0, minion: !!z.minion, sever: z.sever | 0, spr: null };
     ANIMA.corpses.push(C); ANIMA.deadN++;
     const cap = ANIMA.corpseCap; if (ANIMA.corpses.length > cap) ANIMA.corpses.splice(0, ANIMA.corpses.length - cap);
@@ -1070,7 +1289,8 @@ function aBounds(m, pose) {
   for (let j = 0; j < NJ; j++) { if (j === JN.fdir || j === JN.hup) continue; const k = 1 + A_PERSP * A_BJ[j * 3 + 2] / m.ad.H, x = A_BJ[j * 3] * k, y = A_BJ[j * 3 + 1] * k; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   const pad = 0.75 + (m.ad.headR > 0.4 ? 0.15 : 0), d = m.def, H = d.hold, F = m.al ? m.al.F : {};
   x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
-  if (H === 'mop') x0 = Math.min(x0, -3.1); if (H === 'cleaver' || H === 'iceaxe' || H === 'wrench' || H === 'hook') { x1 += 0.8; y0 -= 0.5; y1 += 0.5; }
+  if (H === 'mop') x0 = Math.min(x0, -3.1); if (H === 'cleaver' || H === 'iceaxe' || H === 'wrench') { x1 += 0.8; y0 -= 0.5; y1 += 0.5; }
+  if (F.shoulderpads) { y0 -= 0.2; y1 += 0.2; }
   if (H === 'shield') { y0 -= 0.6; y1 += 0.6; x1 += 0.4; }
   if (d.head === 'straw' || d.head === 'veil' || d.hair === 'long' || d.hair === 'ponytail' || F.entrails) { x0 -= 0.7; y0 -= 0.4; y1 += 0.4; }
   return [x0, y0, x1, y1];
@@ -1128,11 +1348,13 @@ function animaDraw(z, lod, rank, s, e, f, a) {
     const live = rank < ANIMA.liveCap && lod <= 2;
     const A = animaTick(z, G.rdt || 0.016, live);
     let x = z.x, y = z.y; if (z.warn > 0 && z.m.an.ab === 'bomber') { x += rand(-1, 1); y += rand(-1, 1); }
-    const co = Math.cos(z.ang) * s * z.r, si = Math.sin(z.ang) * s * z.r;
-    ctx.globalAlpha = a;
+    // 1.9.998: up on a pile or a roof (or mid-vault) it is nearer the camera: drawn bigger; under a car, half hidden
+    const lift = z.pz > 0.05 && typeof hordeLift === 'function' ? hordeLift(z) : 1, up = z.pz > 0.15;
+    const co = Math.cos(z.ang) * s * z.r * lift, si = Math.sin(z.ang) * s * z.r * lift;
+    ctx.globalAlpha = a * (z.under ? 0.45 : 1);
     if (live) {
       ctx.setTransform(co, si, -si, co, e + x * s, f + y * s);
-      lookDraw(ctx, z.m, A.pose, { lod: lod, t: G.time, z: z, light: aLight(z), flash: z.flash, minion: z.minion, burn: z.burnT > 0, frost: z.frostK, glow: 1, sever: z.sever | 0, tex: lod === 0 && texelLevel() >= 2 });
+      lookDraw(ctx, z.m, A.pose, { lod: lod, t: G.time, z: z, light: aLight(z), flash: z.flash, minion: z.minion, burn: z.burnT > 0, frost: z.frostK, glow: 1, sever: z.sever | 0, tex: lod === 0 && texelLevel() >= 2, noShadow: up });
       // its skeleton, kept for the lighting engine (the shadow of this exact pose)
       (A.J || (A.J = new Float32Array(NJ * 3))).set(ANIMA.J); A.jF = frameNo;
       ANIMA.live++;
@@ -1141,7 +1363,7 @@ function animaDraw(z, lod, rank, s, e, f, a) {
     const sp = aFrame(z, A, lod, z.sever | 0);
     if (!sp) return false;
     const kz = z.r / sp.rq;
-    ctx.setTransform(co / z.r, si / z.r, -si / z.r, co / z.r, e + x * s, f + y * s);
+    ctx.setTransform(co / z.r, si / z.r, -si / z.r, co / z.r, e + x * s, f + y * s);   // (lift is in co and si)
     ctx.drawImage(sp.c, sp.x0 * kz, sp.y0 * kz, sp.w * kz, sp.h * kz);
     // the light beside it on the picture too (near ones, on devices with room): lit side, shaded side, a rim of its colour
     if (lod <= 1 && rank < 40 && PERF.tier >= 2 && typeof LUX !== 'undefined' && LUX.live && typeof lookShade === 'function') lookShade(ctx, aLight(z), z.r * 0.95, z.r * 0.85, 0.8);
@@ -1283,7 +1505,7 @@ const A_LT_PREV = { x: -0.6, y: -0.55, c: '255,240,215', k: 0.55, rim: 0.5 };
 
 coreAdd({
   name: 'ANIMA', kind: 'render', ver: 1, needs: ['TEXEL', 'PERF'], provides: ['zombieRig', 'zombieAnimation', 'corpses'],
-  does: 'Rig and animation engine for the 2.0 zombies: every zombie a jointed body (32-number poses, 3D forward kinematics seen from above) with 60 animations of its own (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials, 10 knife kills) shaped by its gait, arms, head, build and seed; cross-faded transitions that keep the walk in step, attacks on the upper body while the legs walk, hit reactions layered on top, deaths from whatever pose it was in, corpses that stay a while; live joints near you, cached frames for the crowd.',
+  does: 'Rig and animation engine for the 2.0 zombies: every zombie a jointed body at its real proportions (32-number poses, 3D forward kinematics seen from above, shoulders that come forward with a reach) with 75 animations of its own (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials, 10 knife kills, 15 contacts with the world and the crowd: a bump, shoved, a wall slam, a scrape, a corner skid, a vault, climbing over a car, diving through its windows, climbing a pile and tumbling off it, trampled, tripping, squeezing through, bowled over, pinned) shaped by its gait, arms, head, build and seed; a spring on the torso that answers its own momentum and the crowd\'s shoves; drawn by LOOK v2 (tapered shaded limbs, hands and shoes, the shoulder girdle, ears and hair, the job\'s details and the dead months\' decay); cross-faded transitions that keep the walk in step, attacks on the upper body while the legs walk, hit reactions layered on top, deaths from whatever pose it was in, corpses that stay a while; live joints near you, cached frames for the crowd.',
   state: () => animaUp() ? 'on' : 'off',
   level: () => ANIMA.live + ' live, ' + ANIMA.cached + ' cached, ' + ANIMA.corpses.length + ' corpses, ' + ANIMA.cache.size + ' frames' + (ANIMA.adapt ? ', detail ' + ANIMA.adapt : ''),
   canTrim: () => ANIMA.adapt > -3, trim: () => { if (ANIMA.adapt <= -3) return false; ANIMA.adapt--; return true; }, boost: () => { if (ANIMA.adapt >= 0) return false; ANIMA.adapt++; return true; },
@@ -1301,7 +1523,7 @@ coreMeta('ANIMA', { ver: 2, lv: () => ANIMA.adapt + 3, adaptGet: () => ANIMA.ada
     const o = new Float32Array(AN), J = new Float32Array(NJ * 3); let n = 0, pass = 0, why = '';
     for (let i = 0; i < ZR.length; i += Math.max(1, Math.floor(ZR.length / 6))) {
       const m = ZR[i]; if (!m || !m.an) continue;
-      for (const ci of [0, 12, 24, 40, 50 + (i % 10), 59]) {   // (and a knife kill or two, 1.9.994)
+      for (const ci of [0, 12, 24, 40, 50 + (i % 10), 59, 60 + (i % 15), 74]) {   // (and a knife kill or two, 1.9.994; contacts, 1.9.998)
         n++;
         try { animaEval(o, m, ci, 0.37, 1.3); animaFK(m.ad, o, J); let ok = true; for (let k = 0; k < J.length; k++) if (!(J[k] === J[k])) { ok = false; break; } if (ok) pass++; else if (!why) why = m.name + ' came out of clip ' + ci + ' broken'; }
         catch (x) { if (!why) why = m.name + ': ' + String(x && x.message || x).slice(0, 60); }

@@ -517,7 +517,7 @@ function netSnapshot() {
     const was = sent.get(z.nid);
     if (was !== sig || key) { zst.push(z.nid, z.m.id, r10, sh, fl & 31); sent.set(z.nid, sig); }
     if (!all && was === sig && !z.boss && netNearD2(z.x, z.y) > far2) continue;
-    zd.push(z.nid - prev, r1(z.x - ax), r1(z.y - ay), Math.round(((z.ang % TAU) + TAU) % TAU * 10), r1(clamp(z.hp / z.maxHp, 0, 1) * 100), fl >> 5);
+    zd.push(z.nid - prev, r1(z.x - ax), r1(z.y - ay), Math.round(((z.ang % TAU) + TAU) % TAU * 10), r1(clamp(z.hp / z.maxHp, 0, 1) * 100), fl >> 5, Math.round((z.pz || 0) * 10) + (z.under ? 64 : 0));
     prev = z.nid;
   }
   for (const id of Array.from(sent.keys())) if (!NET.zmap.has(id)) { zg.push(id); sent.delete(id); }
@@ -642,13 +642,13 @@ function netApply(s) {
     const z = NET.zmap.get(ZS[i]); if (z && !z.dead) { z.r = ZS[i + 2] / 10; if (ZS[i + 3]) { z.shieldMax = z.shieldMax || 100; z.shield = ZS[i + 3] / 100 * z.shieldMax; } else z.shield = 0; }
   }
   let nid = 0;
-  for (let i = 0; i + 5 < ZD.length; i += 6) {
+  for (let i = 0; i + 6 < ZD.length; i += 7) {
     nid += ZD[i]; const st = NET.zst.get(nid); if (!st) continue;   // not introduced yet: it comes with the next full update
     const x = ZD[i + 1] + ax, y = ZD[i + 2] + ay, f = st[3] | (ZD[i + 5] << 5);
     let z = NET.zmap.get(nid);
     if (!z || z.dead) { z = netMakePuppet([nid, st[0], x, y, ZD[i + 3] * 10, ZD[i + 4] * 10, f, st[1], st[2]], s.B); if (!z) continue; { const r0 = z.r; z.r = st[1] / 10; z.vr = r0 > 0 ? clamp(z.r / r0, 0.9, 1.1) : 1; } if (st[2]) { z.shieldMax = 100; z.shield = st[2]; } }   // (vr: the host's size for this one, so ANIMA shares the kind's frames)
     if (seen) seen.add(nid);
-    netVel(z, x, y); z.tx = x; z.ty = y; z.tang = ZD[i + 3] / 10; z.hp = ZD[i + 4] * 10;
+    netVel(z, x, y); z.tx = x; z.ty = y; z.tang = ZD[i + 3] / 10; z.hp = ZD[i + 4] * 10; { const ph = ZD[i + 6] | 0; z.pz = (ph & 63) / 10; z.under = !!(ph & 64); }
     if (Math.hypot(z.tx - z.x, z.ty - z.y) > 260) { z.x = z.tx; z.y = z.ty; z.nvx = z.nvy = 0; }
     z.st.under = !!(f & 32); z.st.down = f & 64 ? 1 : 0; z.st.phased = !!(f & 128);
     z.frozen = f & 256 ? 1 : 0; z.stun = f & 256 ? 0.2 : 0; z.burnT = f & 512 ? 1 : 0; z.poisonT = f & 1024 ? 1 : 0; z.slowT = f & 2048 ? 0.2 : 0; z.buffT = f & 4096 ? 1 : 0;
@@ -692,7 +692,7 @@ function netApply(s) {
   }
   for (const id of Array.from(NET.others.keys())) if (!live.has(id)) NET.others.delete(id);
   for (const q of s.sh || []) if (q[0] !== NET.me) { netCosShot(q[0], q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8]); const o = NET.others.get(q[0]); if (o) o.flashT = 0.05; }
-  for (const e of s.ev || []) if (e[0] === 'horde' && typeof swarmHordeFx === 'function') swarmHordeFx(e[1], e[2], e[3]);
+  for (const e of s.ev || []) { if (e[0] === 'horde' && typeof swarmHordeFx === 'function') swarmHordeFx(e[1], e[2], e[3]); else if (e[0] === 'zc' && typeof hordeNetContact === 'function') hordeNetContact(e[1], e[2], e[3]); }
   for (const e of s.ev || []) if (e[0] === 'air' && e[5] !== NET.me) { launchStrafe(e[1], e[2], e[3], { mini: !!e[4], cos: true }); if (!e[4]) { SFX.radio(); SFX.a10Jet(2.8); banner('A-10 inbound', 'Danger close'); } }
 }
 // a puppet zombie the host says is dead: blood, the specimen log, and the boss's end

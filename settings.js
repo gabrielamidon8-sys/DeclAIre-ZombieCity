@@ -5,7 +5,7 @@
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
   quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: 100, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
-  decals: 'normal', bloodTime: '60', bodies: 'normal', crowd: 'auto', swarm: 'auto', swarmPush: true, life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
+  decals: 'normal', bloodTime: '60', bodies: 'normal', crowd: 'auto', swarm: 'auto', swarmPush: true, zspeed: 'wwz', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   waveTimer: 'normal', wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
@@ -37,6 +37,7 @@ function applyAll() {
   AUD.sfx = SET.sfxOn; AUD.vis = SET.vis; SFX.setSfx(SET.sfxOn);
   RM = SET.motion === 'on' || (SET.motion === 'auto' && SYS_RM);
   applySound(); applyLook();
+  if (typeof hordeMode === 'function') hordeMode();   // 1.9.998: World War Z or the classic crowd
 }
 function applySound() {
   SFX.setVolumes({ master: SET.volMaster / 100, music: SET.volMusic / 100, sfx: SET.volSfx / 100, gun: SET.volGun / 100, amb: SET.volAmb / 100, ui: SET.volUi / 100 });
@@ -162,6 +163,7 @@ const SET_ROWS = [
   { id: 'seedMode', tab: 'gameplay', type: 'seg', label: 'Same map every run', desc: 'Keep the map from your last run so you can learn it.', opts: [['random', 'Off'], ['fixed', 'On']] },
   { tab: 'gameplay', group: 'Hordes' },
   { id: 'swarm', tab: 'gameplay', basic: true, type: 'seg', label: 'Horde size', desc: 'How big the hordes and droves get, and how many zombies can be alive at once. Auto follows what your device can draw (500 and more on most).', opts: [['auto', 'Auto'], ['small', 'Smaller'], ['big', 'Bigger'], ['huge', 'Huge']] },
+  { id: 'zspeed', tab: 'gameplay', basic: true, type: 'seg', label: 'Zombie speed', desc: 'World War Z: real people\'s speeds (an amble when they have not seen you, a pursuit, and a frenzied sprint when they do, faster than you with your gun up but never faster than your sprint), real momentum (they slam into walls at corners), solid bodies, cars and fences crossed, the pack cutting you off and pile-ups. Classic: the old steady crowd.', opts: [['wwz', 'World War Z'], ['classic', 'Classic']] },
   { id: 'swarmPush', tab: 'gameplay', type: 'seg', label: 'Crowds push vehicles', desc: 'A horde big enough to move it (about 50 for a car, 460 for a semi) shoves a parked vehicle out of its way when you are at that vehicle and it stands between you; anywhere else the horde goes round it.', opts: ON_OFF },
   { tab: 'gameplay', group: 'Screen' },
   { id: 'shake', tab: 'gameplay', basic: true, type: 'slider', label: 'Screen shake', desc: 'How hard explosions and hits shake the view.', min: 0, max: 150, step: 25, fmt: v => v ? v + '%' : 'Off' },

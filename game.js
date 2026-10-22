@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.997';
+const ZC_VERSION = '1.9.998';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -147,10 +147,12 @@ function rectsNear(x, y, rad) {
   if (SWDYN.size) for (const r of SWDYN.values()) { if (r._q === q) continue; r._q = q; if (x + rad > r.x && x - rad < r.x + r.w && y + rad > r.y && y - rad < r.y + r.h) tmpR.push(r); }
   return tmpR;
 }
-function collide(e, r, big) {
+function collide(e, r, big, skip) {
   const rs = rectsNear(e.x, e.y, r); let hit = false; COL.r = null;
   for (let i = 0; i < rs.length; i++) {
     const b = rs[i]; if (big && !SOLID[b.k]) continue;
+    // 1.9.998: what a zombie is crossing, or (a number) what it is up above on a pile or a roof
+    if (skip) { if (b === skip) continue; if (typeof skip === 'number' && hordeCrossCost(b) && hordeRectH(b) <= skip) continue; }
     const nx = clamp(e.x, b.x, b.x + b.w), ny = clamp(e.y, b.y, b.y + b.h);
     const dx = e.x - nx, dy = e.y - ny, d2 = dx * dx + dy * dy;
     if (d2 < r * r) {
@@ -200,7 +202,7 @@ let FF_CS = 32, FF_N = 84;
 const FF_MAXN = 112, FF_MAXLEN = FF_MAXN * FF_MAXN;
 // what a boss cannot walk through: buildings, landmarks, rubble heaps, statues, tanks, big rocks
 const SOLID = { b: 1, lm: 1, rub: 1, statue: 1, tank: 1, windmill: 1, rock: 1, pool: 1, pillar: 1, wreck: 1 };
-function newField(rad, big, name) { return { name: name, rad: rad, big: big, ox: 0, oy: 0, pcx: 1e9, pcy: 1e9, t: -9, ready: false, cache: new Map(), dist: new Float32Array(FF_MAXLEN), cost: new Float32Array(FF_MAXLEN), open: new Uint8Array(FF_MAXLEN), n: FF_N, cs: FF_CS }; }
+function newField(rad, big, name) { return { name: name, rad: rad, big: big, ox: 0, oy: 0, pcx: 1e9, pcy: 1e9, t: -9, ready: false, cache: new Map(), dist: new Float32Array(FF_MAXLEN), cost: new Float32Array(FF_MAXLEN), open: new Uint8Array(FF_MAXLEN), n: FF_N, cs: FF_CS, cross: false, ccache: null }; }
 const FF = newField(15, false, 'small'), FFB = newField(30, false, 'big'), FFS = newField(56, true, 'boss');
 // a big horde does not walk round parked cars: it goes straight through and shoves them (the crowd engine's push field)
 const FFP = newField(15, true, 'push');
@@ -210,11 +212,15 @@ const FFP = newField(15, true, 'push');
 const FFC = new Map(), FFL = new Map(), FL_K = 4, FL_N = 64;
 const HI = new Int32Array(FF_MAXLEN * 8), HK = new Float32Array(FF_MAXLEN * 8), FD = [0, 0];
 const blockCache = FF.cache;
-function fieldsReset() { for (const F of [FF, FFB, FFS, FFP]) { F.ready = false; F.cache.clear(); } FFC.clear(); FFL.clear(); }
+// 1.9.998 (HORDE): with World War Z on, the ordinary field is a crossing map: parked cars, dumpsters, benches, barriers,
+// rubble and fences are slow ground (a car costs about three cells, a fence eight), only the solid and the tall are walls
+FF.ccache = new Map();
+function hordeMode() { const on = SET.zspeed !== 'classic'; if (FF.cross !== on) { FF.cross = on; fieldsReset(); } }
+function fieldsReset() { for (const F of [FF, FFB, FFS, FFP]) { F.ready = false; F.cache.clear(); } FF.ccache.clear(); FFC.clear(); FFL.clear(); if (typeof HORDE !== 'undefined') { HORDE.cut = null; if (HORDE.F) HORDE.F.ready = false; } }
 function cellBlockedF(F, cx, cy) {
   const k = (cx + 60000) * 120000 + (cy + 60000), C = F.cache;
   let v = C.get(k);
-  if (v === undefined) { v = blocked(cx * FF_CS + FF_CS / 2, cy * FF_CS + FF_CS / 2, F.rad, F.big) ? 1 : 0; if (C.size > 150000) C.clear(); C.set(k, v); }
+  if (v === undefined) { v = (F.cross ? blockedX(cx * FF_CS + FF_CS / 2, cy * FF_CS + FF_CS / 2, F.rad) : blocked(cx * FF_CS + FF_CS / 2, cy * FF_CS + FF_CS / 2, F.rad, F.big)) ? 1 : 0; if (C.size > 150000) C.clear(); C.set(k, v); }
   return v;
 }
 function cellBlocked(cx, cy) { return cellBlockedF(FF, cx, cy); }
@@ -240,6 +246,7 @@ function fieldBuild(F) {
       const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < n && jj < n && !open[jj * n + ii]) { c = 2.2; break; }
     }
     if (open[id] && !F.big) { const w = waterAt((F.ox + i) * FF_CS + FF_CS / 2, (F.oy + j) * FF_CS + FF_CS / 2); if (w === 2) c *= 2.6; else if (w === 1) c *= 1.7; }
+    if (open[id] && F.cross && F.ccache) { const ck = (F.ox + i + 60000) * 120000 + (F.oy + j + 60000); let x = F.ccache.get(ck); if (x === undefined) { x = crossCostAt((F.ox + i) * FF_CS + FF_CS / 2, (F.oy + j) * FF_CS + FF_CS / 2, F.rad); if (F.ccache.size > 150000) F.ccache.clear(); F.ccache.set(ck, x); } c *= x; }
     cost[id] = c; dist[id] = 1e9;
   }
   let hs = 0;
@@ -322,7 +329,7 @@ function fieldsCoop() {
   for (const M of [FFC, FFL]) for (const k of [...M.keys()]) if (P.indexOf(k) < 0) M.delete(k);
   let job = null, age = -1;
   if (host && P.length > 1) for (const p of P) {
-    let F = FFC.get(p); if (!F) { F = newField(15, false, 'player'); F.owner = p; F.cache = FF.cache; FFC.set(p, F); }
+    let F = FFC.get(p); if (!F) { F = newField(15, false, 'player'); F.owner = p; F.cache = FF.cache; FFC.set(p, F); } F.cross = FF.cross; F.ccache = FF.ccache;
     const pcx = Math.floor(p.x / FF_CS), pcy = Math.floor(p.y / FF_CS), st = !F.ready || F.n !== FF_N || Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2 ? 99 : G.time - F.t;
     if (st > flowIv() && st > age) { age = st; job = () => buildField(F); }
   } else FFC.clear();
@@ -641,9 +648,8 @@ const ABIL = {
       if (any) ring(z.x, z.y, z.r, 170, 0.5, '110,230,120', 2);
     }
   },
-  magnet(z, dt, dx, dy, d) {
-    if (d < 290 && d > z.r + 20 && G.mode === 'play') { const p = G.p, f = (1 - d / 290) * 130 + 30; p.extX -= dx / d * f; p.extY -= dy / d * f; }
-  },
+  // 1.9.998: the drag toward a zombie is gone from the game (the Butcher and his hook were replaced by the Linebacker)
+  magnet() {},
   berserker() {}, juggernaut() {}, hive() {},
   trickster(z, dt, dx, dy, d) {
     const s = z.st; s.cd = (s.cd === undefined ? rand(2, 4) : s.cd) - dt;
@@ -707,7 +713,15 @@ function updZ(z, dt) {
   z.mulB = mul;
   if (z.stun > 0) { z.stun -= dt; c.move = 0; if (z.stun <= 0) z.frozen = 0; }
   let tvx, tvy;
-  if (c.ov) { tvx = c.vx; tvy = c.vy; z.vx = tvx; z.vy = tvy; }
+  // 1.9.998 (HORDE): the 2.0 zombies with World War Z on move as solid bodies with momentum (horde.js)
+  const hz = typeof hordeOn === 'function' && hordeOn(z);
+  if (hz && z.xing) { hordeCrossTick(z, dt); tvx = z.vx; tvy = z.vy; }
+  else if (c.ov) {
+    tvx = c.vx; tvy = c.vy;
+    // (a lunge, a leap or a charge is no faster than a body can go: a little past its frenzied run)
+    if (hz) { const vm = z.speed * (hordeSpec(z.m).kF * 1.2 + 0.4), v = Math.hypot(tvx, tvy); if (v > vm) { tvx *= vm / v; tvy *= vm / v; } }
+    z.vx = tvx; z.vy = tvy;
+  }
   else {
     let ux = dx / d, uy = dy / d;
     const lure = G.mode === 'play' ? (dashLure(z, dt) || worldLure(z)) : null;
@@ -720,11 +734,14 @@ function updZ(z, dt) {
       if (z.losT <= 0) { z.losT = 0.2 + Math.random() * 0.15; z.los = d < 700 && !(z.noLosT > 0) && hasLOS(z.x, z.y, p.x, p.y, ZF); }
       if (z.noLosT > 0) z.noLosT -= dt;
       if (!z.los) { const f = flowDir(z.x, z.y, ZF) || (FFL.size ? flowDir(z.x, z.y, fieldLongFor(z)) : null); if (f) { ux = f[0]; uy = f[1]; } }
+      // one of the pack sent round to where you are running to
+      if (hz) { const cd = hordeCutDir(z); if (cd) { ux = cd[0]; uy = cd[1]; } }
     }
     if (z.fly) { const a = Math.atan2(uy, ux) + Math.sin(G.time * 9 + z.bob) * 0.9; ux = Math.cos(a); uy = Math.sin(a); }
     if (z.detT > 0) { z.detT -= dt; const a = z.detSide * 1.25, co = Math.cos(a), si = Math.sin(a); const nx = ux * co - uy * si, ny = ux * si + uy * co; ux = nx; uy = ny; }
     const zw = z.fly ? 0 : waterAt(z.x, z.y); z.inW = isWater(zw);
-    let spd = z.speed * c.move * mul * (z.slowT > 0 ? (z.slowMul || 0.65) : 1) * (z.buffT > 0 ? 1.45 : 1) * G.zsMul * (G.warpT > 0 && !z.boss ? 0.32 : 1) * (z.boss ? (1 + waterSlow(zw)) / 2 : waterSlow(zw)) * WX.slow;
+    let spd = z.speed * c.move * mul * (z.slowT > 0 ? (z.slowMul || 0.65) : 1) * (z.buffT > 0 ? (hz ? 1.15 : 1.45) : 1) * G.zsMul * (G.warpT > 0 && !z.boss ? 0.32 : 1) * (z.boss ? (1 + waterSlow(zw)) / 2 : waterSlow(zw)) * WX.slow;
+    if (hz) spd *= hordeGear(z, d, dt) * (1 - 0.7 * (z.pinK || 0));   // amble, pursuit or frenzy; slowed under a pile
     let sx = 0, sy = 0, pk = 0;
     if (z.swF === frameNo) {
       // the crowd engine has already worked out this zombie's neighbours: the shove of the bodies around it, and the
@@ -738,20 +755,25 @@ function updZ(z, dt) {
       if (dd < rr * rr && dd > 0.01) { const dl = Math.sqrt(dd), push = (rr - dl) / rr; sx += ex / dl * push; sy += ey / dl * push; }
     });
     if (sp.pack && pk >= 2) spd *= z.swF === frameNo ? 1.15 : 1.3;
-    const sa = Math.abs(spd) + 40;
-    tvx = ux * spd + sx * sa * 1.5; tvy = uy * spd + sy * sa * 1.5;
-    const k = Math.min(1, dt * 9); z.vx += (tvx - z.vx) * k; z.vy += (tvy - z.vy) * k;
+    if (hz) { z.wx = ux; z.wy = uy; tvx = ux * spd; tvy = uy * spd; hordeMove(z, dt, tvx, tvy); }
+    else {
+      const sa = Math.abs(spd) + 40;
+      tvx = ux * spd + sx * sa * 1.5; tvy = uy * spd + sy * sa * 1.5;
+      const k = Math.min(1, dt * 9); z.vx += (tvx - z.vx) * k; z.vy += (tvy - z.vy) * k;
+    }
   }
   const px = z.x, py = z.y;
   z.x += (z.vx + z.kvx) * dt; z.y += (z.vy + z.kvy) * dt;
   // nothing stands inside the player: overlapping zombies sit behind the gun's muzzle where bullets can't reach them
   if (!z.st.under && !(z.snatch && z.snatch.state === 'holding') && !(z.rb && z.rb.state === 'holding')) {
     const ex = z.x - p.x, ey = z.y - p.y, dd = Math.hypot(ex, ey), mn = z.r + p.r * 0.85;
-    if (dd < mn) { if (dd < 0.01) z.x += mn; else { z.x = p.x + ex / dd * mn; z.y = p.y + ey / dd * mn; } }
+    if (dd < mn) { if (dd < 0.01) z.x += mn; else { z.x = p.x + ex / dd * mn; z.y = p.y + ey / dd * mn; if (hz) { const vn = (z.vx * ex + z.vy * ey) / dd; if (vn < 0) { z.vx -= vn * ex / dd; z.vy -= vn * ey / dd; } } } }
   }
   const dec = Math.exp(-9 * dt); z.kvx *= dec; z.kvy *= dec;
   if (!z.fly && !z.st.under) {
-    const big = zBig(z), hit = collide(z, z.r * 0.9, big);
+    const big = zBig(z), hit = collide(z, z.r * (hz ? 0.8 : 0.9), big, hz ? (z.xing ? z.xing.b : z.pz > 0.2 ? z.pz + 0.25 : null) : null);
+    // into something: over it if it can be crossed and it wants to go that way, otherwise it hits it (a slam at speed)
+    if (hz && hit && COL.r && !z.xing) { if (c.ov || !hordeTryCross(z, COL.r, COL.nx, COL.ny, z.wx || 0, z.wy || 0)) hordeWall(z, COL.nx, COL.ny); }
     // leaning into a parked car: part of the crowd's push on it (the crowd engine adds it up)
     if (hit && COL.r && COL.r.k === 'car' && typeof swarmPress === 'function') swarmPress(z, COL.r, COL.nx, COL.ny, tvx, tvy);
     if (big) bossTrample(z, dt);
@@ -760,11 +782,14 @@ function updZ(z, dt) {
       const want = Math.hypot(tvx, tvy) * dt, got = Math.hypot(z.x - px, z.y - py);
       if (want > 0.4 && got < want * 0.35) z.stuckT += dt; else z.stuckT = Math.max(0, z.stuckT - dt * 0.5);
       if (z.stuckT > 0.3 && typeof swarmPushing === 'function' && swarmPushing(z)) z.stuckT = 0;   // shoulder to shoulder with enough others to move it: keep pushing
-      if (z.stuckT > 0.3 && z.detT <= 0) { z.detT = 1.1; z.detSide = Math.random() < 0.5 ? -1 : 1; z.stuckT = 0; z.stuckN = (z.stuckN || 0) + 1; if (z.stuckN >= 2) { z.noLosT = 3; z.los = false; z.stuckN = 0; } }
+      if (hz) { if (want > 0.3 && got < want * 0.3) z.hStuck = (z.hStuck || 0) + dt; else z.hStuck = Math.max(0, (z.hStuck || 0) - dt); }
+      if (z.stuckT > 0.3 && z.detT <= 0 && !(hz && (z.press || 0) > 0.8)) { z.detT = 1.1; z.detSide = Math.random() < 0.5 ? -1 : 1; z.stuckT = 0; z.stuckN = (z.stuckN || 0) + 1; if (z.stuckN >= 2) { z.noLosT = 3; z.los = false; z.stuckN = 0; } }
     }
   }
-  const ta = c.face != null ? c.face : Math.atan2(dy, dx);
-  z.ang = angLerp(z.ang, ta, Math.min(1, dt * 8));
+  // the crowd's knocks, pile-ups, a foot caught on a body
+  if (hz) { hordeKnocks(z); hordePile(z, dt, z.hStuck || 0, d); hordeTrip(z, dt); }
+  const ta = c.face != null ? c.face : hz && !z.xing && Math.hypot(z.vx, z.vy) > 40 && !z.los ? Math.atan2(z.vy, z.vx) : Math.atan2(dy, dx);
+  if (!(hz && z.xing)) z.ang = angLerp(z.ang, ta, Math.min(1, dt * 8));
   // the 2.0 zombies swing before they hit: a wind-up you can see (and step out of), then the blow lands with the swing
   if (z.m.v2 && !z.illusion && G.mode === 'play' && !z.st.under && !(z.frozen && z.stun > 0) && z.hitCd < 0.22 && !(z.atkW > G.time - 0.5) && d < z.r + p.r + z.reach + 20) { z.atkW = G.time; z.atkT = G.time; z.hitCd = 0.22; }
   if (!z.illusion && !z.st.under && !(z.frozen && z.stun > 0) && z.hitCd <= 0 && G.mode === 'play' && (!z.snatch || z.snatch.state === 'idle') && (!z.rb || z.rb.ill || (z.rb.state !== 'holding' && z.rb.mutT <= 0 && !z.rb.hide && !(z.rb.state === 'act' && z.rb.mv === 'charge'))) && d < z.r + p.r + z.reach + 3) {
@@ -836,6 +861,7 @@ function hurtZombie(z, dmg, o) {
     // no region given (a dash, a homing round, a blast): a body blow, at most every 0.35 s for damage that keeps coming
     const reg = o.reg || ((o.src === 'blast' || o.src === 'a10' || o.src === 'dash' || o.src === 'bullet') && !(z.hitT > G.time - 0.35) ? 'torso' : null);
     if (reg) { z.hitReg = reg; z.hitT = G.time; z.hitP = o.P != null ? o.P : (o.src === 'blast' || o.src === 'a10' ? 2 : 0.6); if (o.kx || o.ky) z.hitA = Math.atan2(o.ky, o.kx); }
+    if ((o.src === 'blast' || o.src === 'a10') && typeof hordeOn === 'function' && hordeOn(z)) { if (z.pz > 0.2) { z.climb = 0; z.pzv = 1.5; } z.bowlT = G.time; z.bowlA = o.kx || o.ky ? Math.atan2(o.ky, o.kx) : Math.random() * TAU; }
     z.lastSrc = o.src || 'bullet';
     if (o.cripple) {
       if (reg === 'legL' || reg === 'legR') { const bit = reg === 'legL' ? 1 : 2; if (!((z.legM || 0) & bit)) { z.legM = (z.legM || 0) | bit; z.legK = (z.legK || 0) + 1; } }
@@ -1912,7 +1938,6 @@ function render() {
     // danger auras: on Low the faint fill is skipped and only the outline is drawn
     if (z.m.S.p.rad && !z.st.under && !z.st.down) { ctx.fillStyle = 'rgba(200,255,60,0.06)'; ctx.beginPath(); ctx.arc(z.x, z.y, 90, 0, TAU); if (!lowFx) ctx.fill(); ctx.strokeStyle = 'rgba(200,255,60,' + (lowFx ? 0.32 : 0.2) + ')'; ctx.lineWidth = 1.5; ctx.stroke(); }
     if (z.abs.indexOf('chiller') >= 0 && !z.st.under) { ctx.fillStyle = 'rgba(170,220,255,0.07)'; ctx.beginPath(); ctx.arc(z.x, z.y, 150, 0, TAU); if (!lowFx) ctx.fill(); ctx.strokeStyle = 'rgba(190,230,255,' + (lowFx ? 0.34 : 0.22) + ')'; ctx.lineWidth = 1.5; ctx.stroke(); }
-    if (z.abs.indexOf('magnet') >= 0 && G.p && Math.hypot(G.p.x - z.x, G.p.y - z.y) < 290) { ctx.strokeStyle = 'rgba(200,80,80,0.25)'; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -G.time * 40; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(z.x, z.y); ctx.lineTo(G.p.x, G.p.y); ctx.stroke(); ctx.setLineDash([]); }
   }
   if (vz) drawVizMobs(vz, vis);
   // level of detail: zombies far from you, or part of a big crowd, skip their cosmetic overlays (the crowd engine draws
@@ -2487,6 +2512,7 @@ function update(dt) {
   spawner(dt);
   buildGrid();
   if (typeof swarmTick === 'function') swarmTick(dt);   // hordes coming in, the crowd moving as one, who thinks how often
+  if (typeof hordeFrame === 'function') hordeFrame(dt);   // 1.9.998: the pack's brain (cutting you off), piles
   { const pcx = Math.floor(G.p.x / FF_CS), pcy = Math.floor(G.p.y / FF_CS), stale = F => !F.ready || F.n !== FF_N || Math.abs(pcx - F.pcx) + Math.abs(pcy - F.pcy) >= 2;
     if (stale(FF) || G.time - FF.t > flowIv()) buildField(FF);   // (on Auto it follows what a field costs here; the engine room's Eco refreshes less often, Hard and Max more)
     // the wide fields only while something that big is chasing, and never both in the same frame
@@ -2526,6 +2552,7 @@ function update(dt) {
   const ct = host && G.p.down ? (netAlive()[0] || G.p) : G.p;   // down in co-op: the camera follows a teammate
   gcamTick(dt, ct === G.p ? G.p : null);   // MIMATIC directs the run's camera: lead room, focus, recoil (gamecam.js)
   const k = Math.min(1, dt * 7); cam.x += (ct.x + GCAM.ox.x - cam.x) * k; cam.y += (ct.y + GCAM.oy.x - cam.y) * k;
+  if (G.camPin) { cam.x = G.camPin.x; cam.y = G.camPin.y; }   // (a fixed camera, for the tests' storyboards)
   if (G.skullPending && G.mode === 'play') { openSkull(); return; }
   if (G.mode === 'play' && breakTick(dt)) return;
   if (G.mode === 'play' && waveTick(dt)) return;
