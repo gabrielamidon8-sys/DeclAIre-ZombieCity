@@ -237,7 +237,7 @@ function luxGather(x0, y0, x1, y1, dt) {
 // second list (LUX.fin) and throws a shadow as long as its height allows (luxFinite).
 // ents: bodies count too: zombies taller than the light block it, the rest (and players, props, trees and bushes) throw
 // short shadows of their own
-const LUX_PH = { barrel: 0.9, cone: 0.7, can: 1, tire: 0.3, crate: 0.8 };
+const LUX_PH = { barrel: 0.9, cone: 0.7, can: 1, tire: 0.3, crate: 0.8, bin: 1.05, cart: 1.0, bike: 0.35 };
 const LUXOC = [0, 0, 0, 0, 0, 0, -1];
 function luxOcc(lx, ly, R, ents, H) {
   H = H || 99;
@@ -641,6 +641,31 @@ function luxHeight(r) {
   else h = r.ht || LUX_HT[r.k] || 0;
   return r._ht = h;
 }
+// a car's cabin as a box (world units) and how high its body is as a share of its roof: [x, y, w, h, waist]. Vans,
+// buses and trucks are boxes to the roof (null); a pickup's cab stands over a low bed
+const LUX_CAB = { hatch: 0.6, sedan: 0.55, wagon: 0.58, coupe: 0.6, suv: 0.62, pickup: 0.55, minivan: 0.62, taxi: 0.55, police: 0.56, humvee: 0.7 };
+function luxCarCabin(r) {
+  if (r._cab !== undefined) return r._cab;
+  const waist = LUX_CAB[r.vt], V = VEH[r.vt]; if (!waist || !V || V.g.length < 1) return r._cab = null;
+  const horiz = r.w >= r.h, L = horiz ? r.w : r.h, W = horiz ? r.h : r.w, G0 = V.g[0], G1 = V.g[1] || [G0[0] - 0.2, G0[0] - 0.15], a = (r.vt === 'pickup' ? 0.02 : G1[0]) * L, b = G0[1] * L, wi = W * 0.13;
+  const fwd = r.fd < 0 ? -1 : 1, c0 = Math.min(a * fwd, b * fwd), c1 = Math.max(a * fwd, b * fwd), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+  return r._cab = horiz ? [cx + c0, r.y + wi, c1 - c0, r.h - wi * 2, waist] : [r.x + wi, cy + c0, r.w - wi * 2, c1 - c0, waist];
+}
+// the player's shadow from a body: legs striding with the walk, the torso, the head, both arms out to the gun and the
+// gun itself, all along the aim (each part carried along the light by its height)
+function luxPlayerShadow(g, p, ux, uy, UPM) {
+  const vx = p.ivx || 0, vy = p.ivy || 0, a = p.aim || 0, ca = Math.cos(a), sa = Math.sin(a), mv = Math.hypot(vx, vy) > 20, ph = (p.walk || 0) * 0.62, U = UPM;
+  const ma = mv ? Math.atan2(vy, vx) : a, cm = Math.cos(ma), sm = Math.sin(ma);
+  const cap = (x0, y0, h0, x1, y1, h1, r) => { for (let t = 0; t <= 1.001; t += 0.5) { const x = p.x + (x0 + (x1 - x0) * t) * U + ux * (h0 + (h1 - h0) * t), y = p.y + (y0 + (y1 - y0) * t) * U + uy * (h0 + (h1 - h0) * t); g.moveTo(x + r * U, y); g.arc(x, y, r * U, 0, TAU); } };
+  for (const sd of [-1, 1]) {
+    const st = mv ? Math.sin(ph + (sd > 0 ? Math.PI : 0)) * 0.28 : 0, hx = -sa * sd * 0.1, hy = ca * sd * 0.1;
+    cap(hx, hy, 0.92, hx + cm * st, hy + sm * st, 0.05, 0.075);
+    cap(-sa * sd * 0.2, ca * sd * 0.2, 1.4, ca * 0.42 - sa * sd * 0.05, sa * 0.42 + ca * sd * 0.05, 1.3, 0.05);
+  }
+  cap(0, 0, 0.95, ca * 0.04, sa * 0.04, 1.42, 0.14);
+  cap(ca * 0.02, sa * 0.02, 1.62, ca * 0.02, sa * 0.02, 1.64, 0.11);
+  cap(ca * 0.4, sa * 0.4, 1.32, ca * 0.95, sa * 0.95, 1.33, 0.035);
+}
 // the shadow a box throws, minus the box itself (so its own roof stays in the sun): an L-shaped outline. Every outline
 // is wound the same way round, so all of them fill as one shape in a single pass.
 function luxShadowPath(m, x, y, w, h, ox, oy) {
@@ -679,10 +704,11 @@ function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
   for (const z of (swb || G.zs)) {
     if (z.dead || z.fly || (z.st && z.st.under)) continue; if (z.x < x0 - 400 || z.x > x1 + 400 || z.y < y0 - 400 || z.y > y1 + 400) continue;
     // a zombie drawn joint by joint this frame throws the shadow of its own pose (arms out, legs striding, falling)
-    if (z.m && z.m.v2 && z.an && z.an.jF >= frameNo - 1 && rigs.length < 32 && typeof animaShadow === 'function') { rigs.push(z); continue; }
+    // (1.9.998: and the nearest of the rest throw the shadow of their rig too, the same shape you can hit)
+    if (z.m && z.m.v2 && z.an && typeof animaShadow === 'function' && (z.an.jF >= frameNo - 1 ? rigs.length < 40 : rigs.length < (LUX.level >= 3 ? 56 : 24) && z.x > x0 - 60 && z.x < x1 + 60 && z.y > y0 - 60 && z.y < y1 + 60)) { rigs.push(z); continue; }
     bodies.push(z.x, z.y, z.r, clamp(z.r * 0.17, 1.2, 6)); if (bodies.length > 320) break;
   }
-  if (G.p && G.mode !== 'title' && !G.p.down) bodies.push(G.p.x, G.p.y, G.p.r, 1.75);
+  const meRig = G.p && G.mode !== 'title' && !G.p.down;
   if (NET.started) { const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values()); for (const q of each) if (q && !q.down) bodies.push(q.x, q.y, 9 * PK, 1.75); }
   for (const pr of WD.props) if (!pr.dead) bodies.push(pr.x, pr.y, pr.r, LUX_PH[pr.k] || 0.8);
   const sa = Math.atan2(sun.dy, sun.dx), sl = Math.hypot(sun.dx, sun.dy);
@@ -699,6 +725,8 @@ function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
       const h = luxHeight(r);
       let ox = ux * h, oy = uy * h; const L = Math.hypot(ox, oy); if (L > maxL) { ox *= maxL / L; oy *= maxL / L; }
       if (Math.min(r.x, r.x + ox) > x1 || Math.max(r.x + r.w, r.x + r.w + ox) < x0 || Math.min(r.y, r.y + oy) > y1 || Math.max(r.y + r.h, r.y + r.h + oy) < y0) continue;
+      // 1.9.998: a car throws the shadow of its shape: the body to its waist, the cabin (or a truck's box) to its roof
+      if (r.k === 'car' && !r.flip && typeof VEH !== 'undefined') { const cb = luxCarCabin(r); if (cb) { luxShadowPath(m, r.x, r.y, r.w, r.h, ox * cb[4], oy * cb[4]); luxShadowPath(m, cb[0], cb[1], cb[2], cb[3], ox, oy); n += 2; continue; } }
       luxShadowPath(m, r.x, r.y, r.w, r.h, ox, oy); n++;
     }
     // highway decks and wrecked aircraft
@@ -732,6 +760,7 @@ function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
       m.moveTo(ex + Math.cos(a) * rx, ey + Math.sin(a) * rx); m.ellipse(ex, ey, rx, ry, a, 0, TAU); n++;
     }
     for (const z of rigs) { animaShadow(m, z, ux, uy, UPM); n++; }
+    if (meRig) { luxPlayerShadow(m, G.p, ux, uy, UPM); n++; }
     if (n) m.fill();
     // trunks and lamp posts: thin shadows from the foot of the pole, the lamp head's at the end
     m.lineWidth = 0.32 * UPM; m.beginPath(); n = 0;
@@ -740,6 +769,8 @@ function luxSunShadows(m, sun, x0, y0, x1, y1, col) {
     if (n) m.stroke();
   }
   m.globalAlpha = 1;
+  // 1.9.998: the clouds' shadows, sailing over everything (the light map only: in shadow only the sky's light is left)
+  if (!lite && typeof wxCloudLayer === 'function') { const C = wxCloudLayer(x0, y0, x1, y1, sun.css); if (C) { m.globalCompositeOperation = 'source-over'; m.imageSmoothingEnabled = true; m.globalAlpha = Math.min(1, sun.k * 1.2); m.drawImage(C, x0, y0, x1 - x0, y1 - y0); m.globalAlpha = 1; } }
   // dappled light under the trees: a few sunflecks through the gaps in the leaves (the light map only)
   if (!lite && LUX.level >= 3 && sun.k > 0.3) {
     const ux = sun.dx * UPM, uy = sun.dy * UPM; m.fillStyle = 'rgba(' + Math.round(sun.col[0] * 255) + ',' + Math.round(sun.col[1] * 255) + ',' + Math.round(sun.col[2] * 255) + ',0.55)'; m.beginPath(); let n = 0;

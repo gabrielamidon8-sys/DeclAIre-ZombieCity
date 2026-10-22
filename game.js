@@ -2004,6 +2004,7 @@ function render() {
   try { skyDraw(x0, y0, x1, y1, Math.min(0.05, G.rdt || 0.016)); } catch (e) { coreHurt('SKYWAY', e); }   // the highways, over the street
   drawWeatherWorld();
   drawAtmosLit(vis);
+  if (G.showRig && typeof animaRigDraw === 'function') animaRigDraw(vis);   // (tests and the engine room: the hit rigs)
   for (const b of G.bolts) { ctx.strokeStyle = b.c; ctx.globalAlpha = clamp(b.life / 0.18, 0, 1); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(b.pts[0], b.pts[1]); for (let i = 2; i < b.pts.length; i += 2) ctx.lineTo(b.pts[i], b.pts[i + 1]); ctx.stroke(); }
   ctx.globalAlpha = 1;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

@@ -1396,11 +1396,93 @@ function aLight(z) {
   return L;
 }
 
+/* ---------- 1.9.998: the hit rig ----------
+   A zombie's hitboxes are its own skeleton: a sphere for the head and capsules for the torso, the shoulders, each upper
+   arm and forearm, each thigh and shin, in the pose it is in this frame (the joints it was drawn with, or its loop at
+   its phase when it is a cached picture), turned to its facing, at its size, raised by whatever pile it is up on.
+   A round is a line through the air at a height: aimed at the body's centre (a placed shot at the head), off by its
+   spread. It hits the first part whose capsule its line crosses at that height; reaching arms take the round before the
+   chest does, a hunched zombie's head sticks out in front of its body, a round can pass between the legs, under an arm
+   or past the shoulder and miss. The rig also casts the shadow (animaShadow), so what you see, what shades the street
+   and what you can hit are one shape. */
+// [joint a, joint b, radius from the body (key, scale), region (0 head 1 torso 2 arm 3 leg), side (-1 left, 1 right)]
+const RIG_PARTS = [[JN.head, JN.head, 'headR', 1.05, 0, 0], [JN.pel, JN.chest, 'chD', 0.95, 1, 0], [JN.chest, JN.sc, 'chD', 0.9, 1, 0], [JN.shL, JN.shR, 'limb', 0.75, 1, 0],
+  [JN.shL, JN.elL, 'limb', 0.55, 2, -1], [JN.elL, JN.haL, 'fore', 0.55, 2, -1], [JN.shR, JN.elR, 'limb', 0.55, 2, 1], [JN.elR, JN.haR, 'fore', 0.55, 2, 1],
+  [JN.hipL, JN.knL, 'leg', 0.5, 3, -1], [JN.knL, JN.ftL, 'shin', 0.5, 3, -1], [JN.hipR, JN.knR, 'leg', 0.5, 3, 1], [JN.knR, JN.ftR, 'shin', 0.5, 3, 1]];
+const RIG_REG = ['head', 'torso', 'arm', 'leg'], RIG_N = 10;
+function animaRig(z) {
+  const A = animaState(z), m = z.m, D = m.ad;
+  if (A.rigF === frameNo && A.rig) return A.rig;
+  let J;
+  if (A.J && A.jF >= frameNo - 1) J = A.J;
+  else {
+    // the pose it is showing: its loop at its phase (or lying where it fell), and the skeleton from that
+    const P = ANIMA.rigP || (ANIMA.rigP = new Float32Array(AN)), t = G.time + A.t0, ci = A.base;
+    if (z.st && z.st.down > 0) animaEval(P, m, AC.dieCollapse, 0.9, t);
+    else animaEval(P, m, ci, ci < 10 ? A.ph : (t / m.adur[ci]) % 1, t);
+    J = ANIMA.rigJ || (ANIMA.rigJ = new Float32Array(NJ * 3)); animaFK(D, P, J);
+  }
+  const R = A.rig || (A.rig = new Float32Array(RIG_PARTS.length * RIG_N)), c = Math.cos(z.ang), s = Math.sin(z.ang), r = z.r, U = 32 * SCL / SCALE_REAL, lift = z.pz || 0;
+  for (let i = 0; i < RIG_PARTS.length; i++) {
+    const P0 = RIG_PARTS[i], a = P0[0] * 3, b = P0[1] * 3, o = i * RIG_N, rad = (D[P0[2]] || 0.3) * P0[3] * r;
+    R[o] = z.x + (J[a] * c - J[a + 1] * s) * r; R[o + 1] = z.y + (J[a] * s + J[a + 1] * c) * r; R[o + 2] = J[a + 2] * r / U + lift;
+    R[o + 3] = z.x + (J[b] * c - J[b + 1] * s) * r; R[o + 4] = z.y + (J[b] * s + J[b + 1] * c) * r; R[o + 5] = J[b + 2] * r / U + lift;
+    R[o + 6] = rad; R[o + 7] = rad / U; R[o + 8] = P0[4]; R[o + 9] = P0[5];
+  }
+  // (a severed arm is gone from the rig)
+  if (D.noArmL || (z.sever & 1)) { R[4 * RIG_N + 6] = R[5 * RIG_N + 6] = 0; } if (z.sever & 2) { R[6 * RIG_N + 6] = R[7 * RIG_N + 6] = 0; }
+  if (D.legless) for (let i = 8; i < 12; i++) R[i * RIG_N + 6] = 0;
+  A.rigF = frameNo; return R;
+}
+// heights (m) for a round aimed at this zombie: its centre of mass and its head
+function animaRigAim(z, out) { const R = animaRig(z); out[0] = (R[1 * RIG_N + 2] + R[2 * RIG_N + 5]) * 0.5; out[1] = R[2]; return out; }
+// the first part a round's line (from sx, sy along dx, dy this frame, at height hb m, give or take tol) crosses:
+// writes [u along the line, region, side, distance from the part's axis / its radius] into out; false when it misses
+function animaRigHit(z, sx, sy, dx, dy, hb, tol, crit, out) {
+  const R = animaRig(z), n = RIG_PARTS.length, dd = dx * dx + dy * dy; if (dd < 1e-6) return false;
+  let best = 9, bi = -1, be = 0;
+  for (let i = 0; i < n; i++) {
+    const o = i * RIG_N, rad = R[o + 6]; if (rad <= 0) continue;
+    const ax = R[o], ay = R[o + 1], ex = R[o + 3] - ax, ey = R[o + 4] - ay, ee = ex * ex + ey * ey;
+    // the closest points of the round's line and the part's axis (two segments in the plane)
+    const rx = sx - ax, ry = sy - ay, f = ex * rx + ey * ry, bb = dx * ex + dy * ey, cc = dx * rx + dy * ry;
+    let u, t;
+    if (ee < 1e-6) { t = 0; u = clamp(-cc / dd, 0, 1); }
+    else { const den = dd * ee - bb * bb; u = den > 1e-9 ? clamp((bb * f - cc * ee) / den, 0, 1) : 0; t = (bb * u + f) / ee; if (t < 0) { t = 0; u = clamp(-cc / dd, 0, 1); } else if (t > 1) { t = 1; u = clamp((bb - cc) / dd, 0, 1); } }
+    const qx = sx + dx * u - (ax + ex * t), qy = sy + dy * u - (ay + ey * t), d = Math.sqrt(qx * qx + qy * qy); if (d > rad) continue;
+    const h = R[o + 2] + (R[o + 5] - R[o + 2]) * t; if (Math.abs(h - hb) > R[o + 7] + tol) continue;
+    // (the entry point is a little before the closest approach; a placed shot that reaches the head takes it)
+    const ue = u - Math.sqrt(Math.max(0, rad * rad - d * d) / dd), sc = ue - (crit && R[o + 8] === 0 ? 0.08 : 0);
+    if (sc < best) { best = sc; bi = i; be = d / rad; out[0] = Math.max(0, ue); }
+  }
+  if (bi < 0) return false;
+  out[1] = R[bi * RIG_N + 8]; out[2] = R[bi * RIG_N + 9]; out[3] = be; return true;
+}
+// (test and engine room) the rig drawn over the zombies near the camera
+function animaRigDraw(vis) {
+  ctx.lineCap = 'round';
+  for (const z of G.zs) {
+    if (z.dead || !z.m.v2 || z.boss || !vis(z.x, z.y, 40)) continue; const R = animaRig(z);
+    for (let i = 0; i < RIG_PARTS.length; i++) { const o = i * RIG_N; if (R[o + 6] <= 0) continue; ctx.strokeStyle = ['rgba(255,60,60,0.55)', 'rgba(255,210,60,0.45)', 'rgba(80,200,255,0.5)', 'rgba(120,255,120,0.45)'][R[o + 8]]; ctx.lineWidth = R[o + 6] * 2; ctx.beginPath(); ctx.moveTo(R[o], R[o + 1]); ctx.lineTo(R[o + 3] + 0.01, R[o + 4]); ctx.stroke(); }
+  }
+  ctx.lineCap = 'butt';
+}
 // the shadow a posed zombie throws: each part of its skeleton moved along the light by its height (the lighting engine
 // adds these to its shadow shape; ux, uy is the shadow's offset per metre of height)
 const A_SHJ = [[JN.pel, JN.chest, 0.62], [JN.chest, JN.sc, 0.7], [JN.sc, JN.head, 0.4], [JN.shL, JN.elL, 0.2], [JN.elL, JN.haL, 0.17], [JN.shR, JN.elR, 0.2], [JN.elR, JN.haR, 0.17], [JN.hipL, JN.knL, 0.24], [JN.knL, JN.ftL, 0.2], [JN.hipR, JN.knR, 0.24], [JN.knR, JN.ftR, 0.2]];
+// 1.9.998: from the hit rig, for any zombie (live or a cached picture): its parts' capsules carried along the light
+function animaShadowRig(g, z, ux, uy) {
+  const R = animaRig(z);
+  for (let i = 0; i < RIG_PARTS.length; i++) {
+    const o = i * RIG_N, rad = R[o + 6] * 1.1; if (rad <= 0) continue;
+    for (let t = 0; t <= 1.001; t += i === 0 ? 2 : 0.5) {
+      const x = R[o] + (R[o + 3] - R[o]) * t, y = R[o + 1] + (R[o + 4] - R[o + 1]) * t, h = R[o + 2] + (R[o + 5] - R[o + 2]) * t, wx = x + ux * h, wy = y + uy * h;
+      g.moveTo(wx + rad, wy); g.arc(wx, wy, rad, 0, TAU);
+    }
+  }
+}
 function animaShadow(g, z, ux, uy, UPM) {
-  const J = z.an.J; if (!J) return;
+  const J = z.an.J; if (!J || !(z.an.jF >= frameNo - 1)) { animaShadowRig(g, z, ux, uy); return; }
   const c = Math.cos(z.ang), s = Math.sin(z.ang), r = z.r, k = r / UPM;
   for (const sg of A_SHJ) {
     const a = sg[0] * 3, b = sg[1] * 3, rad = sg[2] * r;

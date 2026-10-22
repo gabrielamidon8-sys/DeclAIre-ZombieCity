@@ -789,7 +789,7 @@ function wxCloudTex() {
 // on the ground, before anything stands on it: wet streets, the shadow under a shower, settled snow, splashes, hail,
 // warning circles for strikes
 function drawWeatherGround(x0, y0, x1, y1) {
-  const lv = wxLevel(); if (!lv) return;
+  const lv = wxLevel(); if (!lv || (WX.dbg & 1)) return;
   const G0 = wxGridUpdate(), now = performance.now(), dt = Math.min(0.05, (now - (WX.gt || now)) / 1000); WX.gt = now;
   if (WX.wet > 0.02) { ctx.fillStyle = 'rgba(16,26,40,' + (WX.wet * 0.22).toFixed(3) + ')'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
   if (WX.ice > 0.05) { ctx.fillStyle = 'rgba(205,225,240,' + (WX.ice * 0.1).toFixed(3) + ')'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
@@ -878,6 +878,7 @@ function wxWrap(P, i, vx, vy, pad, jump) {
   else { P.x[i] = vx >= 0 ? -pad * 0.5 - Math.random() * pad : W + pad * 0.5 + Math.random() * pad; P.y[i] = Math.random() * (H + pad * 2) - pad; }
 }
 function drawWeatherScreen(rdt) {
+  if (WX.dbg & 2) return;
   const lv = wxLevel();
   const lc = WX.lastCam || (WX.lastCam = { x: cam.x, y: cam.y }), mx = (cam.x - lc.x) * ZOOM, my = (cam.y - lc.y) * ZOOM; lc.x = cam.x; lc.y = cam.y;
   const jump = Math.abs(mx) > W || Math.abs(my) > H;
@@ -1220,18 +1221,31 @@ function drawAtmosGround(vis) {
   }
 }
 // cloud shadows: soft cumulus shapes laid in world space, sailing at about twice the wind over streets, roofs and
-// zombies alike (two layers at different sizes so the tile never shows); past heavy cover they merge into one dim
-function drawCloudShadows(x0, y0, x1, y1) {
-  const lv = wxLevel(); if (!lv || G.mode === 'intro') return;
-  const a = atmCloudiness(); if (a < 0.03) return;
-  const T = wxCloudTex(); ATM.drawn = 0;
+// zombies alike (two layers at different sizes so the tile never shows); past heavy cover they merge into one dim.
+// They are soft, so they are laid into a picture an eighth of the screen's size. With the lighting engine's light map
+// on, they go into it with the other sun shadows (a cloud takes the sun away and leaves the sky's light, at no cost
+// over the whole screen); otherwise the small picture is stretched over the view
+function wxCloudLayer(x0, y0, x1, y1, tint) {
+  const lv = wxLevel(); if (!lv || G.mode === 'intro' || (WX.dbg & 4)) return null;
+  const a = atmCloudiness(); if (a < 0.03) return null;
+  const T = wxCloudTex(), cw = Math.max(8, Math.ceil(W / 8)), ch = Math.max(8, Math.ceil(H / 8));
+  let C = WXT.csh; if (!C || C.width !== cw || C.height !== ch) { C = WXT.csh = document.createElement('canvas'); C.width = cw; C.height = ch; C.g = C.getContext('2d'); }
+  const g = C.g, kx = cw / (x1 - x0), ky = ch / (y1 - y0); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, cw, ch);
+  ATM.drawn = 0;
   for (const [sc, k, sp] of [[1, 1, 1], [0.57, 0.6, 1.25]]) {
-    const pat = ctx.createPattern(T, 'repeat'); if (!pat || !pat.setTransform) break;
+    const pat = g.createPattern(T, 'repeat'); if (!pat || !pat.setTransform) break;
     const tile = 110 * wxU() * sc / 256;   // (a tile of cloud spans about 110 m)
-    pat.setTransform(new DOMMatrix().translateSelf(ATM.cx * sp, ATM.cy * sp, 0).scaleSelf(tile, tile));
-    ctx.globalAlpha = Math.min(0.36, a * 0.8) * k; ctx.fillStyle = pat; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); ATM.drawn++;
+    pat.setTransform(new DOMMatrix().translateSelf((ATM.cx * sp - x0) * kx, (ATM.cy * sp - y0) * ky, 0).scaleSelf(tile * kx, tile * ky));
+    g.globalAlpha = Math.min(0.36, a * 0.8) * k * (tint ? 1.6 : 1); g.fillStyle = pat; g.fillRect(0, 0, cw, ch); ATM.drawn++;
   }
-  ctx.globalAlpha = 1;
+  if (tint) { g.globalAlpha = 1; g.globalCompositeOperation = 'source-in'; g.fillStyle = tint; g.fillRect(0, 0, cw, ch); g.globalCompositeOperation = 'source-over'; }
+  return C;
+}
+function drawCloudShadows(x0, y0, x1, y1) {
+  if (typeof LUX !== 'undefined' && LUX.lit) return;   // (the light map has them)
+  if (wxLevel() < 0.6) return;
+  const C = wxCloudLayer(x0, y0, x1, y1, null); if (!C) return;
+  ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true; ctx.drawImage(C, x0, y0, x1 - x0, y1 - y0);
 }
 // what glows by itself after dark, drawn after the lighting: fireflies
 function drawAtmosLit(vis) {

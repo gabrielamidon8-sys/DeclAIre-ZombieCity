@@ -5,9 +5,12 @@
    or two. A round is a swept ray: it finds the first wall it meets (and the side it meets it on), the zombies along the
    way front to back, and the props in between. Grazing a wall makes it ricochet; a car's thin metal slows it rather
    than stopping it.
-   When it reaches a 2.0 zombie it lands somewhere: a placed shot (a critical) is a head shot; otherwise where it lands
-   depends on where across the body it struck (near the edge, an arm) and on the body (a crawler is mostly head and
-   torso, a shield takes what comes at its front). Then the odds of what it does: a head shot all but always kills
+   When it reaches a 2.0 zombie it lands where the zombie's own skeleton is (1.9.998, the hit rig: a sphere for the
+   head, capsules for the torso, shoulders, arms and legs in the pose it is in this frame). The round is a line at a
+   height: aimed at the body's centre (a placed shot at the head), off by a spread that grows with the range and the
+   gun's kick; it hits the first part that line crosses at that height (reaching arms before the chest, a hunched head
+   in front of the body) or passes between them and misses. A shield takes what comes at its front. Then the odds of
+   what it does: a head shot all but always kills
    (a helmet can turn a light round); a body shot kills most of the time, more often the harder the round hits (soft
    armour stops pistol rounds, plates stop rifle rounds; brutes shrug off some); arms and legs rarely kill but cripple
    (a shot leg limps, two crawl; a shot arm hits weaker). What does not kill still wounds. A round that passes through
@@ -23,7 +26,9 @@ const BAL_GUN = {
   lmg: { v: 915, g: 4.0, cd: 0.0011, kick: 0.015, rec: 1.7, max: 0.2, cal: '5.56 mm' },
   burst: { v: 950, g: 4.0, cd: 0.0011, kick: 0.014, rec: 2.6, max: 0.12, cal: '5.56 mm' }
 };
-const BAL = { on: true, shots: 0, hits: 0, kills: 0, heads: 0, ric: 0, pen: 0, stopped: 0, ms: 0, msAvg: 0, errT: [], offUntil: 0, maxD: 72, reg: { head: 0, torso: 0, arm: 0, leg: 0 } };
+const BAL = { on: true, shots: 0, hits: 0, kills: 0, heads: 0, ric: 0, pen: 0, stopped: 0, ms: 0, msAvg: 0, errT: [], offUntil: 0, maxD: 72, reg: { head: 0, torso: 0, arm: 0, leg: 0 }, rigHit: 0, rigMiss: 0 };
+const BAL_AIM = [0, 0], BAL_RH = [0, 0, 0, 0];
+function balGauss() { let u = 0; while (u === 0) u = Math.random(); return clamp(Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * Math.random()), -2.5, 2.5); }
 function balUp() { return BAL.on && !(BAL.offUntil && performance.now() < BAL.offUntil); }
 const balUPM = () => 32 * SCL / SCALE_REAL;
 // the energy of a gun's round in joules (damage cards and mods add to it: hotter loads, heavier bullets)
@@ -82,12 +87,14 @@ function balRay(x0, y0, x1, y1, skip) {
 }
 // where a round lands on a zombie and what it does. e: how far from the body's centre line it struck (0 centre, 1 the
 // edge); side: -1 its left, 1 its right; front: the round came at its front
-function balResolve(z, b, e, side, front) {
+// (1.9.998: reg0, when the hit rig found the part the round crossed, is that part; otherwise the odds pick it)
+function balResolve(z, b, e, side, front, reg0) {
   const T = z.T || {}, d = z.m.def || {}, D = z.m.ad || {}, E = b.E, wave = G.wave || 1, F = {};
   for (const f of d.feat || []) F[f] = 1;
   const low = T.low || 0, out = { reg: 'torso', kill: false, cripple: false, deflect: false, dmg: 0, absorb: 0, P: 0 };
   let reg;
-  if (b.crit && !(T.shield && front && Math.random() < 0.5)) reg = 'head';
+  if (reg0) reg = reg0 === 'head' && T.shield && front && !b.crit && Math.random() < 0.5 ? 'torso' : reg0;
+  else if (b.crit && !(T.shield && front && Math.random() < 0.5)) reg = 'head';
   else {
     let wh = 0.08 + low * 0.2, wt = (0.62 - low * 0.05) * (1.25 - 0.55 * e), wa = 0.13 * (0.35 + 1.5 * e), wl = 0.16 * (1 - low);
     if (D.noArmL) wa *= 0.6; if (D.legless) wl = 0;
@@ -143,31 +150,43 @@ function balStep(b, dt) {
   // props (barrels, signs, bins) along the way up to the wall
   b.x = sx + dx * tw; b.y = sy + dy * tw;
   if (bulletProps(b, sx, sy)) { b.dead = true; return; }
-  // zombies along the path before the wall, nearest first
+  // zombies along the path before the wall, nearest first. 1.9.998: a 2.0 zombie is hit where its skeleton is (the hit
+  // rig, animaRigHit): the round's line at its height must cross a part of it; the old round body only for bosses
   BAL_C.length = 0;
-  const l2 = len * len, lim = tw * len;
+  const l2 = len * len, lim = tw * len, rigOn = BAL.rig !== false && typeof animaRigHit === 'function';
+  // (how far above or below its aim this round flies: a normal spread that grows with the range and the gun's kick, m)
+  if (b.hn === undefined) b.hn = balGauss();
+  const hsd = 0.11 + (b.trav / balUPM()) * 0.009 + (p && p.bloom || 0) * 1.6;
   if (len > 0.01) near((sx + b.x) / 2, (sy + b.y) / 2, 64 + lim / 2, z => {
     if (z.dead || (b.hit && b.hit.indexOf(z) >= 0)) return;
-    const rr = z.r + 2, u = Math.max(0, Math.min(1, ((z.x - sx) * dx + (z.y - sy) * dy) / l2)), qx = sx + dx * u, qy = sy + dy * u, ox = z.x - qx, oy = z.y - qy, d2 = ox * ox + oy * oy;
+    const rig = rigOn && z.m.v2 && !z.boss, rr = rig ? z.r * 3.3 + 2 : z.r + 2, u = Math.max(0, Math.min(1, ((z.x - sx) * dx + (z.y - sy) * dy) / l2)), qx = sx + dx * u, qy = sy + dy * u, ox = z.x - qx, oy = z.y - qy, d2 = ox * ox + oy * oy;
     if (d2 > rr * rr || u * len > lim + rr) return;
-    BAL_C.push(z, u, Math.sqrt(d2) / rr, -ox, -oy);
+    if (rig) {
+      try {
+        animaRigAim(z, BAL_AIM); const hb = (b.crit ? BAL_AIM[1] : BAL_AIM[0]) + b.hn * hsd;
+        if (!animaRigHit(z, sx, sy, dx, dy, hb, 0.05, !!b.crit, BAL_RH)) { BAL.rigMiss++; return; }
+        if (BAL_RH[0] * len > lim + 1) return;
+        BAL_C.push(z, BAL_RH[0], BAL_RH[3], -ox, -oy, BAL_RH[1], BAL_RH[2]); BAL.rigHit++; return;
+      } catch (e) { BAL.rig = false; balHurt(e); }
+    }
+    BAL_C.push(z, u, Math.sqrt(d2) / rr, -ox, -oy, -1, 0);
   });
-  if (BAL_C.length > 5) {
+  if (BAL_C.length > 7) {
     // sort the hits by distance along the path (a handful at most)
-    const idx = []; for (let i = 0; i < BAL_C.length; i += 5) idx.push(i); idx.sort((a, c) => BAL_C[a + 1] - BAL_C[c + 1]);
-    const cp = BAL_C.slice(); BAL_C.length = 0; for (const i of idx) BAL_C.push(cp[i], cp[i + 1], cp[i + 2], cp[i + 3], cp[i + 4]);
+    const idx = []; for (let i = 0; i < BAL_C.length; i += 7) idx.push(i); idx.sort((a, c) => BAL_C[a + 1] - BAL_C[c + 1]);
+    const cp = BAL_C.slice(); BAL_C.length = 0; for (const i of idx) for (let k = 0; k < 7; k++) BAL_C.push(cp[i + k]);
   }
-  for (let i = 0; i < BAL_C.length && !b.dead; i += 5) {
-    const z = BAL_C[i], u = BAL_C[i + 1], e = BAL_C[i + 2];
+  for (let i = 0; i < BAL_C.length && !b.dead; i += 7) {
+    const z = BAL_C[i], u = BAL_C[i + 1], e = BAL_C[i + 2], rg = BAL_C[i + 5], rs = BAL_C[i + 6];
     b.x = sx + dx * u; b.y = sy + dy * u;
     if (z.dead) continue;
     const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
     const ca = Math.cos(z.ang), sa = Math.sin(z.ang), front = ux * ca + uy * sa < -0.35;
     // which side of the body it struck (in the zombie's own frame)
-    const ly = -BAL_C[i + 3] * sa + BAL_C[i + 4] * ca, side = ly < 0 ? -1 : 1;
+    const ly = -BAL_C[i + 3] * sa + BAL_C[i + 4] * ca, side = rg >= 0 && rs ? rs : ly < 0 ? -1 : 1;
     let res, absorb = 650, dmg;
     if (z.m.v2 && !z.boss) {
-      const O = balResolve(z, b, e, side, front);
+      const O = balResolve(z, b, e, side, front, rg >= 0 ? RIG_REG[rg] : null);
       dmg = bonusDmg(z, O.dmg); absorb = O.absorb;
       res = hurtZombie(z, dmg, { src: 'bullet', crit: O.reg === 'head' && !O.deflect, kx: ux * S.knock * 0.18, ky: uy * S.knock * 0.18, reg: O.reg, kill: O.kill, cripple: O.cripple, deflect: O.deflect, P: O.P });
       if (O.kill && res === true) { BAL.kills++; if (O.reg === 'head') { BAL.heads++; G.heads = (G.heads || 0) + 1; if (SFX.headshot) SFX.headshot(clamp((z.x - cam.x) / (W / ZOOM / 2), -1, 1)); } }
