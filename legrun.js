@@ -29,7 +29,7 @@ const LGV = { on: true, made: 0, ms: 0, miss: {}, fix: {}, tries: {}, first: {},
 // which bones each layer shows
 const LGV_LEGS = ['root', 'pelvis', 'thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR', 'dump'];
 const LGV_HEAD = ['head', 'mBrow', 'mCheekL', 'mCheekR', 'mJawL', 'mJawR', 'mChin', 'mVisor'];
-const LGV_PIST = ['pistol', 'slide', 'mag'];
+const LGV_PIST = LG_PBONES;
 function lgvMask(show) { const h = new Uint8Array(LG_NB_MAX).fill(1); for (const n of show) if (LGB[n] != null) h[LGB[n]] = 0; return h; }
 const LGV_M = (() => {
   const all = LG_SKEL.map(b => b[0]), upper = all.filter(n => LGV_LEGS.indexOf(n) < 0 && LGV_HEAD.indexOf(n) < 0);
@@ -103,9 +103,12 @@ function lgvPistol(P, v, ctx, free, kL) {
   return vv;
 }
 function lgvHold(P, v, ctx, free, kL) { return lgvC(ctx) ? lgvRifle(P, v, ctx, free, kL) : lgvPistol(P, v, ctx, free, kL); }
+// 1.9.997: empty, a gun that locks open stays open (the slide or the bolt back) until it is reloaded
+function lgvHoldOpen(P, ctx) { if (!ctx.hold) return; if (lgvC(ctx)) P.carbine.bolt = 1; else { P.pistol.slide = 1; P.pistol.hammer = 1; } }
+const LGV_SHOT_T = 0.12;
 const LGV_UP = {
-  relaxed(P, k, ctx) { lgvTorso(P, 0.15, ctx.t, ctx.fam); const v = (lgvC(ctx) ? LGV_POST.rLow : LGV_POST.pLow).slice(); v[4] += Math.sin(ctx.t * TAU / 4) * 0.02; lgvHold(P, v, ctx); },
-  ready(P, k, ctx) { lgvTorso(P, 1, ctx.t, ctx.fam); const v = (lgvC(ctx) ? LGV_POST.rReady : LGV_POST.pReady).slice(); v[3] += lgN1(ctx.t * 0.7, 1) * 0.006; v[4] += lgN1(ctx.t * 0.6, 2) * 0.006; ctx.trigger = true; lgvHold(P, v, ctx); },
+  relaxed(P, k, ctx) { lgvTorso(P, 0.15, ctx.t, ctx.fam); const v = (lgvC(ctx) ? LGV_POST.rLow : LGV_POST.pLow).slice(); v[4] += Math.sin(ctx.t * TAU / 4) * 0.02; lgvHold(P, v, ctx); lgvHoldOpen(P, ctx); },
+  ready(P, k, ctx) { lgvTorso(P, 1, ctx.t, ctx.fam); const v = (lgvC(ctx) ? LGV_POST.rReady : LGV_POST.pReady).slice(); v[3] += lgN1(ctx.t * 0.7, 1) * 0.006; v[4] += lgN1(ctx.t * 0.6, 2) * 0.006; ctx.trigger = true; lgvHold(P, v, ctx); lgvHoldOpen(P, ctx); },
   raise(P, k, ctx) { lgvTorso(P, k, ctx.t, ctx.fam); const c = lgvC(ctx); lgvHold(P, lgvPost(c ? LGV_POST.rLow : LGV_POST.pLow, c ? LGV_POST.rReady : LGV_POST.pReady, k), ctx); },
   sprint(P, k, ctx) {
     lgvTorso(P, 0.3, ctx.t, ctx.fam); lgJadd(P, 'spine', 0, 0.12, 0); lgJadd(P, 'chest', 0, 0.08, 0);
@@ -155,6 +158,9 @@ const LGV_UP = {
     }
   },
   reload(P, k, ctx) { lgvTorso(P, 0.55, ctx.t, ctx.fam); (LGV_RL[ctx.kind] || LGV_RL.pistol)(P, k, ctx); },
+  // 1.9.997: the shot: the gun's own action cycles and its round drives it back and up by its impulse (legfire.js); the
+  // frames cover the first 120 ms after the trigger breaks
+  shot(P, k, ctx) { lgvTorso(P, 1, ctx.t, ctx.fam); const v = (lgvC(ctx) ? LGV_POST.rReady : LGV_POST.pReady).slice(); ctx.trigger = true; lgfShots(P, v, ctx.gun, [0], k * LGV_SHOT_T, { fam: ctx.fam, hold: ctx.hold }); lgvHold(P, v, ctx); },
   dodge(P, k, ctx) { lgvRoll(P, k, ctx); },
   // 1.9.994: the knife (BLADE, knife.js): the blade in the left hand in a reverse grip, the sidearm in the right; each
   // move its own path for the blade (and for the gun on the shots and the whip), the hips and the chest behind it
@@ -227,6 +233,8 @@ const LGV_RL = {
       mag = k < 0.1 ? (ctx.run ? 'out' : { drop: k * 2.5 }) : k < 0.3 ? 'out' : k < 0.5 ? 'hand' : 'in';
     }
     lgvRelMag(P, v, keys, k, ctx, mag, 'c', k < 0.5 && k > 0.42 ? (0.5 - k) / 0.08 : 0);
+    // 1.9.997: the bolt locked back on empty until the catch is slapped (the AR) or the handle pulled and let go (the SCAR)
+    if (empty && !keep) P.carbine.bolt = scar ? (k < 0.8 ? 1 : k < 0.84 ? 1 - lgvE((k - 0.8) / 0.04) : 0) : (k < 0.68 ? 1 : k < 0.71 ? 1 - lgvE((k - 0.68) / 0.03) : 0);
     ctx.look = lgPulse(k, 0.05, 0.75);
   },
   scar(P, k, ctx) { LGV_RL.ar(P, k, ctx); },
@@ -242,6 +250,7 @@ const LGV_RL = {
     if (k < 0.36 && k >= 0.24) P.carbine.rock = 0;
     lgvRelMag(P, v, keys, k, ctx, mag, 'c', 0);
     if (k >= 0.24 && k < 0.36) P.carbine.mag = 'hand';
+    if (empty) P.carbine.bolt = 0.54 * (k < 0.6 ? 0 : k < 0.7 ? lgvE((k - 0.6) / 0.1) : k < 0.79 ? 1 - lgvE((k - 0.7) / 0.09) : 0);   // (1.9.997: the handle goes back with the hand and runs home)
     ctx.look = lgPulse(k, 0.05, 0.6);
   },
   // the PP-19: the helical magazine unhooks at the back, swings down off its front hook; the new one hooks at the front,
@@ -255,6 +264,7 @@ const LGV_RL = {
     P.carbine.rock = k < 0.1 ? 0 : k < 0.18 ? -0.45 * lgvE((k - 0.1) / 0.08) : k < 0.42 ? -0.45 : k < 0.55 ? -0.45 * (1 - lgvE((k - 0.42) / 0.13)) : 0;
     const mag = k < 0.18 ? 'in' : k < 0.26 ? (ctx.run ? 'out' : { drop: (k - 0.18) * 3 }) : k < 0.32 ? 'out' : 'in';
     lgvRelMag(P, v, keys, k, ctx, mag, 'c', 0, true);
+    if (empty) P.carbine.bolt = 0.6 * (k < 0.66 ? 0 : k < 0.8 ? lgvE((k - 0.66) / 0.14) : k < 0.86 ? 1 - lgvE((k - 0.8) / 0.06) : 0);
     ctx.look = lgPulse(k, 0.05, 0.65);
   },
   // the M1014: the gun rolled to show the port underneath; a shell from the belt pushed in with the thumb (per shell);
@@ -269,6 +279,7 @@ const LGV_RL = {
     // the shell rides the hand from the belt to the port (the magazine bone carries a shell on the shotgun)
     const hold = port ? k > 0.3 && k < 0.47 : k > 0.3 && k < 0.7;
     P.carbine.mag = hold ? 'hand' : 'out'; P.grip.L = hold ? 'claw' : P.grip.L;
+    if (port) P.carbine.bolt = k < 0.78 ? 1 : k < 0.82 ? 1 - lgvE((k - 0.78) / 0.04) : 0;   // (1.9.997: locked open until the release is pressed)
     ctx.look = lgPulse(k, 0.1, 0.8);
   },
   // a pistol: the gun pulled into the workspace, the empty drops, a fresh one from the belt, seated with a slap, then
@@ -279,7 +290,7 @@ const LGV_RL = {
     const keys = [[0.05, null], [0.12, BE], [0.3, BE], [0.45, out], [0.5, seat], [0.58, seat], [0.64, empty ? rack : null]];
     if (empty) keys.push([0.72, rack2], [0.78, rack], [0.86, null]); else keys.push([0.68, null]);
     lgvRelMag(P, v, keys, k, ctx, k < 0.12 ? (ctx.run ? 'out' : { drop: k * 3 }) : k < 0.3 ? 'out' : k < 0.5 ? 'hand' : 'in', 'p', k > 0.45 && k < 0.5 ? (0.5 - k) / 0.05 : 0);
-    P.pistol.slide = empty ? (k < 0.75 ? 1 : 0) : 0;
+    P.pistol.slide = empty ? (k < 0.75 ? 1 : 0) : 0; if (empty) P.pistol.hammer = 1;
     ctx.look = lgPulse(k, 0.05, 0.7);
   },
   p1911(P, k, ctx) { LGV_RL.pistol(P, k, ctx); if (ctx.rk === 'empty') P.pistol.slide = k < 0.76 ? 1 : 0; },
@@ -291,6 +302,8 @@ const LGV_RL = {
     const rod = lgvOnGun(v, lgvAt([0.12, 0.0, -0.03], 0, -Math.PI / 2, 0)), cyl = lgMul(lgM4(), lgvOnGun(v, null, 0), lgInv(lgM4(), lgSockFor('pistol', 'magHand'))), BE = LGV_KIT.belt();
     const keys = [[0.05, null], [0.16, rod], [0.24, rod], [0.32, BE], [0.42, BE], [0.5, cyl], [0.54, BE], [0.62, BE], [0.68, cyl], [0.8, cyl], [0.9, null]];
     lgvRelMag(P, v, keys, k, ctx, k < 0.22 ? 'in' : k < 0.3 ? (ctx.run ? 'out' : { drop: (k - 0.22) * 3 }) : k < 0.42 ? 'out' : k < 0.5 ? 'hand' : k < 0.62 ? 'hand' : k < 0.68 ? 'hand' : 'in', 'p', 0);
+    // 1.9.997: the cylinder swings out on its crane (the clips in it go with it) and is closed by the support hand
+    P.pistol.cylOut = k < 0.1 ? 0 : k < 0.16 ? lgvE((k - 0.1) / 0.06) : k < 0.8 ? 1 : k < 0.86 ? 1 - lgvE((k - 0.8) / 0.06) : 0;
     ctx.look = lgPulse(k, 0.08, 0.85);
   }
 };
@@ -325,6 +338,7 @@ function lgvRoll(P, k, ctx) {
 
 /* ---------- the body: where each part is turned, and its weight ---------- */
 const angD = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
+function lgvKickOf(p) { const A = p.weapon && p.weapon.arms, D = A && LG_GUN_DEF[A.key]; if (D && D.act && D.act.imp) return 0.0105 * D.act.imp + 0.01; return A ? A.kick * 2.2 + A.cam * 0.05 : 0.04; }
 function lgvBody(p) {
   let B = LGV.bodies.get(p);
   if (!B) { const a = p.aim || 0; B = { leg: a, chest: a, head: a, vL: 0, vC: 0, vH: 0, x: p.x, y: p.y, t: G.time || 0, vx: 0, vy: 0, lean: { x: 0, v: 0, y: 0, w: 0 }, kick: { x: 0, v: 0 }, cant: { x: 0, v: 0 }, ph: 0, clip: 'idle_ready', scan: 0, scanT: 0, shots: p.arm ? p.arm.kickN : 0, rel: 0, turnPh: 0, side: 0, probeT: 0 }; LGV.bodies.set(p, B); }
@@ -392,8 +406,9 @@ function lgvStep(p, B) {
   // the upper body on its spring: it leans into the walk and swings on a stop; recoil pushes it back
   const lx = clamp(B.vx / u * 0.018, -0.07, 0.07), ly = clamp(B.vy / u * 0.018, -0.07, 0.07);
   physWobble(B.lean, lx + clamp(-ax / u * 0.0006, -0.03, 0.03), 90, 0.45, dt); { const s2 = { x: B.lean.y, v: B.lean.w }; physWobble(s2, ly + clamp(-ay / u * 0.0006, -0.03, 0.03), 90, 0.45, dt); B.lean.y = s2.x; B.lean.w = s2.v; }
-  const kn = a.kickN || 0; if (kn !== B.shots) { const A = p.weapon && p.weapon.arms; B.kick.v -= (A ? A.kick * 2.2 + A.cam * 0.05 : 0.04) * Math.min(3, kn - B.shots || 1); B.shots = kn; }
-  if (p.remote || !p.arm) { if (p.flashT > 0.04 && !B.fl) { const A = p.weapon && p.weapon.arms; B.kick.v -= A ? A.kick * 2.2 : 0.03; } B.fl = p.flashT > 0.04; }
+  // (1.9.997: by the round's impulse into the gun, so a 12 gauge shoves him and a 9 mm barely moves him)
+  const kn = a.kickN || 0; if (kn !== B.shots) { B.kick.v -= lgvKickOf(p) * Math.min(3, kn - B.shots || 1); B.shots = kn; }
+  if (p.remote || !p.arm) { if (p.flashT > 0.04 && !B.fl) B.kick.v -= lgvKickOf(p); B.fl = p.flashT > 0.04; }
   physWobble(B.kick, 0, 260, 0.55, dt);
   // corners: a wall right beside him and open ground past its edge ahead: lean out toward the opening
   B.probeT -= dt;
@@ -476,8 +491,13 @@ function lgvUpState(p, B) {
   const ctx = { run: true, fam: fam, gun: A.key, kind: R.kind || (fam === 'p' ? 'pistol' : 'ar'), rk: a.rk, keep: !!a.keep, t: 0 };
   if (p.dashT > 0 && p.dashK === 'dodge') return { st: 'dodge', n: 8, i: Math.floor(clamp(1 - p.dashT / (p.dashDur || 0.46), 0, 0.999) * 8), ctx: ctx, full: true };
   const breath = Math.floor(((G.time || 0) / 4 % 1) * 6);
+  // 1.9.997: a gun that locks open is drawn open while it is empty; the shot's own frames right after the trigger breaks
+  const GD = LG_GUN_DEF[A.key], lock = GD && GD.act && GD.act.lock, empty = lock && a.mag && a.mag[a.slot] <= 0 && st !== 'reload';
+  ctx.hold = !!empty; const sub = empty ? 'e' : '';
+  const u = a.fireT == null ? 9 : (G.time || 0) - a.fireT;
+  if (st === 'ready' && u >= 0 && u < LGV_SHOT_T) return { st: 'shot', n: 5, i: Math.min(4, Math.floor(u / LGV_SHOT_T * 5)), ctx: ctx, sub: sub };
   switch (st) {
-    case 'ready': return { st: 'ready', n: 6, i: breath, ctx: ctx };
+    case 'ready': return { st: 'ready', n: 6, i: breath, ctx: ctx, sub: sub };
     case 'raise': return { st: 'raise', n: 4, i: Math.min(3, Math.floor(k * 4)), ctx: ctx };
     case 'lower': return { st: 'raise', n: 4, i: Math.min(3, Math.floor((1 - k) * 4)), ctx: ctx };
     case 'sprint': return { st: 'sprint', n: 8, i: Math.floor((B.ph % 1) * 8), ctx: ctx };
@@ -488,7 +508,7 @@ function lgvUpState(p, B) {
     case 'inspect': return { st: 'inspect', n: 8, i: Math.floor(k * 8), ctx: ctx };
     case 'knife': { ctx.km = a.km || 'stab'; ctx.fam = 'p'; return { st: 'knife', n: 6, i: Math.floor(k * 6), ctx: ctx, sub: ctx.km }; }   // (1.9.994: the knife's moves)
   }
-  return { st: 'relaxed', n: 6, i: breath, ctx: ctx };
+  return { st: 'relaxed', n: 6, i: breath, ctx: ctx, sub: sub };
 }
 // what a frame's pose solved to: the muzzle and the head in sprite units; how far the hands were from their grips
 function lgvMeasure(r, fam, gun) {

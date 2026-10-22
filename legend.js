@@ -407,6 +407,10 @@ const LG_SKEL = [
   ['thighR', 'pelvis', 0, -0.095, -0.045], ['shinR', 'thighR', 0, 0, -0.43], ['footR', 'shinR', 0, 0, -0.42], ['toeR', 'footR', 0.135, 0, -0.055],
   // props (placed in the root's space every frame) and the mask's seven plates (on the head)
   ['pistol', 'root', 0, 0, 0], ['slide', 'pistol', 0, 0, 0], ['mag', 'pistol', 0, 0, 0], ['knife', 'root', 0, 0, 0], ['carbine', 'root', 0, 0, 0], ['cmag', 'carbine', 0, 0, 0],
+  // 1.9.997: the parts of a gun that move when it is worked or fired (legfire.js drives them): a long gun's reciprocating
+  // bolt or handle, its non-reciprocating charging handle, a pump; a revolver's cylinder (it turns, it swings out) and
+  // a hammer (it cocks and falls)
+  ['cbolt', 'carbine', 0, 0, 0], ['ccharge', 'carbine', 0, 0, 0], ['cpump', 'carbine', 0, 0, 0], ['cyl', 'pistol', 0, 0, 0], ['hammer', 'pistol', 0, 0, 0],
   ['mBrow', 'head', 0, 0, 0], ['mCheekL', 'head', 0, 0, 0], ['mCheekR', 'head', 0, 0, 0], ['mJawL', 'head', 0, 0, 0], ['mJawR', 'head', 0, 0, 0], ['mChin', 'head', 0, 0, 0], ['mVisor', 'head', 0, 0, 0],
   // 1.9.996: the kit that swings (the radio's antenna, the dump pouch on the belt, the cummerbund's strap tails), each on a
   // hinge where it hangs, moved by the gear's springs (legperf.js, legloco.js)
@@ -417,16 +421,20 @@ const LG_NB = LG_SKEL.length;
 const LG_PAR = new Int16Array(LG_NB), LG_OFF = new Float32Array(LG_NB * 3);
 LG_SKEL.forEach((b, i) => { LG_PAR[i] = b[1] == null ? -1 : LGB[b[1]]; LG_OFF[i * 3] = b[2]; LG_OFF[i * 3 + 1] = b[3]; LG_OFF[i * 3 + 2] = b[4]; });
 const LG_PROPS = ['pistol', 'knife', 'carbine'].map(n => LGB[n]);
+// the bones a handgun and a long gun are built on (the prop and its moving parts)
+const LG_PBONES = ['pistol', 'slide', 'mag', 'cyl', 'hammer'], LG_CBONES = ['carbine', 'cmag', 'cbolt', 'ccharge', 'cpump'];
 const LG_MIRROR = new Int16Array(LG_NB); LG_SKEL.forEach((b, i) => { const n = b[0]; const m = /L$/.test(n) ? n.replace(/L$/, 'R') : /R$/.test(n) ? n.replace(/R$/, 'L') : n; LG_MIRROR[i] = LGB[m] != null ? LGB[m] : i; });
 
 /* ---------- poses ---------- */
 // A pose is joint angles (twist, pitch, roll per bone), joint offsets, reach targets (IK), props and the mask.
 function lgPose() {
   return { r: new Float32Array(LG_NB * 3), t: new Float32Array(LG_NB * 3), ik: {}, root: [0, 0, 0, 0], grip: { L: 'relax', R: 'relax' },
-    pistol: { at: 'holster', M: null, slide: 0, mag: 'in', magM: null }, knife: { at: 'sheath', M: null }, carbine: { at: 'back', M: null, mag: 'in' },
+    pistol: { at: 'holster', M: null, slide: 0, mag: 'in', magM: null, hammer: null, cyl: 0, cylOut: 0 }, knife: { at: 'sheath', M: null }, carbine: { at: 'back', M: null, mag: 'in', bolt: 0, charge: 0, pump: 0 },
     mask: 0, glow: 0, ev: null };
 }
-function lgPoseReset(P) { P.r.fill(0); P.t.fill(0); P.ik = {}; P.root[0] = P.root[1] = P.root[2] = P.root[3] = 0; P.grip.L = P.grip.R = 'relax'; P.pistol.at = 'holster'; P.pistol.M = null; P.pistol.slide = 0; P.pistol.mag = 'in'; P.pistol.magM = null; P.knife.at = 'sheath'; P.knife.M = null; P.carbine.at = 'back'; P.carbine.M = null; P.carbine.mag = 'in'; P.carbine.rock = 0; P.carbine.piv = null; P.mask = 0; P.glow = 0; return P; }
+// (1.9.997: slide, bolt, charge, pump and cylOut are 0..1 strokes; cyl is the cylinder's turn in radians; hammer is 0 down
+// to 1 cocked, or null for the gun's own resting state)
+function lgPoseReset(P) { P.r.fill(0); P.t.fill(0); P.ik = {}; P.root[0] = P.root[1] = P.root[2] = P.root[3] = 0; P.grip.L = P.grip.R = 'relax'; P.pistol.at = 'holster'; P.pistol.M = null; P.pistol.slide = 0; P.pistol.mag = 'in'; P.pistol.magM = null; P.pistol.hammer = null; P.pistol.cyl = 0; P.pistol.cylOut = 0; P.knife.at = 'sheath'; P.knife.M = null; P.carbine.at = 'back'; P.carbine.M = null; P.carbine.mag = 'in'; P.carbine.rock = 0; P.carbine.piv = null; P.carbine.bolt = 0; P.carbine.charge = 0; P.carbine.pump = 0; P.mask = 0; P.glow = 0; return P; }
 // set a bone's angles (radians); mirrored: the same pose on the other side
 function lgJ(P, name, rx, ry, rz) { const i = LGB[name] * 3; P.r[i] = rx || 0; P.r[i + 1] = ry || 0; P.r[i + 2] = rz || 0; }
 function lgJadd(P, name, rx, ry, rz) { const i = LGB[name] * 3; P.r[i] += rx || 0; P.r[i + 1] += ry || 0; P.r[i + 2] += rz || 0; }
@@ -629,11 +637,19 @@ function lgPropsLate(P, L, W, rootM) {
     else if (st.at === 'holster' && LG_SOCK.holster) M = lgMul(tmp, bw('pelvis'), LG_SOCK.holster);
     else if (st.at === 'free' && st.W) M = st.W;
     lgPropSet(L, W, i, M || LG_HIDE, rootM);
-    // slide travel (recoil) and the magazine
-    const si = LGB.slide; L.R.fill(0, si * 9, si * 9 + 9); L.R[si * 9] = L.R[si * 9 + 4] = L.R[si * 9 + 8] = 1; L.T[si * 3] = -0.032 * clamp(st.slide, 0, 1); L.T[si * 3 + 1] = 0; L.T[si * 3 + 2] = 0; lgWorldOne(W, L, si, rootM);
-    const mi = LGB.mag; L.R.fill(0, mi * 9, mi * 9 + 9); L.R[mi * 9] = L.R[mi * 9 + 4] = L.R[mi * 9 + 8] = 1; L.T[mi * 3] = L.T[mi * 3 + 1] = L.T[mi * 3 + 2] = 0;
-    if (typeof st.mag === 'number') L.T[mi * 3 + 2] = -0.09 * st.mag;
-    lgWorldOne(W, L, mi, rootM);
+    // slide travel (recoil) and the magazine; 1.9.997: the travel, the hammer's pin and the cylinder's crane are the gun's own
+    const A = (typeof LG_GUN_DEF !== 'undefined' && LG.gunP && LG_GUN_DEF[LG.gunP] && LG_GUN_DEF[LG.gunP].act) || LG_ACT0;
+    const si = LGB.slide; L.R.fill(0, si * 9, si * 9 + 9); L.R[si * 9] = L.R[si * 9 + 4] = L.R[si * 9 + 8] = 1; L.T[si * 3] = -(A.slide == null ? 0.032 : A.slide) * clamp(st.slide, 0, 1); L.T[si * 3 + 1] = 0; L.T[si * 3 + 2] = 0; lgWorldOne(W, L, si, rootM);
+    // the hammer: cocked back about its pin (a pitch about y, the spur going back); the cylinder: turned about the bore
+    // at its own centre, and swung out of the frame about the crane (an axis along the bore, low on the left)
+    const hp = A.hp || [0, 0.006], hm = st.hammer == null ? (A.hrest || 0) : clamp(st.hammer, 0, 1);
+    lgPartLocal(L, W, LGB.hammer, lgPivotM(0, -(A.hrot || 0.6) * hm, 0, hp[0], 0, hp[1]), rootM);
+    const cc = A.cc || [0, -0.001], cr = A.crane || [0.013, -0.019], co = clamp(st.cylOut || 0, 0, 1);
+    let Mc = lgPivotM(st.cyl || 0, 0, 0, 0, cc[0], cc[1]); if (co > 0) Mc = lgMul(lgM4(), lgPivotM(-(A.crot || 1.5) * co, 0, 0, 0, cr[0], cr[1]), Mc);
+    lgPartLocal(L, W, LGB.cyl, Mc, rootM);
+    // the magazine (on a revolver: the clips and their rounds, which turn and swing out with the cylinder)
+    const mi = LGB.mag, Mm = lgTR(0, 0, typeof st.mag === 'number' ? -0.09 * st.mag : 0, 0, 0, 0);
+    lgPartLocal(L, W, mi, A.cyl && (st.mag === 'in' || typeof st.mag === 'number') && (co > 0 || st.cyl) ? lgMul(lgM4(), Mc, Mm) : Mm, rootM);
     lgMagState(st.mag, W, mi, 'handL', lgSockFor('pistol', 'magHand'));
     if (st.magM) { W.set(st.magM, mi * 16); }
   }
@@ -653,8 +669,21 @@ function lgPropsLate(P, L, W, rootM) {
     // 1.9.993: a magazine that rocks in (the AK's hook and rock, the PP-19's hook and rotate): a pitch about its front hook
     if (st.rock) { const q = ci * 9, px = st.piv ? st.piv[0] : 0.1, pz = st.piv ? st.piv[1] : -0.045; lgR9(L.R, q, 0, st.rock, 0); const R = L.R; L.T[ci * 3] += px - (R[q] * px + R[q + 6] * pz); L.T[ci * 3 + 2] += pz - (R[q + 2] * px + R[q + 8] * pz); }
     lgWorldOne(W, L, ci, rootM);
-    lgMagState(st.mag, W, ci, 'handL', lgSockFor('carbine', 'magHand')); }
+    lgMagState(st.mag, W, ci, 'handL', lgSockFor('carbine', 'magHand'));
+    // 1.9.997: the moving parts, each a stroke straight back along the bore by the gun's own travel
+    const A = (typeof LG_GUN_DEF !== 'undefined' && LG.gunC && LG_GUN_DEF[LG.gunC] && LG_GUN_DEF[LG.gunC].act) || LG_ACT0;
+    lgPartLocal(L, W, LGB.cbolt, lgTR(-(A.bolt || 0.1) * clamp(st.bolt || 0, 0, 1), 0, 0, 0, 0, 0), rootM);
+    lgPartLocal(L, W, LGB.ccharge, lgTR(-(A.charge || 0.085) * clamp(st.charge || 0, 0, 1), 0, 0, 0, 0, 0), rootM);
+    lgPartLocal(L, W, LGB.cpump, lgTR(-(A.pump || 0.09) * clamp(st.pump || 0, 0, 1), 0, 0, 0, 0, 0), rootM); }
 }
+const LG_ACT0 = {};
+// a bone's local matrix set straight (the parts of a gun: no joint, no offset), then its world
+function lgPartLocal(L, W, i, M, rootM) {
+  const k = i * 9; L.R[k] = M[0]; L.R[k + 1] = M[1]; L.R[k + 2] = M[2]; L.R[k + 3] = M[4]; L.R[k + 4] = M[5]; L.R[k + 5] = M[6]; L.R[k + 6] = M[8]; L.R[k + 7] = M[9]; L.R[k + 8] = M[10];
+  L.T[i * 3] = M[12]; L.T[i * 3 + 1] = M[13]; L.T[i * 3 + 2] = M[14]; lgWorldOne(W, L, i, rootM);
+}
+// a rotation about a pivot point (the hammer's pin, the cylinder's axis, the crane)
+function lgPivotM(rx, ry, rz, px, py, pz) { const M = lgRot(lgM4(), rx, ry, rz); M[12] = px - (M[0] * px + M[4] * py + M[8] * pz); M[13] = py - (M[1] * px + M[5] * py + M[9] * pz); M[14] = pz - (M[2] * px + M[6] * py + M[10] * pz); return M; }
 // a magazine that is not in the gun: falling (with a tumble, stopping on the ground), in the support hand, or gone
 function lgMagState(m, W, i, hand, sock) {
   if (m == null || m === 'in' || typeof m === 'number') return;
@@ -1311,7 +1340,7 @@ function lgSpriteMake(lgId, cls, a, t, wc, gl, px) {
   return { c: c, half: half, mx: mz[0] / LG_UNIT, my: -mz[1] / LG_UNIT };
 }
 // in a run, long guns are drawn by the carbine; pistols by the pistol (the other prop stays stowed)
-function LG_SPR_HIDE(wc) { const h = new Uint8Array(LG_NB_MAX); if (wc === 'p') { h[LGB.carbine] = 1; h[LGB.cmag] = 1; } return h; }
+function LG_SPR_HIDE(wc) { const h = new Uint8Array(LG_NB_MAX); if (wc === 'p') for (const n of LG_CBONES) h[LGB[n]] = 1; return h; }
 // drawPlayer asks this first: true when it drew the legend (the old sprite stays as the fallback)
 function legendDrawPlayer(p, ctx2, fk, gl) {
   if (SET.legend === 'none' || !LG_ANIM_BY.idle_ready) return null;

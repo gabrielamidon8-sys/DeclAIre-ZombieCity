@@ -191,9 +191,9 @@ lgClip('c_alert', 'Alert', 'Cinematic', 2.0, false, LG_SRC.scan, 'The door bangs
 });
 lgClip('c_fire', 'Snap and fire', 'Cinematic', 0.7, false, LG_SRC.iso, 'Low ready to isosceles in a quarter second, one shot, hold.', (P, t) => {
   lgBase(P, { crouch: 0.075, lean: 0.17, stance: false }); lgStance(P, 0.14, 0.14, 0.12);
-  const up = lgK(t, [[0, 0], [0.2, 1, 'o3']]), r = lgRecoil(t, 0.25);
-  const v = lgPostMix([0.4, -0.035, -0.14, 0.15, 0.47, 0], [0.58, -0.035, 0.34, -0.12, 0.0, 0], up); v[4] -= r * 0.22; v[0] -= r * 0.04;
-  lgPistolAt(P, v, { trigger: true }); P.pistol.slide = t > 0.25 && t < 0.33 ? 1 - Math.abs(t - 0.28) / 0.05 : 0;
+  const up = lgK(t, [[0, 0], [0.2, 1, 'o3']]);
+  const v = lgPostMix([0.4, -0.035, -0.14, 0.15, 0.47, 0], [0.58, -0.035, 0.34, -0.12, 0.0, 0], up); lgfShots(P, v, LG.gunP, [0.25], t, { fam: 'p' });   // (1.9.997: the gun's own cycle and kick)
+  lgPistolAt(P, v, { trigger: true });
   lgSpine(P, 0, -0.12 * up, 0); lgLookAt(P, -0.12 * up, 0.1); P.mask = 1; P.glow = 1;
 }, [[0.25, 'shot']]);
 lgClip('c_throw', 'Grabbed, then the throw', 'Cinematic', 1.5, false, LG_SRC.ogoshi, 'Hands on him; he turns his back into it, hips under its hips, lifts and throws it over.', (P, t) => {
@@ -242,7 +242,7 @@ lgClip('c_kstab', 'Knee and knife', 'Cinematic', 1.2, false, LG_SRC.knife, 'Down
 lgClip('c_kspin', 'Turn, knife, shot', 'Cinematic', 1.45, false, LG_SRC.knife, 'Up off the knee turning to the one behind him; the knife hammers in at its collar, the pistol comes up close past the knife arm and fires point blank.', (P, t) => {
   const rise = lgK(t, [[0, 0], [0.4, 1, 'o']]), dn = 1 - rise;
   const sk = lgK(t, [[0, 0], [0.26, 0], [0.47, 1, 'o3'], [0.7, 1], [0.98, 0, 'io'], [1.45, 0]]), gd = lgK(t, [[0, 0], [0.2, 1, 'io'], [1.45, 1]]);
-  const gun = lgK(t, [[0, 0], [0.56, 0], [0.84, 1, 'o3'], [1.45, 1]]), r = lgRecoil(t, 0.92);
+  const gun = lgK(t, [[0, 0], [0.56, 0], [0.84, 1, 'o3'], [1.45, 1]]);
   lgPelvis(P, 0.05 * dn, 0, -0.52 * dn - 0.08 * rise, 0.05 * dn, 0.38 * dn + 0.1 * rise + 0.06 * sk, 0.1 * dn);
   lgFoot(P, 'L', lgLerp(0.38, 0.2, rise), lgLerp(0.24, 0.14, rise), lgPulse(t, 0.05, 0.36) * 0.08, 0, 0.2, 0);
   lgFoot(P, 'R', lgLerp(-0.32, -0.22, rise), lgLerp(-0.12, -0.15, rise), lgPulse(t, 0.12, 0.42) * 0.05, lgLerp(1.15, 0, rise), -0.1, lgLerp(-0.9, -0.25, rise));
@@ -253,8 +253,8 @@ lgClip('c_kspin', 'Turn, knife, shot', 'Cinematic', 1.45, false, LG_SRC.knife, '
   const q = [0, 1, 2].map(i => { const a = lgLerp(G0[i], G[i], gd), b = lgLerp(a, S[i], sk); return t > 0.7 ? lgLerp(b, H[i], lgK(t, [[0.7, 0], [1.0, 1, 'io']])) : b; });
   lgHandTo(P, 'L', 'root', q, [lgLerp(0.05, 0.12, sk), lgLerp(-1.4, -0.95, sk), lgLerp(0.2, 0.25, sk)], [-0.5, 0.9, -0.2]);
   // the pistol: one hand, low by the hip, then up close and out past the knife arm
-  const v = lgPostMix([0.2, -0.13, -0.08, 0.3, 0.85, 0], [0.47, -0.05, 0.3, -0.08, 0.0, 0], gun); v[4] -= r * 0.28; v[0] -= r * 0.05;
-  lgPistolAt(P, v, { one: true, trigger: gun > 0.9, poleR: LG_POLE.R }); P.pistol.slide = t > 0.92 && t < 1.01 ? 1 - Math.abs(t - 0.955) / 0.045 : 0;
+  const v = lgPostMix([0.2, -0.13, -0.08, 0.3, 0.85, 0], [0.47, -0.05, 0.3, -0.08, 0.0, 0], gun); lgfShots(P, v, LG.gunP, [0.92], t, { fam: 'p', body: 0.6 });   // (1.9.997: one-handed: the pistol flips more, the body less)
+  lgPistolAt(P, v, { one: true, trigger: gun > 0.9, poleR: LG_POLE.R });
   P.mask = 1; P.glow = 1;
 }, [[0.08, 'grunt'], [0.3, 'swish'], [0.47, 'stab'], [0.92, 'shot']]);
 lgClip('z_neckstab', 'Knifed at the collar (the dead)', 'Actors', 0.9, false, '', 'The blade goes in at the collar: the head jerks away, the hands claw up at the arm, the knees start to go.', (P, t) => {
@@ -374,7 +374,7 @@ function mimLineup(o) {
   });
   return A;
 }
-function mimHideCarbine() { const h = new Uint8Array(LG_NB_MAX); h[LGB.carbine] = 1; h[LGB.cmag] = 1; return h; }
+function mimHideCarbine() { const h = new Uint8Array(LG_NB_MAX); for (const n of LG_CBONES) h[LGB[n]] = 1; return h; }
 
 /* ---------- the Operator's cinematic: the beat sheet, and the director at work ---------- */
 // actors' blocking (scene time); the director turns the beats into shots (real time) and a time curve

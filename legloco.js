@@ -75,7 +75,9 @@ function locoParams(v, o) {
     width: locoL(0.105, 0.05, wr) - sp * 0.02, toeOut: locoL(0.1, 0.05, wr),
     pRot: locoL(4.5, 8, wr) * LOCO_D * clamp(va / 1.3, 0.3, 1.2), pObl: locoL(4, 6.5, wr) * LOCO_D * clamp(va / 1.3, 0.3, 1), pSway: locoL(0.028, 0.012, wr) * clamp(va / 1.2, 0.2, 1),
     tRot: locoL(6, 11, wr) * LOCO_D, lean: (locoL(2.5, 8, wr) + sp * 6 + load * 18 + (back ? -4 : 0)) * LOCO_D,
-    armA: locoL(14, 38, wr) + sp * 16, armO: locoL(-3, -12, wr), elbB: locoL(24, 88, wr) + sp * 4, elbA: locoL(9, 16, wr) + sp * 6
+    // 1.9.997: the swing is centred forward of the hang (the hand comes up to the chin in front and only to the hip behind),
+    // and a sprint drives harder; the elbow bends more as the arm comes forward
+    armA: locoL(14, 36, wr) + sp * 22, armO: locoL(3, 10, wr) + sp * 4, elbB: locoL(24, 86, wr) + sp * 8, elbA: locoL(9, 16, wr) + sp * 6
   };
 }
 // a curve at a point of the cycle: f (0..1 from this foot's strike), st (stance share)
@@ -266,7 +268,7 @@ function locoPose(P, ph, o) {
     for (const [side, e] of [['L', eL], ['R', eR]]) {
       const sw = -Math.cos(TAU * (e - 0.04));
       const sh = (G.armO + G.armA * sw * mv) * LOCO_D, el = (G.elbB + G.elbA * Math.max(0, sw) * mv) * LOCO_D * (0.4 + 0.6 * mv) + 0.18 * (1 - mv);
-      lgArm(P, side, LOCO.armSign * sh, 0.1 + G.wr * 0.06, 0, el, 0.05, 0.0);
+      lgArm(P, side, LOCO.armSign * sh, 0.1 + G.wr * 0.05, -0.25 * G.wr * mv, el, 0.05, 0.0);   // (1.9.997: turned in a little, so the forearms swing across toward the midline, not splayed)
     }
   }
   out.lean = lean; out.G = G;

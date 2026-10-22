@@ -164,3 +164,33 @@ window.auMimRun = async function (o) {
   }
   return { n: times.length };
 };
+// 1.9.997: the gun close: frames of a clip with the camera on the gun itself (the pistol or the carbine bone), so the
+// action's parts can be checked frame by frame; o.prop 'pistol'|'carbine', o.views [[az, el]...], o.dist, o.n, o.t0/o.dur
+window.auGunSheet = async function (o) {
+  await lgAtlasGet(o.T || 256); evGL();
+  const a = LG_ANIM_BY[o.id]; if (!a) return { err: 'no clip ' + o.id };
+  const n = o.n || 8, views = o.views || [[-90, 10], [-30, 30]], tw = o.tw || 260, th = o.th || 200, pad = 3, prop = o.prop || 'pistol';
+  const g = evC2(n * tw + (n - 1) * pad, views.length * th + (views.length - 1) * pad);
+  const P = lgPose(), L = lgLocalNew(), Wd = lgWorldNew(), data = [];
+  const dur = o.dur || a.dur, t0 = o.t0 || 0, model = evModel(o.model || 'operator', o.kit || 'attack');
+  if (o.gun) lgGunSet(o.gun[0], o.gun[1]);
+  views.forEach(([az, el], vi) => {
+    for (let i = 0; i < n; i++) {
+      const t = t0 + (n > 1 ? i / (n - 1) : 0) * dur;
+      if (o.perf) lgpEval(a, t, P, Object.assign({}, o.ctx || {})); else lgEvalClip(a, t, P, Object.assign({}, o.ctx || {}));
+      const W = lgSolve(P, L, Wd, lgRootM(P)), b = LGB[prop] * 16, c = [W[b + 12] + (o.cx || 0), W[b + 13] + (o.cy || 0), W[b + 14] + (o.cz || 0)];
+      if (o.copyParts) for (const n of o.copyParts) W.set(W.subarray(b, b + 16), LGB[n] * 16);
+      if (vi === 0) data.push({ t: +t.toFixed(3), slide: +(P.pistol.slide || 0).toFixed(3), hammer: P.pistol.hammer, cyl: +(P.pistol.cyl || 0).toFixed(3), cylOut: P.pistol.cylOut, bolt: +(P.carbine.bolt || 0).toFixed(3), gx: +W[b + 12].toFixed(4), gz: +W[b + 14].toFixed(4) });
+      const cam = lgCam(); cam.fov = o.fov || 0.3; const d = o.dist || 1.1;
+      cam.eye = [c[0] + Math.cos(az / CUR_DEG) * Math.cos(el / CUR_DEG) * d, c[1] + Math.sin(az / CUR_DEG) * Math.cos(el / CUR_DEG) * d, c[2] + Math.sin(el / CUR_DEG) * d]; cam.tgt = c;
+      const S = evStage(o.set || 'cyc', cam, c, { shR: 2.2 }); let hide = null;
+      if (o.only) { const keep = new Set(prop === 'pistol' ? LG_PBONES : LG_CBONES); hide = new Uint8Array(LG_NB_MAX); for (let k = 0; k < LG_NB; k++) if (!keep.has(LG_SKEL[k][0])) hide[k] = 1; }
+      S.items.push({ m: model, W: W, acc: lgHex('#ff4b3e'), glow: 0.5, hide: hide });
+      evRender(S, tw, th, { vx: { dof: false, fog: { rho: 0, H: 6, col: [0.3, 0.3, 0.3] }, vig: 0.1, look: 'identity' }, post: { bloomK: 0.2, th: 0.85, grain: 0.0, vig: 0.15, hal: 0.0 } });
+      const x = i * (tw + pad), y = vi * (th + pad); g.drawImage(LGR.cv, x, y, tw, th);
+      evLabel(g, x + 3, y + 3, t.toFixed(3) + 's', { size: 11 });
+    }
+  });
+  if (o.gun) lgGunSet(null, null);
+  return { id: o.id, data: data };
+};

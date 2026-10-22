@@ -22,7 +22,7 @@ function lghCloud(prop, key) {
     else if (prop === 'pistol') { if (D && D.fam === 'p') D.mk(B, K); else lgOpPistol(B, K); }
     else { if (D && D.fam === 'c') D.mk(B, K); else lgOpCarbine(B, K); }
   } catch (e) { lgHurt(e); }
-  const bones = prop === 'pistol' ? ['pistol', 'slide', 'mag'] : prop === 'carbine' ? ['carbine', 'cmag'] : ['knife'], pts = [];
+  const bones = prop === 'pistol' ? LG_PBONES : prop === 'carbine' ? LG_CBONES : ['knife'], pts = [];
   // points over every face (a face's corners alone leave a flat grip full of holes a finger would slip through)
   const h = 0.0042;
   for (const n of bones) {

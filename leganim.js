@@ -269,12 +269,13 @@ lgClip('aim_iso', 'Aim (isosceles)', 'Pistol', 3.0, true, LG_SRC.iso, 'Arms exte
   lgPistolAt(P, v); lgBreath(P, t, 0.3, a.dur); lgLookAt(P, 0, 0.1);
 });
 const lgRecoil = (t, t0) => { const d = t - t0; if (d < 0 || d > 0.32) return 0; return d < 0.03 ? d / 0.03 : Math.exp(-(d - 0.03) * 14) * Math.cos((d - 0.03) * 22) * (1 - (d - 0.03) / 0.29); };
+// 1.9.997: the shots go through LEGEND fire (legfire.js): the gun's own action cycles (slide, hammer, cylinder, bolt) and
+// its own round kicks it back and up, by the impulse; the body gives by the same measure
 function lgIsoFire(P, t, shots, o) {
   o = o || {}; lgBase(P, { crouch: 0.075, lean: 0.17, stance: false }); lgStance(P, 0.14, 0.13, 0.12);
-  let r = 0, sl = 0; for (const s of shots) { r += lgRecoil(t, s); const d = t - s; if (d >= 0 && d < 0.09) sl = Math.max(sl, d < 0.025 ? d / 0.025 : 1 - (d - 0.025) / 0.065); }
-  const v = (o.post || LG_POST.iso).slice(); v[4] -= r * 0.2; v[0] -= r * 0.035; v[2] += r * 0.012;
-  lgPistolAt(P, v, { trigger: true, poleR: o.poleR, poleL: o.poleL, one: o.one }); P.pistol.slide = sl;
-  lgJadd(P, 'chest', 0, -r * 0.03, 0); lgJadd(P, 'head', 0, -r * 0.02, 0); lgLookAt(P, 0, 0.1);
+  const v = (o.post || LG_POST.iso).slice(), r = lgfShots(P, v, LG.gunP, shots, t, { fam: 'p', da: true });
+  lgPistolAt(P, v, { trigger: true, poleR: o.poleR, poleL: o.poleL, one: o.one });
+  lgLookAt(P, 0, 0.1); return r;
 }
 lgClip('fire', 'Fire', 'Pistol', 0.5, false, LG_SRC.iso, 'One deliberate shot: the muzzle rises, the slide cycles, the shoulders soak it up and the sights settle back on target.', (P, t) => lgIsoFire(P, t, [0.03]), [[0.03, 'shot']]);
 lgClip('double_tap', 'Double tap', 'Pistol', 0.68, false, LG_SRC.iso, 'A controlled pair: the second shot breaks as the sights come back down from the first.', (P, t) => lgIsoFire(P, t, [0.03, 0.2]), [[0.03, 'shot'], [0.2, 'shot']]);
@@ -302,17 +303,13 @@ lgClip('holster', 'Holster', 'Pistol', 1.5, false, LG_SRC.pistol, 'Back into the
 lgClip('car_fire', 'CAR fire', 'Pistol', 1.05, false, LG_SRC.car, 'Close quarters, Center Axis Relock: bladed to the target, the pistol close and canted, two shots without extending the arms.', (P, t, ctx, a) => {
   lgBase(P, { crouch: 0.08, lean: 0.12, stance: false }); lgFoot(P, 'L', 0.12, 0.1, 0, 0, 0.55, 0); lgFoot(P, 'R', -0.12, -0.15, 0, 0, -0.1, 0);
   lgPelvis(P, 0, 0, -0.08, 0, 0.04, 0.5); lgSpine(P, 0.1, -0.42, 0);
-  let r = 0; for (const s of [0.3, 0.52]) r += lgRecoil(t, s);
-  const v = LG_POST.car.slice(); v[4] -= r * 0.18; v[0] -= r * 0.03; lgPistolAt(P, v, { trigger: true, poleR: [-0.2, -0.9, 0.1], poleL: [-0.2, 0.9, 0.1] });
-  P.pistol.slide = Math.max(0, 1 - Math.abs(t - 0.33) / 0.05) * (t > 0.3 ? 1 : 0) + Math.max(0, 1 - Math.abs(t - 0.55) / 0.05) * (t > 0.52 ? 1 : 0);
+  const v = LG_POST.car.slice(); lgfShots(P, v, LG.gunP, [0.3, 0.52], t, { fam: 'p', body: 0.7 }); lgPistolAt(P, v, { trigger: true, poleR: [-0.2, -0.9, 0.1], poleL: [-0.2, 0.9, 0.1] });
   lgLookAt(P, -0.1, 0.06);
 }, [[0.3, 'shot'], [0.52, 'shot']]);
 lgClip('point_shoot', 'Point shooting', 'Pistol', 0.95, false, LG_SRC.car, 'From retention at the hip, one-handed and fast, the support hand up guarding the face. For when it is already too close.', (P, t, ctx, a) => {
   lgBase(P, { crouch: 0.1, lean: 0.14, stance: false }); lgFoot(P, 'L', 0.13, 0.12, 0, 0, 0.3, 0); lgFoot(P, 'R', -0.1, -0.15, 0, 0, -0.05, 0);
   lgPelvis(P, 0, 0, -0.1, 0, 0.05, 0.25); lgSpine(P, 0.08, -0.2, 0);
-  let r = 0; for (const s of [0.25, 0.45]) r += lgRecoil(t, s);
-  const v = LG_POST.hip.slice(); v[4] -= r * 0.25; lgPistolAt(P, v, { one: true, trigger: true, poleR: [-0.5, -0.6, -0.3] });
-  P.pistol.slide = (t > 0.25 && t < 0.31 ? 1 : 0) + (t > 0.45 && t < 0.51 ? 1 : 0);
+  const v = LG_POST.hip.slice(); lgfShots(P, v, LG.gunP, [0.25, 0.45], t, { fam: 'p', body: 0.6 }); lgPistolAt(P, v, { one: true, trigger: true, poleR: [-0.5, -0.6, -0.3] });
   lgHandTo(P, 'L', 'chest', [0.24, 0.05, 0.26], [0.2, -1.2, 0.3], [-0.4, 0.8, -0.2]); P.grip.L = 'fist';
   lgLookAt(P, -0.1, 0.0);
 }, [[0.25, 'shot'], [0.45, 'shot']]);
@@ -329,8 +326,7 @@ lgClip('rifle_aim', 'Carbine aim', 'Long gun', 2.5, true, LG_SRC.walk, 'Shoulder
 });
 lgClip('rifle_burst', 'Carbine burst', 'Long gun', 0.75, false, LG_SRC.walk, 'Three rounds into the shoulder: each push is soaked up by the lean, the muzzle climbs a little and comes back.', (P, t, ctx, a) => {
   lgBase(P, { crouch: 0.07, lean: 0.18, stance: false }); lgStance(P, 0.15, 0.18, 0.15);
-  let r = 0; for (const s of [0.02, 0.1, 0.18]) r += lgRecoil(t, s) * 0.7;
-  const v = LG_POST.raim.slice(); v[0] -= r * 0.03; v[4] -= r * 0.06; lgCarbineAt(P, v, { trigger: true }); lgJadd(P, 'chest', 0, -r * 0.035, 0);
+  const v = LG_POST.raim.slice(); lgfShots(P, v, LG.gunC, [0.02, 0.1, 0.18], t, { fam: 'c' }); lgCarbineAt(P, v, { trigger: true });
   lgCheekWeld(P, 1);
 }, [[0.02, 'rshot'], [0.1, 'rshot'], [0.18, 'rshot']]);
 lgClip('rifle_reload', 'Carbine reload', 'Long gun', 2.7, false, LG_SRC.walk, 'Carbine turned in to see the magazine well, the empty stripped out, a fresh one from the placard, a tug to check it seated, the bolt release slapped.', (P, t, ctx, a) => {
@@ -342,6 +338,7 @@ lgClip('rifle_reload', 'Carbine reload', 'Long gun', 2.7, false, LG_SRC.walk, 'C
   if (t < 1.42) { lgHandTo(P, 'L', 'chest', [lgLerp(0.3, 0.215, reach), lgLerp(0.02, 0.0, reach), lgLerp(0.05, 0.0, reach)], [0, 0.4, 0.2], LG_POLE.L); P.grip.L = reach > 0.8 ? 'cup' : 'fist'; }
   else if (t < 1.8) { lgHandTo(P, 'L', 'carbine', [0.02, 0.025, -0.01], [1.4, 0, 0], LG_POLE.L); P.grip.L = 'open'; }
   else { P.ik.handL = { on: 'carbine', pole: LG_POLE.Lc }; P.grip.L = 'cup'; }
+  P.carbine.bolt = t < 1.78 ? 1 : Math.max(0, 1 - (t - 1.78) / 0.05);   // 1.9.997: locked back on empty until the release is slapped
   lgLookAt(P, 0.15 * k, 0.3 * k - 0.2 * reach);
 }, [[0.4, 'magOut'], [0.78, 'pouch'], [1.42, 'magIn'], [1.62, 'tug'], [1.78, 'boltHome']]);
 
@@ -423,11 +420,14 @@ lgClip('roll', 'Combat roll', 'Special', 1.15, false, LG_SRC.merc, 'Down over th
   const fwd = lgK(t, [[0, 0], [0.22, 0.12, 'i'], [0.82, 1.35, 'l'], [1.15, 1.5, 'o']]);
   P.root[0] = ctx.inPlace ? 0 : fwd;
   const ox = -0.05, oz = -0.14, px = ox * Math.cos(ang) + oz * Math.sin(ang), pz = -ox * Math.sin(ang) + oz * Math.cos(ang);
-  lgPelvis(P, px * tuck, 0, lgLerp(-0.04, 0.42 + pz - 0.98, tuck), 0, ang + 0.35 * tuck, 0);
-  lgSpine(P, 0.55 * tuck + 0.08, 0, 0); lgLookAt(P, 0, 0.6 * tuck);
-  if (tuck > 0.05) { P.ik.footL = null; P.ik.footR = null; for (const sd of ['L', 'R']) { lgJ(P, 'thigh' + sd, 0, -2.0 * tuck, 0); lgJ(P, 'shin' + sd, 0, 2.4 * tuck, 0); lgJ(P, 'foot' + sd, 0, 0.3 * tuck, 0); } }
+  // 1.9.997: a real shoulder roll is a ball: the chin on the chest, the back round, the knees pulled to the chest and the
+  // feet together, rolling over the right shoulder (the body a little diagonal), and it comes up into a crouch
+  const mid = lgPulse(t, 0.3, 0.8), land = lgK(t, [[0.8, 0], [1.0, 1, 'o'], [1.15, 0.55, 'io']]);
+  lgPelvis(P, px * tuck, 0, lgLerp(-0.04 - 0.18 * land, 0.4 + pz - 0.98, tuck), 0.18 * tuck * Math.sin(ang), ang + 0.3 * tuck, -0.22 * tuck);
+  lgSpine(P, 0.95 * tuck + 0.08 + 0.3 * land, -0.15 * tuck, 0.1 * tuck); lgLookAt(P, 0.1 * tuck, 0.95 * tuck - 0.3 * land);
+  if (tuck > 0.05) { P.ik.footL = null; P.ik.footR = null; for (const sd of ['L', 'R']) { const o = sd === 'L' ? 1 : -1; lgJ(P, 'thigh' + sd, -0.12 * o * tuck, -2.35 * tuck - 0.9 * land, 0); lgJ(P, 'shin' + sd, 0, 2.6 * tuck + 1.5 * land, 0); lgJ(P, 'foot' + sd, 0, 0.45 * tuck - 0.5 * land, 0); } }
   else lgStance(P, 0.13, 0.08, 0.12);
-  lgPistolAt(P, LG_POST.sul, { one: true, poleR: LG_POLE.Rt }); lgArm(P, 'L', -0.9 * tuck, 0.3, 0, 1.7 * tuck + 0.18, 0); P.ik.handL = null;
+  lgPistolAt(P, LG_POST.sul, { one: true, poleR: LG_POLE.Rt }); lgArm(P, 'L', -1.1 * tuck + 0.4 * mid, 0.35, 0.2 * tuck, 1.9 * tuck + 0.18, 0.3 * tuck); P.ik.handL = null;
 }, [[0.25, 'roll'], [0.85, 'stepL']]);
 lgClip('dash', 'Dash', 'Special', 0.5, false, LG_SRC.merc, 'A burst of two hard strides, body low and forward, the gun pulled in tight.', (P, t, ctx, a) => {
   const ph = (t / a.dur) * 1.0; lgGait(P, ph, { stride: 3.0, st: 0.36, lift: 0.2, crouch: 0.12, bob: 0.04, lean: 0.38, yaw: 0.1, heel: 1, run: true });

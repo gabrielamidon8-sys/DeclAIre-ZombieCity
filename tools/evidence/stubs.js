@@ -5,3 +5,6 @@ const ZR_DEFS = [{ key: 'cook', skin: '#a08a78', cloth: '#ece8df', cloth2: '#303
 const GUN_LEN = { pistol: 16, rifle: 26 }; let SPR = 2, PK = 1;
 const PERF = { tier: 3 }; const TUNE = {}; let RM = false; function coreEmit() { return 0; }
 function coreDefine() {} const SCL = 1, SCALE_REAL = 1; function engFloor() {} const store = { get: (k, d) => d, set: () => {} };
+// 1.9.997: the arms table the run clips read the reload technique from (weapons.js, kept in step by hand here)
+const ARMS_BY = {};
+for (const [k, kind, empty] of [['m4a1', 'ar', 2.55], ['ak74m', 'ak', 2.85], ['mk17', 'scar', 3.0], ['m1014', 'tube', 0.95], ['pp19', 'helix', 3.1], ['m17', 'pistol', 1.85], ['m9', 'pistol', 1.95], ['m1911', 'p1911', 1.85], ['m1917', 'moon', 3.0], ['aps', 'pistol', 2.05]]) ARMS_BY[k] = { arms: { key: k, reload: { kind: kind, empty: empty } } };
