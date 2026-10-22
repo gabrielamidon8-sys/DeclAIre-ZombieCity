@@ -324,7 +324,7 @@ A new engine is one file added to the module list in build.js and one coreDefine
 
 ### ANIMA: The Puppeteer
 
-*Gives each of the dead its own way of moving: 3,000 animations (since 1.9.994, with the ten knife kills), and not one of them shared.*
+*Gives each of the dead its own way of moving: 3,750 animations (since 1.9.998, with the ten knife kills and fifteen contacts with the world), and not one of them shared.*
 
 - **What it does:** Every 2.0 zombie is a jointed body seen from above with its own animations (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials, 10 knife kills), cross-fades that keep the feet in step, hit reactions layered on top, deaths from whatever pose it was in, bodies that stay a while; live joints near you, cached frames for the crowd, shadows shaped by each pose. Since 1.9.998 there are 75 (fifteen contacts with the world and the crowd: bumps, shoves, wall slams and scrapes, corner skids, vaulting, climbing and diving through cars, pile-ups, trampling, squeezing through gaps), the bodies have real proportions, a spring on the torso answers to their momentum, and each zombie carries a hit rig built from its skeleton every frame.
 - **Adapts:** How many zombies get live joints (the rest use cached frames), stepped down when it takes too much of the frame and back up if CORE agrees.
