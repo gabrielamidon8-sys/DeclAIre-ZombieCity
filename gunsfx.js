@@ -13,13 +13,14 @@
   //   ck: crack [hp Hz, dur, vol]   bd: body [Hz, dur, vol, end Hz]   kn: knock [Hz, dur, vol]   sb: sub [f0, f1, dur, vol]
   //   mech: the action (pre: what happens before the shot)   tl: tail per shot [dur, vol, lp Hz]   tlL: the long tail
   //   rg: frame ring [Hz, vol]   gp: cylinder-gap blast   sat: saturated body share   dur: sample length   cap: peak
-  //   stream: trimmed per shot, long tail at burst end (gap: the gun's cycle)   duck: how far the radio dips   vol: level
+  //   stream: trimmed per shot, long tail at burst end (gap: the gun's cycle)   duck: how far the radio dips   vol: level at play
+  //   (a 5.56 carbine is a few dB louder than a 9 mm pistol at the shooter's ear; the stream guns also play at 0.85 a round)
   var G20 = {
     // ---- 5.56 / 5.45: hard crack, bright report, light sub ----
-    m4a1: { ck: [3400, 0.012, 0.9], bd: [1700, 0.09, 0.5, 600], kn: [600, 0.06, 0.2], sb: [150, 45, 0.1, 0.3], mech: 'buffer', tl: [0.2, 0.12, 1100], tlL: [0.5, 0.16, 1100], sat: 0.2, dur: 0.42, cap: 0.76, stream: 1, gap: 0.075, duck: 0.26 },
-    ak74m: { ck: [3000, 0.012, 0.75], bd: [1300, 0.1, 0.52, 500], kn: [500, 0.07, 0.26], sb: [140, 45, 0.1, 0.32], mech: 'akrun', tl: [0.22, 0.13, 1000], tlL: [0.52, 0.17, 1000], sat: 0.24, dur: 0.45, cap: 0.76, stream: 1, gap: 0.092, duck: 0.26 },
-    aug: { ck: [3300, 0.011, 0.85], bd: [1700, 0.08, 0.45, 600], kn: [600, 0.06, 0.18], sb: [150, 46, 0.09, 0.28], mech: 'bullpup', tl: [0.2, 0.11, 1100], tlL: [0.48, 0.15, 1100], sat: 0.18, dur: 0.42, cap: 0.76, stream: 1, gap: 0.086, duck: 0.26 },
-    m249: { ck: [3300, 0.012, 0.85], bd: [1600, 0.085, 0.5, 560], kn: [560, 0.06, 0.2], sb: [145, 45, 0.09, 0.3], mech: 'belt', tl: [0.16, 0.1, 1000], tlL: [0.6, 0.18, 1000], sat: 0.22, dur: 0.36, cap: 0.76, stream: 1, gap: 0.07, duck: 0.28 },
+    m4a1: { ck: [3400, 0.012, 0.9], bd: [1700, 0.09, 0.5, 600], kn: [600, 0.06, 0.2], sb: [150, 45, 0.1, 0.3], mech: 'buffer', tl: [0.2, 0.12, 1100], tlL: [0.5, 0.16, 1100], sat: 0.2, dur: 0.42, cap: 0.76, stream: 1, gap: 0.075, duck: 0.26, vol: 1.2 },
+    ak74m: { ck: [3000, 0.012, 0.75], bd: [1300, 0.1, 0.52, 500], kn: [500, 0.07, 0.26], sb: [140, 45, 0.1, 0.32], mech: 'akrun', tl: [0.22, 0.13, 1000], tlL: [0.52, 0.17, 1000], sat: 0.24, dur: 0.45, cap: 0.76, stream: 1, gap: 0.092, duck: 0.26, vol: 1.2 },
+    aug: { ck: [3300, 0.011, 0.85], bd: [1700, 0.08, 0.45, 600], kn: [600, 0.06, 0.18], sb: [150, 46, 0.09, 0.28], mech: 'bullpup', tl: [0.2, 0.11, 1100], tlL: [0.48, 0.15, 1100], sat: 0.18, dur: 0.42, cap: 0.76, stream: 1, gap: 0.086, duck: 0.26, vol: 1.2 },
+    m249: { ck: [3300, 0.012, 0.85], bd: [1600, 0.085, 0.5, 560], kn: [560, 0.06, 0.2], sb: [145, 45, 0.09, 0.3], mech: 'belt', tl: [0.16, 0.1, 1000], tlL: [0.6, 0.18, 1000], sat: 0.22, dur: 0.36, cap: 0.76, stream: 1, gap: 0.07, duck: 0.28, vol: 1.2 },
     // ---- 7.62×51: fuller low-mids, longer tails ----
     mk17: { ck: [2800, 0.013, 0.72], bd: [1000, 0.15, 0.7, 420], kn: [450, 0.08, 0.32], sb: [110, 35, 0.2, 0.6], mech: 'piston', tl: [0.6, 0.22, 900], sat: 0.3, dur: 0.85, cap: 0.82, duck: 0.34, vol: 1.08 },
     mk14: { ck: [2900, 0.013, 0.72], bd: [1050, 0.15, 0.7, 430], kn: [460, 0.09, 0.32], sb: [112, 36, 0.21, 0.6], mech: 'oprod', tl: [0.65, 0.22, 900], sat: 0.3, dur: 0.9, cap: 0.82, duck: 0.34, vol: 1.08 },
@@ -31,7 +32,7 @@
     m17: { ck: [3600, 0.009, 0.55], bd: [1500, 0.075, 0.45, 600], kn: [650, 0.05, 0.18], sb: [180, 55, 0.07, 0.24], mech: 'slideP', tl: [0.3, 0.12, 1100], sat: 0.14, dur: 0.5, cap: 0.72, duck: 0.18 },
     g17: { ck: [3650, 0.009, 0.55], bd: [1550, 0.072, 0.45, 620], kn: [660, 0.05, 0.17], sb: [182, 56, 0.07, 0.24], mech: 'slideP', tl: [0.3, 0.12, 1100], sat: 0.14, dur: 0.5, cap: 0.72, duck: 0.18 },
     m9: { ck: [3500, 0.009, 0.53], bd: [1450, 0.078, 0.46, 580], kn: [640, 0.05, 0.18], sb: [178, 54, 0.072, 0.24], mech: 'slideS', rf: 1900, rv: 0.035, tl: [0.3, 0.12, 1100], sat: 0.14, dur: 0.5, cap: 0.72, duck: 0.18 },
-    fiveseven: { ck: [4400, 0.008, 0.8], bd: [2100, 0.055, 0.38, 800], kn: [800, 0.04, 0.12], sb: [190, 70, 0.05, 0.16], mech: 'slideP', tl: [0.28, 0.1, 1300], sat: 0.1, dur: 0.46, cap: 0.7, duck: 0.16 },
+    fiveseven: { ck: [4400, 0.008, 0.8], bd: [2100, 0.055, 0.38, 800], kn: [800, 0.04, 0.12], sb: [190, 70, 0.05, 0.16], mech: 'slideP', tl: [0.28, 0.1, 1300], sat: 0.1, dur: 0.46, cap: 0.7, duck: 0.16, vol: 1.12 },
     // ---- .45 ACP: subsonic, no crack, a slower boom ----
     m1911: { ck: [2600, 0.01, 0.3], bd: [900, 0.11, 0.6, 380], kn: [420, 0.08, 0.4], sb: [130, 42, 0.12, 0.5], mech: 'slideS', rf: 1500, rv: 0.05, tl: [0.4, 0.16, 950], sat: 0.22, dur: 0.62, cap: 0.76, duck: 0.22 },
     m1917: { ck: [2600, 0.01, 0.3], bd: [900, 0.12, 0.62, 380], kn: [420, 0.09, 0.42], sb: [128, 42, 0.13, 0.5], mech: 'frame', rg: [2100, 0.05], gp: 0.22, tl: [0.46, 0.17, 950], sat: 0.22, dur: 0.68, cap: 0.76, duck: 0.22 },
