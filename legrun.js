@@ -439,14 +439,18 @@ function lgvRelMag(P, v, keys, k, ctx, mag, fam, ins, helix) {
   if (ins > 0 && mag === 'hand') { lgvHand(P, 'L', lgvMagAt(v, ins, fam)); }
 }
 // the dodge roll: down over the shoulder in a tuck, the gun held in tight, and up into a crouch facing the same way
+// the rifle in the roll's tuck, held in tight to the chest (x forward, y left, z up, then its turn), and how far the knees
+// come up (1.9.997: the rifle a hand further out and higher, the knees to 100 degrees, not 120: the support forearm went
+// 15 cm into the chest and then into the thigh, and its wrist past its range; now the forearm rests on the thigh)
+const LGV_ROLL_RIFLE = [0.25, 0.04, 0.04, 0.55, 1.15, -0.2], LGV_ROLL_TUCK = { thigh: 1.75, shin: 2.3 };
 function lgvRoll(P, k, ctx) {
   const pitch = k < 0.18 ? lgvE(k / 0.18) * 0.95 : k < 0.78 ? 0.95 + (TAU - 1.35) * lgvE((k - 0.18) / 0.6) : TAU - 0.4 + 0.4 * lgvE((k - 0.78) / 0.22);
   const z = k < 0.18 ? -0.3 * lgvE(k / 0.18) : k < 0.78 ? -0.58 : -0.58 + 0.46 * lgvE((k - 0.78) / 0.22);
   lgPelvis(P, 0, 0, z, 0.15 * Math.sin(k * Math.PI), pitch, 0);
   const tuck = k < 0.12 ? lgvE(k / 0.12) : k > 0.86 ? 1 - lgvE((k - 0.86) / 0.14) * 0.6 : 1;
   lgJ(P, 'spine', 0, 0.35 * tuck, 0); lgJ(P, 'chest', 0, 0.3 * tuck, 0); lgJ(P, 'neck', 0, 0.45 * tuck, 0); lgJ(P, 'head', 0, 0.2 * tuck, 0);
-  for (const s of ['L', 'R']) { lgJ(P, 'thigh' + s, 0, -2.1 * tuck, s === 'L' ? 0.1 : -0.1); lgJ(P, 'shin' + s, 0, 2.2 * tuck, 0); lgJ(P, 'foot' + s, 0, -0.4 * tuck, 0); }
-  if (lgvC(ctx)) lgvRifle(P, [0.2, 0.04, 0.0, 0.55, 1.15, -0.2], ctx); else { lgvPistol(P, LGV_POST.pSul, ctx, LGV_KIT.chest(), 1); P.grip.L = 'open'; }
+  for (const s of ['L', 'R']) { lgJ(P, 'thigh' + s, 0, -LGV_ROLL_TUCK.thigh * tuck, s === 'L' ? 0.1 : -0.1); lgJ(P, 'shin' + s, 0, LGV_ROLL_TUCK.shin * tuck, 0); lgJ(P, 'foot' + s, 0, -0.4 * tuck, 0); }
+  if (lgvC(ctx)) lgvRifle(P, LGV_ROLL_RIFLE, ctx); else { lgvPistol(P, LGV_POST.pSul, ctx, LGV_KIT.chest(), 1); P.grip.L = 'open'; }
 }
 
 /* ---------- the body: where each part is turned, and its weight ---------- */
