@@ -233,6 +233,7 @@ function engCard(name, full) {
     const st = el('dl', 'ec-stats'); c.append(st);
     c.append(engTraits(name));
     const lb = el('div', 'ec-learn'); lb.append(el('h4', null, 'Learned on this device'), el('div', 'ec-lines')); c.append(lb);
+    if (typeof CUR !== 'undefined' && CUR.eng[name]) c.append(engCourse(name));
     c.append(el('p', 'ec-facts'));
     const I = engIntricacy(name), ib = el('div', 'ec-intri');
     const meter = el('div', 'ec-imeter'); const fill = el('i'); fill.style.width = (I.score * 10) + '%'; meter.append(fill);
@@ -266,6 +267,15 @@ function engCard(name, full) {
     c.append(det);
   }
   engCardLive(name);
+}
+// an engine with a course (1.9.995: the five film engines): each version, its exam as it last ran here, and a button to
+// take the exams again (they run the engine's own work and measure it, so they take a few seconds)
+function engCourse(name) {
+  const box = el('div', 'ec-learn ec-course'), lines = el('div', 'ec-lines'), btn = el('button', 'ec-run', 'Take the exams here (a few seconds)'); btn.type = 'button';
+  box.append(el('h4', null, 'Its course, v1 to v' + CUR.eng[name].levels.length), lines);
+  const paint = () => { const C = CUR.eng[name]; lines.textContent = ''; for (const L of C.levels) { const r = C.res[L.v]; lines.append(el('p', r ? (r.ok ? 'ok' : 'bad') : null, 'v' + L.v + ' · ' + L.title + ': ' + (r ? (r.ok ? 'passed ' : 'not passed ') + r.pass + ' of ' + r.n + ' checks' + (r.at ? ' (' + new Date(r.at).toLocaleDateString() + ')' : '') : 'not taken on this device yet'))); } lines.append(el('p', null, C.earned ? 'Holds v' + C.earned + ' here: every exam up to it passed.' : 'Holds no version here until its exams are taken.')); };
+  btn.addEventListener('click', () => { if (typeof SFX !== 'undefined') SFX.click(); btn.disabled = true; btn.textContent = 'Examining ' + name + '…'; setTimeout(() => { try { curRun(name); } catch (x) { coreHurt(name, x); } btn.disabled = false; btn.textContent = 'Take the exams again'; paint(); }, 40); });
+  paint(); box.append(btn); return box;
 }
 // the words under the controls: what the current choice does for this engine, and what the ecosystem is doing
 function engMessage(name) {

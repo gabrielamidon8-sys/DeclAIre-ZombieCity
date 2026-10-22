@@ -120,3 +120,5 @@ curLevel('BOARD', {
     X.ok('pencil: hatching on the shadow side', r.bodies.reduce((a, b) => a + b.marks, 0) > 40, r.bodies.reduce((a, b) => a + b.marks, 0) + ' strokes', 'over 40');
   }
 });
+// the results this device kept from earlier exams
+try { curLoad(); } catch (e) { }

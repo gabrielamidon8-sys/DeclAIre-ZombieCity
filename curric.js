@@ -64,3 +64,5 @@ function curAng(a, b) { const d = curV3.dot(curV3.norm(a), curV3.norm(b)); retur
 const CUR_DEG = 180 / Math.PI;
 // a seeded random (exams are repeatable)
 function curRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// the line the engine room shows under what an engine learned
+function curLearned(name) { const c = CUR.eng[name]; return c && Object.keys(c.res).length ? ['Its course on this device: ' + curSummary(name) + '.'] : []; }

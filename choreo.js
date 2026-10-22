@@ -332,3 +332,25 @@ function choAlleyFight(o) {
 }
 // the story's shape: the intensity of each exchange (how hard, whether it lands, how many are in it) over the fight
 function choArc(F) { return F.ex.map(e => { const m = CHO_MOVES[e.move]; return { t: e.t, k: (m.power || 0.3) * (e.def ? 0.55 : 1) * (m.kind === 'shot' ? 1.6 : 1) + (e.phrase || 0) * 0.08 }; }); }
+/* ---------- in the ecosystem ---------- */
+// its self-test: a jab and a cross staged between two fighters; the cross must stop a hand's breadth short of the face
+// (along the lens) and read as landing on the picture, and every move's phases must leave the partner time to react
+function choSelfTest() {
+  let n = 0, p = 0, why = '';
+  try {
+    n++; if (Object.values(CHO_MOVES).every(m => m.t.length === 3 && m.t.every(x => x > 0))) p++; else why = 'a move has no timing';
+    n++; if (CHO_CUE >= CHO_REACTION_T) p++; else why = why || 'the cue comes faster than a person can react';
+    const F = choFight({ fighters: [{ name: 'A', at: [0, 0] }, { name: 'B', at: [1.05, 0] }], dur: 1.4, steps: [], ex: [{ t: 0.5, a: 0, move: 'jab', b: 1, def: 'block' }, { t: 0.9, a: 0, move: 'cross', b: 1 }] }); choPerf(F);
+    const r = choReads(F, F.ex[1]); n++; if (r.gap3 > 0.04 && r.gap3 < 0.16 && r.gap2 < 0.05) p++; else why = why || 'the staged cross is ' + (r.gap3 * 100).toFixed(0) + ' cm from the face';
+  } catch (e) { why = String(e && e.message || e); }
+  return { ok: p === n, n: n, pass: p, why: why };
+}
+coreDefine({ name: 'CHOREO', kind: 'sim', ver: 5, does: 'The choreographer: fights designed the way a fight director does: thirteen moves timed from real punches and kicks, the measure kept, blows that stop a hand short of the face along the lens, partners reacting on the beat, phrases with the pause-burst-pause rhythm, several attackers taking turns, objects picked up and used, and the fight sheet; LEGEND performs them, MIMATIC shoots them, VFXRAY dresses them.',
+  provides: ['fights', 'choreography'], needs: ['LEGEND'], adapts: 'a fight is solved once and kept, so it costs nothing per frame',
+  state: () => CHO.made ? CHO.made + ' fight' + (CHO.made === 1 ? '' : 's') + ' staged' : 'ready', level: () => 'v' + (typeof curVer === 'function' ? curVer('CHOREO') || 5 : 5),
+  check: () => '', repair: () => { }, reset: () => { CHO.made = 0; },
+  selfTest: () => choSelfTest(),
+  learned: () => { const out = []; if (typeof CUR !== 'undefined' && CUR.eng.CHOREO && Object.keys(CUR.eng.CHOREO.res).length) out.push('Its course on this device: ' + curSummary('CHOREO') + '.'); if (CHO.made) out.push('Staged ' + CHO.made + ' fight' + (CHO.made === 1 ? '' : 's') + ' this session.'); return out; },
+  spec: { files: ['choreo', 'cur_choreo'], parts: ['thirteen moves with real timing', 'reactions and falls', 'the measure and footwork', 'the stage-combat gap along the lens', 'cues and reaction time', 'phrases and rhythm', 'many against one', 'objects in a fight', 'the fight sheet', 'reading on camera', 'the course (v1 to v5)'], procs: ['cpu'], effort: false, effortWhy: 'a fight is staged once; nothing about it runs per frame',
+    stats: () => [['Fights staged', CHO.made], ['Moves', Object.keys(CHO_MOVES).length], ['Course', typeof curSummary === 'function' ? curSummary('CHOREO') : '…']] }
+});

@@ -139,3 +139,9 @@
 }
 @media (prefers-reduced-motion:reduce){ .ew-card,.eng-warn{animation:none} }
 .rm .ew-card,.rm .eng-warn{animation:none}
+
+/* 1.9.995: an engine's course in its card */
+.ec-course .ec-lines p.ok::before { content: '✓ '; color: #7bd88f; }
+.ec-course .ec-lines p.bad::before { content: '✗ '; color: #ff6b5e; }
+.ec-run { margin-top: 8px; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.ec-run:disabled { opacity: 0.55; cursor: progress; }

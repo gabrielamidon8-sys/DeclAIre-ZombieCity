@@ -336,3 +336,24 @@ function brdRevise(B, note) {
 function brdAnimatic(B) {
   return B.shots.filter(s => s.t0 != null).map(s => ({ n: s.n, t0: s.t0, t1: s.t1, from: s.move === 'push in' ? { s: 1, x: 0, y: 0 } : s.move === 'pull out' ? { s: 1.18, x: 0, y: 0 } : s.move === 'pan' ? { s: 1.12, x: -0.05, y: 0 } : { s: 1, x: 0, y: 0 }, to: s.move === 'push in' ? { s: 1.18, x: 0, y: 0 } : s.move === 'pull out' ? { s: 1, x: 0, y: 0 } : s.move === 'pan' ? { s: 1.12, x: 0.05, y: 0 } : s.move === 'handheld' ? { s: 1.02, x: 0.005, y: -0.004 } : { s: 1, x: 0, y: 0 } }));
 }
+/* ---------- in the ecosystem ---------- */
+// its self-test: a short scene read back: the people, what each does and to whom
+function brdSelfTest() {
+  let n = 0, p = 0, why = '';
+  try {
+    const sc = brdRead('EXT. ALLEY - NIGHT. ANNA walks in. She hands Tom the bottle. Tom throws a punch. Anna ducks.'), nm = id => id == null ? '' : (sc.chars[id] || {}).name;
+    n++; if (sc.heading === 'EXT. ALLEY - NIGHT' && sc.inside === false) p++; else why = 'the heading';
+    n++; if (sc.chars.length === 2) p++; else why = why || sc.chars.length + ' people found, not 2';
+    const b = sc.beats; n++; if (b.length === 3 && b[0].act === 'walk' && b[1].act === 'give' && nm(b[1].target) === 'Tom' && b[2].def === 'duck') p++; else why = why || 'the beats were read wrong';
+  } catch (e) { why = String(e && e.message || e); }
+  return { ok: p === n, n: n, pass: p, why: why };
+}
+coreDefine({ name: 'BOARD', kind: 'data', ver: 5, does: 'The storyboard artist: reads a written scene (the heading, the people, who does what to whom, with what, how, what they say), plans the shot list, draws each shot in pencil from MIMATIC\'s camera with the people as LEGEND and CHOREO perform them, lays out the floor plan, checks continuity across the cuts, takes a director\'s notes and times the animatic; and compiles the scene so the others can perform, shoot and finish it.',
+  provides: ['storyboards', 'staging'], needs: ['LEGEND', 'CHOREO', 'MIMATIC'], adapts: 'a scene is read and staged once, so it costs nothing per frame',
+  state: () => BRD.made ? BRD.made + ' scene' + (BRD.made === 1 ? '' : 's') + ' read' : 'ready', level: () => 'v' + (typeof curVer === 'function' ? curVer('BOARD') || 5 : 5),
+  check: () => '', repair: () => { }, reset: () => { BRD.made = 0; },
+  selfTest: () => brdSelfTest(),
+  learned: () => { const out = []; if (typeof CUR !== 'undefined' && CUR.eng.BOARD && Object.keys(CUR.eng.BOARD.res).length) out.push('Its course on this device: ' + curSummary('BOARD') + '.'); if (BRD.made) out.push('Read ' + BRD.made + ' scene' + (BRD.made === 1 ? '' : 's') + ' this session.'); return out; },
+  spec: { files: ['board', 'cur_board'], parts: ['the screenplay reader', 'people, names and pronouns', 'the shot list', 'the scene compiled for LEGEND and CHOREO', 'pencil panels', 'arrows for movement and camera', 'the floor plan', 'continuity checks', 'notes from a director', 'the animatic', 'the course (v1 to v5)'], procs: ['cpu'], effort: false, effortWhy: 'a scene is read and drawn once',
+    stats: () => [['Scenes read', BRD.made], ['Verbs it knows', BRD_VERBS.length], ['Course', typeof curSummary === 'function' ? curSummary('BOARD') : '…']] }
+});

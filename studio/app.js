@@ -183,6 +183,8 @@
   (async () => {
     try { if (typeof curLoad === 'function') curLoad(); } catch (e) { }
     for (const [n] of DEPTS) { const R = results(n); if (R) $('v-' + n).textContent = 'v' + R.earned; }
+    // (a small screen starts on the faster picture; it can be switched to the final one)
+    if (window.innerWidth < 700) $('q').value = 'preview';
     const gl = boot(); requestAnimationFrame(loop);
     if (gl) { busy('Setting up', 'building the textures (a few seconds the first time)'); status('Building the textures and the cast…'); await tick(); try { await lgAtlasGet(256); vfxGLInit(); S.ready = true; } catch (e) { console.error(e); } }
     busy(null); await shoot();
