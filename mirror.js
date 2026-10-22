@@ -65,8 +65,9 @@ function mirrorMask(x0, y0, x1, y1, lvl) {
       a.fillStyle = 'rgba(255,255,255,' + (0.3 * wet).toFixed(3) + ')'; a.fillRect(c.sx, c.sy, CHS, ROADS); a.fillRect(c.sx, c.sy + ROADS, ROADS, CHS - ROADS);
       a.fillStyle = 'rgba(255,255,255,' + (0.12 * wet).toFixed(3) + ')'; a.fillRect(c.sx + ROADS, c.sy + ROADS, CHS - ROADS, CHS - ROADS); any = true;
     }
-    if (wet > 0.06) {
-      const k = 0.6 + wet * 0.5; a.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.6 * wet).toFixed(3) + ')'; w.fillStyle = 'rgba(255,255,255,' + (0.6 * wet).toFixed(3) + ')';
+    const pk = typeof wxPudK === 'function' ? wxPudK() : (wet > 0.06 ? 0.6 + wet * 0.5 : 0);
+    if (pk > 0) {
+      const k = pk; a.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.6 * wet).toFixed(3) + ')'; w.fillStyle = 'rgba(255,255,255,' + (0.6 * wet).toFixed(3) + ')';
       a.beginPath(); w.beginPath();
       for (const p of c.puddles) { if (!vis(p.x, p.y, p.rx)) continue; a.moveTo(p.x + p.rx * k, p.y); a.ellipse(p.x, p.y, p.rx * k, p.ry * k, p.a, 0, TAU); w.moveTo(p.x + p.rx * k, p.y); w.ellipse(p.x, p.y, p.rx * k, p.ry * k, p.a, 0, TAU); }
       a.fill(); w.fill(); any = true;

@@ -361,12 +361,13 @@ function vegLevel() { const v = SET.veg === 'auto' ? (PERF.vegCut && !(TUNE.LIFE
 // under the zombies: puddles, glints on the water, footprints, grass, tree trunks, props and birds on the ground
 function drawWorldUnder(vis) {
   const wet = WX.wet || 0, t = G.time;
-  // puddles shine when it rains
-  if (wet > 0.12) {
-    ctx.fillStyle = 'rgba(70,90,110,' + (0.3 * wet).toFixed(3) + ')';
+  // puddles shine when it rains (1.9.998: they fill only after enough rain has fallen, and shrink from the edges)
+  const pk = typeof wxPudK === 'function' ? wxPudK() : (wet > 0.12 ? 0.6 + wet * 0.5 : 0);
+  if (pk > 0) {
+    ctx.fillStyle = 'rgba(70,90,110,' + (0.3 * Math.max(wet, 0.5)).toFixed(3) + ')';
     for (let cx = Math.floor((cam.x - W / ZOOM / 2) / CHS); cx <= Math.floor((cam.x + W / ZOOM / 2) / CHS); cx++) for (let cy = Math.floor((cam.y - H / ZOOM / 2) / CHS); cy <= Math.floor((cam.y + H / ZOOM / 2) / CHS); cy++) {
       const c = chunks.get(cx + ',' + cy); if (!c) continue;
-      for (const p of c.puddles) { if (!vis(p.x, p.y, p.rx)) continue; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx * (0.6 + wet * 0.5), p.ry * (0.6 + wet * 0.5), p.a, 0, TAU); ctx.fill(); }
+      for (const p of c.puddles) { if (!vis(p.x, p.y, p.rx)) continue; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx * pk, p.ry * pk, p.a, 0, TAU); ctx.fill(); }
     }
   }
   // the glints on rivers drift with the current

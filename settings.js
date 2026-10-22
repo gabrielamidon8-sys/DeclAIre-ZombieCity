@@ -77,7 +77,7 @@ function setSetting(k, v) {
     case 'sfxOn': AUD.sfx = v; store.set('zc_audio', AUD); SFX.setSfx(v); break;
     case 'motion': RM = v === 'on' || (v === 'auto' && SYS_RM); applyLook(); break;
     case 'season': if (G.mode !== 'title' && v !== 'cycle') setSeason(seasonFromSetting()); else if (G.mode === 'title') { WORLD.season = seasonFromSetting(); for (const c of chunks.values()) c.stale = 1; WSPR.clear(); } break;
-    case 'wxMode': if (v !== 'dynamic') { WX.kind = v; WX.t = 60; } else WX.t = Math.min(WX.t, 20); break;
+    case 'wxMode': if (v !== 'dynamic') wxForce(v); else { WX.hold = -1; WX.rt = Math.max(WX.rt, WX.rd - 20); } break;
     case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
     case 'veg': case 'water': WSPR.clear(); break;
     case 'sun': for (const c of chunks.values()) c.stale = 1; WSPR.clear(); break;

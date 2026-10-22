@@ -610,14 +610,13 @@ function luxWarm() {
    only the blue light of the sky is left. Shadows are as long as the sun is low: a tower's shadow at dusk crosses the
    street, at noon it hugs the wall. Clouds, rain and fog soften them until, under a storm, there are none. */
 const LUX_SUNMAX = [52, 72, 46, 28];                 // how high the sun climbs (degrees), by season
-const LUX_COVER = { clear: 0, overcast: 0.72, rain: 0.86, storm: 0.95, fog: 0.82, snow: 0.7, blizzard: 0.96, sand: 0.55, ash: 0.7 };
 const LUX_SKY = [0.7, 0.75, 0.88];                  // what is left in the shade: the sky's blue
 function luxSunShadowsOn() { return SET.lux !== 'off' && SET.sun !== false; }
 function luxSun(amb) {
   const S = CORE.frame.sun, sea = WORLD.season, rise = LUX_RISE[sea], set = LUX_SET[sea], h = LUX.hour;
   if (h <= rise + 0.05 || h >= set - 0.05 || !luxSunShadowsOn()) { S.on = false; S.k = 0; return S; }
   const p = (h - rise) / (set - rise), el = LUX_SUNMAX[sea] * Math.sin(p * Math.PI), az = 90 + p * 180;
-  const cover = LUX_COVER[WX.kind] != null ? LUX_COVER[WX.kind] : 0.5;
+  const cover = clamp(WX.cloud != null ? WX.cloud * 0.92 + Math.min(1, WX.rain) * 0.1 : 0.5, 0, 0.97);   // (1.9.998: the weather engine's cloud cover)
   S.k = clamp(el / 9, 0, 1) * (1 - cover) * (1 - (WX.fog || 0) * 0.5) * (1 - clamp(WX.dark || 0, 0, 1) * 0.6);
   S.on = S.k > 0.02; S.el = el; S.az = az;
   const len = Math.min(10, 1 / Math.tan(Math.max(5, el) * Math.PI / 180)), ar = az * Math.PI / 180;

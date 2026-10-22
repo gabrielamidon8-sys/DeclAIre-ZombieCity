@@ -314,7 +314,7 @@ function netLobbyView(pl) {
 }
 function netSendStart(to) {
   NET.snapN = 0;   // the next snapshot is a full one, so whoever (re)joined knows every zombie at once
-  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, scale: SCL, wave: G.wave, wx: WX.kind, hour: Math.round(luxHourNow() * 100) / 100, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
+  hostSend(to, { t: 'start', seed: WORLD.lastSeed, mix: WORLD.mix, season: WORLD.season, scale: SCL, wave: G.wave, wx: wxSync(), hour: Math.round(luxHourNow() * 100) / 100, host: getTag(), x: Math.round((NET.local || G.p).x), y: Math.round((NET.local || G.p).y), mode: G.mode });
 }
 // the host presses Start: a normal run, and everyone else starts in the same city
 function netHostRun() {
@@ -530,7 +530,7 @@ function netSnapshot() {
   const pl = netPlayers().map(p => [p.remote ? p.nid : 1, r1(p.x), r1(p.y), r1(p.aim * 100), r1(p.hp), r1(p.maxHp), p.down ? 1 : 0, p.dashT > 0 ? 1 : 0, p.weapon ? p.weapon.id : 0, r1((p.rv || 0) / 2.4 * 100), p.dashK || '', r1(p.walk * 10) % 10000, p.arm ? armsNetCode(p) : 0]);
   const s = {
     t: 's', tm: Math.round(G.time * 100) / 100, hr: Math.round(LUX.hour * 100) / 100, w: G.wave, wt: [Math.round((G.waveT || 0) * 10), G.waveMax | 0, Math.round((G.breakT || 0) * 10), zLeft(), G.boss && !G.boss.dead ? 1 : 0], sc: G.score, k: G.kills, ch: G.chain, bc: G.bestChain, air: G.air || 0, md: ['play', 'upgrade', 'skull', 'pause', 'cine', 'over'].indexOf(G.mode),
-    wx: WX.kind, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zd, zs: zst, zg: zg, zk: key ? 1 : 0, ax: ax, ay: ay, B: B, pl: pl,
+    wx: performance.now() - (NET.wxAt || 0) > 2000 ? (NET.wxAt = performance.now(), wxSync()) : 0, ss: WORLD.season, warp: G.warpT > 0 ? 1 : 0, z: zd, zs: zst, zg: zg, zk: key ? 1 : 0, ax: ax, ay: ay, B: B, pl: pl,
     e: G.eshots.filter(q => !q.dead).slice(0, 160).map(q => [r1(q.x), r1(q.y), r1(q.vx), r1(q.vy), NET_SK.indexOf(q.k), q.r]),
     hz: G.haz.slice(0, 60).map(h => [NET_HK.indexOf(h.k), r1(h.x), r1(h.y), r1(h.r), Math.round(h.life * 10) / 10, h.max]),
     pk: G.picks.filter(k => !k.dead).map(k => [r1(k.x), r1(k.y), Math.round(k.life * 10) / 10]),
@@ -601,7 +601,7 @@ function netClientStart(m) {
   if (resume) { banner('Co-op', 'Back in ' + NET.hostName + "'s game"); return; }
   NET.zmap.clear(); NET.others.clear(); NET.blastsDone.clear(); NET.zst.clear();
   newRun({ client: true, world: { seed: m.seed, mix: m.mix, season: m.season, scale: m.scale == null ? 1 : m.scale }, wave: m.wave, at: { x: m.x, y: m.y } });
-  WX.kind = m.wx || WX.kind; WX.t = 999;
+  if (Array.isArray(m.wx)) wxApply(m.wx); WX.t = 999;
   // the same hour of the day as the host (the sun, the shadows and the night come with it)
   if (typeof m.hour === 'number' && isFinite(m.hour)) { LUX.h0 = ((m.hour - G.time / 24) % 24 + 24) % 24; LUX.h0s = WORLD.seed; }
   banner('Co-op', 'In ' + NET.hostName + "'s game · wave " + m.wave);
@@ -631,7 +631,7 @@ function netApply(s) {
   if (Array.isArray(s.wt)) { G.waveT = (+s.wt[0] || 0) / 10; G.waveMax = +s.wt[1] || 0; G.breakT = (+s.wt[2] || 0) / 10; G.zLeftN = +s.wt[3] || 0; G.clockHold = !!s.wt[4]; }
   if (s.ch > G.chain || (s.ch && s.ch < G.chain)) G.lastKill = G.time;
   G.chain = s.ch; G.air = s.air; G.warpT = s.warp ? 0.2 : 0;
-  if (s.wx && WX.kind !== s.wx) WX.kind = s.wx; WX.t = 999;
+  if (Array.isArray(s.wx)) wxApply(s.wx); WX.t = 999;
   if (s.ss != null && WORLD.season !== s.ss) setSeason(s.ss, true);
   // the host's hour of the day: keeps the sun, the shadows and the night in step if this device fell behind (a pause, a slow frame)
   if (typeof s.hr === 'number' && isFinite(s.hr)) { const h0 = ((s.hr - G.time / 24) % 24 + 24) % 24, d = Math.abs(h0 - LUX.h0); if (Math.min(d, 24 - d) > 0.04) { LUX.h0 = h0; LUX.h0s = WORLD.seed; } }

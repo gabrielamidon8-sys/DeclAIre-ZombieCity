@@ -410,6 +410,8 @@
     leaves: function (t, b, R) { var d = 1.4 + R(); swell(t, d, 0.12, 'bandpass', 3200, 0.5, b); swell(t + 0.2, d * 0.8, 0.07, 'highpass', 5000, 0.7, b); return d + 0.2; },
     sandgust: function (t, b, R) { var d = 1.3 + R(); swell(t, d, 0.14, 'highpass', 3500, 0.7, b); return d + 0.2; },
     snowgust: function (t, b, R) { var d = 1.5 + R(); swell(t, d, 0.1, 'bandpass', 1800, 0.6, b); return d + 0.2; },
+    // hail on roofs, cars and the street: a dense rattle of hard little ticks
+    hail: function (t, b, R) { var n = 40 + Math.floor(R() * 30); for (var i = 0; i < n; i++) noise(t + R() * 1.1, 0.008 + R() * 0.01, 0.05 + R() * 0.07, 'bandpass', 1800 + R() * 3800, 2.5, null, b); noise(t, 1.2, 0.05, 'highpass', 4000, 0.6, null, b); return 1.3; },
     clatter: function (t, b, R) { var n = 6 + Math.floor(R() * 8); for (var i = 0; i < n; i++) noise(t + i * 0.07 + R() * 0.03, 0.02, 0.08, 'bandpass', 900 + R() * 700, 4, null, b); if (R() < 0.5) bell(t + 0.1, 340 + R() * 80, 0.03, 0.6, b); return n * 0.09 + 0.6; }
   };
   var aevN = 0;
