@@ -54,6 +54,23 @@
       case 'readyDown': aCloth(t, 0.16, 0.14, 900, b); aRattle(t + 0.06, 1, 0.12, b); break;
       case 'sprintStep': if (aThr('sprintStep', 200)) aRattle(t, 2, 0.14, b); break;
       case 'dodge': aCloth(t, 0.34, 0.38, 700, b); noise(t + 0.02, 0.3, 0.2, 'bandpass', 600, 1.2, 180, b); aThunk(t + 0.2, 90, 0.6, b); aRattle(t + 0.22, 4, 0.22, b); aCloth(t + 0.32, 0.12, 0.2, 500, b); break;
+      // 1.9.997: the ten more guns' handling
+      case 'paddle': aClick(t, 4200 / r, 0.3, b); aRing(t + 0.002, 3800, 0.06, b); break;
+      case 'hkSlap': aCloth(t, 0.04, 0.2, 1400, b); aClack(t + 0.03, 0.75 / r, b); aRing(t + 0.035, 1900 / r, 0.14, b); aRing(t + 0.05, 2600 / r, 0.06, b); break;
+      case 'coverOpen': aClick(t, 2600, 0.35, b); aSlide(t + 0.04, 400, 900, 0.26, 0.18, b); aThunk(t + 0.3, 150, 0.3, b); break;
+      case 'coverClose': aThunk(t, 110 / r, 0.9, b); aClack(t + 0.01, 0.8 / r, b); aRing(t + 0.02, 1400 / r, 0.18, b); aRattle(t + 0.05, 3, 0.2, b); break;
+      case 'pouchOff': aClick(t, 2800, 0.25, b); aCloth(t + 0.02, 0.2, 0.3, 700, b); aRattle(t + 0.06, 4, 0.22, b); break;
+      case 'pouchOn': aCloth(t, 0.16, 0.28, 800, b); aClick(t + 0.12, 3000, 0.35, b); aThunk(t + 0.13, 160, 0.4, b); break;
+      case 'beltLay': aRattle(t, 7, 0.26, b); aClick(t + 0.28, 3200, 0.3, b); break;
+      case 'oprodBack': aSlide(t, 900 / r, 2600 / r, 0.16, 0.42, b); aRing(t + 0.14, 2100 / r, 0.22, b); aClick(t + 0.15, 2400 / r, 0.35, b); break;
+      case 'oprodHome': aClack(t, 0.85 / r, b); aRing(t + 0.01, 1700 / r, 0.3, b); aRing(t + 0.02, 3300 / r, 0.12, b); break;
+      case 'pumpBack': aClick(t, 2200 / r, 0.3, b); aSlide(t + 0.01, 700 / r, 1900 / r, 0.14, 0.45, b); aThunk(t + 0.13, 170 / r, 0.4, b); aRing(t + 0.13, 1200 / r, 0.1, b); break;
+      case 'pumpHome': aSlide(t, 1900 / r, 800 / r, 0.1, 0.4, b); aClack(t + 0.1, 0.8 / r, b); aRing(t + 0.11, 1000 / r, 0.14, b); break;
+      case 'loaderIn': aRattle(t, 5, 0.2, b); aClick(t + 0.14, 2600, 0.3, b); aThunk(t + 0.15, 240, 0.25, b); break;
+      case 'loaderOff': aClick(t, 2200, 0.25, b); aCloth(t + 0.01, 0.08, 0.15, 1200, b); break;
+      case 'breakOpen': aClick(t, 3000, 0.4, b); aThunk(t + 0.06, 140, 0.6, b); aSlide(t + 0.08, 500, 300, 0.18, 0.2, b); break;
+      case 'hullPull': aSlide(t, 1200, 2200, 0.08, 0.26, b); aClick(t + 0.08, 2000, 0.2, b); break;
+      case 'breakClose': aThunk(t, 120, 0.8, b); aClack(t + 0.01, 0.95, b); aClick(t + 0.09, 2600, 0.3, b); aClick(t + 0.14, 2600, 0.3, b); break;
       case 'dry': aClick(t, 2600, 0.42, b); break;
       case 'empty': aClick(t, 2000, 0.3, b); aClack(t + 0.02, 0.25, b); break;
     }

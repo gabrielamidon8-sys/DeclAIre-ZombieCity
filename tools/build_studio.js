@@ -3,7 +3,7 @@
 // and studio/dist/artifact.html (the same page without its document shell, for publishing with the assets).
 const fs = require('fs'), path = require('path');
 const Z = path.join(__dirname, '..'), rd = f => fs.readFileSync(path.join(Z, f), 'utf8');
-const ENGINES = ['legend', 'legmodel', 'leggun', 'legfire', 'leghand', 'leganim', 'legloco', 'legperf', 'legrun', 'physics', 'vfxray', 'mimatic', 'legidle', 'curric', 'leganat', 'legobj', 'legmove', 'legqual', 'cur_legend', 'mimcam', 'mimcine', 'mimdir', 'cur_mimatic', 'vfxlens', 'vfxsim', 'cur_vfxray', 'choreo', 'cur_choreo', 'board', 'cur_board', 'mimshoot'];
+const ENGINES = ['legend', 'legmodel', 'leggun', 'leggun2', 'legfire', 'leghand', 'leganim', 'legloco', 'legperf', 'legrun', 'physics', 'vfxray', 'mimatic', 'legidle', 'curric', 'leganat', 'legobj', 'legmove', 'legqual', 'cur_legend', 'mimcam', 'mimcine', 'mimdir', 'cur_mimatic', 'vfxlens', 'vfxsim', 'cur_vfxray', 'choreo', 'cur_choreo', 'board', 'cur_board', 'mimshoot'];
 const js = [rd('studio/shim.js')].concat(ENGINES.map(m => '/* ---- ' + m + '.js ---- */\n' + rd(m + '.js'))).join('\n');
 // two functions with one name would replace each other silently: refuse, as the game's build does
 { const seen = new Set(), dup = new Set(); for (const m of js.matchAll(/^(?:async\s+)?function\s*\*?\s*([A-Za-z0-9_$]+)\s*\(/gm)) { if (seen.has(m[1])) dup.add(m[1]); seen.add(m[1]); } if (dup.size) { console.error('studio build stopped: defined twice: ' + [...dup].join(', ')); process.exit(1); } }

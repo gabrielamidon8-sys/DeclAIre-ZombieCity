@@ -645,13 +645,18 @@ function lgPropsLate(P, L, W, rootM) {
     const hp = A.hp || [0, 0.006], hm = st.hammer == null ? (A.hrest || 0) : clamp(st.hammer, 0, 1);
     lgPartLocal(L, W, LGB.hammer, lgPivotM(0, -(A.hrot || 0.6) * hm, 0, hp[0], 0, hp[1]), rootM);
     const cc = A.cc || [0, -0.001], cr = A.crane || [0.013, -0.019], co = clamp(st.cylOut || 0, 0, 1);
-    let Mc = lgPivotM(st.cyl || 0, 0, 0, 0, cc[0], cc[1]); if (co > 0) Mc = lgMul(lgM4(), lgPivotM(-(A.crot || 1.5) * co, 0, 0, 0, cr[0], cr[1]), Mc);
+    // (a break-action gun's barrels ride the cyl bone and tip down about the hinge instead)
+    let Mc = A.hinge ? lgPivotM(0, A.hinge[2] * co, 0, A.hinge[0], 0, A.hinge[1]) : lgPivotM(st.cyl || 0, 0, 0, 0, cc[0], cc[1]);
+    if (co > 0 && !A.hinge) Mc = lgMul(lgM4(), lgPivotM(-(A.crot || 1.5) * co, 0, 0, 0, cr[0], cr[1]), Mc);
     lgPartLocal(L, W, LGB.cyl, Mc, rootM);
-    // the magazine (on a revolver: the clips and their rounds, which turn and swing out with the cylinder)
-    const mi = LGB.mag, Mm = lgTR(0, 0, typeof st.mag === 'number' ? -0.09 * st.mag : 0, 0, 0, 0);
-    lgPartLocal(L, W, mi, A.cyl && (st.mag === 'in' || typeof st.mag === 'number') && (co > 0 || st.cyl) ? lgMul(lgM4(), Mc, Mm) : Mm, rootM);
+    // the magazine (on a revolver: the clips and their rounds, which turn and swing out with the cylinder; on a break
+    // gun: the hulls, lifted out of the chambers by the extractor and tipping with the barrels)
+    const mi = LGB.mag, mn = typeof st.mag === 'number' ? st.mag : 0, Mm = A.hinge ? lgTR(-0.012 * mn, 0, 0, 0, 0, 0) : lgTR(0, 0, -0.09 * mn, 0, 0, 0);
+    lgPartLocal(L, W, mi, (A.cyl || A.hinge) && (st.mag === 'in' || typeof st.mag === 'number') && (co > 0 || st.cyl) ? lgMul(lgM4(), Mc, Mm) : Mm, rootM);
     lgMagState(st.mag, W, mi, 'handL', lgSockFor('pistol', 'magHand'));
     if (st.magM) { W.set(st.magM, mi * 16); }
+    // (a speedloader's body rides the slide bone: with the rounds until they are in the cylinder, then gone)
+    if (A.loader) { if (st.mag === 'in' || typeof st.mag === 'number') W.set(LG_HIDE, si * 16); else W.set(W.subarray(mi * 16, mi * 16 + 16), si * 16); }
   }
   // knife
   { const st = P.knife, i = LGB.knife; let M = null;
@@ -674,7 +679,9 @@ function lgPropsLate(P, L, W, rootM) {
     const A = (typeof LG_GUN_DEF !== 'undefined' && LG.gunC && LG_GUN_DEF[LG.gunC] && LG_GUN_DEF[LG.gunC].act) || LG_ACT0;
     lgPartLocal(L, W, LGB.cbolt, lgTR(-(A.bolt || 0.1) * clamp(st.bolt || 0, 0, 1), 0, 0, 0, 0, 0), rootM);
     lgPartLocal(L, W, LGB.ccharge, lgTR(-(A.charge || 0.085) * clamp(st.charge || 0, 0, 1), 0, 0, 0, 0, 0), rootM);
-    lgPartLocal(L, W, LGB.cpump, lgTR(-(A.pump || 0.09) * clamp(st.pump || 0, 0, 1), 0, 0, 0, 0, 0), rootM); }
+    // (the pump slides back; a feed cover hinges up about its front edge instead)
+    const pu = clamp(st.pump || 0, 0, 1);
+    lgPartLocal(L, W, LGB.cpump, A.cover ? lgPivotM(0, A.cover[2] * pu, 0, A.cover[0], 0, A.cover[1]) : lgTR(-(A.pump || 0.09) * pu, 0, 0, 0, 0, 0), rootM); }
 }
 const LG_ACT0 = {};
 // a bone's local matrix set straight (the parts of a gun: no joint, no offset), then its world

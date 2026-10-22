@@ -378,8 +378,9 @@ function lgPistolFrame(B, M, o) {
   if (hi && !o.light && !o.nor) { lgMat(B, fm); for (let i = 0; i < 3; i++) lgBox(B, L - 0.06 + i * 0.016, 0, -0.0275, 0.004, sw / 2 - 0.002, 0.0015, 0.0005); }
   if (o.light) lgWeaponLight(B, M, LG_GUN_DEF.m17.light[0], LG_GUN_DEF.m17.light[1], LG_GUN_DEF.m17.light[2], 0.09, 0);   // 1.9.996: its light under the dust cover
   // the trigger guard (squared, the front of it hooked), the trigger with its safety blade, the slide stop and the takedown
-  lgMat(B, fm); const tg = o.round ? [[0.05, -0.026], [0.074, -0.028], [0.088, -0.036], [0.088, -0.048], [0.078, -0.055], [0.056, -0.054], [0.044, -0.046]]
-    : [[0.05, -0.026], [0.086, -0.028], [0.092, -0.034], [0.09, -0.05], [0.084, -0.055], [0.056, -0.054], [0.044, -0.046]];
+  lgMat(B, fm); const tg = o.bigGuard ? [[0.05, -0.026], [0.08, -0.03], [0.096, -0.04], [0.096, -0.056], [0.084, -0.064], [0.056, -0.062], [0.044, -0.05]]
+    : o.round ? [[0.05, -0.026], [0.074, -0.028], [0.088, -0.036], [0.088, -0.048], [0.078, -0.055], [0.056, -0.054], [0.044, -0.046]]
+    : [[0.05, -0.026], [0.086, -0.028], [0.092, -0.034], [0.09, -0.05], [0.084, -0.055], [0.056, -0.054], [0.044, -0.046]];   // (1.9.997: the Five-seveN's guard takes a gloved finger)
   lgTube(B, tg, 0.003, { segs: 6, flat: 2.6, up: [0, 1, 0] });
   lgMat(B, o.trigM || M.metal); lgTube(B, [[0.063, 0, -0.026], [0.068, 0, -0.035], [0.067, 0, -0.043], [0.062, 0, -0.048]], 0.0026, { segs: 5, flat: 1.6, up: [0, 1, 0] });
   if (hi) {
@@ -393,6 +394,7 @@ function lgPistolFrame(B, M, o) {
   const G = [[0.05, -0.026], at(0.004, -0.002), at(0.018, -fs), at(0.034, 0.0006), at(0.05, -fs * 0.6), at(0.068, 0.0004), at(gl - 0.004, 0), at(gl, 0.004), at(gl + 0.002, gd * 0.5), at(gl, gd - 0.003), at(gl - 0.004, gd),
     at(0.05, gd + 0.0012), at(0.012, gd - 0.002), [F0[0] + nb[0] * gd + 0.001, -0.021], [-bt * 0.6, -0.019], [-bt, -0.0155], [-bt - 0.0015, -0.012], [-bt + 0.003, -0.0095], [0.0, -0.011], [0.046, -0.012]];
   lgMat(B, gm); lgSide(B, G, gw, { bev: Math.min(0.0065, gw * 0.21), smooth: 0.55, round: true });
+  if (o.flare && hi) { const q0 = at(gl - 0.007, -0.0005), q1 = at(gl - 0.007, gd + 0.0005), q2 = at(gl + 0.0005, gd + 0.0025), q3 = at(gl + 0.0005, -0.0025); lgSide(B, [q0, q3, q2, q1], gw + 0.003, { bev: 0.0015, round: true }); }   // (1.9.997: a flared well at the bottom of the grip)
   if (o.panels && hi) { lgMat(B, o.panels); lgSide(B, [at(0.016, 0.006), at(0.076, 0.006), at(0.078, gd - 0.007), at(0.016, gd - 0.008), at(0.008, gd * 0.5)], gw + 0.0034, { bev: 0.0022, round: true }); if (top && o.screws) { lgMat(B, M.steel); for (const u of [0.024, 0.07]) { const q = at(u, gd * 0.52); lgBox(B, q[0], 0, q[1], 0.0026, gw / 2 + 0.0019, 0.0026, 0.0012); } } }
   else if (hi && o.tex !== false) { lgMat(B, o.texM || gm); const c = (p) => p; lgSide(B, [at(0.02, 0.006), at(0.08, 0.006), at(0.082, gd - 0.008), at(0.02, gd - 0.009)].map(c), gw + 0.0014, { bev: 0.0008 }); }
   // the magazine: its body up the grip (seen when it comes out), the base plate under the grip
@@ -484,6 +486,7 @@ function lgGunSock(key) {
     S.magHand = shift(LG_SOCK.cmagHand, [0.07, -0.058], D.mag);
   } else {
     S.gripR = LG_SOCK.gripR; S.gripL = LG_SOCK.gripL;
+    if (D.supP) { S.gripL = LG_SOCK.cgripL.slice(); S.gripL[12] = D.supP[0]; S.gripL[13] = 0.045; S.gripL[14] = D.supP[1]; }   // (1.9.997: the coach gun: the support hand cups the forend under the barrels)
     S.magHand = shift(LG_SOCK.magHand, [0.027, -0.03], D.mag);
   }
   LG_GUNS[key] = S; return S;

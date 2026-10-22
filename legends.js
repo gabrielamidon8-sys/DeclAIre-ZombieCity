@@ -304,7 +304,7 @@ function lgsArmsOn() { return typeof ARMS_ON !== 'undefined' && ARMS_ON && typeo
 function lgsArmsBuild(D) {
   if (!lgsArmsOn()) return;
   const P = el('div', 'lg-arms'); P.id = 'lgArms';
-  const head = el('div', 'lg-ar-head'); head.innerHTML = '<p class="lg-eye">Armory</p><h3 class="lg-ar-h">Loadout</h3><span class="lg-ar-count">10 / 250 rebuilt</span>';
+  const head = el('div', 'lg-ar-head'); head.innerHTML = '<p class="lg-eye">Armory</p><h3 class="lg-ar-h">Loadout</h3><span class="lg-ar-count">20 / 250 rebuilt</span>';
   const slots = el('div', 'lg-ar-slots'); slots.setAttribute('role', 'tablist'); slots.setAttribute('aria-label', 'Slot');
   [['primary', 'Primary'], ['secondary', 'Secondary']].forEach(([k, t]) => {
     const b = el('button', 'lg-ar-slot'); b.type = 'button'; b.dataset.slot = k; b.setAttribute('role', 'tab'); b.innerHTML = '<small>' + t + '</small><b></b>';
@@ -397,7 +397,7 @@ function lgsArmsPick(w) {
 function lgsArmsSpecial(w) {
   clearTimeout(LGS_AR.animT);
   const id = w.slot === 'primary' ? 'arm_special_c' : 'arm_special_p'; lgsPlayAnim(id);
-  lgsAfterClip(id, w.slot === 'primary' ? 'rifle_low' : 'aim_iso', -0.4, Math.min(w.arms.reload.empty, 3.2));
+  lgsAfterClip(id, w.slot === 'primary' ? 'rifle_low' : 'aim_iso', -0.4, Math.min(w.arms.reload.empty, 7.2));   // (1.9.997: the belt takes seven seconds)
 }
 /* the guns drawn from their own models on the processor: a picture per gun (side on), and the big one in view
    (three-quarters, lit by his class); painted a few at a time behind the screen's own frames */
@@ -532,7 +532,7 @@ coreDefine({ name: 'LEGEND', kind: 'render', ver: 5, does: 'The legends: real 3D
     if (typeof LGP !== 'undefined' && LGP.n) out.push('The performance layer has shaped ' + LGP.n + ' poses here (overlap, settle and micro-motion on every body in a film).');
     return out; },
   on: { run: () => { LG.spriteBudget = 0; }, lowMemory: () => { LG.sprites.clear(); } },
-  spec: { files: ['legend', 'legmodel', 'leggun', 'legfire', 'leghand', 'leganim', 'legloco', 'legperf', 'legrun', 'leganat', 'legobj', 'legmove', 'legqual', 'cur_legend'], parts: ['FIRE: the guns\' actions cycle and kick by the round (1.9.997)', 'LOCO: measured walk and run, planted feet, warped strides and hips (1.9.996)', 'LGP: overlap, micro-motion and gear on springs (1.9.996)', 'sculpted faces and cloth folds (1.9.996)', 'weapon light on the rail (1.9.996)', 'joint ranges and balance (v3)', 'thirteen grasps that settle (v4)', 'reach, lift, handover, throw (v4)', 'the quality of movement and Laban efforts (v5)', 'shape builder', 'procedural atlas (20 textures)', '47-bone rig', 'two-bone reach (legs first)', 'poses and blends', 'fifty animations', 'thirty-two seated idles', 'thirteen arms moves', 'the Operator, his kit and his face', 'the exotech mask', 'ten gun models with their own grips', 'layered run frames', 'head-led turning', 'weight and recoil springs', 'corner lean', 'self-corrected grips and strides', 'GPU renderer', 'processor painter'], procs: ['gpu', 'cpu'],
+  spec: { files: ['legend', 'legmodel', 'leggun', 'leggun2', 'legfire', 'leghand', 'leganim', 'legloco', 'legperf', 'legrun', 'leganat', 'legobj', 'legmove', 'legqual', 'cur_legend'], parts: ['FIRE: the guns\' actions cycle and kick by the round (1.9.997)', 'LOCO: measured walk and run, planted feet, warped strides and hips (1.9.996)', 'LGP: overlap, micro-motion and gear on springs (1.9.996)', 'sculpted faces and cloth folds (1.9.996)', 'weapon light on the rail (1.9.996)', 'joint ranges and balance (v3)', 'thirteen grasps that settle (v4)', 'reach, lift, handover, throw (v4)', 'the quality of movement and Laban efforts (v5)', 'shape builder', 'procedural atlas (20 textures)', '47-bone rig', 'two-bone reach (legs first)', 'poses and blends', 'fifty animations', 'thirty-two seated idles', 'thirteen arms moves', 'the Operator, his kit and his face', 'the exotech mask', 'ten gun models with their own grips', 'layered run frames', 'head-led turning', 'weight and recoil springs', 'corner lean', 'self-corrected grips and strides', 'GPU renderer', 'processor painter'], procs: ['gpu', 'cpu'],
     hard: 'keeps more run frames and paints them sharper', eco: 'keeps fewer run frames and paints them at a lower detail',
     apply: (k, proc) => { engFloor(LG, 'adapt', k); lgsProc(LG, proc); },
     stats: () => [['Renderer', LGR.ok ? 'GPU' : 'processor'], ['Models', LG.models.size], ['Run frames', LG.sprites.size], ['Textures', LG.atlas ? LG.atlas.T + ' px tiles' : 'not yet'], ['Animations', LG_ANIMS.filter(a => a.cat !== 'Actors' && a.cat !== 'Cinematic').length]] }

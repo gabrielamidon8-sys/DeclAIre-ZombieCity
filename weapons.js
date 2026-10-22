@@ -49,7 +49,7 @@ var ZW = (function () {
     { key: 'golden', name: 'Golden', tier: 4, color: '#ffcf3a', tags: ['luck'], dmg: 1.15, fx: { score: 0.5, luck: 1 }, desc: '+50% score, better card rarities, +15% damage.', react: { luck: 2, score: 2 }, reactText: 'Luck and score cards are doubled.' }
   ];
 
-  // ---------- 1.9.993: ARMS, the guns rebuilt ten at a time on real ones ----------
+  // ---------- 1.9.993: ARMS, the guns rebuilt ten at a time on real ones (1.9.997: twenty) ----------
   // The 250 frame-and-mod guns rest while they are rebuilt, ten at a time. The first ten: five primaries and five
   // secondaries, each modelled on a real gun (military designations, real calibres, capacities, rates and muzzle
   // velocities), with its own reload technique, a special reload, a recoil sized to its round, ready-up and draw times.
@@ -116,7 +116,68 @@ var ZW = (function () {
       v: 340, g: 6.1, cd: 0.0019, kick: 0.028, rec: 2.0, max: 0.24, cam: 0.4, len: 18, ready: 0.19, draw: 0.52, holster: 0.46,
       reload: { tac: 1.65, empty: 2.05, kind: 'pistol', special: 'Selector on the slide: twenty rounds at 750 a minute is gone in under two seconds; the slide stop holds it open and the empty is stripped out by the heel of the hand.' },
       real: { barrel: '140 mm (5.5 in)', weight: '1.22 kg', action: 'Straight blowback, select fire', rate: '~750 rounds/min', mv: '~340 m/s' },
-      eject: { a: 1.75, s: 2.8, up: 1.8, kind: 'case9' }, tags: ['rapid', 'speed'], desc: 'A pistol that fires like a submachine gun. Hard to hold on target: short bursts.' }
+      eject: { a: 1.75, s: 2.8, up: 1.8, kind: 'case9' }, tags: ['rapid', 'speed'], desc: 'A pistol that fires like a submachine gun. Hard to hold on target: short bursts.' },
+    // ---------- 1.9.997: ten more, five long guns and five sidearms, no two sharing an action, a round and a silhouette ----------
+    { key: 'mp5a3', slot: 'primary', name: 'MP5A3', full: 'Heckler & Koch MP5A3 Submachine Gun', cls: 'smg', base: 'smg', snd: ['smg', 1.0], mz: 'smg9', tier: 2,
+      cal: '9×19mm NATO', mag: 30, chamber: 1, auto: 1, rpm: 800, dmg: 9, pellets: 1, spread: 0.06, speed: 400, range: 380, pierce: 0, crit: 0.05, knock: 55, move: 1.03,
+      v: 400, g: 8.0, cd: 0.0018, kick: 0.011, rec: 2.3, max: 0.12, cam: 0.28, len: 20, ready: 0.21, draw: 0.52, holster: 0.44,
+      reload: { tac: 1.9, empty: 2.3, kind: 'mp5', special: 'The HK slap: the bolt locked back in its notch, the paddle drops the empty, the fresh one rocks straight in, and the heel of the support hand slaps the charging handle down.' },
+      real: { barrel: '225 mm (8.9 in)', weight: '2.54 kg', action: 'Roller-delayed blowback, closed bolt', rate: '800 rounds/min', mv: '~400 m/s' },
+      eject: { a: 1.7, s: 3.4, up: 1.9, kind: 'case9' }, tags: ['rapid', 'precision'], desc: 'The roller-delayed nine: closed bolt, flat and quiet, thirty rounds that go where the sights are.' },
+    { key: 'm249', slot: 'primary', name: 'M249', full: 'M249 Squad Automatic Weapon', cls: 'lmg', base: 'lmg', snd: ['rifle', 0.95], mz: 'saw', tier: 3,
+      cal: '5.56×45mm NATO (M27 link)', mag: 200, chamber: 0, auto: 1, rpm: 800, dmg: 11, pellets: 1, spread: 0.09, speed: 915, range: 560, pierce: 0, crit: 0.04, knock: 65, move: 0.86,
+      v: 915, g: 4.0, cd: 0.0011, kick: 0.012, rec: 2.0, max: 0.2, cam: 0.45, len: 34, ready: 0.42, draw: 0.95, holster: 0.8,
+      reload: { tac: 7.0, empty: 7.0, kind: 'belt', special: 'The belt: the feed cover flips up, the empty pouch comes off, the new one hangs on, the first round is laid against the stop and the cover slammed; then the handle, if the bolt is forward.' },
+      real: { barrel: '465 mm (18.3 in)', weight: '7.5 kg; 10 kg with 200 rounds', action: 'Gas, open bolt, rotating bolt', rate: '725–850 rounds/min', mv: '~915 m/s' },
+      eject: { a: 1.55, s: 4.4, up: 1.6, kind: 'case556', link: true }, tags: ['rapid', 'tank'], desc: 'Two hundred rounds on a belt. Heavy to carry, slow to feed, and it does not stop.' },
+    { key: 'mk14', slot: 'primary', name: 'Mk 14', full: 'Mk 14 Mod 0 Enhanced Battle Rifle', cls: 'dmr', base: 'sniper', snd: ['sniper', 1.0], mz: 'vortex', tier: 3,
+      cal: '7.62×51mm NATO', mag: 20, chamber: 1, auto: 0, rpm: 300, dmg: 24, pellets: 1, spread: 0.03, speed: 853, range: 700, pierce: 1, crit: 0.12, knock: 150, move: 0.92,
+      v: 853, g: 9.5, cd: 0.0009, kick: 0.05, rec: 1.8, max: 0.18, cam: 1.0, len: 31, ready: 0.33, draw: 0.76, holster: 0.6,
+      reload: { tac: 2.5, empty: 2.9, kind: 'ebr', special: 'Rock and shunk: the magazine hooks at the front and rocks back until it clicks; on empty the op-rod handle on the right is pulled and let go with a ring of steel.' },
+      real: { barrel: '18 in (457 mm)', weight: '5.1 kg; 6.4 kg loaded', action: 'Gas, rotating bolt (the M14 action in a chassis)', rate: 'semi-automatic (select-fire capable)', mv: '~853 m/s' },
+      eject: { a: 1.6, s: 4.8, up: 2.4, kind: 'case762' }, tags: ['precision', 'pierce'], desc: 'The M14 action in an aluminium chassis: a marksman\'s 7.62 that reaches the end of the street.' },
+    { key: 'm590a1', slot: 'primary', name: 'M590A1', full: 'Mossberg 590A1 Pump Shotgun', cls: 'pump', base: 'shotgun', snd: ['shotgun', 0.96], mz: 'shotgun', tier: 2,
+      cal: '12 gauge 00 buckshot', mag: 8, chamber: 1, auto: 0, rpm: 75, dmg: 8, pellets: 9, spread: 0.4, speed: 366, range: 300, pierce: 0, crit: 0.03, knock: 190, move: 0.95,
+      v: 366, g: 3.5, cd: 0.0065, kick: 0.1, rec: 1.5, max: 0.16, cam: 1.4, len: 29, ready: 0.3, draw: 0.72, holster: 0.56, w: 6, cycle: 0.5,
+      reload: { tac: 0.9, empty: 1.5, kind: 'pump', perShell: 0.9, special: 'Port load: shells thumbed one at a time into the gate under the receiver; on an empty chamber one is racked straight in. Every shot is followed by the pump: back with a shuck, forward with a chak.' },
+      real: { barrel: '20 in (508 mm), heavy wall', weight: '3.3 kg', action: 'Pump, twin action bars, tang safety', rate: 'as fast as the pump', mv: '~366 m/s per pellet' },
+      eject: { a: 1.6, s: 3.2, up: 2.2, kind: 'shell12', onPump: true }, tags: ['spread', 'damage'], desc: 'Eight in the tube and one in the pipe. Nothing to jam, nothing to lock back: the hand is the action.' },
+    { key: 'aug', slot: 'primary', name: 'AUG A3', full: 'Steyr AUG A3 Bullpup Rifle', cls: 'bullpup', base: 'rifle', snd: ['rifle', 1.06], mz: 'prong', tier: 2,
+      cal: '5.56×45mm NATO', mag: 30, chamber: 1, auto: 1, rpm: 700, dmg: 12, pellets: 1, spread: 0.05, speed: 940, range: 540, pierce: 0, crit: 0.06, knock: 70, move: 0.99,
+      v: 940, g: 4.0, cd: 0.0011, kick: 0.015, rec: 2.5, max: 0.13, cam: 0.45, len: 22, ready: 0.22, draw: 0.58, holster: 0.48,
+      reload: { tac: 2.5, empty: 2.9, kind: 'bullpup', special: 'The magazine behind the grip: the thumb lifts the paddle, the translucent magazine comes down past the hip, the fresh one goes straight up by feel, and the bolt release on the left of the stock sends it home.' },
+      real: { barrel: '16 in (417 mm)', weight: '3.7 kg', action: 'Gas, short-stroke piston, rotating bolt (bullpup)', rate: '680–750 rounds/min', mv: '~940 m/s' },
+      eject: { a: 1.5, s: 4.0, up: 2.0, kind: 'case556' }, tags: ['rapid', 'speed'], desc: 'A full-length barrel in a gun no longer than a carbine with its stock folded. Handy round corners.' },
+    { key: 'g17', slot: 'secondary', name: 'G17', full: 'Glock 17 Gen5', cls: 'pistol', base: 'pistol', snd: ['pistol', 1.04], mz: 'pistol', tier: 1,
+      cal: '9×19mm', mag: 17, chamber: 1, auto: 0, rpm: 320, dmg: 14, pellets: 1, spread: 0.04, speed: 375, range: 430, pierce: 0, crit: 0.06, knock: 90, move: 1.0,
+      v: 375, g: 8.0, cd: 0.0018, kick: 0.034, rec: 2.7, max: 0.15, cam: 0.33, len: 16, ready: 0.16, draw: 0.46, holster: 0.4,
+      reload: { tac: 1.4, empty: 1.75, kind: 'pistol', special: 'Slide stop with the thumb: the empty falls, the fresh one goes in with the index finger along its front, and the support thumb drops the slide.' },
+      real: { barrel: '114 mm (4.5 in)', weight: '630 g; 945 g loaded', action: 'Short recoil, striker-fired (Safe Action)', rate: 'semi-automatic', mv: '~375 m/s' },
+      eject: { a: 1.7, s: 3.0, up: 2.0, kind: 'case9' }, tags: ['precision', 'speed'], desc: 'The polymer nine that goes everywhere. Seventeen rounds, a trigger that does not care about rain.' },
+    { key: 'deagle', slot: 'secondary', name: 'Desert Eagle', full: 'Desert Eagle Mark XIX .50 AE', cls: 'magnum', base: 'revolver', snd: ['revolver', 0.8], mz: 'magnum', tier: 3,
+      cal: '.50 Action Express', mag: 7, chamber: 1, auto: 0, rpm: 150, dmg: 34, pellets: 1, spread: 0.035, speed: 470, range: 420, pierce: 1, crit: 0.14, knock: 210, move: 0.98,
+      v: 470, g: 19, cd: 0.002, kick: 0.085, rec: 1.6, max: 0.2, cam: 0.9, len: 20, ready: 0.24, draw: 0.6, holster: 0.52,
+      reload: { tac: 2.1, empty: 2.5, kind: 'pistol', special: 'Two kilos of steel: the magazine is short and fat, the slide heavy enough that the whole hand goes over the top to run it.' },
+      real: { barrel: '6 in (152 mm)', weight: '2.0 kg', action: 'Gas-operated, rotating bolt, single action', rate: 'semi-automatic', mv: '~470 m/s' },
+      eject: { a: 1.6, s: 3.6, up: 2.4, kind: 'case50' }, tags: ['damage', 'crit'], desc: 'A rifle round in a pistol frame. Seven shots, each one lights the street.' },
+    { key: 'm29', slot: 'secondary', name: 'Model 29', full: 'Smith & Wesson Model 29 .44 Magnum', cls: 'revolver', base: 'revolver', snd: ['revolver', 1.0], mz: 'magnum', tier: 3,
+      cal: '.44 Remington Magnum', mag: 6, chamber: 0, auto: 0, rpm: 150, dmg: 30, pellets: 1, spread: 0.03, speed: 360, range: 420, pierce: 0, crit: 0.18, knock: 190, move: 1.0,
+      v: 360, g: 16, cd: 0.002, kick: 0.08, rec: 1.6, max: 0.2, cam: 0.85, len: 20, ready: 0.21, draw: 0.56, holster: 0.5,
+      reload: { tac: 2.8, empty: 2.8, kind: 'speed', special: 'The speedloader: thumb latch, the cylinder out to the left, muzzle up and one stroke of the ejector, six rounds in together with a twist, and the cylinder closed with the left thumb.' },
+      real: { barrel: '6.5 in (165 mm)', weight: '1.37 kg', action: 'Double/single action, swing-out cylinder (N-frame)', rate: 'double action', mv: '~360 m/s' },
+      eject: null, tags: ['crit', 'damage'], desc: 'The .44 Magnum. Six rounds, a flash that lights his face, and the longest recovery of anything he carries.' },
+    { key: 'fiveseven', slot: 'secondary', name: 'Five-seveN', full: 'FN Five-seveN MK2', cls: 'pistol', base: 'pistol', snd: ['pistol', 1.22], mz: 'pistol57', tier: 2,
+      cal: '5.7×28mm', mag: 20, chamber: 1, auto: 0, rpm: 330, dmg: 12, pellets: 1, spread: 0.035, speed: 650, range: 480, pierce: 1, crit: 0.08, knock: 60, move: 1.0,
+      v: 650, g: 2.0, cd: 0.0012, kick: 0.022, rec: 3.0, max: 0.12, cam: 0.25, len: 16, ready: 0.16, draw: 0.46, holster: 0.4,
+      reload: { tac: 1.4, empty: 1.75, kind: 'pistol', special: 'Light and long: the twenty-round magazine weighs nothing and the slide runs on a polymer frame with a click instead of a clack.' },
+      real: { barrel: '122 mm (4.8 in)', weight: '610 g', action: 'Delayed blowback, striker-fired', rate: 'semi-automatic', mv: '~650 m/s' },
+      eject: { a: 1.75, s: 3.2, up: 2.1, kind: 'case57' }, tags: ['precision', 'pierce'], desc: 'A tiny bottleneck round at rifle speed: it punches through and barely moves the gun.' },
+    { key: 'coach', slot: 'secondary', name: 'Coach Gun', full: 'Sawed-off Coach Gun, 12 gauge', cls: 'break', base: 'shotgun', snd: ['shotgun', 1.1], mz: 'coach', tier: 2,
+      cal: '12 gauge 00 buckshot', mag: 2, chamber: 0, auto: 0, rpm: 240, dmg: 8, pellets: 9, spread: 0.55, speed: 340, range: 200, pierce: 0, crit: 0.03, knock: 200, move: 1.0,
+      v: 340, g: 3.5, cd: 0.0065, kick: 0.12, rec: 1.4, max: 0.16, cam: 1.5, len: 20, ready: 0.22, draw: 0.58, holster: 0.5, w: 6,
+      reload: { tac: 3.0, empty: 3.0, kind: 'break', special: 'Break it open: the top lever over, the barrels drop, the two hulls pulled out by hand (no ejectors), two fresh shells in and the gun snapped shut on the way back up.' },
+      real: { barrel: '12 in (305 mm), cut down', weight: '2.4 kg', action: 'Break-action side by side, two triggers', rate: 'two shots, then the break', mv: '~340 m/s per pellet' },
+      eject: null, tags: ['spread', 'damage'], desc: 'Two barrels cut to the length of a forearm. Two shots that fill the alley, then it has to be broken open.' }
   ];
 
   var RAR = [

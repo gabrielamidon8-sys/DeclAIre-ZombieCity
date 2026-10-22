@@ -43,6 +43,11 @@ const ARMS_MZ = {
   pistol45: { len: 16, w: 12, prong: 3, sparks: 4, smoke: 0.75, brass: '', light: [272, 1.02, 0.08] },
   pistolA: { len: 13, w: 9, prong: 4, sparks: 2, smoke: 0.4, brass: '', light: [238, 0.9, 0.05] }
 };
+// how far each gun is heard by the dead (1.9.997: the twenty)
+const ARMS_EAR = { mk17: 110, mk14: 110, m249: 105, m1014: 80, m590a1: 80, coach: 78, m1911: 70, m1917: 70, deagle: 74, m29: 74, pp19: 55, mp5a3: 58, aps: 60 };
+// the reload kinds that load shell by shell, and the ones that do the whole load whatever is left (a cylinder, a belt,
+// a break-open gun)
+const ARMS_TUBE = { tube: 1, pump: 1 }, ARMS_FULL = { moon: 1, speed: 1, break: 1, belt: 1 }, ARMS_FULL_NAME = { moon: 'Half-moon clips', speed: 'Speedloader', break: 'Break and load', belt: 'Belt' };
 (function armsTables() {
   for (const w of ARMS_LIST) {
     const A = w.arms, k = A.key;
@@ -51,7 +56,7 @@ const ARMS_MZ = {
     TR_GUN[k] = Object.assign({}, TR_GUN[A.base] || TR_GUN.pistol);
     GORE_GUN[k] = Object.assign({}, GORE_GUN[A.base] || GORE_GUN.pistol);
     if (A.key === 'mk17') GORE_GUN[k] = Object.assign({}, GORE_GUN.sniper || GORE_GUN.rifle);
-    SW_EAR[k] = A.key === 'mk17' ? 110 : A.key === 'm1014' ? 80 : A.slot === 'secondary' ? (A.key === 'm1911' || A.key === 'm1917' ? 70 : 60) : A.key === 'pp19' ? 55 : 90;
+    SW_EAR[k] = ARMS_EAR[k] || (A.slot === 'secondary' ? 60 : 90);
     GUN_LEN[k] = A.len; if (A.w) GUN_W[k] = A.w;
   }
   // the dodge roll stands in for the dashes: committed, untouchable for its first part, quiet (no trail)
@@ -102,8 +107,14 @@ function armsTick(p, dt, moving) {
     if (want && moving && !firing && armsCanSprint(p)) { if (a.st !== 'sprint' && (G.time || 0) - (a.sprintAt || -9) > 0.35) { armsSet(p, 'sprint'); ARMS.sprintS++; a.sprintAt = G.time || 0; armsSnd('sling', 1); } }
     else if (a.st === 'sprint' && (!want || !moving)) { armsSet(p, 'sprintOut', A.ready * 1.15); armsSnd('readyUp', 1); }
     if (a.st === 'sprint' && Math.floor((p.walk || 0) / 3.2) !== a.sprStep) { a.sprStep = Math.floor((p.walk || 0) / 3.2); armsSnd('sprintStep', 1, 0.6); }
+    // 1.9.997: the pump after a shot: the forend back (the hull out) and home, with its two sounds
+    if ((a.pumpT || 0) > 0) {
+      const c = A.cycle || 0.45, u = c - a.pumpT; a.pumpT -= dt;
+      if (a.pumpEv === 0 && u >= c * 0.12) { a.pumpEv = 1; armsSnd('pumpBack', 1); if (A.eject && A.eject.onPump && !ARMS.testing && typeof physEject === 'function') { const pu = physU(), pl = (GUN_LEN[A.key] || 20) * PK * 0.5; physEject(w, p.x + Math.cos(p.aim) * pl, p.y + Math.sin(p.aim) * pl, p.aim); } }
+      if (a.pumpEv === 1 && u >= c * 0.6) { a.pumpEv = 2; armsSnd('pumpHome', 1); }
+    }
     // the bolt has locked back: reload on its own a beat later
-    if (a.emptyT >= 0) { a.emptyT -= dt; if (a.emptyT < 0 && a.mag[a.slot] <= 0 && (a.st === 'ready' || a.st === 'relaxed')) armsReload(p); }
+    if (a.emptyT >= 0) { a.emptyT -= dt; if (a.emptyT < 0 && a.mag[a.slot] <= 0 && (a.st === 'ready' || a.st === 'relaxed') && !((a.pumpT || 0) > 0)) armsReload(p); }
     switch (a.st) {
       case 'raise': if (a.t >= a.dur) armsSet(p, 'ready'); break;
       case 'ready': if (a.eng > 4.2) { armsSet(p, 'lower', A.ready * 1.3); armsSnd('readyDown', 1); } break;
@@ -129,9 +140,9 @@ function armsFire(p, target, ang, auto) {
   if (a.st === 'relaxed') { armsSet(p, 'raise', A.ready); armsSnd('readyUp', 1); return false; }
   if (a.st === 'lower') { const k = a.dur ? clamp(a.t / a.dur, 0, 1) : 1; armsSet(p, 'raise', A.ready); a.t = A.ready * (1 - k); return false; }
   if (a.st === 'inspect') { armsSet(p, 'raise', A.ready * 0.6); return false; }
-  if (a.st === 'reload') { if (A.reload.kind === 'tube' && a.mag[a.slot] > 0 && (!auto || a.near > 0)) a.tubeStop = true; return false; }   // (the shotgun: stop loading and shoot)
+  if (a.st === 'reload') { if (ARMS_TUBE[A.reload.kind] && a.mag[a.slot] > 0 && (!auto || a.near > 0)) a.tubeStop = true; return false; }   // (the shotgun: stop loading and shoot)
   if (a.st !== 'ready') return false;
-  if (p.fireCd > 0 || p.jamT > 0 || p.frozenT > 0) return false;
+  if (p.fireCd > 0 || p.jamT > 0 || p.frozenT > 0 || (a.pumpT || 0) > 0) return false;
   if (a.mag[a.slot] <= 0) { if (G.time - a.dryT > 0.35) { a.dryT = G.time; ARMS.dry++; armsSnd('dry', 1); } armsReload(p); return false; }
   // the cyclic rate holds even when frames are slow: the time owed carries over (two or three rounds in a long frame)
   if (p.fireCd < -0.15) p.fireCd = 0;
@@ -142,11 +153,22 @@ function armsFire(p, target, ang, auto) {
     a.kick = 1; a.kickN++; a.camK = Math.min(1.6, a.camK + A.cam);
   } while (p.fireCd <= 0 && a.mag[a.slot] > 0 && shots < 3);
   if (a.mag[a.slot] <= 0) { a.emptyT = 0.14; armsSnd('empty', A.slot === 'primary' ? 0.9 : 1.1, 0, 0.5); }
+  // 1.9.997: a pump gun is worked after every shot (the forend back with a shuck, forward with a chak; the hull leaves on
+  // the back stroke); it cannot fire again until the forend is home
+  if (A.cycle) { a.pumpT = A.cycle; a.pumpEv = 0; }
   return true;
 }
 /* ---------- reloads ---------- */
 // each technique's beats: [fraction of the reload, what happens]; tac (a round still chambered) and empty
 const ARMS_BEATS = {
+  // 1.9.997: the ten more
+  mp5: { tac: [[0.1, 'paddle'], [0.16, 'magOut'], [0.55, 'magIn'], [0.62, 'magTap']], empty: [[0.08, 'paddle'], [0.14, 'magOut'], [0.5, 'magIn'], [0.56, 'magTap'], [0.8, 'hkSlap']] },
+  belt: { tac: [[0.06, 'coverOpen'], [0.18, 'pouchOff'], [0.45, 'pouchOn'], [0.62, 'beltLay'], [0.78, 'coverClose'], [0.9, 'chargeBack'], [0.95, 'chargeHome']], empty: [[0.06, 'coverOpen'], [0.18, 'pouchOff'], [0.45, 'pouchOn'], [0.62, 'beltLay'], [0.78, 'coverClose'], [0.9, 'chargeBack'], [0.95, 'chargeHome']] },
+  ebr: { tac: [[0.1, 'magRelease'], [0.16, 'magOut'], [0.5, 'magIn'], [0.58, 'magTap']], empty: [[0.08, 'magRelease'], [0.14, 'magOut'], [0.46, 'magIn'], [0.54, 'magTap'], [0.78, 'oprodBack'], [0.84, 'oprodHome']] },
+  pump: { tac: [[0.7, 'shellIn']], empty: [[0.45, 'portLoad'], [0.72, 'pumpBack'], [0.88, 'pumpHome']] },
+  bullpup: { tac: [[0.12, 'paddle'], [0.2, 'magOut'], [0.6, 'magIn'], [0.68, 'magTap']], empty: [[0.1, 'paddle'], [0.18, 'magOut'], [0.56, 'magIn'], [0.64, 'magTap'], [0.84, 'boltRelease']] },
+  speed: { tac: [[0.08, 'cylOpen'], [0.22, 'eject'], [0.55, 'loaderIn'], [0.66, 'loaderOff'], [0.84, 'cylClose']], empty: [[0.08, 'cylOpen'], [0.22, 'eject'], [0.55, 'loaderIn'], [0.66, 'loaderOff'], [0.84, 'cylClose']] },
+  break: { tac: [[0.08, 'breakOpen'], [0.3, 'hullPull'], [0.42, 'hullPull'], [0.58, 'shellIn'], [0.7, 'shellIn'], [0.86, 'breakClose']], empty: [[0.08, 'breakOpen'], [0.3, 'hullPull'], [0.42, 'hullPull'], [0.58, 'shellIn'], [0.7, 'shellIn'], [0.86, 'breakClose']] },
   ar: { tac: [[0.08, 'magRelease'], [0.12, 'magOut'], [0.55, 'magIn'], [0.62, 'magTap']], empty: [[0.06, 'magRelease'], [0.1, 'magOut'], [0.5, 'magIn'], [0.56, 'magTap'], [0.78, 'boltCatch']] },
   ak: { tac: [[0.1, 'magOut'], [0.5, 'magIn']], empty: [[0.08, 'magOut'], [0.44, 'magIn'], [0.7, 'chargeBack'], [0.79, 'chargeHome']] },
   scar: { tac: [[0.08, 'magRelease'], [0.12, 'magOut'], [0.55, 'magIn'], [0.6, 'magTap']], empty: [[0.07, 'magRelease'], [0.1, 'magOut'], [0.48, 'magIn'], [0.53, 'magTap'], [0.74, 'chargeBack'], [0.8, 'chargeHome']] },
@@ -161,40 +183,40 @@ function armsReload(p) {
   const w = p.weapon, A = w.arms, cap = armsCap(w), n = a.mag[a.slot];
   if (a.st === 'reload' || a.st === 'swapOut' || a.st === 'swapIn' || a.st === 'dodge' || a.st === 'knife') return false;
   if (a.st === 'sprint') { a.latch = false; G.touchSprint = false; }
-  if (n >= cap || (A.reload.kind === 'tube' && n >= A.mag + 1)) {
+  if (n >= cap || (ARMS_TUBE[A.reload.kind] && n >= A.mag + 1)) {
     // full: a press check instead (a look at the chamber, the magazine tapped)
     if (a.st === 'relaxed' || a.st === 'ready') { armsSet(p, 'inspect', 1.3); ARMS.checks++; armsSnd(A.slot === 'primary' ? 'chargeBack' : 'slideRack', 1.15, 0, 0.35); }
     return false;
   }
   const empty = n <= 0, kind = A.reload.kind;
-  a.rk = kind === 'moon' ? 'moon' : empty ? 'empty' : 'tac'; a.rEv = 0; a.tubeStop = false;
-  if (kind === 'tube') { a.rk = empty ? 'port' : 'shell'; a.tube = 0; }
-  a.keep = !empty && kind !== 'moon' && kind !== 'tube' && a.near === 0;   // nothing close: the half-empty magazine is kept
-  armsSet(p, 'reload', kind === 'tube' ? (empty ? A.reload.empty : A.reload.perShell) : (empty ? A.reload.empty : A.reload.tac));
-  a.rSeq++; ARMS.reloads++; if (a.keep) ARMS.tac++; if (empty || kind === 'moon' || kind === 'tube' || kind === 'ak' || kind === 'helix') ARMS.specials++;
+  a.rk = ARMS_FULL[kind] ? 'moon' : empty ? 'empty' : 'tac'; a.rEv = 0; a.tubeStop = false;
+  if (ARMS_TUBE[kind]) { a.rk = empty ? 'port' : 'shell'; a.tube = 0; }
+  a.keep = !empty && !ARMS_FULL[kind] && !ARMS_TUBE[kind] && a.near === 0;   // nothing close: the half-empty magazine is kept
+  armsSet(p, 'reload', ARMS_TUBE[kind] ? (empty ? A.reload.empty : A.reload.perShell) : (empty ? A.reload.empty : A.reload.tac));
+  a.rSeq++; ARMS.reloads++; if (a.keep) ARMS.tac++; if (empty || ARMS_FULL[kind] || ARMS_TUBE[kind] || kind === 'ak' || kind === 'helix' || kind === 'ebr' || kind === 'mp5' || kind === 'bullpup') ARMS.specials++;
   if (!ARMS.testing) armsUse(A.key, 'reload');
   return true;
 }
 function armsReloadTick(p, dt) {
   const a = p.arm, w = p.weapon, A = w.arms, kind = A.reload.kind, beats = ARMS_BEATS[kind] || ARMS_BEATS.pistol;
-  const seq = kind === 'tube' ? (a.rk === 'port' ? beats.empty : beats.tac) : (a.rk === 'empty' ? beats.empty : beats.tac), f = a.dur ? a.t / a.dur : 1;
+  const seq = ARMS_TUBE[kind] ? (a.rk === 'port' ? beats.empty : beats.tac) : (a.rk === 'empty' ? beats.empty : beats.tac), f = a.dur ? a.t / a.dur : 1;
   while (a.rEv < seq.length && f >= seq[a.rEv][0]) { armsBeat(p, seq[a.rEv][1]); a.rEv++; }
   if (a.t < a.dur) return;
   // done (or, for the tube, one more shell)
-  if (kind === 'tube') {
+  if (ARMS_TUBE[kind]) {
     if (a.rk === 'port') a.mag[a.slot] = 1; else a.mag[a.slot] = Math.min(A.mag + 1, a.mag[a.slot] + 1);
     if (a.mag[a.slot] < A.mag + 1 && !a.tubeStop && !(a.mag[a.slot] > 0 && a.eng < 0.4 && typeof wantFire === 'function' && wantFire(p))) { a.rk = 'shell'; a.rEv = 0; armsSet(p, 'reload', A.reload.perShell); return; }
     armsSet(p, 'ready'); a.eng = Math.min(a.eng, 1); return;
   }
   const cap = armsCap(w);
-  a.mag[a.slot] = a.rk === 'empty' || kind === 'moon' ? A.mag : cap;   // empty: the bolt chambers one from the fresh magazine
+  a.mag[a.slot] = a.rk === 'empty' || ARMS_FULL[kind] ? A.mag : cap;   // empty: the bolt chambers one from the fresh magazine
   armsSet(p, a.eng < 2 ? 'ready' : 'relaxed');
 }
 // a beat of the reload: its sound, and the magazine leaving the gun
 function armsBeat(p, b) {
   const a = p.arm, A = p.weapon.arms, r = A.slot === 'primary' ? (A.key === 'mk17' ? 0.86 : 0.95) : (A.key === 'm1911' || A.key === 'm1917' ? 0.98 : 1.06);
   armsSnd(b, r);
-  if (((b === 'magOut' && !a.keep) || b === 'eject') && !ARMS.testing) armsDropMag(p);
+  if (((b === 'magOut' && !a.keep) || b === 'eject' || b === 'hullPull' || b === 'pouchOff') && !ARMS.testing) armsDropMag(p);
 }
 function armsDropMag(p) {
   const A = p.weapon.arms, u = physU(), ca = Math.cos(p.aim), sa = Math.sin(p.aim);
@@ -215,7 +237,7 @@ function armsSwap(p) {
   const a = p.arm; if (!a || G.mode !== 'play') return false;
   if (a.st === 'swapOut' || a.st === 'swapIn' || a.st === 'dodge' || a.st === 'knife') return false;
   if (a.st === 'sprint') { a.latch = false; }
-  if (a.st === 'reload' && p.weapon.arms.reload.kind !== 'tube') a.rEv = 0;   // (the magazine in progress is lost; the tube keeps its shells)
+  if (a.st === 'reload' && !ARMS_TUBE[p.weapon.arms.reload.kind]) a.rEv = 0;   // (the magazine in progress is lost; the tube keeps its shells)
   armsSet(p, 'swapOut', p.weapon.arms.holster); a.swSeq++; ARMS.swaps++;
   armsSnd(p.weapon.slot === 'primary' ? 'sling' : 'holster', 1);
   return true;
@@ -225,7 +247,7 @@ function armsDodge(p) {
   if (G.mode !== 'play' || p.dashCdT > 0 || p.frozenT > 0 || G.grab || a.st === 'dodge') return false;
   let dx = p.ix, dy = p.iy; if (Math.abs(dx) + Math.abs(dy) < 0.05) { dx = -Math.cos(p.aim); dy = -Math.sin(p.aim); }   // standing still: a roll back, away from what he faces
   const l = Math.hypot(dx, dy) || 1; p.dashDx = dx / l; p.dashDy = dy / l;
-  if (a.st === 'reload') { if (p.weapon.arms.reload.kind !== 'tube') a.rEv = 0; }
+  if (a.st === 'reload') { if (!ARMS_TUBE[p.weapon.arms.reload.kind]) a.rEv = 0; }
   if (a.st === 'knife' && typeof bladeEnd === 'function') bladeEnd(p);   // (a roll out of the chain)
   a.dodgeEnd = a.st === 'ready' || a.st === 'raise' ? 'raise' : '';
   p.dashK = 'dodge'; armsSet(p, 'dodge'); dashStart(p); ARMS.dodges++;
@@ -262,8 +284,8 @@ function armsHud() {
   const app = $('app'); if (!app.classList.contains('arms')) app.classList.add('arms');
   const m = $('wMag'), c = $('wCap'), r = $('wRl'), o = $('wOther'), s = $('wRar'), rb = $('reloadBtn'), low = n <= Math.max(1, Math.round(A.mag * 0.25));
   if (m) { m.textContent = n; m.classList.toggle('low', low && n > 0); m.classList.toggle('out', n <= 0); }
-  if (c) c.textContent = '/ ' + (A.reload.kind === 'tube' ? A.mag + '+1' : A.mag + (A.chamber ? '+1' : ''));
-  if (s) s.textContent = a.st === 'reload' ? (A.reload.kind === 'tube' ? (a.rk === 'port' ? 'Combat load' : 'Loading shells') : a.rk === 'moon' ? 'Half-moon clips' : a.keep ? 'Tactical reload' : a.rk === 'empty' ? 'Reload · bolt home' : 'Reload')
+  if (c) c.textContent = '/ ' + (ARMS_TUBE[A.reload.kind] ? A.mag + '+1' : A.mag + (A.chamber ? '+1' : ''));
+  if (s) s.textContent = a.st === 'reload' ? (ARMS_TUBE[A.reload.kind] ? (a.rk === 'port' ? 'Combat load' : 'Loading shells') : a.rk === 'moon' ? ARMS_FULL_NAME[A.reload.kind] || 'Reload' : a.keep ? 'Tactical reload' : a.rk === 'empty' ? 'Reload · bolt home' : 'Reload')
     : a.st === 'swapIn' || a.st === 'swapOut' ? 'Drawing' : a.st === 'sprint' ? 'Sprinting · gun down' : (w.slot === 'primary' ? 'Primary' : 'Secondary') + ' · ' + A.cal;
   if (r) { r.style.setProperty('--rl', prog.toFixed(3)); r.classList.toggle('on', busy); }
   if (o) o.textContent = other.name + ' · ' + a.mag[1 - a.slot];
@@ -366,14 +388,14 @@ function renderArmsSide() {
 function armsStats(w) {
   const A = w.arms, E0 = 0.5 * A.g / 1000 * A.v * A.v * A.pellets;
   return [['Energy', Math.min(1, E0 / 3200), Math.round(E0) + ' J'], ['Rate', Math.min(1, A.rpm / 900), A.auto ? A.rpm + ' rpm' : 'semi'], ['Capacity', Math.min(1, A.mag / 64), A.mag + (A.chamber ? '+1' : '')],
-    ['Reload', 1 - Math.min(1, (A.reload.kind === 'tube' ? A.reload.perShell * A.mag : A.reload.tac) / 3.2), (A.reload.kind === 'tube' ? A.reload.perShell.toFixed(2) + ' s a shell' : A.reload.tac.toFixed(1) + ' / ' + A.reload.empty.toFixed(1) + ' s')],
+    ['Reload', 1 - Math.min(1, (ARMS_TUBE[A.reload.kind] ? A.reload.perShell * A.mag : A.reload.tac) / 3.2), (ARMS_TUBE[A.reload.kind] ? A.reload.perShell.toFixed(2) + ' s a shell' : A.reload.tac.toFixed(1) + ' / ' + A.reload.empty.toFixed(1) + ' s')],
     ['Handling', 1 - Math.min(1, A.ready / 0.35), A.ready.toFixed(2) + ' s up'], ['Muzzle velocity', Math.min(1, A.v / 950), A.real.mv]];
 }
 function openArmsDetail(w) {
   armsCur = w; arCur = null; const A = w.arms, det = $('arDetail'), R = WRAR[w.rarity];
   det.style.setProperty('--rc', R.color);
   const art = $('awArt'); armsPaint(art, w, 280, 110, false);
-  $('awTag').textContent = A.cal + ' · ' + (A.reload.kind === 'tube' ? A.mag + '+1 shells' : A.mag + (A.chamber ? '+1' : '') + ' rounds') + ' · ' + (w.slot === 'primary' ? 'Primary' : 'Secondary');
+  $('awTag').textContent = A.cal + ' · ' + (ARMS_TUBE[A.reload.kind] ? A.mag + '+1 shells' : A.mag + (A.chamber ? '+1' : '') + (A.reload.kind === 'belt' ? ' on the belt' : A.reload.kind === 'break' ? ' shells' : ' rounds')) + ' · ' + (w.slot === 'primary' ? 'Primary' : 'Secondary');
   $('awName').textContent = A.full;
   $('awMod').textContent = A.desc;
   $('awReact').textContent = 'Special reload: ' + A.reload.special;

@@ -94,7 +94,9 @@ function lgvRifle(P, v, ctx, free, kL) {
   return vv;
 }
 function lgvPistol(P, v, ctx, free, kL) {
-  const g = ctx.fk || ctx.gun || '', vv = lgvFix(g, v);
+  const g = ctx.fk || ctx.gun || ''; let vv = lgvFix(g, v);
+  // (1.9.997: a two-handed sidearm, the coach gun, is held closer: the support hand must reach its forend)
+  const D = ctx.gun && LG_GUN_DEF[ctx.gun]; if (D && D.pull) { vv = vv.slice(); vv[0] -= D.pull; vv[2] -= D.pull * 0.25; }
   P.pistol.at = 'aim'; P.pistol.sp = 'chest'; P.pistol.M = lgvGunM(vv);
   P.ik.handR = { on: 'pistol', pole: LG_POLE.Rt }; P.grip.R = ctx.trigger ? 'trigger' : 'pistol';
   if (free && kL > 0) { const on = lgvOnGun(vv, lgSockFor('pistol', 'gripL')); lgvHand(P, 'L', lgvMix(on, free, kL), LG_POLE.Lt); P.grip.L = kL > 0.6 ? (ctx.gripL || 'cup') : 'support'; }
@@ -161,6 +163,15 @@ const LGV_UP = {
   // 1.9.997: the shot: the gun's own action cycles and its round drives it back and up by its impulse (legfire.js); the
   // frames cover the first 120 ms after the trigger breaks
   shot(P, k, ctx) { lgvTorso(P, 1, ctx.t, ctx.fam); const v = (lgvC(ctx) ? LGV_POST.rReady : LGV_POST.pReady).slice(); ctx.trigger = true; lgfShots(P, v, ctx.gun, [0], k * LGV_SHOT_T, { fam: ctx.fam, hold: ctx.hold }); lgvHold(P, v, ctx); },
+  // 1.9.997: the pump after a shot: the support hand runs the forend back and home while the gun stays on the shoulder
+  pump(P, k, ctx) {
+    lgvTorso(P, 1, ctx.t, ctx.fam); const v = LGV_POST.rReady.slice(), A = (LG_GUN_DEF[ctx.gun] || {}).act || {}, st = A.pump || 0.09;
+    const u = k < 0.08 ? 0 : k < 0.4 ? lgvE((k - 0.08) / 0.32) : k < 0.52 ? 1 : k < 0.88 ? 1 - lgvE((k - 0.52) / 0.36) : 0;
+    v[0] -= 0.01 * u; v[4] -= 0.03 * u; ctx.trigger = true;
+    const fore = lgMul(lgM4(), lgvOnGun(v, lgTR(-st * u, 0, 0, 0, 0, 0)), lgSockFor('carbine', 'gripL'));
+    lgvRifle(P, v, ctx, fore, 1); P.grip.L = 'cup'; P.carbine.pump = u;
+    lgJadd(P, 'chest', 0, -0.02 * u, -0.03 * u);
+  },
   dodge(P, k, ctx) { lgvRoll(P, k, ctx); },
   // 1.9.994: the knife (BLADE, knife.js): the blade in the left hand in a reverse grip, the sidearm in the right; each
   // move its own path for the blade (and for the gun on the shots and the whip), the hips and the chest behind it
@@ -294,6 +305,108 @@ const LGV_RL = {
     ctx.look = lgPulse(k, 0.05, 0.7);
   },
   p1911(P, k, ctx) { LGV_RL.pistol(P, k, ctx); if (ctx.rk === 'empty') P.pistol.slide = k < 0.76 ? 1 : 0; },
+  /* ---- 1.9.997: the ten more guns' techniques ---- */
+  // the MP5: on empty the handle is pulled back and up into its notch first (there is no hold-open), then the paddle,
+  // the magazine, and the HK slap sends the bolt home
+  mp5(P, k, ctx) {
+    const empty = ctx.rk === 'empty', keep = ctx.keep, W = LGV_POST.rWork, R = LGV_POST.rLow;
+    const v = k < 0.1 ? lgvPost(R, W, k / 0.1) : k > 0.88 ? lgvPost(W, R, (k - 0.88) / 0.12) : W;
+    const seat = lgvMagAt(v, 0, 'c'), out = lgvMagAt(v, 1.1, 'c'), PL = LGV_KIT.placard(), DU = LGV_KIT.dump();
+    const hd = lgvOnGun(v, lgvAt([0.2, 0.03, 0.05], -0.7, 0.2, -0.3)), hdB = lgMul(lgM4(), hd, lgTR(-0.07, 0, 0, 0, 0, 0)), pad = lgvOnGun(v, lgvAt([0.04, 0.02, -0.04], 0, 0.3, -1.2));
+    let keys, mag, ch = 0;
+    if (keep) { keys = [[0.06, null], [0.12, seat], [0.2, out], [0.3, DU], [0.36, DU], [0.42, PL], [0.46, PL], [0.52, out], [0.55, seat], [0.62, seat], [0.72, null]]; mag = k < 0.12 ? 'in' : k < 0.33 ? 'hand' : k < 0.42 ? 'out' : k < 0.55 ? 'hand' : 'in'; }
+    else {
+      keys = [[0.03, null], [0.09, hd], [0.15, hdB], [0.2, pad], [0.26, PL], [0.4, PL], [0.5, out], [0.54, seat], [0.6, seat]];
+      if (empty) keys.push([0.72, hd], [0.78, hdB], [0.82, hd], [0.9, null]); else keys.push([0.7, null]);
+      mag = k < 0.2 ? 'in' : k < 0.28 ? (ctx.run ? 'out' : { drop: (k - 0.2) * 3 }) : k < 0.4 ? 'out' : k < 0.54 ? 'hand' : 'in';
+      if (empty) ch = k < 0.09 ? 0 : k < 0.15 ? lgvE((k - 0.09) / 0.06) : k < 0.8 ? 1 : k < 0.84 ? 1 - lgvE((k - 0.8) / 0.04) : 0;
+    }
+    lgvRelMag(P, v, keys, k, ctx, mag, 'c', k < 0.54 && k > 0.48 ? (0.54 - k) / 0.06 : 0);
+    P.carbine.charge = ch; ctx.look = lgPulse(k, 0.05, 0.75);
+  },
+  // the belt: the cover up, the empty pouch off, the new one on, the belt laid in the tray, the cover slammed, then the
+  // handle; the gun is tilted toward him so he can see the tray
+  belt(P, k, ctx) {
+    const W = [0.3, -0.03, 0.12, 0.25, 0.1, -0.85], R = LGV_POST.rLow, v = k < 0.06 ? lgvPost(R, W, k / 0.06) : k > 0.94 ? lgvPost(W, R, (k - 0.94) / 0.06) : W;
+    const cover = lgvOnGun(v, lgvAt([-0.04, 0.0, 0.1], 0, 0, -1.2)), coverUp = lgvOnGun(v, lgvAt([0.08, 0.0, 0.3], 0, -1.2, -1.2));
+    const pouch = lgvOnGun(v, lgvAt([0.1, 0.03, -0.14], 0, 0, -1.3)), DU = LGV_KIT.dump(), tray = lgvOnGun(v, lgvAt([0.05, 0.02, 0.07], 0, 0.3, -1.4)), tray2 = lgvOnGun(v, lgvAt([0.1, -0.01, 0.065], 0, 0.3, -1.4));
+    const ch = lgvOnGun(v, lgvAt([0.07, -0.05, 0.015], -Math.PI / 2, 0.3, 0)), chB = lgMul(lgM4(), ch, lgTR(-0.09, 0, 0, 0, 0, 0));
+    const keys = [[0.03, null], [0.08, cover], [0.12, cover], [0.17, coverUp], [0.22, pouch], [0.28, pouch], [0.36, DU], [0.44, DU], [0.52, pouch], [0.56, pouch], [0.6, tray], [0.66, tray2], [0.7, tray], [0.74, coverUp], [0.8, cover], [0.84, ch], [0.9, chB], [0.94, ch], [0.98, null]];
+    const mag = k < 0.26 ? 'in' : k < 0.34 ? (ctx.run ? 'out' : { drop: (k - 0.26) * 3 }) : k < 0.44 ? 'out' : k < 0.56 ? 'hand' : 'in';
+    lgvRelMag(P, v, keys, k, ctx, mag, 'c', 0);
+    P.carbine.pump = k < 0.12 ? 0 : k < 0.18 ? lgvE((k - 0.12) / 0.06) : k < 0.76 ? 1 : k < 0.81 ? 1 - lgvE((k - 0.76) / 0.05) : 0;
+    P.carbine.charge = k < 0.84 ? 0 : k < 0.9 ? lgvE((k - 0.84) / 0.06) : k < 0.94 ? 1 - lgvE((k - 0.9) / 0.04) : 0;
+    ctx.look = lgPulse(k, 0.06, 0.82);
+  },
+  // the Mk 14: a rock-in magazine like the AK's, released by the paddle behind the well; on empty the op-rod handle on the
+  // right is pulled and let go
+  ebr(P, k, ctx) {
+    const empty = ctx.rk === 'empty', W = LGV_POST.rWork, R = LGV_POST.rLow, v = k < 0.1 ? lgvPost(R, W, k / 0.1) : k > 0.86 ? lgvPost(W, R, (k - 0.86) / 0.14) : W;
+    const seat = lgvMagAt(v, 0, 'c'), PL = LGV_KIT.placard(), hook = lgMul(lgM4(), seat, lgTR(0.02, 0, -0.03, 0, 0.5, 0)), op = lgvOnGun(v, lgvAt([0.1, -0.045, 0.0], -Math.PI / 2, 0.4, 0));
+    const keys = [[0.02, null], [0.08, PL], [0.24, PL], [0.36, hook], [0.44, hook], [0.52, seat], [0.6, empty ? op : null]];
+    if (empty) keys.push([0.7, lgMul(lgM4(), op, lgTR(-0.03, 0, 0, 0, 0, 0))], [0.79, op], [0.88, null]); else keys.push([0.68, null]);
+    P.carbine.rock = k < 0.36 ? 0.5 : k < 0.52 ? 0.5 * (1 - lgvE((k - 0.36) / 0.16)) : 0; P.carbine.piv = [(LG_GUN_DEF[ctx.gun] || {}).mag ? LG_GUN_DEF[ctx.gun].mag[0] + 0.02 : 0.08, -0.058];
+    const mag = k < 0.08 ? 'in' : k < 0.24 ? 'out' : k < 0.36 ? 'hand' : 'in';
+    if (k < 0.36 && k >= 0.24) P.carbine.rock = 0;
+    lgvRelMag(P, v, keys, k, ctx, mag, 'c', 0);
+    if (k >= 0.24 && k < 0.36) P.carbine.mag = 'hand';
+    if (empty) P.carbine.bolt = k < 0.7 ? 1 : k < 0.79 ? 1 - lgvE((k - 0.7) / 0.09) : 0;   // (locked back on empty; the hand pulls it a touch and lets it run)
+    ctx.look = lgPulse(k, 0.05, 0.6);
+  },
+  // the pump gun: shells thumbed into the gate like the M1014's; on an empty chamber the forend is back, a shell goes in
+  // the port, and the forend runs home
+  pump(P, k, ctx) {
+    const port = ctx.rk === 'empty' || ctx.rk === 'port', R = LGV_POST.rLow, W = port ? LGV_POST.rPort : [0.33, -0.05, 0.16, 0.18, 0.15, 0.62];
+    const v = k < 0.15 ? lgvPost(R, W, k / 0.15) : k > 0.88 ? lgvPost(W, R, (k - 0.88) / 0.12) : W;
+    const SH = LGV_KIT.shells(), at = port ? lgvOnGun(v, lgvAt([0.02, -0.03, 0.03], -Math.PI / 2, 0, 0)) : lgvOnGun(v, lgvAt([0.04, 0, -0.06], 0, 0, 0)), push = port ? at : lgMul(lgM4(), at, lgTR(0.03, 0, 0.015, 0, 0, 0));
+    const A = (LG_GUN_DEF[ctx.gun] || {}).act || {}, fore = lgvOnGun(v, lgSockFor('carbine', 'gripL')), foreB = lgMul(lgM4(), lgvOnGun(v, lgTR(-(A.pump || 0.09), 0, 0, 0, 0, 0)), lgSockFor('carbine', 'gripL'));
+    const keys = port ? [[0.05, null], [0.18, SH], [0.3, SH], [0.42, at], [0.5, at], [0.62, foreB], [0.7, foreB], [0.82, fore], [0.9, null]] : [[0.02, null], [0.15, SH], [0.3, SH], [0.55, at], [0.72, push], [0.86, null]];
+    lgvRifle(P, v, ctx, lgvTrackN(k, keys, v), lgvKL(k, keys));
+    const hold = port ? k > 0.3 && k < 0.47 : k > 0.3 && k < 0.7;
+    P.carbine.mag = hold ? 'hand' : 'out'; P.grip.L = hold ? 'claw' : P.grip.L;
+    if (port) P.carbine.pump = k < 0.7 ? 1 : k < 0.82 ? 1 - lgvE((k - 0.7) / 0.12) : 0;
+    ctx.look = lgPulse(k, 0.1, 0.8);
+  },
+  // the bullpup: the magazine is behind the grip, so the gun comes off the shoulder and rolls out; the thumb lifts the
+  // paddle, the magazine comes down past the hip, the fresh one goes up by feel, and the release on the left of the stock
+  bullpup(P, k, ctx) {
+    const empty = ctx.rk === 'empty', keep = ctx.keep, W = [0.3, -0.03, 0.1, 0.42, 0.25, -0.55], R = LGV_POST.rLow;
+    const v = k < 0.1 ? lgvPost(R, W, k / 0.1) : k > 0.88 ? lgvPost(W, R, (k - 0.88) / 0.12) : W;
+    const seat = lgvMagAt(v, 0, 'c'), out = lgvMagAt(v, 1.1, 'c'), PL = LGV_KIT.placard(), DU = LGV_KIT.dump(), pad = lgvOnGun(v, lgvAt([-0.09, 0.0, -0.075], 0, 0.2, -1.4)), rel = lgvOnGun(v, lgvAt([-0.19, 0.03, -0.03], -Math.PI / 2, 0, 0));
+    let keys, mag;
+    if (keep) { keys = [[0.06, null], [0.12, pad], [0.18, seat], [0.26, out], [0.34, DU], [0.4, DU], [0.46, PL], [0.5, PL], [0.58, out], [0.62, seat], [0.68, seat], [0.78, null]]; mag = k < 0.18 ? 'in' : k < 0.38 ? 'hand' : k < 0.46 ? 'out' : k < 0.62 ? 'hand' : 'in'; }
+    else {
+      keys = [[0.04, null], [0.1, pad], [0.16, seat], [0.22, out], [0.3, PL], [0.42, PL], [0.52, out], [0.56, seat], [0.64, seat], [0.7, empty ? rel : null]];
+      if (empty) keys.push([0.84, rel], [0.92, null]); else keys.push([0.76, null]);
+      mag = k < 0.16 ? 'in' : k < 0.3 ? 'hand' : k < 0.42 ? 'out' : k < 0.56 ? 'hand' : 'in';
+    }
+    lgvRelMag(P, v, keys, k, ctx, mag, 'c', k < 0.56 && k > 0.5 ? (0.56 - k) / 0.06 : 0);
+    if (empty && !keep) P.carbine.bolt = k < 0.84 ? 1 : k < 0.88 ? 1 - lgvE((k - 0.84) / 0.04) : 0;
+    ctx.look = lgPulse(k, 0.08, 0.7);
+  },
+  // the Model 29: the thumb latch, the cylinder out to the left, muzzle up and one stroke of the ejector, the speedloader
+  // on from behind with a twist, the cylinder closed with the left thumb
+  speed(P, k, ctx) {
+    const U = LGV_POST.pUp, D = LGV_POST.pDown, L = LGV_POST.pLow;
+    const v = k < 0.12 ? lgvPost(L, U, k / 0.12) : k < 0.3 ? U : k < 0.38 ? lgvPost(U, D, (k - 0.3) / 0.08) : k < 0.86 ? D : lgvPost(D, L, (k - 0.86) / 0.14);
+    const rod = lgvOnGun(v, lgvAt([0.12, 0.0, -0.03], 0, -Math.PI / 2, 0)), cyl = lgMul(lgM4(), lgvOnGun(v, null, 0), lgInv(lgM4(), lgSockFor('pistol', 'magHand'))), BE = LGV_KIT.belt();
+    const twist = lgMul(lgM4(), cyl, lgTR(0, 0, 0, 0.5, 0, 0)), crane = lgvOnGun(v, lgvAt([0.03, 0.04, -0.01], 0, 0, -0.6));
+    const keys = [[0.05, null], [0.16, rod], [0.24, rod], [0.32, BE], [0.44, BE], [0.54, cyl], [0.6, twist], [0.66, twist], [0.74, crane], [0.84, crane], [0.9, null]];
+    lgvRelMag(P, v, keys, k, ctx, k < 0.22 ? 'in' : k < 0.3 ? (ctx.run ? 'out' : { drop: (k - 0.22) * 3 }) : k < 0.44 ? 'out' : k < 0.64 ? 'hand' : 'in', 'p', 0);
+    P.pistol.cylOut = k < 0.08 ? 0 : k < 0.14 ? lgvE((k - 0.08) / 0.06) : k < 0.78 ? 1 : k < 0.84 ? 1 - lgvE((k - 0.78) / 0.06) : 0;
+    ctx.look = lgPulse(k, 0.08, 0.85);
+  },
+  // the coach gun: the top lever over, the barrels drop, the two hulls pulled out by hand, two shells in, snapped shut
+  break(P, k, ctx) {
+    const D = LGV_POST.pDown, L = LGV_POST.pLow, W = [0.3, -0.01, 0.1, 0.1, 0.5, 0.2];
+    const v = k < 0.1 ? lgvPost(L, W, k / 0.1) : k < 0.86 ? W : lgvPost(W, L, (k - 0.86) / 0.14);
+    const lever = lgvOnGun(v, lgvAt([0.0, 0.01, 0.045], 0, 0.4, -1.2)), breech = lgvOnGun(v, lgvAt([0.12, 0.0, 0.03], 0, 0.4, -1.3)), pulled = lgMul(lgM4(), breech, lgTR(-0.06, 0, 0.03, 0, 0, 0)), SH = LGV_KIT.shells(), fore = lgvOnGun(v, lgSockFor('pistol', 'gripL'));
+    const keys = [[0.04, null], [0.1, lever], [0.16, lever], [0.26, breech], [0.34, pulled], [0.4, pulled], [0.5, SH], [0.58, SH], [0.68, breech], [0.76, breech], [0.84, fore], [0.92, null]];
+    const mag = k < 0.26 ? 'in' : k < 0.34 ? 1 : k < 0.44 ? 'hand' : k < 0.5 ? (ctx.run ? 'out' : { drop: (k - 0.44) * 3 }) : k < 0.58 ? 'out' : k < 0.74 ? 'hand' : 'in';
+    lgvRelMag(P, v, keys, k, ctx, mag, 'p', 0);
+    P.pistol.cylOut = k < 0.14 ? 0 : k < 0.24 ? lgvE((k - 0.14) / 0.1) : k < 0.8 ? 1 : k < 0.88 ? 1 - lgvE((k - 0.8) / 0.08) : 0;
+    ctx.look = lgPulse(k, 0.08, 0.84);
+  },
   // the revolver: muzzle up, the cylinder out, the ejector slapped (two clips of empties fall), muzzle down, two
   // half-moon clips from the belt, one after the other, and the crane closed with the support hand
   moon(P, k, ctx) {
@@ -496,13 +609,14 @@ function lgvUpState(p, B) {
   ctx.hold = !!empty; const sub = empty ? 'e' : '';
   const u = a.fireT == null ? 9 : (G.time || 0) - a.fireT;
   if (st === 'ready' && u >= 0 && u < LGV_SHOT_T) return { st: 'shot', n: 5, i: Math.min(4, Math.floor(u / LGV_SHOT_T * 5)), ctx: ctx, sub: sub };
+  if (st === 'ready' && A.cycle && u >= LGV_SHOT_T && u < 0.06 + A.cycle) { const kk = clamp((u - 0.06) / A.cycle, 0, 0.999); return { st: 'pump', n: 8, i: Math.floor(kk * 8), ctx: ctx, sub: sub }; }
   switch (st) {
     case 'ready': return { st: 'ready', n: 6, i: breath, ctx: ctx, sub: sub };
     case 'raise': return { st: 'raise', n: 4, i: Math.min(3, Math.floor(k * 4)), ctx: ctx };
     case 'lower': return { st: 'raise', n: 4, i: Math.min(3, Math.floor((1 - k) * 4)), ctx: ctx };
     case 'sprint': return { st: 'sprint', n: 8, i: Math.floor((B.ph % 1) * 8), ctx: ctx };
     case 'sprintOut': return { st: 'sprintOut', n: 4, i: Math.min(3, Math.floor(k * 4)), ctx: ctx };
-    case 'reload': { const n = R.kind === 'tube' ? 10 : 20; return { st: 'reload', n: n, i: Math.floor(k * n), ctx: ctx, sub: (R.kind || '') + (a.rk || '') + (a.keep ? 'k' : '') }; }
+    case 'reload': { const n = R.kind === 'tube' || R.kind === 'pump' ? 10 : R.kind === 'belt' ? 40 : 20; return { st: 'reload', n: n, i: Math.floor(k * n), ctx: ctx, sub: (R.kind || '') + (a.rk || '') + (a.keep ? 'k' : '') }; }
     case 'swapOut': return { st: 'swapOut', n: 8, i: Math.floor(k * 8), ctx: ctx };
     case 'swapIn': return { st: 'swapIn', n: 8, i: Math.floor(k * 8), ctx: ctx };
     case 'inspect': return { st: 'inspect', n: 8, i: Math.floor(k * 8), ctx: ctx };
@@ -709,7 +823,7 @@ lgvClip('kn_jaw', 'Knife: Whip and Stick', 0.7, false, 'Combo 8 (after the whip,
 lgvClip('kn_lunge', 'Knife: Lunge', 0.72, false, 'Combo 9: a long dash into a thrust, the whole body behind the blade.', 'knife', { km: 'lunge', fam: 'p' });
 lgvClip('kn_reaper', 'Knife: Reaper', 0.85, false, 'Combo 10 (three of the dead, knife each): a spinning backhand cut that takes everything in reach.', 'knife', { km: 'reaper', fam: 'p' });
 // (the legend page's armory: the special reload of whichever gun he carries; not in the list of fifty)
-lgvClip('arm_special_c', 'Special reload', 3.2, false, 'The carried long gun\'s own reload, from empty.', 'reload', { slot: 'c', rk: 'empty' });
-lgvClip('arm_special_p', 'Special reload (sidearm)', 3.2, false, 'The carried sidearm\'s own reload, from empty.', 'reload', { slot: 'p', rk: 'empty' });
+lgvClip('arm_special_c', 'Special reload', 7.2, false, 'The carried long gun\'s own reload, from empty.', 'reload', { slot: 'c', rk: 'empty' });
+lgvClip('arm_special_p', 'Special reload (sidearm)', 7.2, false, 'The carried sidearm\'s own reload, from empty.', 'reload', { slot: 'p', rk: 'empty' });
 LG_ANIM_BY.arm_special_c.hidden = true; LG_ANIM_BY.arm_special_p.hidden = true;
 lgvClip('dodge_roll', 'Dodge roll', 0.46, false, 'Down over the shoulder in a tuck with the gun held in tight, and up into a crouch facing the same way; untouchable for its first part.', 'dodge', {});

@@ -194,3 +194,30 @@ window.auGunSheet = async function (o) {
   if (o.gun) lgGunSet(null, null);
   return { id: o.id, data: data };
 };
+// 1.9.997: a gun by itself, from the side and three-quarters (the armory's view), with its parts at given strokes
+window.auGunPic = async function (o) {
+  await lgAtlasGet(o.T || 256); evGL();
+  const keys = o.keys || [o.key], tw = o.tw || 520, th = o.th || 240, pad = 3, views = o.views || [[-90, 4], [-35, 25]];
+  const g = evC2(views.length * tw + (views.length - 1) * pad, keys.length * th + (keys.length - 1) * pad), out = {};
+  keys.forEach((key, ki) => {
+    const D = LG_GUN_DEF[key]; if (!D) return;
+    const B = lgB(o.lod || 0); D.mk(B, lgOpKit('attack')); const m = lgFinish(B, 'gun:' + key);
+    const W = lgWorldNew(), L = lgLocalNew(), P = lgPose(); for (let i = 0; i < LG_NB; i++) W.set(lgM4(), i * 16);
+    // the parts at their strokes (through the same code the body uses)
+    const st = o.parts || {}; lgGunSet(D.fam === 'c' ? key : null, D.fam === 'p' ? key : null);
+    if (D.fam === 'p') { P.pistol.at = 'free'; P.pistol.W = lgM4(); Object.assign(P.pistol, st); } else { P.carbine.at = 'aim'; P.carbine.sp = 'root'; P.carbine.M = lgM4(); Object.assign(P.carbine, st); }
+    lgPropsLate(P, L, W, lgM4()); lgGunSet(null, null);
+    const bb = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]; for (const r of m.runs) for (let i = r.v0; i < r.v0 + r.nv; i++) for (let j = 0; j < 3; j++) { const v = m.V[i * LG_STRIDE + j]; if (v < bb[j]) bb[j] = v; if (v > bb[j + 3]) bb[j + 3] = v; }
+    const c = [(bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2 + 1.0], len = Math.max(bb[3] - bb[0], 0.3);
+    out[key] = { bb: bb.map(v => +v.toFixed(3)), tris: m.tris, nv: m.nv };
+    views.forEach(([az, el], vi) => {
+      const cam = lgCam(); cam.fov = 0.3; const d = len / 2 / Math.tan(cam.fov / 2) * 1.15 / (tw / th) * 1.0 + 0.1;
+      cam.eye = [c[0] + Math.cos(az / CUR_DEG) * Math.cos(el / CUR_DEG) * d, c[1] + Math.sin(az / CUR_DEG) * Math.cos(el / CUR_DEG) * d, c[2] + Math.sin(el / CUR_DEG) * d]; cam.tgt = c;
+      const W2 = lgWorldNew(); for (let i = 0; i < LG_NB; i++) { const M = lgMul(lgM4(), lgTR(0, 0, 1.0, 0, 0, 0), W.subarray(i * 16, i * 16 + 16)); W2.set(M, i * 16); }
+      const S = evStage('cyc', cam, c, { shR: 1.2 }); S.items.push({ m: m, W: W2, acc: lgHex('#ff4b3e'), glow: 0.3 });
+      evRender(S, tw, th, { vx: { dof: false, fog: { rho: 0, H: 6, col: [0.3, 0.3, 0.3] }, vig: 0.05, look: 'identity' }, post: { bloomK: 0.15, th: 0.9, grain: 0.0, vig: 0.1, hal: 0.0 } });
+      const x = vi * (tw + pad), y = ki * (th + pad); g.drawImage(LGR.cv, x, y, tw, th); evLabel(g, x + 3, y + 3, key, { size: 11 });
+    });
+  });
+  return out;
+};

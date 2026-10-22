@@ -22,6 +22,10 @@ const PHY_KIND = {
   case9: { L: 0.019, R: 0.005, k: 2.8, e: 0.45, mu: 0.4, rr: 0.14, curve: 0.25, col: '#cfa64a', hi: '#f6dc90', life: 5, snd: 'brass', m: 0.004 },
   case45: { L: 0.023, R: 0.006, k: 2.6, e: 0.44, mu: 0.4, rr: 0.14, curve: 0.2, col: '#caa045', hi: '#f2d488', life: 5, snd: 'brass', m: 0.006 },
   shell12: { L: 0.067, R: 0.0105, k: 1.9, e: 0.26, mu: 0.55, rr: 0.24, curve: 0.15, col: '#a8261f', hi: '#d24a3a', base: '#c99b3e', life: 5, snd: 'shell', m: 0.007 },
+  // 1.9.997: the .50 AE's fat case, the 5.7's little bottleneck, a belt link
+  case50: { L: 0.033, R: 0.0068, k: 2.3, e: 0.42, mu: 0.42, rr: 0.15, curve: 0.3, col: '#c99b3e', hi: '#f2d27e', life: 5, snd: 'brass', m: 0.012 },
+  case57: { L: 0.029, R: 0.004, k: 2.9, e: 0.46, mu: 0.4, rr: 0.14, curve: 0.5, col: '#caa045', hi: '#f6dc90', life: 5, snd: 'brass', m: 0.0035 },
+  link: { L: 0.02, R: 0.004, k: 2.2, e: 0.3, mu: 0.5, rr: 0.2, curve: 1.2, col: '#5c5e60', hi: '#9a9ea3', life: 5, snd: 'steel', m: 0.003 },
   moon: { L: 0.03, R: 0.012, k: 2.2, e: 0.3, mu: 0.6, rr: 0.4, curve: 0, col: '#b48a3a', hi: '#e8c876', life: 30, snd: 'brass', m: 0.03 },
   mag: { L: 0.2, R: 0.016, k: 1.35, e: 0.18, mu: 0.75, rr: 0.9, curve: 0, col: '#26292c', hi: '#484d52', life: 30, snd: 'mag', m: 0.15 }
 };
@@ -60,6 +64,7 @@ function physEject(w, x, y, a, h) {
   if (!A) { const k = w && w.F && w.F.key; if (k === 'revolver' || k === 'launcher' || k === 'flamer') return null; E = { a: 1.7, s: 3.6, up: 2.1, kind: k === 'shotgun' ? 'shell12' : k === 'pistol' ? 'case9' : 'case556' }; }
   if (!E) return null;
   const u = physU(), ea = a + E.a * (0.92 + Math.random() * 0.16) + (Math.random() - 0.5) * 0.25, sp = E.s * (0.8 + Math.random() * 0.4) * u;
+  if (E.link && PHY_KIND.link) { const la = a + 1.4 + (Math.random() - 0.5) * 0.3, ls = 2.2 * u; physSpawn('link', x, y, (h == null ? 1.15 : h) * u, Math.cos(la) * ls, Math.sin(la) * ls, 1.2 * u, { a: Math.random() * TAU, va: (Math.random() - 0.5) * 40, tip: Math.random() * TAU, vt: 30 }); }   // (1.9.997: the belt's link goes out to the right with the case)
   return physSpawn(E.kind, x, y, (h == null ? 1.15 : h) * u, Math.cos(ea) * sp, Math.sin(ea) * sp, E.up * (0.75 + Math.random() * 0.5) * u,
     { a: a + Math.PI / 2 + (Math.random() - 0.5), va: (Math.random() - 0.5) * 30, tip: Math.random() * TAU, vt: 25 + Math.random() * 35 });
 }
