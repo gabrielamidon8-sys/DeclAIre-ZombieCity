@@ -32,7 +32,7 @@ function lgGun2Mats(K) {
     M.augMag = lgMtl({ c: '#8ea089', t: LT.poly, r: 0.3, w: 0.05, n: 0.3, k: 0.05 });                  // its translucent magazine (a pale shell)
     M.chrome = lgMtl({ c: '#b8bcc2', t: LT.metal, r: 0.18, m: 0.95, w: 0.02, n: 0.2, k: 0.08 });        // the Desert Eagle's brushed steel
     M.alu = lgMtl({ c: '#55585c', t: LT.metal, r: 0.46, m: 0.7, w: 0.04, n: 0.6, k: 0.1 });            // the Mossberg's and the chassis's aluminium
-    M.canvas = lgMtl({ c: '#4f5240', t: LT.cloth, r: 0.8, w: 0.1, n: 0.9, k: 0.1 });                   // the M249's ammunition pouch
+    M.canvas = lgMtl({ c: '#4f5240', t: LT.cord, r: 0.86, w: 0.1, n: 0.9, k: 0.1 });                    // the M249's ammunition pouch (Cordura; 1.9.997: it named a texture that does not exist and drew as plain plastic)
     M.wood = lgMtl({ c: '#7a4a2a', t: LT.leather, r: 0.4, w: 0.2, n: 0.5, k: 0.06 });                  // the Model 29's target grips
     M.link = lgMtl({ c: '#5c5e60', t: LT.metal, r: 0.5, m: 0.7, w: 0.04, n: 0.6, k: 0.1 });
   }
@@ -98,11 +98,19 @@ function lgGunM249(B, K) {
   lgMat(B, M.gunPoly); B.M.dk = M.gunPoly.dk; lgARGrip(B, -0.02, -0.05, 0.03);
   lgTrigger(B, M, -0.024, 0.044, -0.07, -0.052, { tx: 0.004 });
   if (hi) { lgMat(B, M.metal); lgKnob(B, -0.04, 0.026, -0.03, 0.004, 0.004, 1); lgKnob(B, 0.2, 0.026, 0.0, 0.004, 0.006, 1); }   // the safety, the barrel latch
+  // (1.9.997, the detail pass: the STANAG magazine well on the left with its sprung dust cover, the ejection port under the
+  // receiver (the M249 throws its cases and links down), the rows of rivets on the stamped receiver)
+  lgMat(B, M.gunBlk); lgBox(B, 0.105, 0.04, -0.036, 0.028, 0.014, 0.016, 0.003);
+  if (hi) { lgMat(B, M.gunPoly); lgBox(B, 0.105, 0.0545, -0.036, 0.026, 0.0012, 0.014, 0.001); lgMat(B, M.visor); lgBox(B, 0.165, 0, -0.0505, 0.032, 0.013, 0.0008, 0); }
+  if (top) { lgMat(B, M.metal); for (const sy of [1, -1]) for (let i = 0; i < 7; i++) lgKnob(B, -0.1 + i * 0.06, sy * 0.0262, 0.034, 0.0022, 0.0012, sy); }
   // the handguard with its heat vents, the gas tube under the barrel, the barrel with its carry handle, the gas block
   // and front sight, the birdcage; the bipod folded under the gas tube
   lgMat(B, M.gunPoly); lgSide(B, [[0.3, -0.038], [0.53, -0.034], [0.53, 0.03], [0.3, 0.034]], 0.05, { bev: 0.006, round: true });
   if (hi) { lgMat(B, M.gunPoly.dk); for (let i = 0; i < 6; i++) for (const s of [1, -1]) lgBox(B, 0.33 + i * 0.032, s * 0.025, 0.0, 0.009, 0.0006, 0.012, 0.002); }
   lgMat(B, M.gunBlk); lgBore(B, 0.53, 0.33, [[0, 0.012], [0.3, 0.0115], [1, 0.011]]); lgBore(B, 0.5, 0.36, 0.009, 0, -0.03);   // the barrel, the gas tube
+  // (1.9.997: the heat shield over the barrel's first stretch, open underneath, with its row of vents)
+  lgPush(B, lgTR(0.535, 0, 0.0, 0, Math.PI / 2, 0)); lgLathe(B, [[0.0158, 0], [0.0172, 0.004], [0.0172, 0.15], [0.0158, 0.154]], { segs: 14, a0: -1.45, a1: 1.45 }); lgPop(B);
+  if (hi) { lgMat(B, M.visor); for (let i = 0; i < 6; i++) lgBox(B, 0.555 + i * 0.023, 0, 0.0173, 0.006, 0.004, 0.0006, 0.001); lgMat(B, M.gunBlk); }
   lgBox(B, 0.6, 0, 0.0, 0.014, 0.012, 0.026, 0.003); if (hi) { lgBox(B, 0.6, 0, 0.032, 0.0014, 0.0014, 0.007, 0); for (const s of [1, -1]) lgBox(B, 0.6, s * 0.007, 0.03, 0.003, 0.0015, 0.008, 0.001); }   // the gas block and sight
   lgBore(B, 0.86, 0.06, [[0, 0.0125], [0.1, 0.013], [0.9, 0.013], [1, 0.012]], 0, 0, { segs: 12, wr: top ? (a, z) => (z > 0.015 && z < 0.05 && Math.sin(a * 5) > 0.55 ? -0.35 : 0) : null });
   lgMat(B, M.gunPoly); lgTube(B, [[0.46, 0, 0.012], [0.46, 0, 0.05], [0.56, 0, 0.05], [0.56, 0, 0.012]], 0.006, { segs: 6 });   // the carry handle, folded flat is a bar: left up
@@ -121,7 +129,12 @@ function lgGunM249(B, K) {
   // the charging handle on the right: non-reciprocating, pulled back and pushed home
   lgBone(B, 'ccharge'); lgMat(B, M.gunBlk); lgBox(B, 0.06, -0.03, 0.01, 0.012, 0.006, 0.006, 0.002); lgMat(B, M.gunPoly); lgBox(B, 0.06, -0.04, 0.01, 0.014, 0.005, 0.009, 0.003);
   // the 200-round pouch under the tray (on the magazine bone: it comes off and the new one hangs on)
-  lgBone(B, 'cmag'); lgMat(B, M.canvas); lgBox(B, 0.1, 0.0, -0.13, 0.1, 0.05, 0.075, 0.012);
+  // (1.9.997, the detail pass: a soft bag, not a box: the sides bulge, the bottom is rounded, the flap's seam, the strap
+  // and its buckle on the outside)
+  lgBone(B, 'cmag'); lgMat(B, M.canvas);
+  lgSide(B, [[0.012, -0.06], [0.19, -0.06], [0.2, -0.08], [0.202, -0.15], [0.19, -0.195], [0.15, -0.206], [0.05, -0.206], [0.01, -0.194], [-0.002, -0.15], [0.0, -0.08]], 0.094, { bev: 0.02, smooth: 0.8, round: true });
+  lgSide(B, [[0.02, -0.08], [0.18, -0.08], [0.188, -0.15], [0.17, -0.19], [0.03, -0.19], [0.012, -0.15]], 0.104, { bev: 0.018, smooth: 0.9, round: true });   // the bulge
+  if (hi) { M.canvas.dk = M.canvas.dk || lgMtl({ c: '#3f4130', t: LT.cord, r: 0.92, w: 0.1, n: 1.0, k: 0.04 }); lgMat(B, M.canvas.dk); lgBox(B, 0.1, 0, -0.072, 0.092, 0.049, 0.002, 0.001); for (const sy of [1, -1]) { lgBox(B, 0.1, sy * 0.052, -0.135, 0.009, 0.0015, 0.065, 0.001); lgMat(B, M.gunPoly); lgBox(B, 0.1, sy * 0.054, -0.12, 0.012, 0.002, 0.009, 0.002); lgMat(B, M.canvas.dk); } }
   lgMat(B, M.gunPoly); lgBox(B, 0.1, 0.0, -0.052, 0.07, 0.03, 0.006, 0.002);   // its plastic mouth clipped to the gun
   if (hi) { lgMat(B, M.link); lgBox(B, 0.1, 0.0, -0.058, 0.02, 0.028, 0.002, 0.0005); }
 }
