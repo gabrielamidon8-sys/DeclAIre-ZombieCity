@@ -54,7 +54,7 @@ function fireWeapon(t, ang) {
   for (let i = 1; i < S.burst; i++) p.queue.push({ t: i * 0.07, mul: 1 });
   if (S.echo) p.queue.push({ t: 0.17, mul: 0.6 });
   if (S.jamEvery && p.shots % S.jamEvery === 0) { p.jamT = 1.2; SFX.jam(); G.texts.push({ x: p.x, y: p.y - 28, t: 0, life: 0.9, s: 'JAMMED', c: '#fff36b' }); }
-  if (p.weapon.arms) SFX.shot(p.weapon.arms.snd[0], p.weapon.M.key, p.weapon.arms.snd[1]); else SFX.shot(p.weapon.F.key, p.weapon.M.key);
+  if (p.weapon.arms) SFX.shot(p.weapon.arms.snd[0], p.weapon.M.key, p.weapon.arms.snd[1], p.weapon.arms.key); else SFX.shot(p.weapon.F.key, p.weapon.M.key);
   if (typeof swarmHear === 'function') swarmHear(p.x, p.y, p.weapon.F.key);   // hordes in earshot come running
 }
 function volley(a, mul) {

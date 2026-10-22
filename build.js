@@ -18,7 +18,7 @@ let game = (rd('filterdata.js') + '\n' + rd('filter.js') + '\n' + rd('acct-core.
 {
   const stat = txt => { let code = 0, com = 0, inC = false; for (let l of txt.split('\n')) { l = l.trim(); if (!l) continue; if (inC) { com++; if (l.includes('*/')) inC = false; continue; } if (l.startsWith('/*')) { com++; if (!l.includes('*/')) inC = true; continue; } if (l.startsWith('//')) { com++; continue; } code++; } return [code, (txt.match(/^\s*(?:async\s+)?function\s*\*?\s*[A-Za-z0-9_$]+\s*\(/gm) || []).length + (txt.match(/^\s+[a-zA-Z0-9_]+:\s*function\s*\(/gm) || []).length, com, Buffer.byteLength(txt)]; };
   // every module, plus the files outside the module list that engines are made of
-  const files = MODULES.concat(['sfx2', 'cinesfx', 'armsfx', 'audio', 'radio', 'mutations', 'bosses', 'acct-core', 'filter', 'filterdata']);
+  const files = MODULES.concat(['sfx2', 'gunsfx', 'cinesfx', 'armsfx', 'audio', 'radio', 'mutations', 'bosses', 'acct-core', 'filter', 'filterdata']);
   const src = {}; for (const f of files) { try { src[f] = stat(rd(f + '.js')); } catch (e) { } }
   // pathfinding lives inside game.js: only its own functions
   const g = rd('game.js'); let ft = ''; for (const n of ['cellBlockedF', 'cellBlocked', 'buildField', 'fieldBuild', 'fieldFor', 'flowDir', 'reachable']) { const i = g.indexOf('function ' + n + '('); if (i < 0) continue; const j = g.indexOf('\nfunction ', i + 10); ft += g.slice(i, j < 0 ? g.length : j) + '\n'; }
@@ -48,7 +48,7 @@ const out = rd('shell.html').split('\n').filter(l => !/fonts\.(googleapis|gstati
   // the 2.0 interface (1.9.990): the HUD and controls, the menus and the pause screen, the engine room
   .replace('/*__UI2CSS__*/', () => ['ui-hud.css', 'ui-menu.css', 'ui-eng.css', 'ui-legends.css'].filter(f => fs.existsSync(__dirname + '/' + f)).map(rd).join('\n'))
   .replace('/*__MUTATIONS__*/', () => rd('mutations.js'))
-  .replace("/*__AUDIO__*/", () => rd("audio.js").replace("/*__RADIO__*/", () => rd("radio.js")).replace('/*__SFX2__*/', () => rd('sfx2.js')).replace('/*__CINESFX__*/', () => rd('cinesfx.js')).replace('/*__ARMSFX__*/', () => rd('armsfx.js')))
+  .replace("/*__AUDIO__*/", () => rd("audio.js").replace("/*__RADIO__*/", () => rd("radio.js")).replace('/*__SFX2__*/', () => rd('sfx2.js')).replace('/*__GUNSFX__*/', () => rd('gunsfx.js')).replace('/*__CINESFX__*/', () => rd('cinesfx.js')).replace('/*__ARMSFX__*/', () => rd('armsfx.js')))
   .replace('/*__WEAPONS__*/', () => rd('weapons.js'))
   .replace('/*__BOSSES__*/', () => rd('bosses.js'))
   .replace('/*__GAME__*/', () => game);

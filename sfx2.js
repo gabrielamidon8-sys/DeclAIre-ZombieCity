@@ -128,19 +128,30 @@
     GV.push(v); v.s.onended = function () { var i = GV.indexOf(v); if (i >= 0) GV.splice(i, 1); try { v.g.disconnect(); } catch (e) { } };
     while (GV.length > 8) { var o = GV.shift(), tt = ac.currentTime; try { o.g.gain.cancelScheduledValues(tt); o.g.gain.setValueAtTime(o.g.gain.value, tt); o.g.gain.linearRampToValueAtTime(0.0001, tt + 0.04); o.s.stop(tt + 0.05); } catch (e) { } }
   }
-  var lastGun = { k: '', n: 0, mod: 0 };
-  function gunShot(kind, mod, rate) {
+  var lastGun = { k: '', n: 0, mod: 0, tail: 0, tailAt: 0 };
+  // kind: the shared frame's sound; key (1.9.997): the ARMS gun, which has a voice of its own once it has been rendered
+  function gunShot(kind, mod, rate, key) {
     if (!ok()) return;
     if (kind === 'flamer') { flameOn(); return; }
-    var k = GUNS.indexOf(kind) >= 0 ? kind : 'pistol', fast = k === 'smg' || k === 'lmg';
+    var k = GUNS.indexOf(kind) >= 0 ? kind : 'pistol', D = key && typeof G20 !== 'undefined' ? G20[key] : null, fast = D ? !!D.stream : (k === 'smg' || k === 'lmg');
     if (!throttle('shot', fast ? 50 : 35)) return;
     var t = ac.currentTime, n = (lastGun.n + 1 + (Math.random() < 0.5 ? 1 : 0)) % 3; lastGun.n = n;
-    var name = 'g_' + k + n;
+    if (D && !G20_BAKED[key]) gunPrep(key);
+    var own = !!(D && BANK['g_' + key + n]), name = own ? 'g_' + key + n : 'g_' + k + n;
     if (!BANK[name]) { gunRound(t, k, Math.random, gunBus); return; }
-    gunVoice(name, t, fast ? 0.85 : 1, (0.96 + Math.random() * 0.08) * (rate || 1), gunBus);
-    // casings land a moment later (most of the time, and not for every round of a stream)
-    if (k !== 'launcher' && k !== 'revolver' && !(typeof PHY !== 'undefined' && physUp()) && Math.random() < (fast ? 0.35 : 0.75)) {
-      var cs = BANK[(k === 'shotgun' ? 'shell' : 'case') + Math.floor(Math.random() * 3)];
+    var pr = (0.97 + Math.random() * 0.06) * (own ? 1 : (rate || 1));   // (a gun with its own voice is already in tune; the shared frames are pitched)
+    gunVoice(name, t, (own ? (D.vol || 1) : 1) * (fast ? 0.85 : 1), pr, gunBus);
+    // a stream gun is trimmed per shot: its long tail plays once, when the burst ends
+    if (own && D.stream && BANK['gt_' + key]) {
+      var tk = ++lastGun.tail, gp = (D.gap || 0.08) + 0.06; lastGun.tailAt = t;
+      setTimeout(function () { if (tk !== lastGun.tail || !ac) return; gunVoice('gt_' + key, ac.currentTime, 0.9 * (D.vol || 1), 0.98 + Math.random() * 0.04, gunBus); }, gp * 1000);
+    }
+    // the radio dips under the shot (a sidechain: 4 ms down, back up over ~150 ms, the heavier the gun the deeper)
+    if (typeof rDuck === 'function') rDuck(D ? D.duck : (k === 'shotgun' || k === 'sniper' || k === 'launcher' ? 0.36 : fast ? 0.16 : 0.22));
+    // casings land a moment later (most of the time, and not for every round of a stream; revolvers and the break-action keep theirs)
+    var noCase = k === 'launcher' || k === 'revolver' || (D && (D.mech === 'frame' || key === 'coach')), shell = k === 'shotgun' || (D && (key === 'm1014' || key === 'm590a1'));
+    if (!noCase && !(typeof PHY !== 'undefined' && physUp()) && Math.random() < (fast ? 0.35 : 0.75)) {
+      var cs = BANK[(shell ? 'shell' : 'case') + Math.floor(Math.random() * 3)];
       if (cs) { var s = ac.createBufferSource(), g = ac.createGain(); s.buffer = cs; s.playbackRate.value = 0.94 + Math.random() * 0.12; g.gain.value = 0.9; s.connect(g); g.connect(gunBus); s.start(t + 0.18 + Math.random() * 0.15); s.onended = function () { try { g.disconnect(); } catch (e) { } }; }
     }
     var ml = MODL[mod]; if (ml && performance.now() - lastGun.mod > 90) { lastGun.mod = performance.now(); play('m_' + ml, t + 0.01, 0.9, 0.97 + Math.random() * 0.06, gunBus); }
@@ -415,6 +426,10 @@
   }
   var api2 = {
     shot: gunShot,
+    // 1.9.997: render a gun's own voice ahead of its first shot (called when it is carried); gunVoices: what has been rendered
+    gunPrep: function (key) { if (!ok()) return false; gunPrep(key); return !!G20_BAKED[key]; },
+    gunVoices: function () { var o = {}; for (var k in G20) o[k] = !!(BANK['g_' + k + '0'] && BANK['g_' + k + '2']); return o; },
+    bank: function (name) { var b = BANK[name]; return b ? { sr: b.sampleRate, d: Array.prototype.slice.call(b.getChannelData(0)) } : null; },   // (tests: a rendered sound)
     ambEvent: ambEvent,
     setVolumes: function (v) { for (var k in v) VOL[k] = v[k]; applyVol(); radioApi.setVolume(VOL.music * VOL.master); },
     setMix: function (m) { for (var k in m) MIX[k] = m[k]; applyMix(); radioApi.setMono(MIX.mono); },

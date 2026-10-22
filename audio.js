@@ -98,8 +98,11 @@ var SFX = (function () {
     for (var c = 0; c < 2; c++) { var d = b.getChannelData(c); for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.8); }
     return b;
   }
-  function softClip() { var n = 2048, c = new Float32Array(n); for (var i = 0; i < n; i++) { var u = i * 2 / (n - 1) - 1; c[i] = Math.tanh(2 * u); } return c; }
-  function distCurve(k) { var n = 1024, c = new Float32Array(n); for (var i = 0; i < n; i++) { var x = i * 2 / n - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); } return c; }
+  // (1.9.997: both curves have an odd number of points so silence maps exactly onto 0. The old 1024-point drive curve put
+  // silence between two points, a -0.05 offset that every shaper leaked as DC: into every rendered sound, the drum bus and
+  // the guitar amps, a small click at the start of each sample and a bias that piled up under eight gun voices.)
+  function softClip() { var n = 2049, c = new Float32Array(n); for (var i = 0; i < n; i++) { var u = i * 2 / (n - 1) - 1; c[i] = Math.tanh(2 * u); } return c; }
+  function distCurve(k) { var n = 1025, c = new Float32Array(n); for (var i = 0; i < n; i++) { var x = i * 2 / (n - 1) - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); } return c; }
 
   // ---------- building blocks (effects) ----------
   function env(g, t, a, peak, dur) {
@@ -153,7 +156,15 @@ var SFX = (function () {
 
   // ---------- music voices ----------
   // E: gain envelope into dest (+ optional send); O: oscillator; LP: lowpass; N: filtered noise
+  // 1.9.997: humanised playing. A station sets HUM (seconds) while its bars render: every note lands a little off the grid
+  // (±HUM, ±5–15 ms for a band, more for the slow stations) and a little louder or softer (±12%), the same offset for a note's
+  // envelope and its oscillators because both are drawn from the note's own time; the drums played from the bank stay on the grid.
+  var HUM = 0;
+  function hrnd(t, k) { var x = Math.sin(((t * 1000) | 0) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); }
+  function hoff(t) { return HUM ? Math.max(-t, (hrnd(t, 1) - 0.5) * 2 * HUM) : 0; }   // (never before the render's own zero)
+  function hvel(t) { return HUM ? 1 + (hrnd(t, 2) - 0.5) * 0.24 : 1; }
   function E(t, a, peak, hold, rel, dest, send, sendAmt) {
+    if (HUM) { peak *= hvel(t); t += hoff(t); }
     var gn = ac.createGain(); gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(peak, t + a);
     if (hold > 0) gn.gain.setValueAtTime(peak, t + a + hold);
     gn.gain.exponentialRampToValueAtTime(0.0001, t + a + Math.max(0, hold) + rel);
@@ -161,8 +172,8 @@ var SFX = (function () {
     if (send) { if (sendAmt && sendAmt !== 1) { var sg = ac.createGain(); sg.gain.value = sendAmt; gn.connect(sg); sg.connect(send); } else gn.connect(send); }
     return gn;
   }
-  function O(type, f, t, end, dest, det) { var o = ac.createOscillator(); if (type === 'pulse') o.setPeriodicWave(pulse25); else o.type = type; o.frequency.setValueAtTime(f, t); if (det) o.detune.value = det; o.connect(dest); o.start(t); o.stop(end); return o; }
-  function LP(f, q, dest) { var fl = ac.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = f; fl.Q.value = q || 0.7; fl.connect(dest); return fl; }
+  function O(type, f, t, end, dest, det) { if (HUM) { var ho = hoff(t); t += ho; end += ho; } var o = ac.createOscillator(); if (type === 'pulse') o.setPeriodicWave(pulse25); else o.type = type; o.frequency.setValueAtTime(f, t); if (det) o.detune.value = det; o.connect(dest); o.start(t); o.stop(end); return o; }
+  function LP(f, q, dest) { var fl = ac.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = HUM ? f * (1 + (Math.random() - 0.5) * 0.04) : f; fl.Q.value = q || 0.7; fl.connect(dest); return fl; }
   function N(t, dur, vol, type, f, q, f1, dest, rev) {
     var s = ac.createBufferSource(), fl = ac.createBiquadFilter(); s.buffer = noiseBuf; s.loop = true;
     fl.type = type; fl.frequency.setValueAtTime(f, t); if (f1) fl.frequency.exponentialRampToValueAtTime(f1, t + dur); fl.Q.value = q || 0.8;
@@ -285,7 +296,11 @@ var SFX = (function () {
     gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(v, t + Math.min(0.4, dur * 0.3)); gn.gain.setValueAtTime(v, t + dur * 0.85); gn.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.35);
     gn.connect(synthBus); var sg = ac.createGain(); sg.gain.value = 0.5; gn.connect(sg); sg.connect(revIn);
     var fl = LP(cut || 1400, 0.7, gn);
-    ch.forEach(function (m) { O('sawtooth', mf(m), t, t + dur + 0.4, fl, -9); O('sawtooth', mf(m), t, t + dur + 0.4, fl, 9); });
+    // 1.9.997: three saws a note (the centre one in tune, the outer two 14 cents apart) with a slow chorus wandering the outer
+    // pair ±5 cents at 0.22 Hz, the width a real pad has; the stack is scaled so the level is what it was with two
+    var lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 0.22; lg.gain.value = 5; lfo.connect(lg); lfo.start(t); lfo.stop(t + dur + 0.45);
+    var og = ac.createGain(); og.gain.value = 0.72; og.connect(fl);
+    ch.forEach(function (m) { var a = O('sawtooth', mf(m), t, t + dur + 0.4, og, -14), c = O('sawtooth', mf(m), t, t + dur + 0.4, og, 0), b = O('sawtooth', mf(m), t, t + dur + 0.4, og, 14); lg.connect(a.detune); var ng = ac.createGain(); ng.gain.value = -1; lg.connect(ng); ng.connect(b.detune); });
   }
   function vGate(ch, t, len, vol) { var fl = LP(2600, 0.8, E(t, 0.004, vol || 0.04, len * 0.5, len * 0.5, synthBus, revIn, 0.3)); ch.forEach(function (m) { O('sawtooth', mf(m), t, t + len + 0.05, fl, -10); O('sawtooth', mf(m), t, t + len + 0.05, fl, 10); }); }
   function vLead(m, t, dur, vol) {
@@ -668,12 +683,13 @@ var SFX = (function () {
   }
 
 /*__SFX2__*/
+/*__GUNSFX__*/
 /*__CINESFX__*/
 /*__ARMSFX__*/
   var api = {
     tick: function () { rPump(); flameTick(); },
     selfHeal: selfHeal, rebuild: rebuild, setQuality: setQuality,
-    health: function () { return { state: ac ? ac.state : 'off', rebuilds: rebuilds, late: lateN, quality: AQ, radio: RD.ctx ? RD.ctx.state : 'off', radioRebuilds: RD.heal.rebuilds, radioLate: RD.late, radioErrors: RD.errs }; },
+    health: function () { return { state: ac ? ac.state : 'off', rebuilds: rebuilds, late: lateN, quality: AQ, radio: RD.ctx ? RD.ctx.state : 'off', radioRebuilds: RD.heal.rebuilds, radioLate: RD.late, radioErrors: RD.errs, radioErr: RD.lastErr || '' }; },
     init: init,
     unlocked: function () { return ready(); },
     setSfx: function (on) { sfxOn = !!on; },

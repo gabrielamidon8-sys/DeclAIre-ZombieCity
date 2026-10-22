@@ -52,7 +52,7 @@ const ENG_SPEC = {
   LIFE: { files: ['life'], parts: ['swaying plants', 'birds', 'kickable props', 'barrels', 'fires', 'car alarms'],
     hard: 'lets every tree, bush and patch of grass sway and shake, even when the frame is busy', eco: 'draws the plants one step stiller',
     stats: () => [['Plants moving', WD.act.length], ['Birds', WD.birds ? WD.birds.length : 0], ['Plant detail', ['still', 'light', 'full'][vegLevel()]]] },
-  SFX: { files: ['sfx2', 'audio'], parts: ['synthesised guns', 'impacts and kills', 'ambience', 'district echoes', 'the clock\'s ticks'],
+  SFX: { files: ['sfx2', 'gunsfx', 'armsfx', 'audio'], parts: ['synthesised guns', 'a voice for each of the twenty guns', 'the arms foley', 'impacts and kills', 'ambience', 'district echoes', 'the clock\'s ticks'],
     hard: 'synthesises every sound at high quality', eco: 'synthesises sounds at low quality (less work for older phones)',
     apply: k => { const q = k == null ? sfxAutoQ(Q.audio) : k < 0 ? 0 : k > 0 ? 2 : sfxAutoQ(Q.audio); if (ENGR.sfxQ !== q) { ENGR.sfxQ = q; try { SFX.setQuality(SET.aq === 'auto' ? q : SET.aq === 'low' ? 0 : 2); } catch (x) { } } },
     stats: () => { let h = {}; try { h = SFX.health(); } catch (x) { } return [['Audio', h.state || '—'], ['Quality', ['low', 'medium', 'high'][ENGR.sfxQ == null ? Q.audio : ENGR.sfxQ] || '—'], ['Late renders', h.late || 0]]; } },

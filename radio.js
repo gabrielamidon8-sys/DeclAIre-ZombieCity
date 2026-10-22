@@ -59,7 +59,7 @@
   }
   function endChord(c, fn) { if (c.fin) fn(c.t + c.bd); }   // the song's last bar: one final chord rings out after it
   var RCH = [
-    { id: 'dead', name: 'Dead Signal', genre: 'Synthwave', bpm: [96, 118], sc: ['minor', 'dor'], duck: true, vol: 1.4,
+    { id: 'dead', hum: 0.004, name: 'Dead Signal', genre: 'Synthwave', bpm: [96, 118], sc: ['minor', 'dor'], duck: true, vol: 1.4,
       A: ['Neon', 'Midnight', 'Static', 'Chrome', 'Electric', 'Faded', 'Crimson', 'Lost', 'Silent', 'Phantom', 'Velvet', 'Last'],
       B: ['Highway', 'Signal', 'Skyline', 'Horizon', 'Echoes', 'Arcade', 'Boulevard', 'Sunset', 'Transmission', 'Overdrive', 'Memories', 'Pulse'],
       init: function (S, r) { S.kp = pat16(r, pick(r, ['x.......x.......', 'x.......x.x.....', 'x.....x.x.......']), 0.08); S.arp = pick(r, [[0, 1, 2, 1], [0, 2, 1, 2], [0, 1, 2, 3]]); S.dens = 0.45; },
@@ -77,7 +77,7 @@
         if (c.next === 'b' && c.i === c.n - 2) vRiser(c.t, c.bd * 2);
         endChord(c, function (t) { vPad(c.ch, t, c.bd * 2, 1500, 0.045); vCrash(t, 0.1); vSub(c.root + 12, t, c.bd * 2, 0.11); vKick(t, 0.5); });
       } },
-    { id: 'grave', name: 'Grave Metal', genre: 'Heavy metal', bpm: [138, 184], sc: ['phry', 'minor', 'harm'], duck: false, vol: 0.85,
+    { id: 'grave', hum: 0.009, name: 'Grave Metal', genre: 'Heavy metal', bpm: [138, 184], sc: ['phry', 'minor', 'harm'], duck: false, vol: 0.85,
       A: ['Blood', 'Iron', 'Bone', 'Rotting', 'Grave', 'Black', 'Burning', 'Hollow', 'Doom', 'Rusted', 'Savage', 'Unholy'],
       B: ['Throne', 'Hammer', 'March', 'Cathedral', 'Legion', 'Crusade', 'Carnage', 'Ritual', 'Requiem', 'Reckoning', 'Fury', 'Oath'],
       init: function (S, r) { S.R -= 12; S.gtr = pick(r, ['P.xxx.xxP.xxx.xx', 'P.x.x.xxP.x.xxx.', 'Pxxxxx.xP.xxxxxx', 'P..xx.x.P..xxx.x']); S.kp = pat16(r, 'x..x..x.x..x..x.', 0.1); S.dens = 0.6; },
@@ -102,7 +102,7 @@
         if (c.fill) for (i = 8; i < 16; i++) { if (i % 2 === 0 || i >= 12) vSnareG(c.t + i * c.st, 0.14 + (i - 8) * 0.025); }
         endChord(c, function (t) { vPower(c.root + 12, t, c.bd * 2, 0.24); vCrash(t, 0.13); vKMetal(t, 0.8); vSnareG(t, 0.3); });
       } },
-    { id: 'bio', name: 'Biohazard', genre: 'Industrial', bpm: [120, 134], sc: ['phry', 'minor'], duck: true, vol: 0.95,
+    { id: 'bio', hum: 0.003, name: 'Biohazard', genre: 'Industrial', bpm: [120, 134], sc: ['phry', 'minor'], duck: true, vol: 0.95,
       A: ['Toxic', 'Chemical', 'Viral', 'Sterile', 'Mutant', 'Lab', 'Acid', 'Contagion', 'Quarantine', 'Synthetic', 'Feral', 'Corrosive'],
       B: ['Saints', 'Machine', 'Protocol', 'Sector', 'Strain', 'Factory', 'Containment', 'Agent', 'System', 'Specimen', 'Reactor', 'Grid'],
       init: function (S, r) { S.anv = pat16(r, '..x....x..x...x.', 0.25); S.acid = ACID.map(function (v) { return v == null || r() < 0.15 ? null : v; }); S.dens = 0.5; },
@@ -123,7 +123,7 @@
         if (c.next === 'b' && c.i === c.n - 2) vRiser(c.t, c.bd * 2);
         endChord(c, function (t) { vImpact(t); vPad(c.ch, t, c.bd * 2, 800, 0.05); });
       } },
-    { id: 'req', name: 'Requiem', genre: 'Orchestral', bpm: [84, 106], sc: ['harm', 'minor'], duck: false, vol: 1.45,
+    { id: 'req', hum: 0.012, name: 'Requiem', genre: 'Orchestral', bpm: [84, 106], sc: ['harm', 'minor'], duck: false, vol: 1.45,
       A: ['Requiem for', 'Hymn of', 'Lament of', 'Rise of', 'Fall of', 'Ashes of', 'Dirge for', 'Elegy of', 'Oath of', 'Mass for', 'Last Light of', 'Prayer for'],
       B: ['the Fallen', 'the Damned', 'the City', 'the Living', 'Lost Souls', 'the Horde', 'Kings', 'the Last Survivor', 'Empty Streets', 'the Quarantine', 'Dying Stars', 'Forgotten Heroes'],
       init: function (S, r) { S.dens = 0.35; },
@@ -142,7 +142,7 @@
         if (c.fill) for (i = 0; i < 8; i++) vTimp(c.t + c.bd / 2 + i * c.st, c.root + 12, 0.12 + i * 0.04);
         endChord(c, function (t) { vGong(t, c.root); vTimp(t, c.root + 12, 0.8); vBrass(c.ch, t, c.bd * 2, 0.04); vStrings(c.ch, t, c.bd * 2.2, 0.034); vChoir([c.ch[0] + 12, c.ch[1] + 12, c.ch[2] + 12], t, c.bd * 2, 0.045); });
       } },
-    { id: 'night', name: 'Night Shift', genre: 'Lo-fi', bpm: [70, 88], sc: ['dor', 'minor'], duck: false, vol: 1.8,
+    { id: 'night', hum: 0.012, name: 'Night Shift', genre: 'Lo-fi', bpm: [70, 88], sc: ['dor', 'minor'], duck: false, vol: 1.8,
       A: ['Rainy', 'Quiet', 'Empty', 'Late', 'Sleepy', 'Foggy', 'Warm', 'Blue', 'Hushed', 'Slow', 'Hazy', 'Cold'],
       B: ['Rooftop', 'Streetlights', 'Coffee', 'Window', 'Radio', 'Corners', 'Apartment', 'Alley', 'Tape', 'Hours', 'Bench', 'Walk'],
       init: function (S, r) { S.kp = pat16(r, pick(r, ['x.........x.....', 'x......x..x.....', 'x.........x..x..']), 0.06); S.dens = 0.3; },
@@ -157,7 +157,7 @@
         for (i = 0; i < 3; i++) N(c.t + c.r() * c.bd, 0.006, 0.05 * c.r(), 'highpass', 2000, 0.7, null, musBus);   // vinyl crackle
         endChord(c, function (t) { vPianoCh(ch7, t, 0.03); vPianoCh([ch7[0] + 12, ch7[2] + 12], t + c.st * 2, 0.02); vSub(c.root + 12, t, c.bd, 0.12); });
       } },
-    { id: 'rot', name: 'Rot Rave', genre: 'Drum & bass', bpm: [168, 176], sc: ['minor', 'phry'], duck: true, vol: 1.15,
+    { id: 'rot', hum: 0.003, name: 'Rot Rave', genre: 'Drum & bass', bpm: [168, 176], sc: ['minor', 'phry'], duck: true, vol: 1.15,
       A: ['Sub', 'Night', 'Rot', 'Hyper', 'Dark', 'Liquid', 'Feral', 'Crash', 'Venom', 'Rapid', 'Shadow', 'Blackout'],
       B: ['Runner', 'Pressure', 'Tunnel', 'Reactor', 'Chase', 'Frequency', 'Engine', 'Fever', 'Riot', 'Velocity', 'Circuit', 'Swarm'],
       init: function (S, r) { S.kp = pat16(r, pick(r, ['x.........x.....', 'x.........x..x..', 'x.x.......x.....']), 0); S.wob = pick(r, WOB); S.dens = 0.4; },
@@ -174,7 +174,7 @@
         if (c.next === 'b' && c.i === c.n - 2) vRiser(c.t, c.bd * 2);
         endChord(c, function (t) { vImpact(t); vPad(c.ch, t, c.bd * 2, 1400, 0.04); vSub(c.root + 12, t, c.bd * 1.5, 0.14); });
       } },
-    { id: 'pixel', name: 'Pixel Plague', genre: 'Chiptune', bpm: [128, 158], sc: ['minor', 'harm', 'dor'], duck: false, vol: 0.85,
+    { id: 'pixel', hum: 0, name: 'Pixel Plague', genre: 'Chiptune', bpm: [128, 158], sc: ['minor', 'harm', 'dor'], duck: false, vol: 0.85,
       A: ['Pixel', 'Eight-Bit', 'Super', 'Mega', 'Turbo', 'Glitch', 'Retro', 'Ultra', 'Cyber', 'Byte', 'Arcade', 'Bit'],
       B: ['Plague', 'Zombies', 'Quest', 'Panic', 'Hero', 'Castle', 'Dungeon', 'Blaster', 'Run', 'Boss', 'Invaders', 'Outbreak'],
       init: function (S, r) { S.kp = pat16(r, pick(r, ['x...x...x...x...', 'x.....x.x.......', 'x...x..xx...x...']), 0.1); S.dens = 0.65; },
@@ -242,7 +242,7 @@
     var G = getG(); G.rec = RENDER; setG(sv); RENDER = null;
     return G;
   }
-  function withG(G, S, fn) { var t0 = performance.now(), sv = getG(); setG(G); RENDER = G.rec; STEP = S.step; BPM = S.bpm; TR = 0; song = null; try { fn(); } catch (e) { RD.errs++; } finally { setG(sv); var d = performance.now() - t0; RD.buildMs += d; if (d > RD.buildMax) RD.buildMax = d; } }
+  function withG(G, S, fn) { var t0 = performance.now(), sv = getG(); setG(G); RENDER = G.rec; STEP = S.step; BPM = S.bpm; TR = 0; song = null; HUM = S.st.hum || 0; try { fn(); } catch (e) { RD.errs++; RD.lastErr = String(e && e.stack || e).slice(0, 300); } finally { HUM = 0; setG(sv); var d = performance.now() - t0; RD.buildMs += d; if (d > RD.buildMax) RD.buildMax = d; } }
   function getG() { return [ac, musBus, synthBus, drumBus, revIn, dlyIn, dly, distIn, bellBus, gtrIn, leadIn, pulse25, sfxBus, STEP, BPM, TR, song, RENDER]; }
   function setG(a) { ac = a[0]; musBus = a[1]; synthBus = a[2]; drumBus = a[3]; revIn = a[4]; dlyIn = a[5]; dly = a[6]; distIn = a[7]; bellBus = a[8]; gtrIn = a[9]; leadIn = a[10]; pulse25 = a[11]; sfxBus = a[12]; STEP = a[13]; BPM = a[14]; TR = a[15]; song = a[16]; RENDER = a[17]; }
 
@@ -276,7 +276,9 @@
     RD.vol = c.createGain(); RD.vol.gain.value = RD.muted ? 0 : (RD.hold || 1);
     // the Music volume setting comes last, after the analyser, so the light show still sees the full song
     RD.uvol = c.createGain(); RD.uvol.gain.value = RD.uv; rMono();
-    RD.bus.connect(comp); comp.connect(trim); trim.connect(clip); clip.connect(RD.an); RD.an.connect(RD.vol); RD.vol.connect(RD.uvol); RD.uvol.connect(c.destination);
+    // 1.9.997: the sidechain under gunfire sits after the analyser (the light show keeps seeing the whole song)
+    RD.duckG = c.createGain(); RD.duckG.gain.value = 1;
+    RD.bus.connect(comp); comp.connect(trim); trim.connect(clip); clip.connect(RD.an); RD.an.connect(RD.duckG); RD.duckG.connect(RD.vol); RD.vol.connect(RD.uvol); RD.uvol.connect(c.destination);
     // the beat finder for the player's own songs listens to the raw signal
     onAn = c.createAnalyser(); onAn.fftSize = 1024; onAn.smoothingTimeConstant = 0; onAn.minDecibels = -100; onAn.maxDecibels = 0;
     onSpec = new Float32Array(onAn.frequencyBinCount); onPrev = new Float32Array(onAn.frequencyBinCount);
@@ -287,6 +289,11 @@
     RD.statBuf = sb; RD.statG = c.createGain(); RD.statG.gain.value = 0;
     var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 0.6; RD.statG.connect(bp); bp.connect(RD.bus);
     RD.bt.els = []; RD.bt.gs = []; RD.bt.cur = -1;
+  }
+  // the song dips under each shot: down in 4 ms, back up over about 150 ms (a 2:1 sidechain's feel); a stream keeps it pumping
+  function rDuck(a) {
+    var c = RD.ctx; if (!c || !RD.duckG || RD.muted || !a || RD.uv <= 0.001) return; var t = c.currentTime, g = RD.duckG.gain;
+    try { g.cancelScheduledValues(t); g.setValueAtTime(Math.min(1, Math.max(0.3, g.value)), t); g.setTargetAtTime(1 - Math.min(0.6, a), t, 0.004); g.setTargetAtTime(1, t + 0.035, 0.05); } catch (e) { }
   }
   function rMono() { if (!RD.uvol) return; try { RD.uvol.channelCount = RD.mono ? 1 : 2; RD.uvol.channelCountMode = RD.mono ? 'explicit' : 'max'; } catch (e) { } }
   function rStatic(on) {

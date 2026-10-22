@@ -68,8 +68,11 @@ function armsNew(p, load) {
   p.arm = { w: [W0, W1], slot: 0, mag: [armsCap(W0), armsCap(W1)], st: 'relaxed', t: 0, dur: 0, eng: 9, focus: 0, kick: 0, kickN: 0, rk: '', rT: 0, rEv: 0, rSeq: 0, keep: false,
     tube: 0, tubeStop: false, next: '', emptyT: -1, latch: false, sprintHeld: false, nearT: 0, near: 0, dryT: 0, swSeq: 0, dodgeEnd: '', camK: 0 };
   p.weapon = W0; p.dashK = 'dodge';
+  armsVoice(W0); armsVoice(W1);
   return p.arm;
 }
+// 1.9.997: a gun's own sound is rendered when it is picked up, not at its first shot
+function armsVoice(w) { try { if (w && w.arms && typeof SFX !== 'undefined' && SFX.gunPrep) SFX.gunPrep(w.arms.key); } catch (e) { } }
 // the moves that end on their own (a move still going long past its time is stuck); relaxed, ready and sprint last as long as they last
 const ARMS_TIMED = ['raise', 'lower', 'reload', 'swapOut', 'swapIn', 'sprintOut', 'dodge', 'inspect', 'knife'];
 function armsSet(p, st, dur) { const a = p.arm; a.st = st; a.t = 0; a.dur = dur || 0; }
@@ -223,7 +226,7 @@ function armsDropMag(p) {
 function armsPickup(p, w) {
   const a = p.arm; if (!a || !w.arms) return false;
   const i = w.slot === 'primary' ? 0 : 1;
-  a.w[i] = w; a.mag[i] = armsCap(w);
+  a.w[i] = w; a.mag[i] = armsCap(w); armsVoice(w);
   if (a.slot === i) { p.weapon = w; armsSet(p, 'swapIn', w.arms.draw); a.swSeq++; armsSnd('draw', 1); }
   recalc(p); updWeaponChip(); ARMS.hudK = '';
   toast(w.slot === 'primary' ? 'Primary' : 'Secondary', w.arms.full + ' · ' + w.arms.cal, WRAR[w.rarity].color); SFX.unlock();
@@ -404,7 +407,7 @@ function openArmsDetail(w) {
 }
 function armsEquipCur() {
   const w = armsCur; if (!w) return false;
-  armsSetLoad(w.slot, w.arms.key); SFX.click(); openArmsDetail(w); renderArmsArmory(); renderArmsSide(); try { KEEP.approve(); } catch (e) { }
+  armsSetLoad(w.slot, w.arms.key); SFX.click(); armsVoice(w); openArmsDetail(w); renderArmsArmory(); renderArmsSide(); try { KEEP.approve(); } catch (e) { }
   if (typeof legendWarmJobs === 'function') LG.sprites.clear();
   return true;
 }
