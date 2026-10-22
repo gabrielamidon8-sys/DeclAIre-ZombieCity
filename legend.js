@@ -1060,9 +1060,12 @@ const LG_FS = function (deriv) {
   // twill (tile 15, the clothes of the dead) or knit (5) fragment into the next tile's edge, printing dashes like text)
   'vec2 tuv(float t, vec2 u) { vec2 f = clamp(fract(u), uTx, 1.0 - uTx); float r = floor(t / uGrid.x + 0.001); return (vec2(t - r * uGrid.x, r) + f) / uGrid; }\n' +
   'float unpackD(vec4 c) { return dot(c, vec4(1.0, 1.0 / 255.0, 1.0 / 65025.0, 1.0 / 16581375.0)); }\n' +
+  // (1.9.997: eight Poisson taps over a 1.6-texel disc, the disc turned by a per-pixel hash, so the shadow's edge is a soft
+  // penumbra with no stair-steps rather than the four-tap block it was)
   'float shadowAt(vec4 L, float bias) { vec3 p = L.xyz / L.w * 0.5 + 0.5; if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0) return 1.0; float s = 0.0;\n' +
-  ' s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(-uShTx, -uShTx)))); s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(uShTx, -uShTx))));\n' +
-  ' s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(-uShTx, uShTx)))); s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(uShTx, uShTx)))); return s * 0.25; }\n' +
+  ' float an = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832; float ca = cos(an), sa = sin(an); float rd = uShTx * 1.6;\n' +
+  ' vec2 T[8]; T[0] = vec2(-0.94, 0.34); T[1] = vec2(0.94, -0.40); T[2] = vec2(-0.09, -0.93); T[3] = vec2(0.34, 0.29); T[4] = vec2(-0.91, -0.19); T[5] = vec2(0.47, 0.84); T[6] = vec2(-0.37, 0.69); T[7] = vec2(0.17, -0.47);\n' +
+  ' for (int i = 0; i < 8; i++) { vec2 o = vec2(T[i].x * ca - T[i].y * sa, T[i].x * sa + T[i].y * ca) * rd; s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + o))); } return s * 0.125; }\n' +
   'vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }\n' +
   'float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n' +
   // rain rings on the puddles: a few drops per cell, each an expanding ring

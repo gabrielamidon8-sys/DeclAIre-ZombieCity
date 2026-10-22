@@ -349,13 +349,14 @@ function mimWarp(curve, dur) {
 const MIM = { ver: 1, scene: null, rt: 0, st: 0, lastSt: 0, playing: false, actors: [], set: null, setW: null, cam: lgCam(), S: null, shots: [], shot: -1, warp: null, cues: [], cueI: 0, onEnd: null, onCue: null,
   cls: 'attack', w: 0, h: 0, scale: 1, adapt: 0, lvl: 2, ms: 0, msAvg: 0, frames: 0, mode: 'none', cv2: null, g2: null, mount: null, studio: { view: 'front', yaw: 0, pitch: 0.12, dist: 3.1, auto: true, tTilt: 0, from: null }, errT: [], offUntil: 0, look: {} };
 function mimLevel() { return MIM.lvl = clamp(([1, 1, 2, 3][clamp(PERF.tier | 0, 0, 3)]) + MIM.adapt + (TUNE.MIMATIC || 0), 0, 3); }
-const MIMQ = [{ scale: 0.55, lod: 1, lineLod: 2 }, { scale: 0.7, lod: 1, lineLod: 2 }, { scale: 0.85, lod: 0, lineLod: 1 }, { scale: 1, lod: 0, lineLod: 1 }];
+// lens: the real lens chain (depth of field, the shutter's motion blur, mist, light rays, a look) on the alley and the stoop
+const MIMQ = [{ scale: 0.55, lod: 1, lineLod: 2, lens: 0 }, { scale: 0.7, lod: 1, lineLod: 2, lens: 0 }, { scale: 0.85, lod: 0, lineLod: 1, lens: 1 }, { scale: 1, lod: 0, lineLod: 1, lens: 1 }];
 function mimSetW() { const W = new Float32Array(LG_NB_MAX * 16); for (let i = 0; i < LG_NB_MAX; i++) W.set(lgM4(), i * 16); return W; }
 
 /* ---------- lighting per scene ---------- */
 function mimAlleyLights(acc) {
   return {
-    key: { dir: [-0.3, 0.4, 1], col: [0.3, 0.38, 0.52] }, rim: { dir: [1, 0.1, 0.25], col: [0.5, 0.74, 1.1] }, sky: [0.055, 0.065, 0.095], gnd: [0.03, 0.027, 0.03],
+    key: { dir: [-0.3, 0.4, 1], col: [0.3, 0.38, 0.52] }, rim: { dir: [1, 0.1, 0.25], col: [0.5, 0.74, 1.1] }, sky: [0.055, 0.065, 0.095], gnd: [0.07, 0.056, 0.042],   // (1.9.997: the wet street bounces the sodium light up under him, so he is not a flat cut-out against the bricks)
     pts: [{ p: [-6.7, -1.5, 5.1], r: 19, col: [2.1, 1.2, 0.48] }, { p: [11.0, -2.3, 3.6], r: 7.5, col: [1.6, 0.45, 1.2] }, { p: [7.5, -2.35, 2.4], r: 5, col: [1.5, 1.0, 0.55] }, { p: [5.5, 2.5, 4.0], r: 0.01, col: [0, 0, 0] }],
     fog: { col: [0.03, 0.04, 0.062], d: 0.04, h: 0.12, s: 1.5 }, wet: 1, expo: 1.3, clear: [0.012, 0.016, 0.026]
   };
@@ -694,7 +695,7 @@ function mimRender(w, h, rt, st) {
   const scene = MIM.scene, q = MIMQ[mimLevel()], vq = vfxQ();
   // the camera of this moment
   const cam = MIM.cam; let look = { eye: [0, -3, 1.5], tgt: [0, 0, 1], fov: 0.7, roll: 0, shake: 0, mb: 0, punch: 0, flare: 0.4 };
-  if (scene === 'alley') { let i = 0; while (i < MIM.shots.length - 1 && MIM.shots[i + 1].t0 <= rt) i++; if (i !== MIM.shot) { MIM.shot = i; } look = Object.assign(look, MIM.shots[i].cam(rt, st)); mimLearnApply(i, look); }
+  if (scene === 'alley') { let i = 0; while (i < MIM.shots.length - 1 && MIM.shots[i + 1].t0 <= rt) i++; if (i !== MIM.shot) { MIM.shot = i; MIM.prevVP = null; } look = Object.assign(look, MIM.shots[i].cam(rt, st)); mimLearnApply(i, look); }
   else if (scene === 'lineup' || scene === 'hub') { const k = Math.sin(rt * 0.07), far = scene === 'hub'; look = { eye: [far ? -3.2 : -1.2 + k * 0.4, k * 0.9, far ? 2.3 : 1.55 + Math.sin(rt * 0.11) * 0.1], tgt: [6.2, k * 0.25, far ? 1.3 : 1.2], fov: far ? 0.62 : 0.74, roll: 0, shake: 0.12, mb: 0, flare: 0.5 }; if (MIM.focus != null) { const y = (2 - MIM.focus) * 1.18; look.tgt[1] = lgLerp(look.tgt[1], y, 0.3); } }
   else if (scene === 'studio') look = mimStudioCam(rt);
   else if (scene === 'stoop') look = lgiCam(rt);
@@ -734,21 +735,40 @@ function mimRender(w, h, rt, st) {
   if (MIM.mode === 'gl') {
     const k = q.scale * (MIM.scale || 1), rw = Math.max(64, Math.round(w * k)), rh = Math.max(64, Math.round(h * k)), gl = LGR.gl;
     const f = lgFBO('mimScene', rw, rh, true);
-    mimSceneGL(S, rw, rh, f);
-    // rain, splashes and sprites into the scene, depth-tested
-    gl.bindFramebuffer(gl.FRAMEBUFFER, f.fb); gl.viewport(0, 0, rw, rh);
     const rain = scene === 'studio' ? null : scene === 'stoop' ? { on: true, center: [2.5, 0, 3], box: [10, 12, 7], fall: 7.5, wind: [0.3, 0.6], speed: 1, dim: 0.7, splash: { center: [3.2, 0, 0], area: [6, 9], z: 0 }, density: 0.3 } : { on: true, center: [cam.tgt[0] * 0.5 + cam.eye[0] * 0.5, cam.tgt[1] * 0.5 + cam.eye[1] * 0.5, 4], box: [13, 9, 9], fall: 9, wind: [0.5, 0.25], speed: MIM.warp ? MIM.warp.sp(rt) : 1, dim: 1, splash: { center: [cam.eye[0] * 0.3 + cam.tgt[0] * 0.7, cam.eye[1] * 0.3 + cam.tgt[1] * 0.7, 0], area: [9, 5.4], z: 0 }, density: scene === 'hub' ? 0.6 : 1 };
-    let vx0 = performance.now();
-    if (rain) vfxRain(S, rain, st);
-    vfxBoltSprites(fl); vfxSprites(S, true); vfxSprites(S, false);
-    VX.msF += performance.now() - vx0;
+    const dst = Math.max(0, st - MIM.lastSt), sp = MIM.warp ? MIM.warp.sp(rt) : 1;
+    // rain, splashes, the motes in the air and the sprites into the scene, depth-tested (and, with the lens, inside its focus)
+    const inScene = () => { let vx0 = performance.now(); if (rain) vfxRain(S, rain, st); if (scene !== 'studio') vfxAmbient(S, { dt: dst, flash: fl, k: scene === 'hub' ? 0.6 : 1, wind: scene === 'stoop' ? [0.04, 0.08] : [0.07, 0.03] }); vfxBoltSprites(fl); vfxSprites(S, true); vfxSprites(S, false); VX.msF += performance.now() - vx0; };
+    // 1.9.997: the lens. A real camera's chain on the alley and the stoop: the thin lens's depth of field focused on the
+    // shot's subject (a wide aperture on the inserts, a stop or two down on the wides), the 180-degree shutter's motion blur
+    // from the camera's own move (none across a cut), a low mist that thickens with distance, rays off the lamp when it is
+    // in frame, and a teal-and-orange look; the studio and the line-up keep the plain pass
+    const lensOn = q.lens && vq.mb && (scene === 'alley' || scene === 'stoop') && !MIM.reduce && typeof vxlRender === 'function' && !MIM.camOverride;
+    let lensed = false;
+    if (lensOn) {
+      const fd = look.focus || Math.hypot(cam.tgt[0] - cam.eye[0], cam.tgt[1] - cam.eye[1], cam.tgt[2] - cam.eye[2]) || 2;
+      const N = look.N || (cam.fov < 0.45 ? 2.0 : cam.fov < 0.65 ? 2.8 : 4.0), lens = mimcBody({ f: mimcFocal(cam.fov, 's35', rw / rh), N: N, focus: fd, shutter: 180 });
+      let rays = null; const Ls = S.pts || [];
+      for (let i = 0; i < Ls.length && i < 3 && !rays; i++) { const L = Ls[i]; if (!L || L.r < 1) continue; const pr = mimcProject(cam, L.p, rw / rh); if (pr.front && Math.abs(pr.x) < 1.25 && Math.abs(pr.y) < 1.25) rays = { p: L.p, col: L.col.map(v => Math.min(1.2, v * 0.45)), r: Math.max(10, rh * 0.03), exposure: 0.16 + 0.12 * (fl || 0) }; }
+      const mist = scene === 'stoop' ? { rho: 0.018, H: 1.4, zb: 0, col: [0.05, 0.055, 0.07] } : { rho: 0.03, H: 1.1, zb: 0, col: [0.04, 0.05, 0.075] };
+      const prevVP = MIM.prevVP && MIM.prevScene === scene && sp > 0.02 ? MIM.prevVP : null;
+      try {
+        lensed = !!vxlRender(S, rw, rh, { lens: lens, dof: true, dofMax: Math.max(8, Math.round(rh / 42)), mb: true, prevVP: prevVP, fog: mist, vig: 0, rays: rays, look: 'tealOrange', lookK: scene === 'stoop' ? 0.3 : 0.42, out: f, extra: inScene });
+      } catch (e) { lensed = false; MIM.lensErr = (MIM.lensErr || 0) + 1; }
+      if (lensed && S.cam.VP) { MIM.prevVP = Float32Array.from(S.cam.VP); MIM.prevScene = scene; }
+    }
+    if (!lensed) {
+      mimSceneGL(S, rw, rh, f);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, f.fb); gl.viewport(0, 0, rw, rh);
+      inScene(); MIM.prevVP = null;
+    }
     // the post chain to the screen
     if (LGR.cv.width !== w || LGR.cv.height !== h) { LGR.cv.width = w; LGR.cv.height = h; }
     const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.9, 14.5)) * 0.12 + freeze * 0.03 : scene === 'stoop' ? 0.085 * lgW(rt, 0, 1.2) : 0.0;
     const fade = scene === 'alley' ? Math.max(1 - lgW(rt, 0, 0.9), lgW(rt, 13.43, 14.3)) : (scene === 'studio' ? 1 - lgW(rt, 0, 0.5) : 1 - lgW(rt, 0, 1.2));
     const stp = scene === 'stoop';
     const post = { bloom: 3, bloomK: scene === 'studio' ? 0.4 : stp ? 0.8 : 0.62, th: stp ? 0.5 : 0.58, streak: (look.flare || 0.4) * (scene === 'studio' ? 0.4 : 1), ca: scene === 'alley' ? 0.55 + (look.ca || 0) : stp ? 0.5 : 0.3, grain: scene === 'studio' ? 0.025 : stp ? 0.06 : 0.045, vig: scene === 'studio' ? 0.45 : stp ? 0.78 : 0.62, bars: bars, fade: fade, flash: Math.max(fl * 0.3 * (SET.flash ? 0.35 : 1), scene === 'alley' ? lgPulse(rt, 10.92, 11.06) * 0.6 * (SET.flash ? 0.3 : 1) : 0), mb: look.mb || 0, hal: stp ? 0.32 : scene === 'alley' ? 0.2 : scene === 'studio' ? 0.06 : 0.14, tone: scene === 'studio' ? 0.35 : 0.65, shd: scene === 'studio' ? [0, 0, 0] : [-0.004, 0.006, 0.018], hil: scene === 'studio' ? [0, 0, 0] : [0.02, 0.008, -0.012], sat: stp ? 0.92 : 1.05 - freeze * 0.1, expo: 1.0 + fl * 0.25, lift: stp ? [0.004, 0.014, 0.022] : [0.008, 0.012, 0.02], gain: stp ? [1.08, 0.99, 0.9] : [1.03, 1.0, 0.97] };
-    vx0 = performance.now(); vfxPost(f, w, h, post, rt); VX.msF += performance.now() - vx0;
+    const vx0 = performance.now(); vfxPost(f, w, h, post, rt); VX.msF += performance.now() - vx0;
   } else {
     const c = MIM.cv2; if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     const g = MIM.g2; lg2DScene(g, Object.assign({}, S, { items: S.items.filter(it => !it.ground) }), w, h);

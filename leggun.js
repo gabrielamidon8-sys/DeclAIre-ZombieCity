@@ -415,32 +415,45 @@ function lgGunM1917(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   // 1.9.997: the hammer on its bone (it cocks and falls); the frame, the barrel and the grip on the pistol bone; the
   // cylinder on its own (it turns a chamber a shot and swings out on the crane)
+  // (the detail pass: the cylinder is the real 40 mm, not 66, and the frame window, the ejector rod and the barrel are
+  // proportioned to it (a 5.5-inch barrel); the extractor star and the gas ring at the cylinder's ends, the forcing cone,
+  // the side plate seam and its screws, the hammer nose, the rebound hump, the grip screw and escutcheons, the lanyard ring)
   lgBone(B, 'hammer'); lgMat(B, M.blued); lgSide(B, [[-0.006, 0.004], [0.004, 0.008], [0.002, 0.022], [-0.008, 0.03], [-0.02, 0.031], [-0.022, 0.026], [-0.012, 0.018]], 0.007, { bev: 0.0012, round: true });
   if (top) for (let i = 0; i < 4; i++) lgBox(B, -0.014 + i * 0.003, 0, 0.0305, 0.0006, 0.0034, 0.0008, 0);
+  if (hi) { lgMat(B, M.steel); lgBox(B, 0.006, 0, 0.0075, 0.004, 0.0012, 0.0012, 0.0004); }   // the hammer nose (the firing pin)
   lgBone(B, 'pistol'); lgMat(B, M.blued);
   // the frame: the window round the cylinder (bottom bar, top strap, the standing breech with the recoil shield), the
   // barrel's shoulder; the cylinder sits in the window
-  lgSide(B, [[-0.012, -0.004], [0.004, -0.026], [0.074, -0.026], [0.078, -0.018], [0.078, 0.02], [0.07, 0.026], [0.0, 0.024], [-0.012, 0.016]], 0.012, { bev: 0.002, round: true });
-  lgSide(B, [[-0.002, 0.016], [0.078, 0.018], [0.078, 0.026], [0.0, 0.026], [-0.008, 0.022]], 0.022, { bev: 0.003, round: true });   // the top strap, full width over the cylinder
-  lgSide(B, [[-0.002, -0.026], [0.074, -0.026], [0.074, -0.02], [-0.002, -0.022]], 0.022, { bev: 0.003, round: true });                // the bottom bar
+  lgSide(B, [[-0.012, -0.004], [0.004, -0.026], [0.05, -0.026], [0.056, -0.018], [0.056, 0.02], [0.048, 0.026], [0.0, 0.024], [-0.012, 0.016]], 0.012, { bev: 0.002, round: true });
+  lgSide(B, [[-0.002, 0.016], [0.056, 0.018], [0.056, 0.026], [0.0, 0.026], [-0.008, 0.022]], 0.022, { bev: 0.003, round: true });   // the top strap, full width over the cylinder
+  lgSide(B, [[-0.002, -0.026], [0.052, -0.026], [0.052, -0.02], [-0.002, -0.022]], 0.022, { bev: 0.003, round: true });                // the bottom bar
   lgSide(B, [[-0.012, -0.024], [0.002, -0.024], [0.002, 0.024], [-0.012, 0.018]], 0.044, { bev: 0.004, round: true });                 // the recoil shield
-  if (hi) { lgMat(B, M.blued); lgBox(B, 0.03, 0, 0.0262, 0.034, 0.0022, 0.0008, 0); }   // the sighting groove in the strap
-  lgBore(B, 0.072, 0.142, [[0, 0.0098], [0.08, 0.0092], [0.1, 0.0085], [1, 0.0082]], 0, 0.004);
-  lgPush(B, lgTR(0.206, 0, 0.012, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.004, 0], [0.002, 0.008], [-0.004, 0.009]], 0.004, { bev: 0.0008 }); lgPop(B);   // the half-moon front sight
-  // the ejector rod and its shroud under the barrel, the crane, the latch on the left
-  lgBore(B, 0.076, 0.07, 0.0042, 0, -0.012); lgBore(B, 0.146, 0.006, 0.0055, 0, -0.012);
-  if (hi) { lgBox(B, 0.074, 0, -0.016, 0.004, 0.009, 0.006, 0.0015); lgBox(B, 0.004, 0.012, 0.008, 0.006, 0.0016, 0.004, 0.0012); if (top) for (let i = 0; i < 4; i++) lgBox(B, 0.0, 0.0135, 0.006 + i * 0.0014, 0.0042, 0.0006, 0.0004, 0); }
-  // the cylinder: six chambers, fluted, the bolt notches; the chamber mouths at its front
-  lgBone(B, 'cyl'); lgMat(B, M.blued); lgBore(B, 0.006, 0.066, [[0, 0.0195], [0.06, 0.0212], [0.94, 0.0212], [1, 0.0198]], 0, -0.001, { segs: 18, wr: hi ? (a, z) => (Math.cos(a * 6) > 0.72 && z > 0.01 && z < 0.056 ? -0.13 : 0) : null });
-  if (hi) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + TAU / 12; lgBore(B, 0.0715, 0.0016, 0.0049, Math.cos(a) * 0.0128, -0.001 + Math.sin(a) * 0.0128, { segs: 8 }); } }
-  if (top) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; lgBox(B, 0.03, Math.cos(a) * 0.0215, -0.001 + Math.sin(a) * 0.0215, 0.004, 0.0012, 0.0012, 0.0004); } }   // the bolt notches
+  lgSide(B, [[-0.022, -0.006], [-0.012, -0.004], [-0.012, 0.016], [-0.02, 0.018], [-0.026, 0.01]], 0.03, { bev: 0.003, round: true });   // the rebound hump behind the hammer
+  if (hi) { lgMat(B, M.blued); lgBox(B, 0.026, 0, 0.0262, 0.024, 0.0022, 0.0008, 0); }   // the sighting groove in the strap
+  // the barrel: 5.5 inches from the frame, a shoulder at the frame, the forcing cone inside the window
+  lgBore(B, 0.05, 0.146, [[0, 0.0102], [0.05, 0.0098], [0.1, 0.009], [1, 0.0085]], 0, 0.004);
+  if (hi) { lgMat(B, M.gunBlk); lgBore(B, 0.044, 0.008, [[0, 0.0068], [1, 0.0078]], 0, 0.004, { segs: 10 }); lgMat(B, M.blued); }   // the forcing cone
+  lgPush(B, lgTR(0.19, 0, 0.012, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.004, 0], [0.002, 0.008], [-0.004, 0.009]], 0.004, { bev: 0.0008 }); lgPop(B);   // the half-moon front sight
+  // the ejector rod under the barrel, its knurled head and the lug that holds its tip; the crane; the thumbpiece on the left
+  lgMat(B, M.steel); lgBore(B, 0.052, 0.05, 0.0038, 0, -0.012); if (hi) lgBore(B, 0.094, 0.009, 0.0052, 0, -0.012, { segs: 12, wr: top ? (a) => (Math.cos(a * 12) > 0.3 ? -0.08 : 0) : null });
+  lgMat(B, M.blued); if (hi) { lgBox(B, 0.102, 0, -0.008, 0.005, 0.007, 0.0065, 0.0015); lgBox(B, 0.004, 0.012, 0.008, 0.006, 0.0016, 0.004, 0.0012); if (top) for (let i = 0; i < 4; i++) lgBox(B, 0.0, 0.0135, 0.006 + i * 0.0014, 0.0042, 0.0006, 0.0004, 0); }
+  // the side plate on the right: its seam and three screws; the fourth screw at the front of the trigger guard
+  if (top) { lgMat(B, M.gunBlk); lgBox(B, -0.012, -0.0105, -0.03, 0.0004, 0.0004, 0.028, 0); lgBox(B, 0.006, -0.0105, -0.058, 0.018, 0.0004, 0.0004, 0); lgMat(B, M.steel); for (const [x, z] of [[-0.03, -0.012], [0.018, -0.05], [-0.034, -0.064]]) lgBore(B, x - 0.0006, 0.0012, 0.0022, -0.0108, z, { segs: 8 }); }
+  // the cylinder: six chambers, fluted, the bolt notches; the chamber mouths at its front, the extractor star and the
+  // ratchet at its back, the gas ring at its front hub
+  lgBone(B, 'cyl'); lgMat(B, M.blued); lgBore(B, 0.006, 0.04, [[0, 0.0195], [0.08, 0.0212], [0.92, 0.0212], [1, 0.0198]], 0, -0.001, { segs: 18, wr: hi ? (a, z) => (Math.cos(a * 6) > 0.72 && z > 0.008 && z < 0.034 ? -0.13 : 0) : null });
+  if (hi) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + TAU / 12; lgBore(B, 0.0455, 0.0016, 0.0049, Math.cos(a) * 0.0128, -0.001 + Math.sin(a) * 0.0128, { segs: 8 }); } }
+  if (hi) { lgMat(B, M.steel); lgBore(B, 0.0045, 0.0018, 0.0135, 0, -0.001, { segs: 12, wr: (a) => (Math.cos(a * 6 + TAU / 12) > 0.2 ? 0 : -0.45) }); lgBore(B, 0.0458, 0.0025, 0.0068, 0, -0.001, { segs: 10 }); }   // the star, the gas ring
+  if (top) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; lgBox(B, 0.022, Math.cos(a) * 0.0215, -0.001 + Math.sin(a) * 0.0215, 0.003, 0.0012, 0.0012, 0.0004); } }   // the bolt notches
   lgBone(B, 'pistol');
   // the trigger guard, the trigger, and the round-butt walnut grip with its lanyard ring
-  lgMat(B, M.blued); lgTube(B, [[0.04, 0, -0.026], [0.056, 0, -0.034], [0.058, 0, -0.048], [0.044, 0, -0.056], [0.024, 0, -0.05], [0.016, 0, -0.036]], 0.0028, { segs: 6, flat: 2.2, up: [0, 1, 0] });
+  lgMat(B, M.blued); lgTube(B, [[0.044, 0, -0.024], [0.056, 0, -0.034], [0.058, 0, -0.048], [0.044, 0, -0.056], [0.024, 0, -0.05], [0.014, 0, -0.038], [0.01, 0, -0.027]], 0.0028, { segs: 6, flat: 2.2, up: [0, 1, 0] });
   lgMat(B, M.steel); lgTube(B, [[0.036, 0, -0.026], [0.042, 0, -0.035], [0.04, 0, -0.044], [0.034, 0, -0.048]], 0.0024, { segs: 5, flat: 1.6, up: [0, 1, 0] });
+  if (top) { lgMat(B, M.gunBlk); for (let i = 0; i < 3; i++) lgBox(B, 0.039 - i * 0.001, 0, -0.038 - i * 0.004, 0.0024, 0.0028, 0.0004, 0); }   // the trigger's serrations
   lgMat(B, M.blued); lgSide(B, [[0.012, -0.026], [-0.002, -0.06], [-0.01, -0.094], [-0.022, -0.11], [-0.044, -0.108], [-0.05, -0.084], [-0.04, -0.034], [-0.022, -0.006], [-0.012, -0.004]], 0.02, { bev: 0.003, round: true });   // the grip frame
   lgMat(B, M.walnut); lgSide(B, [[0.008, -0.03], [-0.004, -0.06], [-0.011, -0.092], [-0.022, -0.104], [-0.04, -0.102], [-0.045, -0.082], [-0.036, -0.036], [-0.02, -0.012], [-0.006, -0.012]], 0.031, { bev: 0.0065, smooth: 0.7, round: true });
-  if (hi) { lgMat(B, M.steel); lgPush(B, lgTR(-0.034, 0, -0.118, Math.PI / 2, 0, 0)); lgLathe(B, [[0.0055, -0.0012], [0.0075, 0], [0.0075, 0.0012], [0.0055, 0.0024]], { segs: 10 }); lgPop(B); lgBox(B, -0.034, 0, -0.111, 0.0016, 0.0016, 0.003, 0.0006); if (top) { lgBox(B, -0.022, 0, -0.06, 0.0028, 0.0165, 0.0028, 0.0012); } }   // (1.9.997: the lanyard ring hangs from the butt, where it belongs)
+  if (hi) { lgMat(B, M.steel); for (const y of [0.0158, -0.0158]) lgBore(B, -0.024, 0.0012, 0.0036, y, -0.07, { segs: 10 }); lgMat(B, M.gunBlk); lgBox(B, -0.024, 0.0164, -0.07, 0.0022, 0.0004, 0.0004, 0); }   // the grip screw and its escutcheons
+  if (hi) { lgMat(B, M.steel); lgPush(B, lgTR(-0.034, 0, -0.118, Math.PI / 2, 0, 0)); lgLathe(B, [[0.0055, -0.0012], [0.0075, 0], [0.0075, 0.0012], [0.0055, 0.0024]], { segs: 10 }); lgPop(B); lgBox(B, -0.034, 0, -0.111, 0.0016, 0.0016, 0.003, 0.0006); if (top) { lgMat(B, M.walnut); } }
   // two half-moon clips with their three rounds each (on the magazine bone: they come out together)
   lgBone(B, 'mag'); lgMat(B, M.steel); lgBore(B, 0.0, 0.002, 0.017, 0, -0.002, { segs: 12 });
   if (hi) { lgMat(B, M.brass); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + TAU / 12; lgBore(B, 0.002, 0.03, 0.0058, Math.cos(a) * 0.0128, -0.001 + Math.sin(a) * 0.0128, { segs: 6 }); } }
@@ -467,7 +480,7 @@ const LG_GUN_DEF = {
   m17: { mk: lgGunM17, fam: 'p', muz: [0.202, 0, 0], light: [0.186, 0, -0.031], mag: [0.027, -0.03], act: { lock: true,  slide: 0.032, cyc: 0.05, imp: 3.7, rise: 7.5, rec: 0.2 } },
   m9: { mk: lgGunM9, fam: 'p', muz: [0.217, 0, 0], mag: [0.027, -0.03], act: { lock: true,  slide: 0.032, cyc: 0.05, hammer: true, hp: [0, 0.006], hrot: 0.6, hrest: 1, da: 0.14, imp: 3.7, rise: 7.5, rec: 0.2 } },
   m1911: { mk: lgGunM1911, fam: 'p', muz: [0.202, 0, 0], mag: [0.027, -0.03], act: { lock: true,  slide: 0.035, cyc: 0.055, hammer: true, hp: [0, 0.006], hrot: 0.6, hrest: 1, imp: 4.7, rise: 10, rec: 0.25 } },
-  m1917: { mk: lgGunM1917, fam: 'p', muz: [0.214, 0, 0.004], mag: [0.0, -0.002], moon: true,
+  m1917: { mk: lgGunM1917, fam: 'p', muz: [0.198, 0, 0.004], mag: [0.0, -0.002], moon: true,
     act: { cyl: true, cc: [0, -0.001], crane: [0.013, -0.019], crot: 1.5, chambers: 6, hammer: true, hp: [-0.001, 0.006], hrot: 0.75, hrest: 0, da: 0.16, imp: 4.5, rise: 10, rec: 0.3 } },
   aps: { mk: lgGunAPS, fam: 'p', muz: [0.222, 0, 0], mag: [0.027, -0.03], act: { lock: true,  slide: 0.034, cyc: 0.08, hammer: true, hp: [0, 0.006], hrot: 0.6, hrest: 1, da: 0.14, imp: 2.4, rise: 5, rec: 0.12 } }
 };

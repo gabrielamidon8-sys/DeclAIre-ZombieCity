@@ -167,9 +167,9 @@ function vfxTick(dt) {
     if (p.ground != null && p.p[2] < p.ground) { p.p[2] = p.ground; p.v[2] *= -0.3; p.v[0] *= 0.5; p.v[1] *= 0.5; }
   }
 }
-function vfxSprites(S, add) {
+function vfxSprites(S, add, lst) {
   const gl = LGR.gl; if (!VX.ok) return 0;
-  const list = VX.sp.filter(p => p.add === add); if (!list.length) return 0;
+  const list = (lst || VX.sp).filter(p => p.add === add); if (!list.length) return 0;
   const n = list.length, F = 14; if (!VX.spData || VX.spCap < n) { VX.spCap = Math.max(64, n * 2); VX.spData = new Float32Array(VX.spCap * 4 * F); const I = new Uint16Array(VX.spCap * 6); for (let i = 0; i < VX.spCap; i++) { const b = i * 4; I.set([b, b + 1, b + 3, b, b + 3, b + 2], i * 6); } gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, VX.spIdx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, I, gl.STATIC_DRAW); }
   const D = VX.spData;
   list.forEach((p, i) => {
@@ -185,6 +185,32 @@ function vfxSprites(S, add) {
   gl.drawElements(gl.TRIANGLES, n * 6, gl.UNSIGNED_SHORT, 0);
   gl.depthMask(true); gl.disable(gl.BLEND);
   return n;
+}
+// 1.9.997: the air of a cinematic: motes of dust and ash drifting through the frame, each lit by the lamps near it (and
+// by the flash), so they show in the light pools and vanish in the dark, as dust does. A pool that lives in the box ahead
+// of the camera: a mote that drifts out, or ages out, is born again somewhere else in the box.
+const VXA = { pool: [], box: [2.8, 2.8, 1.7], ahead: 2.4 };
+function vfxAmbient(S, o) {
+  if (!VX.ok || vfxLevel() < 1) return 0; o = o || {};
+  const cam = S.cam, n = o.n || (vfxLevel() >= 3 ? 120 : vfxLevel() >= 2 ? 80 : 40), dt = Math.min(0.1, o.dt == null ? 0.016 : o.dt), B = VXA.box, P = VXA.pool;
+  let f = [cam.tgt[0] - cam.eye[0], cam.tgt[1] - cam.eye[1], cam.tgt[2] - cam.eye[2]]; const L = Math.hypot(f[0], f[1], f[2]) || 1; f = [f[0] / L, f[1] / L, f[2] / L];
+  const c = [cam.eye[0] + f[0] * VXA.ahead, cam.eye[1] + f[1] * VXA.ahead, Math.max(0.6, cam.eye[2] + f[2] * VXA.ahead)];
+  const born = (p) => { p.p = [c[0] + (Math.random() - 0.5) * 2 * B[0], c[1] + (Math.random() - 0.5) * 2 * B[1], Math.max(0.02, c[2] + (Math.random() - 0.5) * 2 * B[2])]; p.v = [(Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.08, -0.02 - Math.random() * 0.05]; p.t = 0; p.life = 4 + Math.random() * 6; p.w = p.w1 = 0.004 + Math.random() * 0.009; p.ph = Math.random() * 6.28; p.k = 0; p.add = true; p.rot = 0; p.b = null; p.a1 = 1; p.col = [0, 0, 0]; return p; };
+  while (P.length < n) P.push(born({}));
+  if (P.length > n) P.length = n;
+  const wind = o.wind || [0.05, 0.02], pts = S.pts || [], fl = o.flash || 0, amb = S.sky || [0.05, 0.06, 0.09];
+  for (const p of P) {
+    p.t += dt; p.ph += dt;
+    p.p[0] += (p.v[0] + wind[0] + Math.sin(p.ph * 0.9) * 0.03) * dt; p.p[1] += (p.v[1] + wind[1] + Math.cos(p.ph * 0.7) * 0.03) * dt; p.p[2] += (p.v[2] + Math.sin(p.ph * 1.3) * 0.015) * dt;
+    if (p.t > p.life || Math.abs(p.p[0] - c[0]) > B[0] * 1.2 || Math.abs(p.p[1] - c[1]) > B[1] * 1.2 || p.p[2] < 0 || Math.abs(p.p[2] - c[2]) > B[2] * 1.3) { born(p); p.t = p.life * Math.random() * 0.3; }
+    // its light: the lamps' falloff squared, the sky's ambient, the flash; a fade at birth and death
+    let r = amb[0] * 0.25, g = amb[1] * 0.25, b = amb[2] * 0.25;
+    for (let i = 0; i < pts.length && i < 4; i++) { const q = pts[i]; if (!q || q.r < 0.1) continue; const d = Math.hypot(p.p[0] - q.p[0], p.p[1] - q.p[1], p.p[2] - q.p[2]), k = Math.max(0, 1 - d / q.r); if (k <= 0) continue; const kk = k * k * 0.55; r += q.col[0] * kk; g += q.col[1] * kk; b += q.col[2] * kk; }
+    if (fl > 0) { r += 1.2 * fl; g += 1.3 * fl; b += 1.6 * fl; }
+    const env = Math.min(1, p.t / 0.8, (p.life - p.t) / 1.0) * (o.k == null ? 1 : o.k), tw = 0.75 + 0.25 * Math.sin(p.ph * 2.1);
+    p.col[0] = r * env * tw; p.col[1] = g * env * tw; p.col[2] = b * env * tw; p.a = 1;
+  }
+  return vfxSprites(S, true, P);
 }
 // effects the director calls for
 function vfxMuzzle(p, dir, col) {
@@ -294,7 +320,7 @@ function vfx2DPost(g, w, h, o, tm) {
   if (o.bars) { const b = o.bars * h; g.fillStyle = '#000'; g.fillRect(0, 0, w, b); g.fillRect(0, h - b, w, b); }
   g.restore();
 }
-function vfxReset() { VX.sp.length = 0; VX.bolts = []; VX.flashPat = null; VX.prev = null; }
+function vfxReset() { VX.sp.length = 0; VX.bolts = []; VX.flashPat = null; VX.prev = null; VXA.pool.length = 0; }
 function vfxHurt(e) {
   const now = performance.now(); coreHurt('VFXRAY', e); try { console.error(e); } catch (x) { }
   VX.errT.push(now); while (VX.errT.length && now - VX.errT[0] > 10000) VX.errT.shift();
