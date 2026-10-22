@@ -1,0 +1,8 @@
+[{"name":"mm1_cine","fn":"evMim","scene":"alley","times":[1.5,3.4,5.2,7.0,8.6,10.2,11.3,12.6],"cols":4,"tw":360},
+ {"name":"mm2_line","fn":"evMim","scene":"lineup","times":[3.0,6.0],"cols":2,"tw":480},
+ {"name":"mm2_studio","fn":"evMim","scene":"studio","times":[1.0,4.0],"cols":2,"tw":480},
+ {"name":"mm3_focal","fn":"evLens","items":"focal","tw":330},
+ {"name":"mm3_stop","fn":"evLens","items":"stop","tw":330},
+ {"name":"mm3_dolly","fn":"evLens","items":"dolly","tw":330},
+ {"name":"mm4_sizes","fn":"evSizes","tw":330},
+ {"name":"mm4_looks","fn":"evLooks","tw":280,"th":340}]

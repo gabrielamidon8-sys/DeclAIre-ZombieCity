@@ -1,0 +1,3104 @@
+{
+ "times": {
+  "LEGEND": 12051,
+  "MIMATIC": 1095,
+  "VFXRAY": 2733,
+  "CHOREO": 1621,
+  "BOARD": 558
+ },
+ "total": 18058,
+ "eng": [
+  {
+   "name": "LEGEND",
+   "title": "LEGEND: the body",
+   "role": "Builds, poses and moves the people in a film: their skeleton and proportions, their hands, what their joints can do, how they hold and move things, and how well they move.",
+   "intro": "Every version is the whole body done to full precision; each adds what LEGEND had to learn to do more with it.",
+   "earned": 5,
+   "levels": [
+    {
+     "v": 1,
+     "title": "The body",
+     "focus": "A skeleton with true proportions, posed by angles and by reaching.",
+     "studied": [
+      {
+       "topic": "Proportions from joint centres",
+       "facts": [
+        "de Leva (1996) segment lengths between joint centres, as fractions of stature (male): upper arm 0.162, forearm 0.154, thigh 0.242, shank 0.249",
+        "Drillis and Contini (1966) heights as fractions of stature: shoulder 0.818, elbow 0.630, wrist 0.485, knee 0.285, ankle 0.039 (to landmarks on the skin, so a joint centre sits a little off them)",
+        "Shoulder joints about 0.21 of stature apart (biacromial breadth 0.259 less the acromion on each side); hip joints about 0.10"
+       ],
+       "src": [
+        [
+         "de Leva 1996, Adjustments to Zatsiorsky-Seluyanov's segment inertia parameters",
+         "https://doi.org/10.1016/0021-9290(95)00178-6"
+        ],
+        [
+         "Drillis and Contini 1966, Body segment parameters (via Winter, Biomechanics and Motor Control of Human Movement)",
+         "https://doi.org/10.1002/9780470549148"
+        ]
+       ]
+      },
+      {
+       "topic": "Reaching (two-bone inverse kinematics)",
+       "facts": [
+        "The elbow (or knee) angle comes from the law of cosines on the two bone lengths and the distance to the target",
+        "The bend's plane is set by a pole (where the elbow points)",
+        "A target out of reach: the limb points straight at it"
+       ],
+       "src": [
+        [
+         "Kulpa and Multon 2005, Fast inverse kinematics and kinetics solver for human-like figures",
+         "https://doi.org/10.1109/ICHR.2005.1573560"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "A 61-bone skeleton (spine, neck, head, collarbones, arms, 15 bones a hand, legs, feet, toes) with props",
+      "Proportions within a couple of percent of stature of the anthropometric tables",
+      "Hands and feet that reach any point in range to under a millimetre"
+     ],
+     "res": {
+      "ok": true,
+      "n": 12,
+      "pass": 12,
+      "ms": 48,
+      "checks": [
+       {
+        "name": "stature (m)",
+        "ok": true,
+        "got": "1.810 m",
+        "want": "1.81 \u00b1 0.05 m"
+       },
+       {
+        "name": "upper arm / stature (de Leva 0.162)",
+        "ok": true,
+        "got": "0.157",
+        "want": "0.162 \u00b1 0.012"
+       },
+       {
+        "name": "forearm / stature (de Leva 0.154)",
+        "ok": true,
+        "got": "0.149",
+        "want": "0.154 \u00b1 0.012"
+       },
+       {
+        "name": "thigh / stature (de Leva 0.242)",
+        "ok": true,
+        "got": "0.238",
+        "want": "0.242 \u00b1 0.015"
+       },
+       {
+        "name": "shank / stature (de Leva 0.249)",
+        "ok": true,
+        "got": "0.232",
+        "want": "0.249 \u00b1 0.02"
+       },
+       {
+        "name": "shoulder height / stature (D&C 0.818)",
+        "ok": true,
+        "got": "0.812",
+        "want": "0.818 \u00b1 0.02"
+       },
+       {
+        "name": "knee height / stature (D&C 0.285)",
+        "ok": true,
+        "got": "0.279",
+        "want": "0.285 \u00b1 0.02"
+       },
+       {
+        "name": "ankle height / stature (D&C 0.039)",
+        "ok": true,
+        "got": "0.047",
+        "want": "0.039 \u00b1 0.012"
+       },
+       {
+        "name": "shoulder joints apart / stature",
+        "ok": true,
+        "got": "0.210",
+        "want": "0.21 \u00b1 0.02"
+       },
+       {
+        "name": "left and right limbs the same length",
+        "ok": true,
+        "got": "equal",
+        "want": "equal"
+       },
+       {
+        "name": "worst reach error over 120 targets in range (mm)",
+        "ok": true,
+        "got": "0.000 mm",
+        "want": "0 to 1 mm"
+       },
+       {
+        "name": "targets out of reach: the arm points at them (of 20)",
+        "ok": true,
+        "got": "20.00",
+        "want": "19 or more"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 2,
+     "title": "Hands and the gun",
+     "focus": "Five-finger hands that close on whatever they hold (1.9.994).",
+     "studied": [
+      {
+       "topic": "The hand",
+       "facts": [
+        "Three bones a finger (proximal, middle, distal phalanx) and the thumb's metacarpal and two phalanges: 15 bones a hand",
+        "Finger lengths in proportion: the middle finger longest, then the ring, the index, the little finger",
+        "A finger closes joint by joint: the knuckle first, then the middle joint, then the last"
+       ],
+       "src": [
+        [
+         "Buryanov and Kotiuk 2010, Proportions of hand segments",
+         "https://doi.org/10.15626/ijms.2010.1.1"
+        ]
+       ]
+      },
+      {
+       "topic": "Holding a gun",
+       "facts": [
+        "The firing hand high on the grip, the trigger finger along the frame or on the trigger",
+        "The support hand's fingers wrap over the firing hand's",
+        "On a rifle the support hand cups the handguard"
+       ],
+       "src": [
+        [
+         "US Army TC 3-22.9, Rifle and Carbine",
+         "https://armypubs.army.mil/"
+        ],
+        [
+         "US Army TC 3-23.35, Pistols",
+         "https://armypubs.army.mil/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Each finger fitted to the actual gun (ten guns) and to the knife: it closes until it touches the metal",
+      "The fits kept on the device and remade only when something they depend on changes"
+     ],
+     "res": {
+      "ok": true,
+      "n": 3,
+      "pass": 3,
+      "ms": 1402,
+      "checks": [
+       {
+        "name": "guns fitted",
+        "ok": true,
+        "got": "10.00",
+        "want": "10"
+       },
+       {
+        "name": "wrapping fingers touching the grip (%)",
+        "ok": true,
+        "got": "96.667%",
+        "want": "85 to 100%"
+       },
+       {
+        "name": "no finger sunk into a gun more than 4 mm",
+        "ok": true,
+        "got": "0.0000",
+        "want": "0"
+       }
+      ],
+      "curves": {},
+      "notes": [
+       "fitting ten firing grips took 885 ms (each is kept afterwards)"
+      ],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 3,
+     "title": "Anatomy",
+     "focus": "Every joint inside the range a human joint has; mass and balance like a body's.",
+     "studied": [
+      {
+       "topic": "Ranges of motion",
+       "facts": [
+        "Shoulder: flexion to 180, extension 50 to 60, across the body about 50",
+        "Elbow: to about 145 (a few degrees of hyperextension); forearm: pronation about 80, supination 80 to 90",
+        "Wrist: flexion 60 to 80, extension 60 to 70, radial 20, ulnar 20 to 30",
+        "Fingers: knuckle 90, middle joint 100 to 110, last joint 70 to 90 (about two thirds of the middle one); thumb knuckle 50 to 60, last joint 80",
+        "Hip: flexion 120 (more with the knee bent), extension 30, abduction 40 to 45 (more as the hip flexes), adduction 20 to 30",
+        "Knee to 135 to 150; ankle: dorsiflexion 20 (about 40 to 45 under the body's weight in a lunge), plantarflexion 50",
+        "Neck: flexion 50 to 60, extension 75, side bend 45, rotation 80; back: flexion 45 to 80, rotation 30 to 45"
+       ],
+       "src": [
+        [
+         "AAOS, Joint Motion: Method of Measuring and Recording",
+         "https://www.aaos.org/"
+        ],
+        [
+         "Soucie et al. 2011, Range of motion measurements: reference values",
+         "https://doi.org/10.1111/j.1365-2516.2010.02399.x"
+        ],
+        [
+         "Hallaceli et al. 2014, Normal hip, knee and ankle range of motion",
+         "https://doi.org/10.5152/balkanmedj.2014.13229"
+        ]
+       ]
+      },
+      {
+       "topic": "The shoulder's rhythm and the arm's swivel",
+       "facts": [
+        "The collarbone and shoulder blade move with the arm (scapulohumeral rhythm, about 2:1)",
+        "With the hand fixed, the elbow can sit anywhere on a circle; people pick the place that keeps the wrist and forearm in range and the shoulder comfortable"
+       ],
+       "src": [
+        [
+         "Inman, Saunders and Abbott 1944, Observations on the function of the shoulder joint",
+         "https://doi.org/10.1097/00003086-199609000-00002"
+        ]
+       ]
+      },
+      {
+       "topic": "Mass and balance",
+       "facts": [
+        "de Leva's segment masses (% of body): head 6.94, trunk 43.46, upper arm 2.71, forearm 1.62, hand 0.61, thigh 14.16, shank 4.33, foot 1.37",
+        "The whole body's centre of mass stands at about 55% of stature",
+        "Standing is balanced when the centre of mass is over the base of support (the feet's hull)"
+       ],
+       "src": [
+        [
+         "de Leva 1996",
+         "https://doi.org/10.1016/0021-9290(95)00178-6"
+        ],
+        [
+         "Hof, Gazendam and Sinke 2005, The condition for dynamic stability",
+         "https://doi.org/10.1016/j.jbiomech.2004.03.025"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Every pose of the 123 clips inside the joint ranges (the clips were made by hand and often were not)",
+      "Arms that swivel to keep the wrist in range, grips that learned where to sit, ankles that roll onto the ball of the foot",
+      "The centre of mass and the base of support, frame by frame"
+     ],
+     "res": {
+      "ok": true,
+      "n": 5,
+      "pass": 5,
+      "ms": 1859,
+      "checks": [
+       {
+        "name": "joint angles past their range, as the clips were made (1017 poses)",
+        "ok": true,
+        "got": "1495",
+        "want": "measured"
+       },
+       {
+        "name": "joint angles past their range with LEGEND's anatomy",
+        "ok": true,
+        "got": "0.0000",
+        "want": "0"
+       },
+       {
+        "name": "centre of mass height / stature (about 0.55)",
+        "ok": true,
+        "got": "0.553",
+        "want": "0.55 \u00b1 0.02"
+       },
+       {
+        "name": "standing: the centre of mass over the feet",
+        "ok": true,
+        "got": "65 mm inside",
+        "want": "inside by 10 mm or more"
+       },
+       {
+        "name": "the grip's cost fell while learning",
+        "ok": true,
+        "got": "1% of the start",
+        "want": "under 70%"
+       }
+      ],
+      "curves": {
+       "joints out of range: before and after": [
+        1495,
+        0
+       ],
+       "support-hand grip on the carbine: cost while learning": [
+        415.7344,
+        195.8023,
+        42.1261,
+        9.1385,
+        7.6396,
+        4.7993,
+        4.7993,
+        4.7993,
+        4.7993,
+        4.7993
+       ]
+      },
+      "notes": [],
+      "evKeys": [
+       "learnt"
+      ]
+     }
+    },
+    {
+     "v": 4,
+     "title": "Handling things",
+     "focus": "Holding everyday things the way people do, and the movements round them: reaching, lifting, handing over, throwing.",
+     "studied": [
+      {
+       "topic": "The grasp taxonomy",
+       "facts": [
+        "Feix et al. (2016): 33 grasps in power, intermediate and precision classes, by opposition (palm, pad, side) and the thumb's position",
+        "Things over about 5 cm or 350 g are held in power grasps about 89% of the time (Feix, Bullock and Dollar 2014)",
+        "A grasp holds when its contact forces can balance: each push lies in a friction cone (skin on most things: a coefficient of about 0.8)"
+       ],
+       "src": [
+        [
+         "Feix, Romero, Schmiedmayer, Dollar and Kragic 2016, The GRASP taxonomy of human grasp types",
+         "https://doi.org/10.1109/THMS.2015.2470657"
+        ],
+        [
+         "Feix, Bullock and Dollar 2014, Analysis of human grasping behavior",
+         "https://doi.org/10.1109/TOH.2014.2326871"
+        ],
+        [
+         "Ferrari and Canny 1992, Planning optimal grasps",
+         "https://doi.org/10.1109/ROBOT.1992.219918"
+        ]
+       ]
+      },
+      {
+       "topic": "Reaching to grasp",
+       "facts": [
+        "Jeannerod (1984): a transport and a grip channel, coordinated",
+        "The hand's speed is one bell, peaking at about 40 to 45% of the reach (the landing is longer)",
+        "The grip opens wider than the thing, widest at 60 to 77% of the reach: about 55 mm plus 0.75 of its width (Smeets and Brenner 1999)",
+        "Fitts's law: time grows with log2(2D/W)"
+       ],
+       "src": [
+        [
+         "Jeannerod 1984, The timing of natural prehension movements",
+         "https://doi.org/10.1080/00222895.1984.10735319"
+        ],
+        [
+         "Smeets and Brenner 1999, A new view on grasping",
+         "https://doi.org/10.1163/156856899X00012"
+        ],
+        [
+         "Fitts 1954, The information capacity of the human motor system",
+         "https://doi.org/10.1037/h0055392"
+        ]
+       ]
+      },
+      {
+       "topic": "Lifting, handing over, throwing",
+       "facts": [
+        "Lift with the legs and keep the load close (NIOSH lifting equation: the load's horizontal distance matters most)",
+        "Handovers: the giver lets go as the receiver's grip closes, over 200 to 400 ms; they meet about halfway (Chan et al. 2012)",
+        "Overarm throwing: pelvis peak at 28 to 35% of foot contact to release, trunk 47 to 53%; peak speeds about 600 (pelvis), 1150 (trunk), 2200 (elbow) and 6500 (shoulder internal rotation) degrees a second (Fleisig et al.)"
+       ],
+       "src": [
+        [
+         "Waters et al. 1993, Revised NIOSH equation for the design and evaluation of manual lifting tasks",
+         "https://doi.org/10.1080/00140139308967940"
+        ],
+        [
+         "Chan, Parker, Van der Loos and Croft 2012, Grip forces and load forces in handovers",
+         "https://doi.org/10.1145/2157689.2157692"
+        ],
+        [
+         "Fleisig, Barrentine, Zheng, Escamilla and Andrews 1999, Kinematic and kinetic comparison of baseball pitching among various levels of development",
+         "https://doi.org/10.1016/S0021-9290(99)00127-X"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Thirteen everyday things, each held in the grasp people use for it, the hand settling until it touches without sinking in and the grip can hold",
+      "Reaching to grasp with a bell of speed, a wide-then-closing grip and the body leaning (hips back to keep the balance)",
+      "Lifting a 12 kg crate from the floor with the legs",
+      "Handing a bottle to another person",
+      "Throwing a ball to a target, learning when to let it go"
+     ],
+     "res": {
+      "ok": true,
+      "n": 25,
+      "pass": 25,
+      "ms": 2716,
+      "checks": [
+       {
+        "name": "grasps chosen as people choose them",
+        "ok": true,
+        "got": "13 of 13",
+        "want": "all"
+       },
+       {
+        "name": "deepest sinking into a thing (mm; skin and glove give 1.5)",
+        "ok": true,
+        "got": "1.597 mm",
+        "want": "0 to 1.7 mm"
+       },
+       {
+        "name": "widest gap at a contact the grasp needs (mm)",
+        "ok": true,
+        "got": "0.083 mm",
+        "want": "-2 to 1 mm"
+       },
+       {
+        "name": "how far the contacts are from balancing (0: they can hold it)",
+        "ok": true,
+        "got": "0.000",
+        "want": "0 to 0.05"
+       },
+       {
+        "name": "reach: peak speed (fraction of the reach)",
+        "ok": true,
+        "got": "0.431",
+        "want": "0.38 to 0.47"
+       },
+       {
+        "name": "reach: widest opening (fraction of the reach)",
+        "ok": true,
+        "got": "0.698",
+        "want": "0.6 to 0.78"
+       },
+       {
+        "name": "reach: widest opening (mm) against 55 + 0.75 w",
+        "ok": true,
+        "got": "77.499 mm",
+        "want": "77.5 \u00b1 3 mm"
+       },
+       {
+        "name": "reach: the hand on the handle at the touch (mm)",
+        "ok": true,
+        "got": "0.000 mm",
+        "want": "0 to 2 mm"
+       },
+       {
+        "name": "reach: the centre of mass over the feet throughout",
+        "ok": true,
+        "got": "87 mm inside",
+        "want": "inside"
+       },
+       {
+        "name": "Fitts: farther and smaller take longer",
+        "ok": true,
+        "got": "0.63 / 0.80 / 0.96 / 0.63 s",
+        "want": "far > near, small > big"
+       },
+       {
+        "name": "lift (12 kg): the centre of mass over the feet throughout",
+        "ok": true,
+        "got": "113 mm",
+        "want": "inside"
+       },
+       {
+        "name": "lift: the hand on the crate at the grip (mm)",
+        "ok": true,
+        "got": "0.000 mm",
+        "want": "0 to 15 mm"
+       },
+       {
+        "name": "handover: the weight passes (s)",
+        "ok": true,
+        "got": "0.300 s",
+        "want": "0.2 to 0.4 s"
+       },
+       {
+        "name": "handover: the bottle is held by someone at every moment",
+        "ok": true,
+        "got": "0.0000",
+        "want": "0"
+       },
+       {
+        "name": "handover: where they meet (fraction of the way)",
+        "ok": true,
+        "got": "0.500",
+        "want": "0.4 to 0.6"
+       },
+       {
+        "name": "handover: the receiver's hand on the bottle at the touch (cm)",
+        "ok": true,
+        "got": "11.802 cm",
+        "want": "0 to 12 cm"
+       },
+       {
+        "name": "throw: the hips turn fastest (fraction of foot contact to release)",
+        "ok": true,
+        "got": "0.307",
+        "want": "0.28 to 0.35"
+       },
+       {
+        "name": "throw: the trunk turns fastest",
+        "ok": true,
+        "got": "0.479",
+        "want": "0.45 to 0.55"
+       },
+       {
+        "name": "throw: the chain runs from the hips out (hips, trunk, elbow, arm)",
+        "ok": true,
+        "got": "0.663 < 0.687 < 0.756 < 0.761",
+        "want": "in order"
+       },
+       {
+        "name": "throw: hips peak speed (deg/s; about 600)",
+        "ok": true,
+        "got": "619.996",
+        "want": "450 to 800"
+       },
+       {
+        "name": "throw: trunk peak speed (deg/s; about 1150)",
+        "ok": true,
+        "got": "1123.313",
+        "want": "900 to 1400"
+       },
+       {
+        "name": "throw: elbow peak speed (deg/s; about 2200)",
+        "ok": true,
+        "got": "2248.698",
+        "want": "1700 to 2700"
+       },
+       {
+        "name": "throw: shoulder internal rotation peak (deg/s; about 6500)",
+        "ok": true,
+        "got": "6581.221",
+        "want": "5000 to 8000"
+       },
+       {
+        "name": "throw: the centre of mass over the back foot with the leg up",
+        "ok": true,
+        "got": "7 mm",
+        "want": "inside"
+       },
+       {
+        "name": "throw: the ball lands at the target (20 m)",
+        "ok": true,
+        "got": "20.000 m",
+        "want": "20 \u00b1 0.3 m"
+       }
+      ],
+      "curves": {
+       "worst contact error per grasp before settling (mm)": [
+        5.3132,
+        0.1873,
+        0.2421,
+        0.278,
+        0.2783,
+        15.1775,
+        14.389,
+        31.8621,
+        11.2032,
+        8.6866,
+        22.2934
+       ],
+       "after settling (mm)": [
+        1.4816,
+        1.1876,
+        1.2799,
+        0.5826,
+        0.5189,
+        1.5041,
+        1.4905,
+        0.6664,
+        1.1993,
+        0.0129,
+        1.5971
+       ],
+       "balance gain: error of each practice reach (mm)": [
+        38.5231,
+        48.5704,
+        19.898,
+        11.5454,
+        5.3845,
+        2.3191,
+        1.6324,
+        0.685,
+        1.4248,
+        1.3688,
+        0.3964,
+        0.4925,
+        2.9704,
+        0.2576,
+        0.0982,
+        0.5543
+       ],
+       "reach: hand speed (m/s)": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.0183,
+        0.0861,
+        0.1938,
+        0.3284,
+        0.4856,
+        0.6445,
+        0.806,
+        0.9564,
+        1.0885,
+        1.2006,
+        1.2924,
+        1.3591,
+        1.3929,
+        1.4016,
+        1.3842,
+        1.3409,
+        1.2102,
+        1.1126,
+        1.0847,
+        1.0171,
+        0.9154,
+        0.718,
+        0.5928,
+        0.4723,
+        0.3625,
+        0.2595,
+        0.1767,
+        0.1069,
+        0.0583,
+        0.025,
+        0.0068,
+        0.0005,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.0004,
+        0.0087,
+        0.0304,
+        0.0654,
+        0.1109,
+        0.1627,
+        0.2176,
+        0.2712,
+        0.3192,
+        0.359,
+        0.388,
+        0.4039,
+        0.406,
+        0.3943,
+        0.3692,
+        0.3326,
+        0.2865,
+        0.2344,
+        0.1796,
+        0.1261,
+        0.0783,
+        0.04,
+        0.0138,
+        0.0017,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+       ],
+       "throw: miss of each practice throw (m)": [
+        6.6144,
+        19.4646,
+        11.9343,
+        10.4706,
+        11.4253,
+        10.9186,
+        1.7796,
+        0.2676,
+        0.0002
+       ]
+      },
+      "notes": [
+       "throw: release at 18.3 m/s, 14.8 degrees up, in the air 1.21 s"
+      ],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 5,
+     "title": "The quality of movement, and performance",
+     "focus": "Checking its own movement like an animation supervisor, and performing an action in more than one way.",
+     "studied": [
+      {
+       "topic": "Faults and their measures",
+       "facts": [
+        "A planted foot must not slide",
+        "Limbs must not pass through the body (capsules of the segments' thickness; soft tissue gives about 2 cm)",
+        "Smoothness: the spectral arc length of a speed profile (SPARC), about -1.4 to -2 for healthy reaching (Balasubramanian et al. 2015)",
+        "Arcs (Thomas and Johnston, The Illusion of Life): living movement curves; reaches bow slightly"
+       ],
+       "src": [
+        [
+         "Balasubramanian, Melendez-Calderon, Roby-Brami and Burdet 2015, On the analysis of movement smoothness",
+         "https://doi.org/10.1186/s12984-015-0090-9"
+        ],
+        [
+         "Thomas and Johnston 1981, The Illusion of Life",
+         "https://en.wikipedia.org/wiki/The_Illusion_of_Life"
+        ],
+        [
+         "Ericson 2004, Real-Time Collision Detection",
+         "https://realtimecollisiondetection.net/"
+        ]
+       ]
+      },
+      {
+       "topic": "Gaze and life",
+       "facts": [
+        "The eyes go to a target before the hand moves; the head follows the eyes by 10 to 50 ms",
+        "Breathing at rest: 12 to 20 a minute; blinking about 17 a minute"
+       ],
+       "src": [
+        [
+         "Land and Hayhoe 2001, In what ways do eye movements contribute to everyday activities?",
+         "https://doi.org/10.1016/S0042-6989(01)00102-X"
+        ],
+        [
+         "Doughty 2001, Consideration of three types of spontaneous eyeblink activity",
+         "https://doi.org/10.1097/00006324-200110000-00011"
+        ]
+       ]
+      },
+      {
+       "topic": "Laban's efforts",
+       "facts": [
+        "Time (sudden or sustained), space (direct or indirect), weight (strong or light), flow (bound or free)",
+        "The eight actions: punch, press, glide, float, dab, flick, slash, wring"
+       ],
+       "src": [
+        [
+         "Laban and Lawrence 1947, Effort",
+         "https://en.wikipedia.org/wiki/Laban_movement_analysis"
+        ],
+        [
+         "Chi, Costa, Zhao and Badler 2000, The EMOTE model for effort and shape",
+         "https://doi.org/10.1145/344779.352172"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Every movement checked for sliding feet, limbs through the body, jerkiness, straight-line paths and the eyes not leading",
+      "Arms that learned to keep out of the body (in the game's own clips too)",
+      "The same reach performed as a punch, a float, a glide, a slash and so on, each still correct"
+     ],
+     "res": {
+      "ok": true,
+      "n": 16,
+      "pass": 16,
+      "ms": 6024,
+      "checks": [
+       {
+        "name": "reaches (7 efforts): worst foot slide (m/s)",
+        "ok": true,
+        "got": "0.009 m/s",
+        "want": "0 to 0.05 m/s"
+       },
+       {
+        "name": "reaches: deepest limb into the body (mm; 20 allowed)",
+        "ok": true,
+        "got": "16.165 mm",
+        "want": "0 to 20 mm"
+       },
+       {
+        "name": "reaches: smoothness, the least smooth (SPARC)",
+        "ok": true,
+        "got": "-1.634",
+        "want": "-2.2 to -1.2"
+       },
+       {
+        "name": "reaches: arcs, the straightest (bow / length)",
+        "ok": true,
+        "got": "0.132",
+        "want": "0.02 to 0.35"
+       },
+       {
+        "name": "reaches: no wobble in any path",
+        "ok": true,
+        "got": "0,0,0,0,0,0,0",
+        "want": "all 0"
+       },
+       {
+        "name": "reaches: the head on the thing before the hand's top speed (s), the latest",
+        "ok": true,
+        "got": "0.342 s",
+        "want": "0.1 to 2 s"
+       },
+       {
+        "name": "efforts: a punch is quicker than a float and faster at its peak",
+        "ok": true,
+        "got": "0.52 s / 1.27 s",
+        "want": "punch under 70% of float"
+       },
+       {
+        "name": "efforts: indirect paths bow more than direct ones (float vs glide)",
+        "ok": true,
+        "got": "0.235 / 0.132",
+        "want": "float 25% more"
+       },
+       {
+        "name": "efforts: every hand still on the handle at the touch (mm)",
+        "ok": true,
+        "got": "0.000 mm",
+        "want": "0 to 2 mm"
+       },
+       {
+        "name": "lift: foot slide (m/s)",
+        "ok": true,
+        "got": "0.000 m/s",
+        "want": "0 to 0.05 m/s"
+       },
+       {
+        "name": "lift: deepest limb into the body (mm)",
+        "ok": true,
+        "got": "5.083 mm",
+        "want": "0 to 20 mm"
+       },
+       {
+        "name": "handover: foot slide (m/s)",
+        "ok": true,
+        "got": "0.000 m/s",
+        "want": "0 to 0.05 m/s"
+       },
+       {
+        "name": "handover: deepest limb into the body (mm)",
+        "ok": true,
+        "got": "0.000 mm",
+        "want": "0 to 20 mm"
+       },
+       {
+        "name": "reach, lift, handover and throw: joints past their range (301 poses)",
+        "ok": true,
+        "got": "0",
+        "want": "0"
+       },
+       {
+        "name": "clips with a limb more than 6 cm into the body: fewer than 60% of before",
+        "ok": true,
+        "got": "54 -> 26",
+        "want": "under 60%"
+       },
+       {
+        "name": "breathing at rest (idle_ready, breaths a minute)",
+        "ok": true,
+        "got": "14.750",
+        "want": "12 to 20"
+       }
+      ],
+      "curves": {
+       "clips with a limb into the body (over 2 cm, over 6 cm): before, after": [
+        79,
+        54,
+        51,
+        26
+       ]
+      },
+      "notes": [
+       "the clips still over 2 cm are mostly contact a capsule cannot tell from passing through: forearms resting on thighs when seated, a hand flat on the chest"
+      ],
+      "evKeys": []
+     }
+    }
+   ]
+  },
+  {
+   "name": "MIMATIC",
+   "title": "MIMATIC: the director and the camera",
+   "role": "Directs the films: what is shot, from where, with which lens and light, and where the cuts fall.",
+   "intro": "From a scripted cinematic to a director that covers a scene and cuts it by the rules editors use.",
+   "earned": 5,
+   "levels": [
+    {
+     "v": 1,
+     "title": "The cinematic",
+     "focus": "A scripted short film: actors on tracks of clips, shots, a time curve and cues (1.9.992).",
+     "studied": [
+      {
+       "topic": "Film techniques",
+       "facts": [
+        "The low-angle hero shot, the tracking shot, the insert and the push-in, the over-the-shoulder, the Dutch angle (10 to 15 degrees), the whip pan, the punch-in, handheld energy",
+        "Speed ramps (slow motion eased in and out), the freeze frame and the bullet-time orbit",
+        "Hit points: the score written to the cut, a few chosen per scene"
+       ],
+       "src": [
+        [
+         "StudioBinder: camera movement and shot types",
+         "https://www.studiobinder.com/blog/different-types-of-camera-movements-in-film/"
+        ],
+        [
+         "StudioBinder: hit points and Mickey Mousing",
+         "https://www.studiobinder.com/blog/what-is-mickey-mousing-in-film/"
+        ]
+       ]
+      },
+      {
+       "topic": "Scene time",
+       "facts": [
+        "A time curve (speed against real time) whose integral is the scene's clock, so slow motion and freezes are exact and every frame can be redrawn"
+       ],
+       "src": [
+        [
+         "Speed ramping (CyberLink)",
+         "https://www.cyberlink.com/blog/the-top-video-editors/1035/speed-ramping"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "The Operator's 14.5-second cinematic: 15 shots, four actors, slow motion and a freeze on the shot",
+      "Sound, effects and the score cued to the cut"
+     ],
+     "res": {
+      "ok": true,
+      "n": 5,
+      "pass": 5,
+      "ms": 31,
+      "checks": [
+       {
+        "name": "shots that keep someone in frame (of 15)",
+        "ok": true,
+        "got": "15.00",
+        "want": "15"
+       },
+       {
+        "name": "the shots follow one another without a gap",
+        "ok": true,
+        "got": "contiguous",
+        "want": "contiguous"
+       },
+       {
+        "name": "scene time never runs backward",
+        "ok": true,
+        "got": "yes",
+        "want": "yes"
+       },
+       {
+        "name": "speed at the freeze (scene seconds per second)",
+        "ok": true,
+        "got": "0.000",
+        "want": "0 to 0.001"
+       },
+       {
+        "name": "cues in time order",
+        "ok": true,
+        "got": "23 cues",
+        "want": "ordered"
+       }
+      ],
+      "curves": {
+       "speed of scene time (every 0.25 s)": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0.62,
+        0.6794,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0.42,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+       ]
+      },
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 2,
+     "title": "Learning to frame, the studio and the line-up",
+     "focus": "A camera that learns from its own frames, a turntable studio and the line-up of the five classes (1.9.993 to 1.9.994).",
+     "studied": [
+      {
+       "topic": "Framing",
+       "facts": [
+        "The rule of thirds; lead room in the direction of movement; headroom over the eyes",
+        "A subject leaving the frame is a framing fault to correct"
+       ],
+       "src": [
+        [
+         "StudioBinder: rule of thirds",
+         "https://www.studiobinder.com/blog/rule-of-thirds-photography/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Shots that widen or lift themselves when the subject leaves their frame, remembered on the device",
+      "A studio camera that orbits, tilts over to look straight down and zooms within limits",
+      "The five classes standing in the rain, each lit by its colour"
+     ],
+     "res": {
+      "ok": true,
+      "n": 5,
+      "pass": 5,
+      "ms": 1,
+      "checks": [
+       {
+        "name": "the shot learned to widen, and stopped at its limit",
+        "ok": true,
+        "got": "0.18",
+        "want": "0.10 to 0.19"
+       },
+       {
+        "name": "studio: tilt stops at straight down and just below level",
+        "ok": true,
+        "got": "-0.15 to 1.55",
+        "want": "-0.15 to 1.55"
+       },
+       {
+        "name": "studio: zoom stays between 1.2 and 6 m",
+        "ok": true,
+        "got": "1.2 to 6.0",
+        "want": "1.2 to 6"
+       },
+       {
+        "name": "line-up: five classes",
+        "ok": true,
+        "got": "5.00",
+        "want": "5"
+       },
+       {
+        "name": "line-up: spacing (m)",
+        "ok": true,
+        "got": "1.180 m",
+        "want": "1 to 1.4 m"
+       }
+      ],
+      "curves": {
+       "learned widening while the head is out of frame": [
+        0.01,
+        0.02,
+        0.03,
+        0.04,
+        0.05,
+        0.06,
+        0.07,
+        0.08,
+        0.09,
+        0.1,
+        0.11,
+        0.12,
+        0.13,
+        0.14,
+        0.15,
+        0.16,
+        0.17,
+        0.18,
+        0.18,
+        0.18,
+        0.18,
+        0.18,
+        0.18,
+        0.18,
+        0.18
+       ]
+      },
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 3,
+     "title": "The camera",
+     "focus": "A camera body and lens: sensor, focal length, aperture, focus, shutter, and the rigs it rides on.",
+     "studied": [
+      {
+       "topic": "Lenses and sensors",
+       "facts": [
+        "Angle of view = 2 atan(d / 2f), d the sensor's width, height or diagonal",
+        "Super 35 (4-perf) is 24.89 x 18.66 mm; a 35 mm lens on it sees about 39 degrees across",
+        "The frame's aspect crops the sensor (1.85:1 uses the full width)"
+       ],
+       "src": [
+        [
+         "ARRI Format and Lens Calculator",
+         "https://www.arri.com/en/learn-help/learn-help-camera-system/tools/format-and-lens-calculator"
+        ],
+        [
+         "Angle of view (Wikipedia)",
+         "https://en.wikipedia.org/wiki/Angle_of_view_(photography)"
+        ]
+       ]
+      },
+      {
+       "topic": "Depth of field",
+       "facts": [
+        "Hyperfocal distance H = f^2 / (N c) + f",
+        "Near limit s (H - f) / (H + s - 2f); far limit s (H - f) / (H - s)",
+        "Blur circle of a point at d with focus at s: A f |d - s| / (d (s - f)), A = f / N",
+        "Circle of confusion about 0.025 mm on Super 35"
+       ],
+       "src": [
+        [
+         "Depth of field (Wikipedia)",
+         "https://en.wikipedia.org/wiki/Depth_of_field"
+        ],
+        [
+         "Potmesil and Chakravarty 1981, A lens and aperture camera model for synthetic image generation",
+         "https://doi.org/10.1145/965161.806817"
+        ]
+       ]
+      },
+      {
+       "topic": "Shutter, exposure, movement",
+       "facts": [
+        "Exposure time = (shutter angle / 360) / fps: 180 degrees at 24 fps is 1/48 s",
+        "EV = log2(N^2 / t) at ISO 100",
+        "Pans slow enough that an object takes about 7 s to cross the frame avoid judder (the ASC Manual's panning table)",
+        "The dolly zoom: f(d) = f0 d / d0 keeps the subject's size while the background changes",
+        "Dollies and cranes ease in and out (no jolt: acceleration starts and ends at zero)"
+       ],
+       "src": [
+        [
+         "American Cinematographer Manual (ASC)",
+         "https://theasc.com/store/american-cinematographer-manual"
+        ],
+        [
+         "Dolly zoom (Wikipedia)",
+         "https://en.wikipedia.org/wiki/Dolly_zoom"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "A lens set from 14 to 180 mm on four sensors, with the angle of view, depth of field and blur circles they give",
+      "Moves: locked off, pan and tilt under the judder limit, dolly, crane, arc, Steadicam, handheld, dolly zoom, rack focus, whip pan"
+     ],
+     "res": {
+      "ok": true,
+      "n": 17,
+      "pass": 17,
+      "ms": 11,
+      "checks": [
+       {
+        "name": "35 mm on Super 35: horizontal angle of view (degrees)",
+        "ok": true,
+        "got": "39.148 deg",
+        "want": "39.15 \u00b1 0.05 deg"
+       },
+       {
+        "name": "50 mm on full frame: diagonal angle of view (degrees)",
+        "ok": true,
+        "got": "46.793 deg",
+        "want": "46.8 \u00b1 0.1 deg"
+       },
+       {
+        "name": "a 1 m pole at 4 m on a 50 mm lens: height on the sensor (mm; f h / d = 12.5)",
+        "ok": true,
+        "got": "12.500 mm",
+        "want": "12.5 \u00b1 0.15 mm"
+       },
+       {
+        "name": "50 mm f/2.8 focused at 3 m: near limit (m)",
+        "ok": true,
+        "got": "2.771 m",
+        "want": "2.771 \u00b1 0.005 m"
+       },
+       {
+        "name": "far limit (m)",
+        "ok": true,
+        "got": "3.270 m",
+        "want": "3.27 \u00b1 0.005 m"
+       },
+       {
+        "name": "hyperfocal (m)",
+        "ok": true,
+        "got": "35.764 m",
+        "want": "35.76 \u00b1 0.05 m"
+       },
+       {
+        "name": "blur circle at the near limit equals the circle of confusion (mm)",
+        "ok": true,
+        "got": "0.025 mm",
+        "want": "0.025 \u00b1 0.0005 mm"
+       },
+       {
+        "name": "180 degrees at 24 fps (exposure, 1/s)",
+        "ok": true,
+        "got": "48.000",
+        "want": "48 \u00b1 0.01"
+       },
+       {
+        "name": "f/2.8, 1/48 s at ISO 800: exposure value (log2(2.8^2 x 48) - 3)",
+        "ok": true,
+        "got": "5.556",
+        "want": "5.556 \u00b1 0.01"
+       },
+       {
+        "name": "a 90 degree pan asked for in 2 s is slowed",
+        "ok": true,
+        "got": "30.6 s",
+        "want": "longer than 2 s"
+       },
+       {
+        "name": "its fastest moment against the judder limit (degrees a second)",
+        "ok": true,
+        "got": "5.519 deg/s",
+        "want": "0 to 5.704403393648645 deg/s"
+       },
+       {
+        "name": "a whip pan stays fast",
+        "ok": true,
+        "got": "0.35 s",
+        "want": "under 0.5 s"
+       },
+       {
+        "name": "dolly zoom: the subject's size changes by (%)",
+        "ok": true,
+        "got": "0.000%",
+        "want": "0 to 1%"
+       },
+       {
+        "name": "dolly zoom: the wall 8 m behind changes size by (%; it recedes as the camera moves in and widens)",
+        "ok": true,
+        "got": "53.333%",
+        "want": "40 to 400%"
+       },
+       {
+        "name": "dolly: acceleration at the start and the end (m/s2)",
+        "ok": true,
+        "got": "0.022 m/s2",
+        "want": "0 to 0.06 m/s2"
+       },
+       {
+        "name": "handheld: strongest wobble (Hz)",
+        "ok": true,
+        "got": "1.100 Hz",
+        "want": "1 to 6 Hz"
+       },
+       {
+        "name": "handheld: its size (degrees, rms)",
+        "ok": true,
+        "got": "0.155 deg",
+        "want": "0.1 to 1 deg"
+       }
+      ],
+      "curves": {
+       "depth of field at f/2.8 by focus distance (m), 50 mm": [
+        0.0532,
+        0.2191,
+        0.499,
+        1.4131,
+        3.7473,
+        9.0428
+       ]
+      },
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 4,
+     "title": "Cinematography: framing and light",
+     "focus": "Shot sizes cut where they should be, composition, clear sightlines, and light designed and metered.",
+     "studied": [
+      {
+       "topic": "Shot sizes and composition",
+       "facts": [
+        "Sizes are named by where the frame cuts the body: ECU (the eyes), CU (the top of the chest), MCU (mid-chest), MS (the waist), MLS or cowboy (mid-thigh), FS (head to feet), WS and EWS (small in the world)",
+        "The eyes on the upper third line; look room on the side the subject faces; never cut at a joint",
+        "Customary lenses tighten with the size (wide for the wide shots, 85 mm and up for close-ups)"
+       ],
+       "src": [
+        [
+         "StudioBinder: types of camera shots",
+         "https://www.studiobinder.com/blog/ultimate-guide-to-camera-shots/"
+        ],
+        [
+         "Mascelli 1965, The Five C's of Cinematography",
+         "https://en.wikipedia.org/wiki/The_Five_C%27s_of_Cinematography"
+        ]
+       ]
+      },
+      {
+       "topic": "Light",
+       "facts": [
+        "Three-point lighting: key 30 to 45 degrees off the lens and above, fill opposite, back light behind",
+        "Lighting ratio (key + fill) : fill: 2:1 high key, 4:1 to 8:1 low key",
+        "Colour temperature: tungsten 3200 K, daylight 5600 K, sodium about 2000 K; the colour of a black body by Planck's law",
+        "A gaffer meters the key side with everything on and the fill side with the key blocked"
+       ],
+       "src": [
+        [
+         "Brown 2016, Cinematography: Theory and Practice",
+         "https://www.routledge.com/Cinematography-Theory-and-Practice/Brown/p/book/9781138940925"
+        ],
+        [
+         "Wyman, Sloan and Shirley 2013, Simple analytic approximations to the CIE XYZ color matching functions",
+         "https://jcgt.org/published/0002/02/01/"
+        ],
+        [
+         "Planck's law (Wikipedia)",
+         "https://en.wikipedia.org/wiki/Planck%27s_law"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Frames any body at any of eight sizes from any side: the cut where it should be, the eyes on the third, look room, no joint on an edge",
+      "Moves round anyone standing between the lens and the face",
+      "Designs three-point light in four looks, meters its own render, and corrects the fill until the ratio is right"
+     ],
+     "res": {
+      "ok": true,
+      "n": 7,
+      "pass": 7,
+      "ms": 677,
+      "checks": [
+       {
+        "name": "frame edges on their landmarks, 8 sizes from 3 sides (worst, % of frame)",
+        "ok": true,
+        "got": "0.003%",
+        "want": "0 to 1%"
+       },
+       {
+        "name": "the eyes on the upper third (worst, % of frame)",
+        "ok": true,
+        "got": "0.002%",
+        "want": "0 to 1%"
+       },
+       {
+        "name": "look room: subjects on the far third (worst, % of frame)",
+        "ok": true,
+        "got": "0.002%",
+        "want": "0 to 1%"
+       },
+       {
+        "name": "no frame edge on a knee or an ankle",
+        "ok": true,
+        "got": "0.0000",
+        "want": "0"
+       },
+       {
+        "name": "someone between the lens and the face: the camera moves until it is clear",
+        "ok": true,
+        "got": "moved 9 deg",
+        "want": "clear"
+       },
+       {
+        "name": "black-body colours: the per-frame formula against Planck's law (worst channel, of 255)",
+        "ok": true,
+        "got": "7.000",
+        "want": "0 to 8"
+       },
+       {
+        "name": "lighting ratios metered from the render against the design (worst error, %)",
+        "ok": true,
+        "got": "1.700%",
+        "want": "0 to 5%"
+       }
+      ],
+      "curves": {
+       "lighting ratio error while metering, highKey (2:1)": [
+        0.0881,
+        0.0381,
+        0.002,
+        0.002
+       ],
+       "lighting ratio error while metering, standard (4:1)": [
+        0.017,
+        0.017
+       ],
+       "lighting ratio error while metering, lowKey (8:1)": [
+        0.0271,
+        0.0084,
+        0.0084
+       ],
+       "lighting ratio error while metering, noir (16:1)": [
+        0.4182,
+        0.048,
+        0.0043,
+        0.0043
+       ]
+      },
+      "notes": [],
+      "evKeys": [
+       "K2000",
+       "K3200",
+       "K4300",
+       "K5600",
+       "K6500"
+      ]
+     }
+    },
+    {
+     "v": 5,
+     "title": "Directing: coverage and the cut",
+     "focus": "Which shots to take of a scene, keeping continuity, and where to cut, judged the way editors judge.",
+     "studied": [
+      {
+       "topic": "Coverage",
+       "facts": [
+        "The master, two-shots, singles, overs, inserts and points of view",
+        "Shot and reverse shot; the master establishes the space"
+       ],
+       "src": [
+        [
+         "Mascelli 1965, The Five C's of Cinematography",
+         "https://en.wikipedia.org/wiki/The_Five_C%27s_of_Cinematography"
+        ],
+        [
+         "StudioBinder: what is coverage",
+         "https://www.studiobinder.com/blog/what-is-coverage-in-film/"
+        ]
+       ]
+      },
+      {
+       "topic": "Continuity",
+       "facts": [
+        "The 180-degree rule: the cameras stay on one side of the line of action, so screen direction holds",
+        "The 30-degree rule: a cut to the same subject moves the camera 30 degrees or more, or changes the size (else a jump cut)",
+        "Match on action: cut during a movement, at its peak"
+       ],
+       "src": [
+        [
+         "Bordwell and Thompson, Film Art",
+         "https://en.wikipedia.org/wiki/Film_Art"
+        ],
+        [
+         "180-degree rule (Wikipedia)",
+         "https://en.wikipedia.org/wiki/180-degree_rule"
+        ]
+       ]
+      },
+      {
+       "topic": "The cut",
+       "facts": [
+        "Murch's rule of six: emotion 51%, story 23%, rhythm 10%, eye-trace 7%, the screen's two dimensions 5%, three-dimensional space 4%",
+        "Average shot length: action about 2 to 3 s (the Bourne films about 2), conversation longer"
+       ],
+       "src": [
+        [
+         "Murch 1995, In the Blink of an Eye",
+         "https://en.wikipedia.org/wiki/In_the_Blink_of_an_Eye_(Murch_book)"
+        ],
+        [
+         "Cutting, Brunick, DeLong, Iricinschi and Candan 2011, Quicker, faster, darker: changes in Hollywood film over 75 years",
+         "https://doi.org/10.1068/i0441aap"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Covers a scene: master, two-shot, singles, overs and inserts for each beat, every camera on one side of the line",
+      "Cuts it: an edit chosen over all the possibilities by the rule of six, with no jump cuts and cuts on the movement",
+      "An edit decision list of what is used, from where, and why each cut falls where it does"
+     ],
+     "res": {
+      "ok": true,
+      "n": 7,
+      "pass": 7,
+      "ms": 374,
+      "checks": [
+       {
+        "name": "every camera of the coverage on one side of the line",
+        "ok": true,
+        "got": "0 across",
+        "want": "0"
+       },
+       {
+        "name": "the edit: no crossing of the line",
+        "ok": true,
+        "got": "0.0000",
+        "want": "0"
+       },
+       {
+        "name": "the edit: no jump cuts (30-degree rule)",
+        "ok": true,
+        "got": "0.0000",
+        "want": "0"
+       },
+       {
+        "name": "every beat has a shot",
+        "ok": true,
+        "got": "5 shots for 5 beats",
+        "want": "all covered"
+       },
+       {
+        "name": "average shot length (s; tense scene about 3)",
+        "ok": true,
+        "got": "1.749 s",
+        "want": "1.5 to 4.5 s"
+       },
+       {
+        "name": "the directed edit scores higher than a careless one (rule of six)",
+        "ok": true,
+        "got": "0.656 vs 0.544",
+        "want": "15% higher"
+       },
+       {
+        "name": "it opens on the master",
+        "ok": true,
+        "got": "master",
+        "want": "master"
+       }
+      ],
+      "curves": {
+       "rule-of-six parts, directed (emotion, story, rhythm, eye-trace, plane, space)": [
+        0.5478,
+        0.95,
+        0.5513,
+        0.4433,
+        0.8,
+        0.8
+       ],
+       "the same, the careless edit": [
+        0.3819,
+        0.95,
+        0.5513,
+        0.4814,
+        0.2,
+        0.8
+       ]
+      },
+      "notes": [
+       "edit: WS master 0.0-2.0s | CU single on B 2.0-4.0s | MCU single on A 4.0-4.5s | MLS two on B 4.5-5.6s | CU single on B 5.6-8.7s"
+      ],
+      "evKeys": [
+       "edl"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "VFXRAY",
+   "title": "VFXRAY: the effects",
+   "role": "Finishes every frame: rain, light, the lens, colour, fog, and the effects of a fight.",
+   "intro": "From a compositor's finishing tricks to a lens, a colourist and an effects department that work from the physics.",
+   "earned": 5,
+   "levels": [
+    {
+     "v": 1,
+     "title": "The finishing pass",
+     "focus": "Rain in 3D, flashes, sprites, and a compositor's post chain (1.9.992).",
+     "studied": [
+      {
+       "topic": "Rain and lightning on film",
+       "facts": [
+        "Rain reads only when backlit",
+        "Lightning is several uneven flashes from different angles",
+        "Photosensitive safety: no more than three flashes in any second (WCAG 2.3.1)"
+       ],
+       "src": [
+        [
+         "Cinematography.net: lightning effects",
+         "https://www.cinematography.net/"
+        ],
+        [
+         "WCAG 2.1, Three flashes or below threshold",
+         "https://www.w3.org/WAI/WCAG21/Understanding/three-flashes-or-below-threshold.html"
+        ]
+       ]
+      },
+      {
+       "topic": "The post chain",
+       "facts": [
+        "Bloom: the bright parts blurred through smaller and smaller copies and added back",
+        "Anamorphic streaks, chromatic fringing toward the edges, grain, vignette, letterbox bars, flashes, fades"
+       ],
+       "src": [
+        [
+         "Kawase 2003, Frame buffer postprocessing effects (GDC)",
+         "https://www.gdcvault.com/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Thousands of rain streaks in scene time (slowed and frozen with it), splashes, muzzle flashes, sparks, mist, steam, lightning",
+      "Bloom, streaks, fringing, grain, vignette, bars, flashes and fades, stepping down when frames run long"
+     ],
+     "res": {
+      "ok": true,
+      "n": 5,
+      "pass": 5,
+      "ms": 200,
+      "checks": [
+       {
+        "name": "rain: more drops at each quality step",
+        "ok": true,
+        "got": "900 < 2200 < 4200 < 6500",
+        "want": "rising"
+       },
+       {
+        "name": "lightning: flashes in the first second",
+        "ok": true,
+        "got": "2.000",
+        "want": "1 to 3"
+       },
+       {
+        "name": "with reduced flashing: a single swell, never past half",
+        "ok": true,
+        "got": "0.0000",
+        "want": "0"
+       },
+       {
+        "name": "bloom: light spreads round a bright point",
+        "ok": true,
+        "got": "0.00 -> 0.44",
+        "want": "spreads"
+       },
+       {
+        "name": "vignette: the edge darker than the middle (same tone)",
+        "ok": true,
+        "got": "47% of the middle",
+        "want": "under 95%"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 2,
+     "title": "Film",
+     "focus": "The look of film stock: halation, a filmic shoulder, a split tone (1.9.993).",
+     "studied": [
+      {
+       "topic": "Film's look",
+       "facts": [
+        "Halation: light scattering back through the film base makes a warm red fringe round bright things",
+        "A filmic shoulder rolls highlights off instead of clipping them",
+        "Split toning: cool shadows, warm highlights (the teal and orange of many grades)"
+       ],
+       "src": [
+        [
+         "Kodak: halation and antihalation backing",
+         "https://www.kodak.com/"
+        ],
+        [
+         "Hable 2010, Filmic tonemapping operators",
+         "http://filmicworlds.com/blog/filmic-tonemapping-operators/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "A warm fringe round the bright things, a soft shoulder, cool shadows and warm highlights"
+     ],
+     "res": {
+      "ok": true,
+      "n": 3,
+      "pass": 3,
+      "ms": 5,
+      "checks": [
+       {
+        "name": "split tone: shadows lean blue",
+        "ok": true,
+        "got": "R 32 B 46",
+        "want": "B > R"
+       },
+       {
+        "name": "split tone: highlights lean warm",
+        "ok": true,
+        "got": "R 241 B 219",
+        "want": "R > B"
+       },
+       {
+        "name": "filmic shoulder: highlights compressed",
+        "ok": true,
+        "got": "230 -> 139",
+        "want": "lower"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 3,
+     "title": "The lens",
+     "focus": "What the camera really records: depth of field, motion blur from the shutter, natural vignetting.",
+     "studied": [
+      {
+       "topic": "Depth of field in a render",
+       "facts": [
+        "Each pixel's blur circle from the thin lens: c = A f |d - s| / (d (s - f)), converted to pixels by the sensor's height",
+        "Scatter as gather: each pixel collects the light of the neighbours whose blur discs reach it, each spread evenly over its disc, light added in linear values",
+        "A sharp thing in front must hide what is behind it; a blurred thing in front spills over (Jimenez 2014, Next generation post processing in Call of Duty: Advanced Warfare)"
+       ],
+       "src": [
+        [
+         "Potmesil and Chakravarty 1981",
+         "https://doi.org/10.1145/965161.806817"
+        ],
+        [
+         "Jimenez 2014, Next generation post processing (SIGGRAPH course)",
+         "https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare"
+        ]
+       ]
+      },
+      {
+       "topic": "Motion blur and vignetting",
+       "facts": [
+        "The shutter is open for (angle / 360) of a frame: the streak is that share of the frame's motion",
+        "Camera motion blur by reprojecting each pixel's depth into the previous frame (Rosado 2007, GPU Gems 3 ch. 27)",
+        "Natural vignetting falls as cos^4 of the angle off the lens's axis"
+       ],
+       "src": [
+        [
+         "Rosado 2007, Motion blur as a post-processing effect (GPU Gems 3)",
+         "https://developer.nvidia.com/gpugems/gpugems3/part-iv-image-effects/chapter-27-motion-blur-post-processing-effect"
+        ],
+        [
+         "Cos^4 law (Wikipedia: Vignetting)",
+         "https://en.wikipedia.org/wiki/Vignetting"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Depth of field from MIMATIC's lens, out-of-focus points opening into discs of the right size",
+      "Motion blur from the shutter angle",
+      "The lens's own vignetting"
+     ],
+     "res": {
+      "ok": true,
+      "n": 4,
+      "pass": 4,
+      "ms": 1901,
+      "checks": [
+       {
+        "name": "out-of-focus points: measured blur against the formula (worst error, %)",
+        "ok": true,
+        "got": "14.679%",
+        "want": "0 to 20%"
+       },
+       {
+        "name": "the point in focus stays sharp (px)",
+        "ok": true,
+        "got": "3.995 px",
+        "want": "0 to 5 px"
+       },
+       {
+        "name": "motion blur: streak length (px) against the motion during a 180-degree exposure",
+        "ok": true,
+        "got": "9.313 px",
+        "want": "9.350220068671907 \u00b1 1.8700440137343817 px"
+       },
+       {
+        "name": "cos^4 vignetting: measured against the law (worst error, %)",
+        "ok": true,
+        "got": "0.309%",
+        "want": "0 to 3%"
+       }
+      ],
+      "curves": {
+       "depth of field: blur measured on the render (px), points at 2, 3, 4, 6, 9 m": [
+        33.5141,
+        12.9567,
+        3.9953,
+        12.3899,
+        19.4818
+       ],
+       "blur the lens formula predicts (px)": [
+        33.8948,
+        11.2983,
+        0,
+        11.2983,
+        18.8304
+       ]
+      },
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 4,
+     "title": "Colour and atmosphere",
+     "focus": "The filmic tone curve, colour looks as lookup tables, light shafts, and fog by the Beer-Lambert law.",
+     "studied": [
+      {
+       "topic": "Tone and colour",
+       "facts": [
+        "ACES filmic curve (Narkowicz's fit): x (2.51 x + 0.03) / (x (2.43 x + 0.59) + 0.14)",
+        "3D lookup tables (32 cubed) carry a grade: the identity must change nothing",
+        "Looks: teal and orange (complementary shadows and skin), bleach bypass (silver retained: less colour, more contrast), day for night (about two stops under, desaturated, blue)"
+       ],
+       "src": [
+        [
+         "Narkowicz 2016, ACES filmic tone mapping curve",
+         "https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/"
+        ],
+        [
+         "Selan 2005, Using lookup tables to accelerate color transformations (GPU Gems 2 ch. 24)",
+         "https://developer.nvidia.com/gpugems/gpugems2/part-iii-high-quality-rendering/chapter-24-using-lookup-tables-accelerate-color"
+        ],
+        [
+         "Bleach bypass (Wikipedia)",
+         "https://en.wikipedia.org/wiki/Bleach_bypass"
+        ]
+       ]
+      },
+      {
+       "topic": "Atmosphere",
+       "facts": [
+        "Volumetric light scattering as a post process: samples toward the light, each decayed (decay 0.968, weight 0.588, density 0.926, exposure 0.3)",
+        "Beer-Lambert: transmittance T = exp(-integral of density along the ray); density falling with height exp(-(z - z0) / H) integrates exactly"
+       ],
+       "src": [
+        [
+         "Mitchell 2007, Volumetric light scattering as a post-process (GPU Gems 3 ch. 13)",
+         "https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-13-volumetric-light-scattering-post-process"
+        ],
+        [
+         "Beer-Lambert law (Wikipedia)",
+         "https://en.wikipedia.org/wiki/Beer%E2%80%93Lambert_law"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Grades through lookup tables: teal and orange, bleach bypass, day for night, sodium noir",
+      "Light shafts from a light behind things",
+      "Fog that thickens with distance and toward the ground, exactly as the law says"
+     ],
+     "res": {
+      "ok": true,
+      "n": 10,
+      "pass": 10,
+      "ms": 597,
+      "checks": [
+       {
+        "name": "ACES on the GPU against the formula (worst, of 255)",
+        "ok": true,
+        "got": "0.492",
+        "want": "0 to 1.01"
+       },
+       {
+        "name": "identity table: worst change (of 255)",
+        "ok": true,
+        "got": "0.000",
+        "want": "0 to 2"
+       },
+       {
+        "name": "identity table: mean change (of 255)",
+        "ok": true,
+        "got": "0.000",
+        "want": "0 to 0.6"
+       },
+       {
+        "name": "teal and orange: shadows teal, highlights orange",
+        "ok": true,
+        "got": "shadow 93,97,100 / highlight 215,205,191",
+        "want": "B > R, then R > B"
+       },
+       {
+        "name": "bleach bypass: contrast up (shadows down, highlights up)",
+        "ok": true,
+        "got": "79/206 -> 57/228",
+        "want": "wider"
+       },
+       {
+        "name": "day for night: exposure down (stops)",
+        "ok": true,
+        "got": "2.168 stops",
+        "want": "1.5 to 3 stops"
+       },
+       {
+        "name": "day for night: blue",
+        "ok": true,
+        "got": "91,99,119",
+        "want": "B > R"
+       },
+       {
+        "name": "light shafts: present away from the light and fading with distance",
+        "ok": true,
+        "got": "1.0000 > 1.0000 > 0.8137 > 0.1833",
+        "want": "falling"
+       },
+       {
+        "name": "Beer-Lambert fog: transmittance against exp(-rho L) at 3, 6, 12 m (worst error, %)",
+        "ok": true,
+        "got": "0.880%",
+        "want": "0 to 4%"
+       },
+       {
+        "name": "height fog: thicker toward the ground",
+        "ok": true,
+        "got": "0.117 low / 0.632 high",
+        "want": "darker low"
+       }
+      ],
+      "curves": {
+       "light shaft brightness at 20, 40, 60, 80 px from the light": [
+        1,
+        1,
+        0.8137,
+        0.1833
+       ],
+       "fog transmittance measured at 3, 6, 12 m": [
+        0.6962,
+        0.4902,
+        0.2396
+       ],
+       "exp(-rho L)": [
+        0.6994,
+        0.4879,
+        0.2375
+       ]
+      },
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 5,
+     "title": "Effects from physics",
+     "focus": "Rain, sparks, smoke, debris, dust and the muzzle flash as small simulations, cued by the fights.",
+     "studied": [
+      {
+       "topic": "Falling and flying",
+       "facts": [
+        "Raindrop terminal speed: v = 9.65 - 10.3 exp(-0.6 D) m/s, D in mm (Atlas, Srivastava and Sekhon 1973)",
+        "Quadratic drag: a = g - k v^2, terminal speed sqrt(g / k)",
+        "Sparks: hot steel flung at tens of metres a second, about 1900 K, cooling in tenths of a second; their colour the black body's"
+       ],
+       "src": [
+        [
+         "Atlas, Srivastava and Sekhon 1973, Doppler radar characteristics of precipitation at vertical incidence",
+         "https://doi.org/10.1029/RG011i001p00001"
+        ],
+        [
+         "Planck's law",
+         "https://en.wikipedia.org/wiki/Planck%27s_law"
+        ]
+       ]
+      },
+      {
+       "topic": "Smoke and flashes",
+       "facts": [
+        "Curl noise: the curl of a smooth vector potential is divergence-free, so it moves smoke like an incompressible flow (Bridson, Hourihan and Nordenstam 2007)",
+        "A puff spreads as it mixes, its radius growing about as the square root of time",
+        "Muzzle flash: primary flash, a dark intermediate zone, and the larger secondary flash as the gases burn in air (Klingenberg and Heimerl 1992)"
+       ],
+       "src": [
+        [
+         "Bridson, Hourihan and Nordenstam 2007, Curl-noise for procedural fluid flow",
+         "https://doi.org/10.1145/1276377.1276435"
+        ],
+        [
+         "Klingenberg and Heimerl 1992, Gun Muzzle Blast and Flash (AIAA)",
+         "https://arc.aiaa.org/doi/book/10.2514/4.866111"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Rain at the right speeds for its drops, sparks that fly, bounce and cool from white to red, smoke that swirls and spreads, debris and dust",
+      "A cue sheet: what a hit, a block, a shot, an impact, a fall or a landing calls for, and where"
+     ],
+     "res": {
+      "ok": true,
+      "n": 13,
+      "pass": 13,
+      "ms": 30,
+      "checks": [
+       {
+        "name": "rain: drops reach their measured terminal speed (worst error, %)",
+        "ok": true,
+        "got": "0.024%",
+        "want": "0 to 1%"
+       },
+       {
+        "name": "rain: a 2 mm drop falls at (m/s; 9.65 - 10.3 e^-1.2)",
+        "ok": true,
+        "got": "6.548 m/s",
+        "want": "6.548 \u00b1 0.002 m/s"
+       },
+       {
+        "name": "a spark without drag lands where the textbook says (m)",
+        "ok": true,
+        "got": "9.500 m",
+        "want": "9.50090811383513 \u00b1 0.09500908113835131 m"
+       },
+       {
+        "name": "sparks: slowed by the air",
+        "ok": true,
+        "got": "30.0 -> 19.0 m/s",
+        "want": "slower"
+       },
+       {
+        "name": "a bounce keeps its share of the speed (restitution 0.4)",
+        "ok": true,
+        "got": "0.400",
+        "want": "0.4 \u00b1 0.02"
+       },
+       {
+        "name": "sparks cool from yellow-white to red (their colour by Planck)",
+        "ok": true,
+        "got": "1900 K -> 1073 K -> 455 K",
+        "want": "cooling, the green share falling"
+       },
+       {
+        "name": "curl noise: divergence against the flow's size",
+        "ok": true,
+        "got": "0.000",
+        "want": "0 to 0.01"
+       },
+       {
+        "name": "smoke: spread grows as time to the power (0.5)",
+        "ok": true,
+        "got": "0.500",
+        "want": "0.5 \u00b1 0.05"
+       },
+       {
+        "name": "smoke: rises",
+        "ok": true,
+        "got": "1.46 m",
+        "want": "above 1.05 m"
+       },
+       {
+        "name": "muzzle flash: primary, dark gap, secondary, in that order",
+        "ok": true,
+        "got": "primary flash, dark gap (intermediate flash), secondary flash",
+        "want": "in order"
+       },
+       {
+        "name": "at 24 fps the whole flash falls in one frame's exposure",
+        "ok": true,
+        "got": "20.8 ms exposure",
+        "want": "longer than 2.5 ms"
+       },
+       {
+        "name": "every kind of moment has its cue (hit, block, shot, impacts, fall, land, step)",
+        "ok": true,
+        "got": "9 kinds, 15 effects",
+        "want": "all"
+       },
+       {
+        "name": "every effect CHOREO's moves call for is on the cue sheet",
+        "ok": true,
+        "got": "hit, block, shot, impactFlesh",
+        "want": "all known"
+       }
+      ],
+      "curves": {
+       "rain: a 2 mm drop's speed over its first second (m/s)": [
+        0.0409,
+        1.0141,
+        1.9444,
+        2.7965,
+        3.5472,
+        4.186,
+        4.7138,
+        5.1393,
+        5.4755,
+        5.7372,
+        5.9382
+       ]
+      },
+      "notes": [],
+      "evKeys": [
+       "sparkColours"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "CHOREO",
+   "title": "CHOREO: the choreographer",
+   "role": "Designs the fights: the moves, their timing and spacing, the phrases and their rhythm, staged for the lens, told as a story.",
+   "intro": "A new engine: a fight director and a stunt coordinator, working with LEGEND's bodies, MIMATIC's camera and VFXRAY's effects.",
+   "earned": 5,
+   "levels": [
+    {
+     "v": 1,
+     "title": "Moves",
+     "focus": "A vocabulary of strikes, kicks, defences, reactions and footwork, each with real timing and a place on the fight sheet.",
+     "studied": [
+      {
+       "topic": "Timing",
+       "facts": [
+        "Punches take about 223 to 357 ms from start to finish (boxers measured with motion capture)",
+        "Wind-up : contact : recovery runs from about 1:1:2 for a jab to 3:1:5 for a heavy blow",
+        "The fastest human reaction to a seen cue is about 180 to 200 ms"
+       ],
+       "src": [
+        [
+         "Kimm and Thiel 2015, Hand speed measurements in boxing",
+         "https://doi.org/10.1016/j.proeng.2015.07.238"
+        ],
+        [
+         "Whelan 2008, Frame data and fighting game design (GDC)",
+         "https://www.gdcvault.com/"
+        ],
+        [
+         "Welford 1980, Reaction Times",
+         "https://archive.org/details/reactiontimes0000unse"
+        ]
+       ]
+      },
+      {
+       "topic": "Stage combat",
+       "facts": [
+        "Cue, reaction, action: the attacker shows a cue, the partner reacts, then the attack is made (Society of American Fight Directors)",
+        "Lines: high, middle, low; parries numbered by the line they close",
+        "The fight sheet: two columns, the attacker's action and the partner's response, numbered"
+       ],
+       "src": [
+        [
+         "Society of American Fight Directors, Unarmed stage combat",
+         "https://www.safd.org/"
+        ],
+        [
+         "Suddeth 1996, Fight Directing for the Theatre",
+         "https://www.heinemann.com/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Twelve moves and their reactions: jab, cross, hook, uppercut, body shot, front kick, roundhouse, high block, parry, slip, duck, point-blank shot; steps in, back and to the side",
+      "A readable cue before every blow, early enough for a partner to answer it"
+     ],
+     "res": {
+      "ok": true,
+      "n": 4,
+      "pass": 4,
+      "ms": 0,
+      "checks": [
+       {
+        "name": "punches last 223 to 357 ms",
+        "ok": true,
+        "got": "260, 320, 350, 350, 340 ms",
+        "want": "all inside"
+       },
+       {
+        "name": "wind-up : contact : recovery between 1:1:2 and 3:1:5",
+        "ok": true,
+        "got": "8 attacks",
+        "want": "all"
+       },
+       {
+        "name": "every move has its line on the fight sheet",
+        "ok": true,
+        "got": "14 moves",
+        "want": "all written"
+       },
+       {
+        "name": "every defence starts at least a reaction time after the attack's cue (s, worst)",
+        "ok": true,
+        "got": "0.188 s",
+        "want": "0.18 to 1 s"
+       }
+      ],
+      "curves": {
+       "move lengths (s): jab, cross, hook, uppercut, body, frontKick, roundKick, block, parry, slip, duck, shot, grab, bottle": [
+        0.26,
+        0.32,
+        0.35,
+        0.35,
+        0.34,
+        0.63,
+        0.7,
+        0.46,
+        0.33,
+        0.44,
+        0.52,
+        1.08,
+        0.9,
+        0.52
+       ]
+      },
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 2,
+     "title": "Spacing and contact",
+     "focus": "The measure kept, blows arriving where and when they should, partners reacting on the beat, and the stage-combat gap.",
+     "studied": [
+      {
+       "topic": "Measure and safety",
+       "facts": [
+        "Measure: the distance at which a blow can reach; fighters work at it and step in or out",
+        "A staged blow that \"lands\" passes a hand's breadth (about 10 cm) beside the target, the gap hidden along the audience's or the lens's line",
+        "The reaction (head snap, fold) is the partner's job, timed to the moment of contact"
+       ],
+       "src": [
+        [
+         "Society of American Fight Directors",
+         "https://www.safd.org/"
+        ],
+        [
+         "Kreng 2008, Fight Directing: A Practical Guide",
+         "https://www.cengage.com/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Fighters at measure, feet planted except when a step lifts them",
+      "Every blow on its target at its moment (or on the block that meets it), every reaction on the beat and in the blow's direction",
+      "The safety gap kept and hidden from the camera"
+     ],
+     "res": {
+      "ok": true,
+      "n": 8,
+      "pass": 8,
+      "ms": 223,
+      "checks": [
+       {
+        "name": "blows arrive on their marks (worst miss, cm)",
+        "ok": true,
+        "got": "0.000 cm",
+        "want": "0 to 3 cm"
+       },
+       {
+        "name": "the safety gap on staged hits (cm, the smallest)",
+        "ok": true,
+        "got": "9.916 cm",
+        "want": "6 to 20 cm"
+       },
+       {
+        "name": "the gap seen from the camera (cm, the largest; kicks allowed 1.5 more)",
+        "ok": true,
+        "got": "2.618 cm",
+        "want": "0 to 3 cm"
+       },
+       {
+        "name": "a blocked jab meets the forearm (cm)",
+        "ok": true,
+        "got": "2.556 cm",
+        "want": "0 to 7 cm"
+       },
+       {
+        "name": "reactions go with the blow",
+        "ok": true,
+        "got": "3 of 3",
+        "want": "all"
+       },
+       {
+        "name": "the measure the fighters keep (m)",
+        "ok": true,
+        "got": "0.900 m",
+        "want": "0.85 to 1.3 m"
+       },
+       {
+        "name": "feet: how far planted feet slip over the whole exchange (cm, the worst fighter)",
+        "ok": true,
+        "got": "0.689 cm",
+        "want": "0 to 3 cm"
+       },
+       {
+        "name": "the kicker balanced over the standing foot",
+        "ok": true,
+        "got": "16 mm inside",
+        "want": "inside"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 3,
+     "title": "Phrases and rhythm",
+     "focus": "Moves joined into phrases with the pause-burst-pause rhythm, and several attackers who take their turns.",
+     "studied": [
+      {
+       "topic": "Rhythm",
+       "facts": [
+        "Bordwell: the Hong Kong fight is built of pause, burst, pause; a burst's blows come fast, then a held moment",
+        "Jackie Chan's rules include rhythm (a beat to every phrase) and showing each hit fully"
+       ],
+       "src": [
+        [
+         "Bordwell 2000, Planet Hong Kong",
+         "https://www.davidbordwell.net/books/planet.php"
+        ],
+        [
+         "Every Frame a Painting 2014, Jackie Chan: How to do action comedy",
+         "https://www.youtube.com/watch?v=Z1PCtIaM_GQ"
+        ]
+       ]
+      },
+      {
+       "topic": "Many against one",
+       "facts": [
+        "On screen the attackers take turns: only one engages at a time while the others stay out of reach (stacking)",
+        "The hero turns to face each one as they come"
+       ],
+       "src": [
+        [
+         "87eleven (stunt design) on group fights",
+         "https://87eleven.net/"
+        ],
+        [
+         "Every Frame a Painting 2015, The Bourne fights",
+         "https://www.youtube.com/@everyframeapainting"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Phrases composed from moves, with bursts and pauses",
+      "Two or more attackers who come in one at a time, walk into measure and back off out of reach"
+     ],
+     "res": {
+      "ok": true,
+      "n": 4,
+      "pass": 4,
+      "ms": 2,
+      "checks": [
+       {
+        "name": "one attacker engaged at a time",
+        "ok": true,
+        "got": "1.00",
+        "want": "1 at most"
+       },
+       {
+        "name": "the waiting attacker's distance while the other fights (m, the closest)",
+        "ok": true,
+        "got": "1.829 m",
+        "want": "1.6 to 9 m"
+       },
+       {
+        "name": "bursts: blows less than 0.6 s apart",
+        "ok": true,
+        "got": "6.00",
+        "want": "5 or more"
+       },
+       {
+        "name": "pauses: more than 0.9 s between phrases",
+        "ok": true,
+        "got": "5.00",
+        "want": "4 or more"
+       }
+      ],
+      "curves": {
+       "gaps between blows (s)": [
+        0.3255,
+        1.3147,
+        0.3255,
+        0.346,
+        1.6748,
+        0.473,
+        2.3208,
+        0.555,
+        0.858,
+        2.1196,
+        0.353,
+        1.5586,
+        0.836
+       ]
+      },
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 4,
+     "title": "Reading on camera",
+     "focus": "Every exchange staged for the lens: hits that read, silhouettes that read, the hit and its reaction in one shot.",
+     "studied": [
+      {
+       "topic": "Fights for the camera",
+       "facts": [
+        "The gap of a staged hit is hidden along the lens: the camera square to the strike's line sees the gap edge-on only from the wrong side",
+        "Show the hit and the reaction in the same shot (Jackie Chan); a blow reads when the limb crosses the frame in profile",
+        "Wide enough to see the bodies, still enough to read the move (the Bourne critique: cutting too fast loses the geography)"
+       ],
+       "src": [
+        [
+         "Every Frame a Painting 2014, Jackie Chan: How to do action comedy",
+         "https://www.youtube.com/watch?v=Z1PCtIaM_GQ"
+        ],
+        [
+         "Bordwell 2007, Unsteadicam chronicles",
+         "https://www.davidbordwell.net/blog/2007/08/17/unsteadicam-chronicles/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Staged hits that read as contact from the camera while the gap stays",
+      "Strikes that show across the frame",
+      "Coverage where each hit and its reaction share a shot"
+     ],
+     "res": {
+      "ok": true,
+      "n": 5,
+      "pass": 5,
+      "ms": 952,
+      "checks": [
+       {
+        "name": "staged hits that read as contact on camera with the gap kept",
+        "ok": true,
+        "got": "6 of 6",
+        "want": "all"
+       },
+       {
+        "name": "the striking limb shown across the frame (fraction of its length, the least)",
+        "ok": true,
+        "got": "0.903",
+        "want": "0.6 to 1"
+       },
+       {
+        "name": "the blow and its target in frame",
+        "ok": true,
+        "got": "6 of 6",
+        "want": "all"
+       },
+       {
+        "name": "landed hits whose reaction is in the same shot (%)",
+        "ok": true,
+        "got": "85.714%",
+        "want": "70 to 100%"
+       },
+       {
+        "name": "the fight's edit keeps one side of the line",
+        "ok": true,
+        "got": "0.0000",
+        "want": "0"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 5,
+     "title": "Whole fights",
+     "focus": "A fight with a story, things picked up and used, a shot to end it, and its sheet, cameras and effects.",
+     "studied": [
+      {
+       "topic": "A fight is a story",
+       "facts": [
+        "A set-up, an escalation, a reversal (the hero in trouble), a climax, a resolution",
+        "Use of the environment and props (the bottle on the crate), the hero improvising",
+        "Gun-fu at close range: the pistol tucked close (the Center Axis Relock idea), the shot as the punctuation"
+       ],
+       "src": [
+        [
+         "Bordwell 2000, Planet Hong Kong",
+         "https://www.davidbordwell.net/books/planet.php"
+        ],
+        [
+         "Center Axis Relock (Wikipedia)",
+         "https://en.wikipedia.org/wiki/Center_Axis_Relock"
+        ],
+        [
+         "StudioBinder: how to write a fight scene",
+         "https://www.studiobinder.com/blog/how-to-write-a-fight-scene/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "A 16-second fight in the alley, one against two: blocks, a duck, a roundhouse that hurts him, a bottle off a crate, a kick, a slip, and a point-blank shot",
+      "Its fight sheet, its cameras and its effects"
+     ],
+     "res": {
+      "ok": true,
+      "n": 9,
+      "pass": 9,
+      "ms": 443,
+      "checks": [
+       {
+        "name": "the story rises: the last third hits harder than the first",
+        "ok": true,
+        "got": "0.60 -> 1.21",
+        "want": "30% harder"
+       },
+       {
+        "name": "the climax at the end (the strongest moment in the last exchanges)",
+        "ok": true,
+        "got": "2.00",
+        "want": "last"
+       },
+       {
+        "name": "the bottle in LEGEND's grasp: sinking in (mm)",
+        "ok": true,
+        "got": "1.188 mm",
+        "want": "0 to 2 mm"
+       },
+       {
+        "name": "the bottle stays in his hand from the grab to the draw",
+        "ok": true,
+        "got": "113 of 113 frames",
+        "want": "all"
+       },
+       {
+        "name": "feet: how far planted feet slip over the fight (cm, the worst fighter)",
+        "ok": true,
+        "got": "6.452 cm",
+        "want": "0 to 12 cm"
+       },
+       {
+        "name": "bodies kept apart (trunks overlapping, cm)",
+        "ok": true,
+        "got": "0.000 cm",
+        "want": "-100 to 3 cm"
+       },
+       {
+        "name": "the fight sheet has every exchange",
+        "ok": true,
+        "got": "14 rows",
+        "want": "14"
+       },
+       {
+        "name": "effects cued for the exchanges (hits, blocks, the shot)",
+        "ok": true,
+        "got": "14 cues",
+        "want": "one an exchange"
+       },
+       {
+        "name": "length (s)",
+        "ok": true,
+        "got": "16.193 s",
+        "want": "12 to 20 s"
+       }
+      ],
+      "curves": {
+       "intensity of each exchange": [
+        0.1925,
+        0.44,
+        0.43,
+        0.52,
+        0.78,
+        0.655,
+        1.16,
+        0.54,
+        1.24,
+        1.24,
+        0.815,
+        0.815,
+        1.2,
+        2
+       ]
+      },
+      "notes": [],
+      "evKeys": [
+       "sheet"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "BOARD",
+   "title": "BOARD: the storyboard artist",
+   "role": "Reads a written scene, plans its shots, draws the board and the floor plan, keeps continuity, takes notes, and stages the scene for the other engines.",
+   "intro": "A new engine: from a page of prose to a board a crew could shoot from.",
+   "earned": 5,
+   "levels": [
+    {
+     "v": 1,
+     "title": "Reading a scene",
+     "focus": "From prose to beats: the heading, the people, what each does, to whom, with what, and how.",
+     "studied": [
+      {
+       "topic": "The screenplay page",
+       "facts": [
+        "The scene heading: INT. or EXT., the place, the time of day",
+        "Action lines in the present tense; dialogue under the speaker; a character's name in capitals when they first appear",
+        "A beat is a unit of action or feeling: what changes"
+       ],
+       "src": [
+        [
+         "The Hollywood Standard (Riley), screenplay format",
+         "https://www.mwp.com/product/the-hollywood-standard-3rd-edition/"
+        ],
+        [
+         "StudioBinder: how to write a scene heading",
+         "https://www.studiobinder.com/blog/how-to-write-a-scene-heading/"
+        ]
+       ]
+      },
+      {
+       "topic": "Following the people",
+       "facts": [
+        "Pronouns go back to the person they name (he, she, him, her); a description (\"a stranger\") is a person until named",
+        "A defence (\"she ducks\") answers the blow before it",
+        "Adverbs carry the manner (slowly, angrily), which Laban's efforts can play"
+       ],
+       "src": [
+        [
+         "Jurafsky and Martin, Speech and Language Processing: coreference",
+         "https://web.stanford.edu/~jurafsky/slp3/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Scene headings, weather and light; the people (named, described, pronouns); walking, running, picking up, putting down, handing over, throwing, drinking, talking, looking, reacting, every blow and defence of a fight",
+      "The things handled and the manner"
+     ],
+     "res": {
+      "ok": true,
+      "n": 9,
+      "pass": 9,
+      "ms": 7,
+      "checks": [
+       {
+        "name": "beats found in \"INT. GYM - NIGHT. JACK circl...\"",
+        "ok": true,
+        "got": "4.00",
+        "want": "4"
+       },
+       {
+        "name": "beats found in \"EXT. PARK - DAY. ANNA walks ...\"",
+        "ok": true,
+        "got": "4.00",
+        "want": "4"
+       },
+       {
+        "name": "beats found in \"EXT. YARD - DUSK. The boy pi...\"",
+        "ok": true,
+        "got": "3.00",
+        "want": "3"
+       },
+       {
+        "name": "beats found in \"EXT. ALLEY - NIGHT. Rain fal...\"",
+        "ok": true,
+        "got": "10.00",
+        "want": "10"
+       },
+       {
+        "name": "beats read right (who, what, with what, to whom, the defence; %)",
+        "ok": true,
+        "got": "100.000%",
+        "want": "95 to 100%"
+       },
+       {
+        "name": "the heading, the place and the time",
+        "ok": true,
+        "got": "EXT. ALLEY - NIGHT",
+        "want": "EXT. ALLEY - NIGHT"
+       },
+       {
+        "name": "weather and light",
+        "ok": true,
+        "got": "rain, neon",
+        "want": "rain, neon"
+       },
+       {
+        "name": "two people (one named twice, one described)",
+        "ok": true,
+        "got": "Maya, stranger",
+        "want": "Maya, stranger"
+       },
+       {
+        "name": "the manner read as an effort (\"slowly\" -> glide)",
+        "ok": true,
+        "got": "glide",
+        "want": "glide"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 2,
+     "title": "The shot list",
+     "focus": "Every beat planned as shots, with the fields a production works from.",
+     "studied": [
+      {
+       "topic": "Shot lists",
+       "facts": [
+        "Fields: shot number, scene, description, size, type (single, two, over, insert, master), movement, lens, length, cast, notes",
+        "Open wide to establish; close for feeling; inserts for what the hands do; fights in short shots, often handheld"
+       ],
+       "src": [
+        [
+         "StudioBinder: how to make a shot list",
+         "https://www.studiobinder.com/blog/how-to-make-a-shot-list/"
+        ],
+        [
+         "Katz 1991, Film Directing Shot by Shot",
+         "https://mwp.com/product/film-directing-shot-by-shot-25th-anniversary-edition/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "A shot list for any scene it reads: sizes, types, moves, lenses and lengths from the beats, the timing from what the engines know of each action"
+     ],
+     "res": {
+      "ok": true,
+      "n": 7,
+      "pass": 7,
+      "ms": 1,
+      "checks": [
+       {
+        "name": "it opens on an establishing shot",
+        "ok": true,
+        "got": "EWS master",
+        "want": "a wide master"
+       },
+       {
+        "name": "every beat has a shot",
+        "ok": true,
+        "got": "13 shots for 10 beats",
+        "want": "all"
+       },
+       {
+        "name": "handling gets an insert of the hands",
+        "ok": true,
+        "got": "checked",
+        "want": "every one"
+       },
+       {
+        "name": "talk and feeling are close (MCU or CU)",
+        "ok": true,
+        "got": "checked",
+        "want": "every one"
+       },
+       {
+        "name": "the fight is handheld",
+        "ok": true,
+        "got": "checked",
+        "want": "every exchange"
+       },
+       {
+        "name": "the shots' lengths add up to the beats' (%)",
+        "ok": true,
+        "got": "0.000%",
+        "want": "0 to 10%"
+       },
+       {
+        "name": "every shot has its fields",
+        "ok": true,
+        "got": "all fields",
+        "want": "complete"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 3,
+     "title": "Panels",
+     "focus": "Each shot drawn from MIMATIC's camera with the people as LEGEND performs them, and the arrows a board uses.",
+     "studied": [
+      {
+       "topic": "Storyboard drawing",
+       "facts": [
+        "Frame lines at the film's aspect; the figures where the camera sees them",
+        "Arrows: a figure's movement inside the frame; the camera's move outside or on the frame (push in: arrows into the corners; pan or track: an arrow across; crane: up or down)",
+        "A number and a caption for each panel"
+       ],
+       "src": [
+        [
+         "Begleiter 2010, From Word to Image",
+         "https://mwp.com/product/from-word-to-image-2nd-edition/"
+        ],
+        [
+         "StudioBinder: storyboard arrows",
+         "https://www.studiobinder.com/blog/how-to-make-a-storyboard/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "A board of pencil panels: bodies posed from the performance, things where they are, camera and figure arrows, numbers and captions"
+     ],
+     "res": {
+      "ok": true,
+      "n": 4,
+      "pass": 4,
+      "ms": 460,
+      "checks": [
+       {
+        "name": "a panel for every shot, with the people drawn",
+        "ok": true,
+        "got": "13 of 13",
+        "want": "all"
+       },
+       {
+        "name": "camera moves marked by convention",
+        "ok": true,
+        "got": "9 of 9",
+        "want": "all"
+       },
+       {
+        "name": "figures that move get their arrow",
+        "ok": true,
+        "got": "8 of 8",
+        "want": "all"
+       },
+       {
+        "name": "singles: the eyes on the upper third at the shot's middle (worst, % of the frame)",
+        "ok": true,
+        "got": "0.000%",
+        "want": "0 to 3%"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": [
+       "panels"
+      ]
+     }
+    },
+    {
+     "v": 4,
+     "title": "Floor plans and continuity",
+     "focus": "The set from above with the marks, paths and cameras, and the continuity checked across every cut.",
+     "studied": [
+      {
+       "topic": "Floor plans",
+       "facts": [
+        "The set from above: the actors' start and end marks, their paths, each camera with its number and its field of view, the line of action",
+        "A field of view drawn at the lens's angle of view"
+       ],
+       "src": [
+        [
+         "StudioBinder: shot list and floor plan (the overhead)",
+         "https://www.studiobinder.com/blog/what-is-a-floor-plan-in-film/"
+        ]
+       ]
+      },
+      {
+       "topic": "Continuity",
+       "facts": [
+        "The 180-degree rule",
+        "Screen direction: what moves left to right keeps moving left to right across a cut",
+        "Eyelines: in shot and reverse shot, the two look in opposite directions across the frame"
+       ],
+       "src": [
+        [
+         "Bordwell and Thompson, Film Art: continuity editing",
+         "https://en.wikipedia.org/wiki/Continuity_editing"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "A floor plan of any board",
+      "Continuity checks that find a camera across the line, a reversed screen direction or mismatched eyelines"
+     ],
+     "res": {
+      "ok": true,
+      "n": 4,
+      "pass": 4,
+      "ms": 7,
+      "checks": [
+       {
+        "name": "every camera on the plan",
+        "ok": true,
+        "got": "13 cameras",
+        "want": "13"
+       },
+       {
+        "name": "fields of view drawn at the lens's angle",
+        "ok": true,
+        "got": "checked",
+        "want": "all"
+       },
+       {
+        "name": "the board keeps continuity",
+        "ok": true,
+        "got": "no faults",
+        "want": "no faults"
+       },
+       {
+        "name": "a camera thrown across the line is caught",
+        "ok": true,
+        "got": "caught",
+        "want": "caught"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    },
+    {
+     "v": 5,
+     "title": "Style, revisions and the animatic",
+     "focus": "A pencil look, a director's notes taken without disturbing the rest, and the board timed to the cut.",
+     "studied": [
+      {
+       "topic": "The look of a board",
+       "facts": [
+        "Pencil: line weight falls with distance; hatching on the shadow side gives the light",
+        "Simple mannequins read faster than detailed figures"
+       ],
+       "src": [
+        [
+         "Hart 2008, The Art of the Storyboard",
+         "https://www.routledge.com/The-Art-of-the-Storyboard/Hart/p/book/9780240809601"
+        ]
+       ]
+      },
+      {
+       "topic": "Notes and animatics",
+       "facts": [
+        "A note changes what it names and nothing else; continuity holds after it",
+        "The animatic: the panels timed to the shots' lengths, camera moves played across them"
+       ],
+       "src": [
+        [
+         "StudioBinder: what is an animatic",
+         "https://www.studiobinder.com/blog/what-is-an-animatic-definition/"
+        ]
+       ]
+      }
+     ],
+     "can": [
+      "Takes notes like \"make 6 a close-up\", \"add an insert of the mug after 3\", \"cut 5\", \"make 2 longer by 0.5\", \"flip to the other side\"",
+      "Times the board into an animatic"
+     ],
+     "res": {
+      "ok": true,
+      "n": 10,
+      "pass": 10,
+      "ms": 84,
+      "checks": [
+       {
+        "name": "\"make 6 a close-up\": shot 6 becomes a close-up on an 85",
+        "ok": true,
+        "got": "CU 85 mm",
+        "want": "CU 85 mm"
+       },
+       {
+        "name": "...and nothing else changes",
+        "ok": true,
+        "got": "0 others changed",
+        "want": "0"
+       },
+       {
+        "name": "\"add an insert of the mug after 3\"",
+        "ok": true,
+        "got": "Insert: the mug",
+        "want": "Insert: the mug as shot 4"
+       },
+       {
+        "name": "\"cut 5\": one fewer, and the time it held goes to its neighbour",
+        "ok": true,
+        "got": "13 shots",
+        "want": "13"
+       },
+       {
+        "name": "\"make 2 longer by 0.5\"",
+        "ok": true,
+        "got": "0.500 s",
+        "want": "0.5 \u00b1 0.000001 s"
+       },
+       {
+        "name": "\"flip to the other side\": every camera across, continuity kept",
+        "ok": true,
+        "got": "flipped",
+        "want": "all, no faults"
+       },
+       {
+        "name": "the animatic runs the scene's length (s)",
+        "ok": true,
+        "got": "0.000 s",
+        "want": "0 to 0.7 s"
+       },
+       {
+        "name": "push-ins play as moves in the animatic",
+        "ok": true,
+        "got": "checked",
+        "want": "zoom in"
+       },
+       {
+        "name": "pencil: no colour but the arrows",
+        "ok": true,
+        "got": "0.00% coloured",
+        "want": "under 1%"
+       },
+       {
+        "name": "pencil: hatching on the shadow side",
+        "ok": true,
+        "got": "1789 strokes",
+        "want": "over 40"
+       }
+      ],
+      "curves": {},
+      "notes": [],
+      "evKeys": []
+     }
+    }
+   ]
+  }
+ ]
+}

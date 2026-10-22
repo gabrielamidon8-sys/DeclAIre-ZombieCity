@@ -22,3 +22,11 @@ desktop/app/
 
 # Built account page (python3 tools/build_site.py)
 site/dist/
+
+# slice 12: build outputs of the studio and the evidence tools
+studio/dist/
+tools/evidence/dev.html
+tools/evidence/ev/
+tools/evidence/sheets/
+tools/evidence/course.json
+tools/evidence/fxdata.txt

@@ -1,0 +1,6 @@
+[{"name":"vx1_rain","fn":"evVX","size":"FS","tw":420,"list":[["the render alone",null,false],["rain in scene time, splashes, bloom, streak, grain, bars",{"dof":false,"vig":0.2},{"bloomK":0.7,"th":0.5,"streak":0.5,"grain":0.05,"vig":0.6,"bars":0.08},true]]},
+ {"name":"vx2_film","fn":"evVX","size":"MLS","tw":420,"list":[["video: hard clip, no halation",{"dof":false},{"bloomK":0.3,"th":0.7,"hal":0,"tone":0,"grain":0}],["film: halation, a soft shoulder, split tone, grain",{"dof":false},{"bloomK":0.55,"th":0.55,"hal":0.35,"tone":0.8,"shd":[0,0.015,0.04],"hil":[0.04,0.02,0],"grain":0.05}]]},
+ {"name":"vx3_mb","fn":"evVX","size":"MLS","tw":420,"list":[["camera panning, shutter closed (no blur)",{"dof":false}],["the same pan, 180 degree shutter: blur from the camera's own move",{"dof":false,"panDeg":3}]]},
+ {"name":"vx4_fog","fn":"evVX","size":"WS","tw":330,"cols":3,"list":[["no fog",{"dof":false,"fog":{"rho":0,"H":6,"col":[0.04,0.055,0.085]}}],["fog, density 0.04 per m",{"dof":false,"fog":{"rho":0.04,"H":6,"col":[0.05,0.065,0.1]}}],["fog 0.04 and shafts from the lamp",{"dof":false,"fog":{"rho":0.04,"H":6,"col":[0.05,0.065,0.1]},"raysAt":[-6.5,7.9,5.45]}]]},
+ {"name":"vx4_lut","fn":"evLUT","tw":300},
+ {"name":"vx5_fx","fn":"evFX","tw":300}]

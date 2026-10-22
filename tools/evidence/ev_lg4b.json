@@ -1,0 +1,8 @@
+[{"name":"lg4_reach","fn":"evPerf3D","kind":"reach","args":{"key":"mug","at":[0.47,-0.2,0.743],"yaw":1.2,"side":"R","lift":0.12,"root":[0.13,0,0,0]},"table":[0.62,-0.2,0],"az":-40,"el":12,"tw":250,"th":300},
+ {"name":"lg4_lift","fn":"evPerf3D","kind":"lift","az":-60,"el":8,"tw":250,"th":300},
+ {"name":"lg4_hand","fn":"evPerf3D","kind":"handover","az":-90,"el":8,"tw":280,"th":300},
+ {"name":"lg4_throw","fn":"evPerf3D","kind":"throw","learnThrow":20,"az":-100,"el":6,"tw":230,"th":300,"pad":1.02,"times":[0,0.3,0.5,0.62,0.7,0.74,0.76,0.8,1.0,1.3]},
+ {"name":"lg5_punch","fn":"evPerf3D","effort":"punch","args":{"key":"mug","at":[0.47,-0.2,0.743],"yaw":1.2,"side":"R","lift":0.12,"root":[0.13,0,0,0]},"table":[0.62,-0.2,0],"az":-40,"el":12,"tw":220,"th":280,"times":[0,0.2,0.35,0.5,0.65,0.8]},
+ {"name":"lg5_float","fn":"evPerf3D","effort":"float","args":{"key":"mug","at":[0.47,-0.2,0.743],"yaw":1.2,"side":"R","lift":0.12,"root":[0.13,0,0,0]},"table":[0.62,-0.2,0],"az":-40,"el":12,"tw":220,"th":280,"times":[0,0.4,0.8,1.2,1.6,2.0]},
+ {"name":"ch_fight","fn":"evPerf3D","F":"choTest()","az":-90,"el":6,"tw":250,"th":300},
+ {"name":"ch_alley","fn":"evPerf3D","F":"choAlleyFight()","az":-90,"el":10,"tw":300,"th":260,"cols":6}]
