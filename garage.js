@@ -113,6 +113,38 @@ function vGlass(g, x0, x1, W, inset, lit) {
   g.fillStyle = gr; rrect(g, x0, -W / 2 + inset, w, W - inset * 2, 1.6); g.fill();
   if (lit) { g.fillStyle = 'rgba(255,214,140,0.25)'; rrect(g, x0, -W / 2 + inset, w, W - inset * 2, 1.6); g.fill(); }
 }
+// a car's outline from above: the nose and tail rounded in, the flanks swelling a touch at the wheel arches
+function vCarBody(g, L, W, rad, col) {
+  const t = W * 0.07, r = rad, path = () => {
+    g.beginPath(); g.moveTo(-L / 2 + r, -W / 2 + t * 0.4);
+    g.lineTo(-L * 0.36, -W / 2 + t * 0.4); g.quadraticCurveTo(-L * 0.31, -W / 2 - 0.4, -L * 0.25, -W / 2 + t * 0.2); g.lineTo(L * 0.25, -W / 2 + t * 0.2); g.quadraticCurveTo(L * 0.31, -W / 2 - 0.4, L * 0.36, -W / 2 + t * 0.3);
+    g.lineTo(L / 2 - r * 1.5, -W / 2 + t * 0.5); g.quadraticCurveTo(L / 2, -W / 2 + t, L / 2, -W / 2 + t + r);
+    g.lineTo(L / 2, W / 2 - t - r); g.quadraticCurveTo(L / 2, W / 2 - t, L / 2 - r * 1.5, W / 2 - t * 0.5);
+    g.lineTo(L * 0.36, W / 2 - t * 0.3); g.quadraticCurveTo(L * 0.31, W / 2 + 0.4, L * 0.25, W / 2 - t * 0.2); g.lineTo(-L * 0.25, W / 2 - t * 0.2); g.quadraticCurveTo(-L * 0.31, W / 2 + 0.4, -L * 0.36, W / 2 - t * 0.4);
+    g.lineTo(-L / 2 + r, W / 2 - t * 0.4); g.quadraticCurveTo(-L / 2, W / 2 - t * 0.6, -L / 2, W / 2 - t - r * 0.6);
+    g.lineTo(-L / 2, -W / 2 + t + r * 0.6); g.quadraticCurveTo(-L / 2, -W / 2 + t * 0.6, -L / 2 + r, -W / 2 + t * 0.4); g.closePath();
+  };
+  g.fillStyle = col; path(); g.fill();
+  const gr = g.createLinearGradient(0, -W / 2, 0, W / 2); gr.addColorStop(0, 'rgba(0,0,0,0.26)'); gr.addColorStop(0.16, 'rgba(255,255,255,0.06)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.14)'); gr.addColorStop(0.84, 'rgba(255,255,255,0.04)'); gr.addColorStop(1, 'rgba(0,0,0,0.3)');
+  g.fillStyle = gr; path(); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.38)'; g.lineWidth = 0.8; path(); g.stroke();
+}
+// a raked window: a windscreen (dir 1, wider at its foot) or a rear window (dir -1), set into the greenhouse
+function vRake(g, x0, x1, W, gi, dir) {
+  const a = W / 2 - gi + 0.6, b = W / 2 - gi - 1.6, foot = dir > 0 ? x0 : x1, top = dir > 0 ? x1 : x0;
+  const path = () => { g.beginPath(); g.moveTo(foot, -b); g.lineTo(top, -a + 1.4); g.quadraticCurveTo(top + dir * 1.4, 0, top, a - 1.4); g.lineTo(foot, b); g.closePath(); };
+  g.fillStyle = '#141b22'; path(); g.fill();
+  const gr = g.createLinearGradient(x0, -W / 2, x1, W / 2); gr.addColorStop(0, 'rgba(150,190,220,0.06)'); gr.addColorStop(0.45, 'rgba(175,212,236,0.34)'); gr.addColorStop(0.52, 'rgba(225,242,255,0.44)'); gr.addColorStop(0.6, 'rgba(170,210,235,0.14)'); gr.addColorStop(1, 'rgba(120,160,200,0.06)');
+  g.fillStyle = gr; path(); g.fill();
+}
+// shaped head and tail lamps, a grille between the headlamps, the mirrors standing off the doors
+function vCarLights(g, L, W, col) {
+  g.fillStyle = '#f3e3a8'; for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(L / 2 - 2.4, sd * (W / 2 - 4.6), 1.6, 3, sd * 0.25, 0, TAU); g.fill(); }
+  g.fillStyle = '#1a1c1f'; g.fillRect(L / 2 - 1.6, -W * 0.18, 1.6, W * 0.36);
+  g.fillStyle = '#b8262a'; for (const sd of [-1, 1]) g.fillRect(-L / 2 + 0.3, sd > 0 ? W / 2 - 7.4 : -W / 2 + 3.4, 1.8, 4);
+  g.fillStyle = col; for (const sd of [-1, 1]) { g.fillRect(L * 0.17, sd > 0 ? W / 2 - 0.6 : -W / 2 - 1.8, 3, 2.4); }
+  g.fillStyle = '#141b22'; for (const sd of [-1, 1]) g.fillRect(L * 0.17 + 0.6, sd > 0 ? W / 2 + 0.6 : -W / 2 - 1.4, 1.8, 0.8);
+}
 function vWheels(g, xs, W, tw) { g.fillStyle = '#0b0b0c'; for (const x of xs) { g.fillRect(x - tw / 2, -W / 2 - 1.4, tw, 2.6); g.fillRect(x - tw / 2, W / 2 - 1.2, tw, 2.6); } }
 function vLights(g, L, W, col) {
   g.fillStyle = '#f3e3a8'; g.fillRect(L / 2 - 2.6, -W / 2 + 2.6, 2.6, 4); g.fillRect(L / 2 - 2.6, W / 2 - 6.6, 2.6, 4);
@@ -220,20 +252,30 @@ function vehDraw(g, r) {
       break;
     }
     default: {
-      // the car family: hatch, sedan, wagon, coupe, SUV, minivan, taxi, police
-      vWheels(g, [-L * 0.3, L * 0.3], W, 10); vBody(g, L, W, V.r, col);
-      const G0 = V.g[0], G1 = V.g[1];
-      // bonnet crease, the roof between the windows, roof rails or a sunroof
-      g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(L * G0[1] + 2, 0); g.lineTo(L / 2 - 3, 0); g.stroke();
-      g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(L * G1[1], -W / 2 + 3.5, L * (G0[0] - G1[1]), W - 7);
+      // the car family: hatch, sedan, wagon, coupe, SUV, minivan, taxi, police. 1.9.998: shaped like a car from above:
+      // the nose and tail rounded in, wheel arches, a greenhouse narrower than the body with the windscreen and rear
+      // window raked, side glass down both flanks, door seams, the bonnet's creases and shaped lamps
+      vWheels(g, [-L * 0.31, L * 0.31], W, 9.5); vCarBody(g, L, W, V.r, col);
+      const G0 = V.g[0], G1 = V.g[1], gi = W * 0.13;
+      // the greenhouse: the roof panel between the windscreen and the rear window, side glass along its edges
+      g.fillStyle = vShade(col, 0.06); rrect(g, L * G1[1], -W / 2 + gi, L * (G0[0] - G1[1]), W - gi * 2, 3); g.fill();
+      g.fillStyle = '#141b22'; g.fillRect(L * G1[0] + 1, -W / 2 + gi - 1.2, L * (G0[0] - G1[0]), 1.6); g.fillRect(L * G1[0] + 1, W / 2 - gi - 0.4, L * (G0[0] - G1[0]), 1.6);
+      g.fillStyle = 'rgba(160,200,225,0.18)'; g.fillRect(L * G1[0] + 2, -W / 2 + gi - 1.2, L * (G0[0] - G1[0]) - 2, 0.6);
+      // door seams on both flanks, the bonnet's two creases, the boot lid's line
+      g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 0.6; g.beginPath();
+      for (const x of [L * (G0[0] - 0.02), L * ((G0[0] + G1[1]) / 2)]) { g.moveTo(x, -W / 2 + 0.6); g.lineTo(x, -W / 2 + gi - 1.6); g.moveTo(x, W / 2 - 0.6); g.lineTo(x, W / 2 - gi + 1.6); }
+      g.moveTo(L * G0[1] + 2, -W * 0.22); g.lineTo(L / 2 - 3, -W * 0.18); g.moveTo(L * G0[1] + 2, W * 0.22); g.lineTo(L / 2 - 3, W * 0.18);
+      if (G1) { g.moveTo(L * G1[0] - 2, -W * 0.32); g.lineTo(L * G1[0] - 2, W * 0.32); }
+      g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.09)'; g.fillRect(L * G0[1] + 3, -W * 0.16, L * (0.5 - G0[1]) - 6, W * 0.32);
       if (vt === 'wagon' || vt === 'suv') { g.fillStyle = '#2a2c30'; g.fillRect(L * G1[1], -W / 2 + 2.6, L * (G0[0] - G1[1]), 1.4); g.fillRect(L * G1[1], W / 2 - 4, L * (G0[0] - G1[1]), 1.4); }
       if ((vt === 'suv' || vt === 'sedan') && (r.s & 3) === 1) { g.fillStyle = '#121820'; g.fillRect(-L * 0.06, -W * 0.22, L * 0.12, W * 0.44); }
       if (vt === 'coupe' && (r.s & 1)) { g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(-L / 2 + 2, -2.5, L - 4, 1.6); g.fillRect(-L / 2 + 2, 1, L - 4, 1.6); }
       if (vt === 'minivan') { g.strokeStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.moveTo(-L * 0.1, -W / 2 + 1); g.lineTo(-L * 0.1, -W / 2 + 4); g.moveTo(-L * 0.1, W / 2 - 1); g.lineTo(-L * 0.1, W / 2 - 4); g.stroke(); }
       if (vt === 'taxi') { g.fillStyle = '#111'; for (let x = -L * 0.4; x < L * 0.4; x += 4) { g.fillRect(x, -W / 2 + 0.4, 2, 1.4); g.fillRect(x + 2, W / 2 - 1.8, 2, 1.4); } g.fillStyle = '#f4f2ea'; g.fillRect(-L * 0.06, -W * 0.2, L * 0.1, W * 0.4); g.fillStyle = '#c9402e'; g.fillRect(-L * 0.06, -1, L * 0.1, 2); }
       if (vt === 'police') { if (col === '#14161a') { g.fillStyle = '#ecebe6'; g.fillRect(-L * 0.2, -W / 2, L * 0.36, W); } else { g.fillStyle = '#e8e6e0'; g.fillRect(-L * 0.4, -W / 2 + 1, L * 0.8, 1.8); g.fillRect(-L * 0.4, W / 2 - 2.8, L * 0.8, 1.8); } vBar(g, -L * 0.02, W, '#ff2d2d', '#2d6bff'); }
-      vGlass(g, L * G0[0], L * G0[1], W, 3); if (G1) vGlass(g, L * G1[0], L * G1[1], W, 3.5);
-      vLights(g, L, W, col);
+      vRake(g, L * G0[0], L * G0[1], W, gi, 1); if (G1) vRake(g, L * G1[0], L * G1[1], W, gi, -1);
+      vCarLights(g, L, W, col);
     }
   }
   if (r.dust) { g.fillStyle = r.dust; rrect(g, -L / 2 + 1, -W / 2 + 1, L - 2, W - 2, V.r); g.fill(); }
