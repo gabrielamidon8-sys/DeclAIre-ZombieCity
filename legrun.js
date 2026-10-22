@@ -27,7 +27,7 @@
      a planted foot really travels in a cycle, and the steps are paced by that, so the feet do not slide. */
 const LGV = { on: true, made: 0, ms: 0, miss: {}, fix: {}, tries: {}, first: {}, stuck: {}, stride: {}, learnt: 0, bodies: new WeakMap() };
 // which bones each layer shows
-const LGV_LEGS = ['root', 'pelvis', 'thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'];
+const LGV_LEGS = ['root', 'pelvis', 'thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR', 'dump'];
 const LGV_HEAD = ['head', 'mBrow', 'mCheekL', 'mCheekR', 'mJawL', 'mJawR', 'mChin', 'mVisor'];
 const LGV_PIST = ['pistol', 'slide', 'mag'];
 function lgvMask(show) { const h = new Uint8Array(LG_NB_MAX).fill(1); for (const n of show) if (LGB[n] != null) h[LGB[n]] = 0; return h; }
@@ -345,29 +345,45 @@ function lgvStep(p, B) {
   if (sprint || dodge) hT = head;
   lgvTurn(B, 'head', 'vH', hT, 24, dt);
   // the shoulders follow the head (and carry the gun to the aim); a long gun swings heavier than a pistol
-  const heavy = p.weapon && p.weapon.slot === 'primary' ? 1 : 0.7, cT = sprint || dodge ? head : aim + angD(B.head, aim) * 0.25;
+  // (1.9.996: the gun stays on the aim; the eyes scanning no longer drag the chest, the gun and its light round with them)
+  const heavy = p.weapon && p.weapon.slot === 'primary' ? 1 : 0.7, cT = sprint || dodge ? head : aim + angD(B.head, aim) * 0.05;
   lgvTurn(B, 'chest', 'vC', cT, (focus > 0.5 ? 15 : 10) / Math.sqrt(heavy), dt);
-  // the legs: toward the walk, sidestepping across the aim, backing away from it; standing, they step round when the
-  // torso has twisted too far over them
-  let lT = B.leg, clip = 'idle_ready';
-  if (dodge) { lT = Math.atan2(p.dashDy || 0, p.dashDx || 1); clip = 'dodge'; }
+  // 1.9.996: the legs on LOCO, the gait engine. The hips turn toward the way he moves (at most 45 degrees off the chest,
+  // which stays on the aim), the steps go the rest of the way; past 100 degrees from the aim he moves backwards. The
+  // speed picks the gait (a walk, a run, a sprint) at the real cadence, and the phase advances by the ground covered, so a
+  // planted foot does not slide. Standing, the feet stay put until the chest has turned too far over them, then step round.
+  let clip = 'idle_ready';
+  const L = B.loco || (B.loco = { hip: 0, vh: 0, back: false, dir: 0, v: 0, turn: 0 });
+  if (dodge) { B.leg = Math.atan2(p.dashDy || 0, p.dashDx || 1); L.hip = angD(B.leg, B.chest); L.vh = 0; clip = 'dodge'; }
   else if (p.down) clip = 'down';
-  else if (mv) {
-    const rel = angD(head, B.chest);
-    if (sprint) { lT = head; clip = 'sprint'; }
-    else if (Math.abs(rel) < 1.0) { lT = head; clip = sp > 4 ? 'run' : 'walk_tac'; }
-    else if (Math.abs(rel) > 2.25) { lT = head + Math.PI; clip = 'backpedal'; }
-    else { lT = B.chest; clip = rel > 0 ? 'strafe_l' : 'strafe_r'; }
-  } else {
-    const tw = angD(B.chest, B.leg);
-    if (Math.abs(tw) > 0.75 || B.turning) { B.turning = Math.abs(tw) > 0.12; lT = B.chest; if (B.turning) { clip = tw > 0 ? 'strafe_l' : 'strafe_r'; B.turnPh += dt * 1.6; } }
+  else {
+    L.v += (sp - L.v) * Math.min(1, dt * 8);
+    let tgt = L.hip;
+    if (mv) {
+      const rel = angD(head, B.chest);
+      if (L.back && Math.abs(rel) < 1.6) L.back = false; else if (!L.back && Math.abs(rel) > 1.85) L.back = true;
+      const r2 = L.back ? angD(rel, Math.PI) : rel; tgt = clamp(r2, -0.78, 0.78);
+      L.dir = angD(r2, tgt); L.turn = 0; clip = 'loco';
+    } else if (B.stopPh != null || (B.clip === 'loco' && !L.turn)) {
+      // 1.9.996: a stop: the step under way is finished, quickly, and the foot planted (the next heel strike) before he
+      // settles into his stance, instead of the legs melting from mid-stride into the stand
+      if (B.stopPh == null) B.stopPh = B.ph < 0.5 ? 0.5 : 1;
+      clip = 'loco'; L.dir = L.dir || 0;
+    } else {
+      // standing: the hips hold until the chest is more than about 45 degrees round, then the feet step round under it
+      if (Math.abs(L.hip) > 0.8 || L.turn) { L.turn = Math.abs(L.hip) > 0.1 ? 1 : 0; tgt = 0; if (L.turn) { clip = 'turn'; B.turnPh += dt * 1.7; } }
+      L.dir = L.turn ? (L.hip > 0 ? -0.78 : 0.78) : 0;
+    }
+    // the hips as a mass on a spring (relative to the chest); the chest's own turn drags them while the feet are planted
+    const w = mv || L.turn ? 11 : 6, x = L.hip - tgt; L.vh += (-w * w * x - 2 * w * L.vh) * dt; L.hip += L.vh * dt;
+    if (!mv && !L.turn) L.hip -= angD(B.chest, B.chestWas == null ? B.chest : B.chestWas);
+    L.hip = clamp(L.hip, -0.95, 0.95); B.leg = B.chest + L.hip;
+    if (mv) { B.stopPh = null; const vb = lgvVB(L.v), G = locoParams(vb, { back: L.back, load: 0.3 }); B.ph = (B.ph + (G.stride > 0 ? sp / G.stride : 0) * dt) % 1; B.vb = vb; }
+    else if (B.stopPh != null) { const rem = B.stopPh - B.ph; if (rem <= 0.004 || rem > 0.6) { B.ph = B.stopPh % 1; B.stopPh = null; B.clip = clip = 'idle_ready'; } else B.ph += Math.min(rem, dt * Math.max(2.2, rem / 0.13)); }
+    else if (L.turn) { B.ph = B.turnPh % 1; B.vb = 1.3; }
+    else { const near = Math.round(B.ph * 2) / 2; B.ph += (near - B.ph) * Math.min(1, dt * 3); }
   }
-  lgvTurn(B, 'leg', 'vL', lT, mv || B.turning ? 11 : 6, dt);
-  // the twist never goes past what a spine can do: the hips are dragged round
-  const tw = angD(B.chest, B.leg); if (Math.abs(tw) > 1.3) B.leg = B.chest - Math.sign(tw) * 1.3;
-  // the feet keep pace with the ground (each walk's real stride, measured)
-  const stride = LGV.stride[clip] || { walk_tac: 1.25, run: 2.6, sprint: 3.3, backpedal: 0.82, strafe_l: 0.72, strafe_r: 0.72 }[clip] || 1.3;
-  if (mv) B.ph = (B.ph + sp * dt / stride) % 1; else if (B.turning) B.ph = B.turnPh % 1;
+  B.chestWas = B.chest;
   B.clip = clip;
   // the upper body on its spring: it leans into the walk and swings on a stop; recoil pushes it back
   const lx = clamp(B.vx / u * 0.018, -0.07, 0.07), ly = clamp(B.vy / u * 0.018, -0.07, 0.07);
@@ -391,9 +407,12 @@ function lgvStep(p, B) {
 }
 
 /* ---------- frames: legs, upper body, head ---------- */
-const LGV_LEGCLIP = { idle_ready: 'idle_ready', walk_tac: 'walk_tac', run: 'run', sprint: 'sprint', backpedal: 'backpedal', strafe_l: 'strafe_l', strafe_r: 'strafe_r' };
+// 1.9.996: the speeds the legs are painted at (m/s): a walk, a fast walk, a jog, a run, a fast run, a sprint; the game's own
+// speeds fall into a few of them (the run's 4.6 to 5.4 into 4.8, the sprint into 7.8), so few frames are needed
+const LGV_VB = [1.3, 2.4, 3.6, 4.8, 6.2, 7.8];
+function lgvVB(v) { let b = LGV_VB[0], d = Infinity; for (const x of LGV_VB) { const e = Math.abs(x - v); if (e < d) { d = e; b = x; } } return b; }
 // each layer's frame: [left, right, top, bottom] in sprite units around its centre (forward is right; the gun reaches far)
-const LGV_BOX = { legs: [-36, 36, -24, 24], up: [-30, 62, -34, 38], head: [-11, 14, -11, 11], full: [-52, 52, -52, 52] };   // (1.9.994: the head's frame has room for the mask's front)
+const LGV_BOX = { legs: [-38, 38, -30, 30], up: [-30, 62, -34, 38], head: [-11, 14, -11, 11], full: [-52, 52, -52, 52] };   // (1.9.994: the head's frame has room for the mask's front)
 function lgvModelKey(p) {
   const cls = p === G.p ? (SET.legendClass || 'attack') : (p.lc || 'attack'), a = p.arm;
   let gp = 'm4a1', gs = 'm17';
@@ -473,6 +492,12 @@ function lgvMeasure1(r, fam, gun) {
   const mi = fam === 'p' ? LGB.pistol : LGB.carbine, mo = lgSockFor(fam === 'p' ? 'pistol' : 'carbine', 'muz'), MW = W.subarray(mi * 16, mi * 16 + 16), mz = lgPt(MW, mo[0], mo[1], mo[2]);
   o.mx = mz[0] / LG_UNIT; o.my = -mz[1] / LG_UNIT;
   const h = LGB.head * 16; o.hx = W[h + 12] / LG_UNIT; o.hy = -W[h + 13] / LG_UNIT;
+  // 1.9.996: the weapon light: where its lens is and which way the barrel really points, seen from above (the beam starts
+  // at the light and goes along the bore, whatever the head is doing); a gun without a light throws it from the muzzle
+  { const gk = fam === 'p' ? r.gs : r.gp, D = gk && LG_GUN_DEF[gk], lp = D && D.light ? D.light : null, lz = lp ? lgPt(MW, lp[0], lp[1], lp[2]) : mz;
+    o.lx = lz[0] / LG_UNIT; o.ly = -lz[1] / LG_UNIT;
+    const x0 = (lp ? lp[0] : mo[0]), f = lgPt(MW, x0, 0, 0), b = lgPt(MW, x0 - 0.3, 0, 0), dx = f[0] - b[0], dy = f[1] - b[1];
+    o.ba = Math.hypot(dx, dy) > 0.02 ? Math.atan2(-dy, dx) : 0; o.bd = clamp(Math.hypot(dx, dy) / 0.3, 0, 1); }
   // learning: the support hand on the gun -- did it get there? (gun is 'm4a1:ready': each gun in each posture)
   if (gun && P.ik.handL && P.ik.handL.on) {
     const PM = W.subarray(LGB[P.ik.handL.on] * 16, LGB[P.ik.handL.on] * 16 + 16), S = lgSockFor(P.ik.handL.on, 'gripL'), Gm = lgMul(lgM4(), PM, S), hl = LGB.handL * 16;
@@ -541,11 +566,25 @@ function lgvDraw(p, ctx2) {
     ctx2.save(); ctx2.rotate(d); img(s, s.box); ctx2.restore();
     const cr = Math.cos(d), sr = Math.sin(d); p.lgAim = aim + d; return { mx: s.mx * cr - s.my * sr, my: s.mx * sr + s.my * cr };
   }
-  // legs (the holstered pistol on the hip goes with them while the long gun is out)
-  const lc = LGV_LEGCLIP[B.clip] || 'idle_ready', la = LG_ANIM_BY[lc] || LG_ANIM_BY.idle_ready, nL = lc === 'idle_ready' ? 1 : 16, iL = lc === 'idle_ready' ? 0 : Math.floor(B.ph * nL) % nL;
-  const holP = fam === 'c' ? 1 : 0;
-  if (!LGV.stride[lc] && lc !== 'idle_ready') lgvLearnStride(lc);
-  const legs = lgvLayer('legs' + holP, lgId, mk, lc, iL, nL, px, () => { const r = lgvPaint(lgId, mk, P => { lgEvalClip(la, lc === 'idle_ready' ? 0 : iL / nL * la.dur, P, { run: true, wc: 'r' }); P.pistol.at = 'holster'; }, holP ? LGV_M.legsH : LGV_M.legs, LGV_BOX.legs, px, null); return r ? r.o : null; });
+  // legs (the holstered pistol on the hip goes with them while the long gun is out): 1.9.996, LOCO's gait at the speed's
+  // bucket, the steps' direction (straight, or 45 degrees to either side of the hips) and forward or back; a change of
+  // gait cross-fades over a few frames instead of jumping
+  const holP = fam === 'c' ? 1 : 0, Lo = B.loco || {};
+  if (!B.legs) B.legs = { key: '', prev: '', fade: 0, t: G.time || 0 };
+  const moving = B.clip === 'loco' || B.clip === 'turn', vb = moving ? (B.vb || 1.3) : 0, dirB = moving ? (Math.abs(Lo.dir || 0) < 0.39 ? 0 : (Lo.dir > 0 ? 1 : -1)) : 0, bk = moving && Lo.back ? 1 : 0;
+  const nL = moving ? 16 : 1, iL = moving ? Math.floor(B.ph * nL) % nL : 0, lkey = moving ? 'loco|' + vb + '|' + dirB + '|' + bk : 'stand';
+  const LS = B.legs, now = G.time || 0, ldt = clamp(now - LS.t, 0, 0.1); LS.t = now;
+  if (lkey !== LS.key) { LS.prev = LS.key; LS.fade = LS.key ? 1 : 0; LS.key = lkey; }
+  LS.fade = Math.max(0, LS.fade - ldt / 0.16);
+  const legLayer = (key, i, n) => lgvLayer('legs' + holP, lgId, mk, key, i, n, px, () => {
+    const parts = key.split('|'), r = lgvPaint(lgId, mk, P => {
+      if (parts[0] === 'loco') locoPose(P, i / n, { v: +parts[1], dir: +parts[2] * 0.785, back: parts[3] === '1', load: 0.3, arms: 'hold' });
+      else { lgEvalClip(LG_ANIM_BY.idle_ready, 0, P, { run: true, wc: 'r' }); }
+      P.pistol.at = 'holster';
+    }, holP ? LGV_M.legsH : LGV_M.legs, LGV_BOX.legs, px, null);
+    return r ? r.o : null;
+  });
+  const legs = legLayer(lkey, iL, nL), legsPrev = LS.fade > 0 && LS.prev ? legLayer(LS.prev, LS.prev === 'stand' ? 0 : Math.floor(B.ph * 16) % 16, LS.prev === 'stand' ? 1 : 16) : null;
   // the upper body: its ARMS series
   const up = lgvLayer('up', lgId, mk, U.st + fam + (U.ctx.gun || '') + (U.sub || ''), U.i, U.n, px, () => lgvMakeUp(lgId, mk, U.st, U.i, U.n, U.ctx, px));
   // the head: the mask on, level or looking down at the hands
@@ -556,7 +595,7 @@ function lgvDraw(p, ctx2) {
   const kick = B.kick.x / LG_UNIT, cant = B.cant.x, dC = angD(B.chest, aim), dH = angD(B.head, aim), dL = angD(B.leg, aim);
   const ca = Math.cos(-aim), sa = Math.sin(-aim), lx = (B.lean.x * ca - B.lean.y * sa) / LG_UNIT, ly = (B.lean.x * sa + B.lean.y * ca) / LG_UNIT;
   const cdx = Math.cos(dC), cdy = Math.sin(dC), sideX = cdy * cant * 7, sideY = -cdx * cant * 7;
-  ctx2.save(); ctx2.rotate(dL); img(legs, legs.box); ctx2.restore();
+  ctx2.save(); ctx2.rotate(dL); if (legsPrev) { img(legsPrev, legsPrev.box); ctx2.globalAlpha = 1 - LS.fade; } img(legs, legs.box); ctx2.globalAlpha = 1; ctx2.restore();
   const ox = lx + sideX + cdx * kick, oy = ly + sideY + cdy * kick, rot = dC - cant * 0.1 + B.kick.x * 0.5;
   ctx2.save(); ctx2.translate(ox, oy); ctx2.rotate(rot); img(up, up.box); ctx2.restore();
   const cr = Math.cos(rot), sr = Math.sin(rot);
@@ -567,6 +606,7 @@ function lgvDraw(p, ctx2) {
   // where the muzzle is (the flash and the smoke) and where the gun really points (the flashlight)
   const mxr = ox + up.mx * cr - up.my * sr, myr = oy + up.mx * sr + up.my * cr;
   p.lgAim = aim + rot; p.lgMx = mxr; p.lgMy = myr; p.lgFocus = p.arm ? p.arm.focus : 1;
+  if (up.lx != null) { p.lgLx = ox + up.lx * cr - up.ly * sr; p.lgLy = oy + up.lx * sr + up.ly * cr; p.lgBeam = aim + rot + (up.ba || 0); p.lgBeamD = up.bd == null ? 1 : up.bd; }
   return { mx: mxr, my: myr };
 }
 // the run's frames painted ahead, a few at a time (the main menu, the loader): the loadout's relaxed, ready and walk
@@ -574,14 +614,14 @@ function lgvWarm(n) {
   if (!LGV.on || SET.legend === 'none' || !LG.atlas || !LG.atlas.done || typeof armsLoad !== 'function') return 0;
   const W0 = armsPrimary(), W1 = armsSecondary(), fake = { arm: { w: [W0, W1] }, weapon: W0, lc: SET.legendClass || 'attack' }, lgId = SET.legend || 'operator', mk = lgvModelKey(fake), px = SPR * PK;
   const ctx = { run: true, fam: 'c', gun: W0.arms.key, kind: W0.arms.reload.kind, rk: 'tac', keep: false, t: 0 };
-  const jobs = [['up', 'relaxed', 6], ['up', 'ready', 6], ['up', 'raise', 4], ['legs1', 'idle_ready', 1], ['legs1', 'walk_tac', 16], ['head', 'h', 2]];
+  const jobs = [['up', 'relaxed', 6], ['up', 'ready', 6], ['up', 'raise', 4], ['legs1', 'stand', 1], ['legs1', 'loco|4.8|0|0', 16], ['head', 'h', 2]];
   let made = 0;
   for (const [kind, st, cnt] of jobs) for (let i = 0; i < cnt && made < n; i++) {
     const sk = kind === 'up' ? st + 'c' + W0.arms.key : st, base = lgvBase(kind, lgId, mk, sk, px); if (LG.sprites.has(base + i)) continue;
     LG.spriteBudget = 1;
     if (kind === 'up') lgvLayer('up', lgId, mk, sk, i, cnt, px, () => lgvMakeUp(lgId, mk, st, i, cnt, ctx, px));
     else if (kind === 'head') lgvLayer('head', lgId, mk, 'h', i, 2, px, () => { const r = lgvPaint(lgId, mk, P => { lgBase(P, { crouch: 0.04, lean: 0.12 }); P.mask = 1; if (i) lgJadd(P, 'head', 0, 0.5, 0); }, LGV_M.head, LGV_BOX.head, px, LGB.head); return r ? r.o : null; });
-    else { const la = LG_ANIM_BY[st]; lgvLayer(kind, lgId, mk, st, i, cnt, px, () => { const r = lgvPaint(lgId, mk, P => { lgEvalClip(la, st === 'idle_ready' ? 0 : i / cnt * la.dur, P, { run: true, wc: 'r' }); P.pistol.at = 'holster'; }, LGV_M.legsH, LGV_BOX.legs, px, null); return r ? r.o : null; }); }
+    else { const parts = st.split('|'); lgvLayer(kind, lgId, mk, st, i, cnt, px, () => { const r = lgvPaint(lgId, mk, P => { if (parts[0] === 'loco') locoPose(P, i / cnt, { v: +parts[1], dir: +parts[2] * 0.785, back: parts[3] === '1', load: 0.3, arms: 'hold' }); else lgEvalClip(LG_ANIM_BY.idle_ready, 0, P, { run: true, wc: 'r' }); P.pistol.at = 'holster'; }, LGV_M.legsH, LGV_BOX.legs, px, null); return r ? r.o : null; }); }
     made++;
   }
   // 1.9.994: the knife's first moves with the sidearm (stick, two-step, the point-blank shot), so the first chain is not

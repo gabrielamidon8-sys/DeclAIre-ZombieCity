@@ -51,6 +51,59 @@ function lgEllFrame(E, th, ph, off, spin) {
 }
 // keep a small decal on an ellipsoid (projected, lifted by off)
 function lgOnEll(E, off) { return (P, N) => { let dx = (P[0] - E[0]) / E[3], dy = (P[1] - E[1]) / E[4], dz = (P[2] - E[2]) / E[5]; const l = Math.hypot(dx, dy, dz) || 1; dx /= l; dy /= l; dz /= l; let nx = dx / E[3], ny = dy / E[4], nz = dz / E[5]; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl; P[0] = E[0] + dx * E[3] + nx * off; P[1] = E[1] + dy * E[4] + ny * off; P[2] = E[2] + dz * E[5] + nz * off; N[0] = nx; N[1] = ny; N[2] = nz; }; }
+// 1.9.996: a sculpted head. The skull's ellipsoid is reshaped into a face as one surface (a face built of separate
+// spheres catches a rim of light round every one of them and reads as a doll's): the lower face narrows to the jaw, the
+// front flattens across the eyes, and the features rise and sink as smooth swellings (brow, sockets, nose, cheekbones,
+// lips, chin). lgSculpt(E, off) returns a deformer for lgV: any point is taken to its place on the skull, moved, lifted
+// off the sculpted surface by off, and given the sculpted surface's normal (by differences), so decals and shells laid
+// over the head follow its shape too.
+const LG_FACE_G = [
+  // [y, z, sigma y, sigma z, height] (metres, in the head's space; the front of the face only)
+  [0.032, 0.1, 0.014, 0.0105, -0.0065], [-0.032, 0.1, 0.014, 0.0105, -0.0065],          // the eye sockets
+  [0.031, 0.119, 0.02, 0.0062, 0.0042], [-0.031, 0.119, 0.02, 0.0062, 0.0042],          // the brow's ridge
+  [0, 0.113, 0.008, 0.007, 0.002],                                                      // between the brows
+  [0.046, 0.081, 0.014, 0.0105, 0.0052], [-0.046, 0.081, 0.014, 0.0105, 0.0052],        // the cheekbones
+  [0.044, 0.052, 0.013, 0.012, -0.0035], [-0.044, 0.052, 0.013, 0.012, -0.0035],        // under them
+  [0.0155, 0.062, 0.0062, 0.0058, 0.0075], [-0.0155, 0.062, 0.0062, 0.0058, 0.0075],    // the nostrils' wings
+  [0, 0.0442, 0.017, 0.0046, 0.005], [0, 0.0328, 0.0145, 0.005, 0.0044],               // the upper and lower lip
+  [0, 0.0388, 0.019, 0.0014, -0.0021],                                                  // the line of the mouth
+  [0, 0.0095, 0.0145, 0.0115, 0.0135],                                                  // the chin
+  [0.062, 0.122, 0.012, 0.014, -0.0028], [-0.062, 0.122, 0.012, 0.014, -0.0028]         // the temples
+];
+function lgFaceH(y, z) {
+  let h = 0;
+  for (const g of LG_FACE_G) { const a = (y - g[0]) / g[2], b = (z - g[1]) / g[3]; h += g[4] * Math.exp(-0.5 * (a * a + b * b)); }
+  // the nose: a ridge from the bridge (z 0.104) to the tip (z 0.062), rising and widening as it goes, cut off under the tip
+  const u = clamp((0.104 - z) / 0.042, 0, 1), zr = z > 0.104 ? (z - 0.104) / 0.006 : z < 0.062 ? (0.062 - z) / 0.0042 : 0, sy = lgLerp(0.0062, 0.0105, u);
+  h += lgLerp(0.0042, 0.0205, u * u * (3 - 2 * u)) * Math.exp(-0.5 * ((y / sy) ** 2 + zr * zr));
+  return h;
+}
+function lgSculpt(E, off, o) {
+  o = o || {}; const amt = o.amt == null ? 1 : o.amt;
+  const at = (ux, uy, uz, out) => {
+    // the skull point, reshaped: the lower face narrows toward the chin; the front flattens across the eyes
+    let x = E[0] + ux * E[3], y = E[1] + uy * E[4], z = E[2] + uz * E[5];
+    const front = clamp((ux - 0.1) / 0.5, 0, 1);
+    y *= 1 - 0.16 * amt * clamp((0.075 - z) / 0.085, 0, 1) * (0.4 + 0.6 * front);
+    if (ux > 0) x = E[0] + (x - E[0]) * (1 + 0.1 * amt * uy * uy * (1 - uz * uz));
+    // the features, along the skull's normal (the front of the face only)
+    let nx = ux / E[3], ny = uy / E[4], nz = uz / E[5]; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    const h = front > 0 ? lgFaceH(y, z) * amt * clamp((ux - 0.25) / 0.35, 0, 1) : 0;
+    out[0] = x + nx * h; out[1] = y + ny * h; out[2] = z + nz * h;
+  };
+  const A = [0, 0, 0], Bp = [0, 0, 0], C = [0, 0, 0], D = [0, 0, 0], F = [0, 0, 0];
+  return (P, N) => {
+    let ux = (P[0] - E[0]) / E[3], uy = (P[1] - E[1]) / E[4], uz = (P[2] - E[2]) / E[5]; const l = Math.hypot(ux, uy, uz) || 1; ux /= l; uy /= l; uz /= l;
+    // two tangents on the unit sphere, and the sculpted surface's normal from differences along them
+    let t1x = -uy, t1y = ux, t1z = 0; const t1l = Math.hypot(t1x, t1y); if (t1l < 1e-4) { t1x = 1; t1y = 0; } else { t1x /= t1l; t1y /= t1l; }
+    const t2x = uy * t1z - uz * t1y, t2y = uz * t1x - ux * t1z, t2z = ux * t1y - uy * t1x, e = 0.004;
+    at(ux, uy, uz, F); at(ux + t1x * e, uy + t1y * e, uz + t1z * e, A); at(ux - t1x * e, uy - t1y * e, uz - t1z * e, Bp); at(ux + t2x * e, uy + t2y * e, uz + t2z * e, C); at(ux - t2x * e, uy - t2y * e, uz - t2z * e, D);
+    const ax = A[0] - Bp[0], ay = A[1] - Bp[1], az = A[2] - Bp[2], cx = C[0] - D[0], cy = C[1] - D[1], cz = C[2] - D[2];
+    let nx = ay * cz - az * cy, ny = az * cx - ax * cz, nz = ax * cy - ay * cx; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    if (nx * ux + ny * uy + nz * uz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    P[0] = F[0] + nx * off; P[1] = F[1] + ny * off; P[2] = F[2] + nz * off; N[0] = nx; N[1] = ny; N[2] = nz;
+  };
+}
 // a curved plate on an ellipsoid: theta and phi ranges (phi range may follow theta), offset off the surface, thickness
 function lgShell(B, E, th0, th1, ph0, ph1, off, thick, o) {
   o = o || {}; const p = lgPart(B), nu = lgSeg(B, o.nu || 16), nv = Math.max(2, lgSeg(B, o.nv || 8)), base = p.n, ru = (E[3] + E[4]) / 2;
@@ -79,11 +132,13 @@ function lgShell(B, E, th0, th1, ph0, ph1, off, thick, o) {
 function lgEllPath(E, th0, th1, ph, off, n) { const pts = []; const PH = typeof ph === 'function' ? ph : () => ph; for (let i = 0; i <= n; i++) { const th = th0 + (th1 - th0) * i / n; pts.push(lgEll(E, th, PH(th), off).p); } return pts; }
 const lgC = (h) => lgHex(h);
 
+// a small knob standing out along y from the surface (for the NVG mount's tension screws)
+function lgKnobX(B, x, y, z) { lgPush(B, lgTR(x, y, z, Math.PI / 2, 0, 0)); lgLimb(B, 0.006, [[0, 0.004], [1, 0.004]], { up: true, segs: 8 }); lgPop(B); }
 /* ---------- the Operator's materials and his class kit ---------- */
 function lgOpKit(cls) {
   const c = LG_CLASS_BY[cls] || LG_CLASSES[0];
   const M = {
-    camo: lgMtl({ c: [1, 1, 1], t: LT.camo, r: 0.88, w: 1, n: 0.45, k: 0.3 }),
+    camo: lgMtl({ c: [1, 1, 1], t: LT.camo, r: 0.88, w: 1, n: 0.45, k: 0.21 }),
     shirt: lgMtl({ c: '#55574f', t: LT.knit, r: 0.86, w: 1, n: 0.7, k: 0.07 }),
     ncamo: lgMtl({ c: [1, 1, 1], t: LT.ncamo, r: 0.82, w: 0.9, n: 1, k: 0.3 }),
     molle: lgMtl({ c: '#30312c', t: LT.molle, r: 0.82, w: 0.9, n: 1.5, k: 0.152 }),
@@ -108,6 +163,7 @@ function lgOpKit(cls) {
     polyHi: lgMtl({ c: '#2e302c', t: LT.poly, r: 0.55, w: 0.08, n: 0.6, k: 0.06 }),
     visor: lgMtl({ c: '#07090c', r: 0.05, m: 0.4, w: 0, n: 0 }),
     lens: lgMtl({ c: '#1a2a35', r: 0.04, m: 0.5, w: 0, n: 0 }),
+    smoke: lgMtl({ c: '#0b0d0f', r: 0.08, m: 0.25, w: 0, n: 0 }),
     glow: lgMtl({ c: [1, 1, 1], s: 2, e: 2.4, r: 0.3, w: 0, n: 0 }),
     glowSoft: lgMtl({ c: [1, 1, 1], s: 2, e: 0.9, r: 0.4, w: 0, n: 0 }),
     white: lgMtl({ c: '#e8e4d8', r: 0.5, w: 0.2, e: 0.6 }),
@@ -160,6 +216,10 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
   LG_SOCK.cmagHand = lgBasis([0, 0, 1], [0, 1, 0], [-1, 0, 0], [-0.098, -0.02, -0.104]);   // (1.9.994: on the M4's magazine, which the generic carbine now is)
 })();
 
+// 1.9.996: cloth folds: a ridge-and-valley profile, half sine and half triangle wave (crisper than a sine, as fabric
+// creases are); lgRamp: 0 to 1 across a band of z (a in, b fully in)
+const lgFold = t => { const tr = 1 - 2 * Math.abs(((t / Math.PI) % 2 + 2) % 2 - 1); return 0.55 * Math.sin(t) + 0.45 * tr; };
+const lgRamp = (z, a, b) => clamp((z - a) / (b - a), 0, 1);
 /* ---------- the Operator ---------- */
 LG_MAKERS.operator = function (B, cls) {
   // cls may carry a loadout: "class|primary|secondary" (1.9.993: each rebuilt gun has its own model, leggun.js)
@@ -176,6 +236,8 @@ function lgOpPelvis(B, K) {
   // hips in camo trousers
   lgMat(B, M.camo);
   lgLathe(B, [[0.03, -0.172], [0.085, -0.16], [0.135, -0.12], [0.158, -0.07], [0.166, -0.02], [0.162, 0.04], [0.156, 0.085]], { segs: 22, sx: 0.7, wr: (a, z) => z < -0.1 ? Math.sin(a * 6) * 0.015 : 0 });
+  // 1.9.996: the seat of the trousers over the glutes (a body has a back to it, not a tube)
+  for (const s2 of [1, -1]) lgSphere(B, -0.052, s2 * 0.066, -0.078, 0.066, 0.076, 0.084, { segs: 14, rings: 9, t0: Math.PI * 0.5, t1: Math.PI * 1.5 });
   // battle belt (MOLLE, night) and the rigger's belt with its buckle
   lgMat(B, M.molle); lgLathe(B, [[0.17, -0.005], [0.178, 0.005], [0.179, 0.055], [0.172, 0.066]], { segs: 24, sx: 0.71, capB: false });
   lgMat(B, M.web); lgLathe(B, [[0.178, 0.058], [0.182, 0.062], [0.182, 0.082], [0.178, 0.086]], { segs: 24, sx: 0.72 });
@@ -202,7 +264,10 @@ function lgOpPelvis(B, K) {
     lgPop(B);
   }
   // dump pouch (rolled), back left; tourniquet, back right
-  lgPush(B, lgTR(-0.115, 0.06, 0.02, Math.PI / 2, 0, 0)); lgMat(B, M.pouch); lgLimb(B, 0.11, [[0, 0.028], [1, 0.028]], { up: true, z0: -0.055, segs: 10 }); lgPop(B);
+  // (1.9.996: the dump pouch hangs from the belt on its own hinge and swings: rolled, held by its bungee, a pull tab)
+  lgBone(B, 'dump'); lgPush(B, lgTR(0.003, -0.006, -0.03, Math.PI / 2, 0, 0)); lgMat(B, M.pouch); lgLimb(B, 0.11, [[0, 0.028], [0.1, 0.03], [0.9, 0.03], [1, 0.028]], { up: true, z0: -0.055, segs: 10 }); lgPop(B);
+  lgMat(B, M.web); lgBox(B, 0.0, -0.006, -0.002, 0.012, 0.03, 0.008, 0.003); if (hi) { lgTube(B, [[-0.03, 0.03, -0.03], [-0.032, -0.006, -0.032], [-0.03, -0.045, -0.03]], 0.0022, { segs: 4 }); lgMat(B, M.red); lgBox(B, -0.033, -0.05, -0.04, 0.003, 0.006, 0.012, 0.002); }
+  lgBone(B, 'pelvis');
   if (hi) {
     lgPush(B, lgTR(-0.12, -0.09, 0.0, 0, 0, 0)); lgMat(B, M.rubber); lgLimb(B, 0.1, [[0, 0.017], [1, 0.017]], { up: true, z0: -0.05, segs: 8 }); lgMat(B, M.red); lgBox(B, -0.012, 0, 0.055, 0.008, 0.006, 0.01, 0.003); lgPop(B);
   }
@@ -216,16 +281,21 @@ function lgOpSpine(B, K) {
   lgMat(B, M.shirt); lgLathe(B, [[0.148, -0.03], [0.152, 0.05], [0.158, 0.13], [0.164, 0.21]], { segs: 20, sx: 0.74 });
   // the cummerbund round the sides and back
   lgMat(B, M.molle); lgLathe(B, [[0.166, 0.03], [0.176, 0.04], [0.179, 0.09], [0.178, 0.165], [0.17, 0.178]], { segs: 24, sx: 0.79 });
+  // 1.9.996: the cummerbund's adjustment straps: their tails hang loose at the front corners and swing as he moves
+  for (const [bn, sg2] of [['tailL', 1], ['tailR', -1]]) { lgBone(B, bn); lgMat(B, M.web); lgBox(B, 0.0, 0, -0.04, 0.0015, 0.011, 0.042, 0.001); lgMat(B, M.poly); lgBox(B, 0.0, 0, -0.084, 0.002, 0.011, 0.004, 0.001); }
+  lgBone(B, 'spine');
   if (K.cls === 'attack') { for (const y of [0.17, -0.17]) { lgPush(B, lgTR(0.03, y, 0.1, 0, 0, y > 0 ? 1.2 : -1.2)); lgMat(B, M.pouch); lgBox(B, 0.015, 0, 0, 0.012, 0.03, 0.045, 0.006); lgMat(B, M.poly); lgBox(B, 0.015, 0, 0.05, 0.009, 0.026, 0.008, 0.003); lgPop(B); } }
 }
 function lgOpChest(B, K) {
   const M = K.M, hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'chest');
   // torso in the knit shirt, and the mock collar
-  lgMat(B, M.shirt); lgLathe(B, [[0.166, -0.04], [0.17, 0.05], [0.178, 0.13], [0.172, 0.19], [0.142, 0.228], [0.085, 0.255], [0.062, 0.272]], { segs: 22, sx: 0.68 });
+  lgMat(B, M.shirt); lgLathe(B, [[0.166, -0.04], [0.172, 0.05], [0.181, 0.13], [0.175, 0.19], [0.145, 0.228], [0.088, 0.255], [0.062, 0.272]], { segs: 22, sx: 0.72 });
+  // 1.9.996: the trapezius sloping from the neck to the shoulders, under the carrier's straps
+  for (const s2 of [1, -1]) lgSphere(B, -0.016, s2 * 0.088, 0.236, 0.058, 0.075, 0.036, { segs: 14, rings: 8 });
   lgLathe(B, [[0.06, 0.232], [0.066, 0.246], [0.065, 0.285], [0.058, 0.292]], { segs: 18, sx: 0.98 });
   // shoulders (sleeve caps)
-  lgMat(B, M.camo); for (const s of [1, -1]) lgSphere(B, -0.012, s * 0.168, 0.188, 0.068, 0.066, 0.062, { segs: 16, rings: 10 });
+  lgMat(B, M.camo); for (const s of [1, -1]) lgSphere(B, -0.012, s * 0.17, 0.19, 0.072, 0.07, 0.066, { segs: 16, rings: 10 });
   // front plate bag: curved, shooter's cuts, night camo; velcro panel with the name and ID tapes
   const plate = [[-0.132, -0.16], [0.132, -0.16], [0.132, 0.08], [0.078, 0.158], [-0.078, 0.158], [-0.132, 0.08]];
   const bendF = lgBendXZ(0.33), bendB = lgBendXZ(-0.38);
@@ -259,7 +329,10 @@ function lgOpChest(B, K) {
   lgMat(B, M.pouch); lgBox(B, 0.0, 0.19, -0.005, 0.034, 0.03, 0.06, 0.01);
   lgMat(B, M.poly); lgBox(B, 0.0, 0.19, 0.065, 0.026, 0.022, 0.012, 0.005);
   if (hi) { lgMat(B, M.metal); lgLimb(B, 0.012, [[0, 0.006], [1, 0.006]], { up: true, z0: 0.078, ox: -0.01, oy: 0.19, segs: 8 }); }
-  lgMat(B, M.rubber); lgTube(B, [[-0.012, 0.19, 0.08], [-0.05, 0.19, 0.2], [-0.075, 0.17, 0.32], [-0.09, 0.155, 0.44]], (t) => 0.005 - t * 0.003, { segs: 5 });
+  // (1.9.996: the antenna on its own hinge so it whips as he moves: a 30 cm blade on its base)
+  lgBone(B, 'antenna'); lgMat(B, M.rubber); lgTube(B, [[0, 0, 0], [-0.034, 0, 0.11], [-0.058, -0.016, 0.22], [-0.074, -0.03, 0.34]], (t) => 0.005 - t * 0.0032, { segs: 5 });
+  lgMat(B, M.metal); lgLimb(B, 0.022, [[0, 0.0068], [1, 0.0058]], { up: true, z0: -0.008, segs: 8 });
+  lgBone(B, 'chest');
   if (hi) { lgMat(B, M.web); lgTube(B, [[0.03, 0.2, 0.05], [0.09, 0.17, 0.12], [0.13, 0.12, 0.16], [0.152, 0.1, 0.17]], 0.003, { segs: 4 }); lgMat(B, M.poly); lgBox(B, 0.158, 0.098, 0.17, 0.008, 0.015, 0.02, 0.004); }
   lgMat(B, K.cls === 'medic' ? M.red : M.pouch); lgBox(B, 0.0, -0.19, -0.005, K.cls === 'medic' ? 0.045 : 0.034, 0.03, K.cls === 'medic' ? 0.07 : 0.055, 0.012);
   lgMat(B, M.red); lgBox(B, 0.0, -0.22, 0.05, 0.008, 0.004, 0.012, 0.002);
@@ -275,22 +348,34 @@ function lgOpHead(B, K) {
   // the balaclava pulled down off his face: a rolled ring of knit round the neck
   if (K.face) lgLathe(B, [[0.056, 0.05], [0.066, 0.06], [0.072, 0.085], [0.068, 0.11], [0.056, 0.12]], { segs: 18, sx: 1.08 });
   lgBone(B, 'head'); lgMat(B, M.bala);
-  lgSphere(B, 0.015, 0, 0.09, 0.1, 0.079, 0.118, { segs: 22, rings: 14 });
-  const skin = K.face ? lgMtl({ c: '#a07a60', r: 0.5, w: 0.15, n: 0.3 }) : M.bala, stub = K.face ? lgMtl({ c: '#5b4536', r: 0.75, w: 0.4, n: 0.5 }) : M.bala;
-  lgMat(B, K.face ? stub : M.bala); lgSphere(B, 0.04, 0, 0.012, 0.064, 0.064, 0.052, { segs: 16, rings: 10 });
-  lgMat(B, skin); lgSphere(B, 0.1, 0, 0.074, 0.018, 0.012, 0.02, { segs: 10, rings: 8 });
-  lgSphere(B, 0.088, 0, 0.115, 0.032, 0.07, 0.018, { segs: 12, rings: 6 });
+  // (1.9.996: one sculpted surface: the knit over a face, its brow, nose, cheekbones and chin)
+  const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118], skin = K.face ? lgMtl({ c: '#a07a60', r: 0.5, w: 0.15, n: 0.3 }) : M.bala, stub = K.face ? lgMtl({ c: '#86675a', r: 0.8, w: 0.35, n: 0.6 }) : M.bala;
+  // (with the balaclava pulled down his head is bare: skin, and short dark hair under the helmet down to the nape)
+  if (K.face) lgMat(B, skin);
+  B.def = lgSculpt(E, 0, { amt: K.face ? 1 : 0.8 }); lgSphere(B, E[0], E[1], E[2], E[3], E[4], E[5], { segs: 40, rings: 28 }); B.def = null;
   if (K.face) {
-    // his face: skin over the front of the head, stubble over the jaw, a straight nose, the brow, a set mouth; the eyes
-    // are the decal below (lifted clear of the skin)
-    const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118];
-    lgShell(B, E, -1.1, 1.1, -0.62, 0.55, 0.0008, 0.0008, { nu: 16, nv: 10, inner: false });
-    lgMat(B, stub); lgShell(B, E, -1.05, 1.05, -0.76, -0.38, 0.0018, 0.0008, { nu: 14, nv: 5, inner: false });
-    lgMat(B, skin); lgSphere(B, 0.108, 0, 0.08, 0.009, 0.007, 0.022, { segs: 10, rings: 8 }); lgSphere(B, 0.112, 0, 0.065, 0.009, 0.011, 0.008, { segs: 10, rings: 6 });
-    for (const s of [1, -1]) { lgMat(B, lgMtl({ c: '#2a1f18', r: 0.8 })); lgBox(B, 0.1135, s * 0.028, 0.114, 0.002, 0.016, 0.0022, 0.0012); }
-    lgMat(B, lgMtl({ c: '#5e3e33', r: 0.45 })); lgBox(B, 0.1095, 0, 0.047, 0.0015, 0.016, 0.0016, 0.0008);
+    // his face: stubble over the jaw and lip (its edge follows a beard's line up to the sideburns), the brows and a set
+    // mouth on the sculpted surface; the eyes are the decal
+    const ss = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+    lgMat(B, lgMtl({ c: '#2b211b', r: 0.85, w: 0.5, n: 0.8 })); B.def = lgSculpt(E, 0.0028); lgShell(B, E, -Math.PI, Math.PI, th => lgLerp(0.6, -0.5, ss(0.75, 1.6, Math.abs(th))), Math.PI / 2 - 0.02, 0, 0, { nu: 44, nv: 9, inner: false }); B.def = null;
+    lgMat(B, stub); B.def = lgSculpt(E, 0.0012); lgShell(B, E, -1.12, 1.12, -0.82, th => lgLerp(-0.345, -0.02, ss(0.3, 1.0, Math.abs(th))), 0, 0, { nu: 30, nv: 9, inner: false }); B.def = null;
+    const brow = lgMtl({ c: '#2a1f18', r: 0.85 }); lgMat(B, brow); B.def = lgSculpt(E, 0.0011);
+    for (const s of [1, -1]) lgDecal(B, [0.116, s * 0.031, 0.1205], [0, -0.0175, s * 0.0016], [0, 0, 0.0029], [0, 0, 0.01, 0.01], { sub: 5, lift: 0 });
+    lgMat(B, lgMtl({ c: '#6a463a', r: 0.45 })); lgDecal(B, [0.112, 0, 0.0388], [0, -0.016, 0], [0, 0, 0.0011], [0, 0, 0.01, 0.01], { sub: 5, lift: 0 }); B.def = null;
   }  // the eyes, through the balaclava (seen when the mask is open)
-  lgMat(B, M.eyes); { const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118]; B.def = lgOnEll(E, K.face ? 0.0024 : 0.0035); if (K.face) lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.0085], [0.005, 0.214, 0.495, 0.286], { sub: 6, lift: 0 }); else lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.023], [0.005, 0.15, 0.495, 0.35], { sub: 6, lift: 0 }); B.def = null; }
+  lgMat(B, M.eyes); B.def = lgSculpt(E, K.face ? 0.0024 : 0.0035, { amt: K.face ? 1 : 0.8 }); if (K.face) lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.0085], [0.005, 0.214, 0.495, 0.286], { sub: 8, lift: 0 }); else lgDecal(B, [0.11, 0, 0.1], [0, -0.056, 0], [0, 0, 0.0165], [0.005, 0.18, 0.495, 0.32], { sub: 8, lift: 0 }); B.def = null;
+  // 1.9.996: ballistic eye protection over the balaclava (always worn kitted up): one smoked wraparound lens, its top
+  // frame and the arms back under the headset's cups (behind the mask's visor when the plates close); the lens is cut
+  // up over the nose where it rests on the bridge
+  if (!K.face) {
+    // the lens: its lower edge dips under each eye and rises over the cheekbone toward the temple and up over the nose;
+    // its upper edge follows the brow
+    const lo = th => { const a = Math.abs(th); return -0.13 + 0.16 * (a - 0.34) ** 2 + 0.08 * Math.exp(-((th / 0.12) ** 2)) + 0.12 * Math.max(0, a - 0.62); };
+    lgMat(B, M.smoke); lgShell(B, E, -0.8, 0.8, lo, th => 0.275 - 0.05 * Math.abs(th) ** 2, 0.0112, 0.0018, { nu: 30, nv: 7, innerM: M.smoke });
+    lgMat(B, M.poly); lgTube(B, lgEllPath(E, -0.8, 0.8, th => 0.28 - 0.05 * Math.abs(th) ** 2, 0.0128, lgSeg(B, 18)), 0.0024, { segs: 5 });
+    for (const s2 of [1, -1]) lgTube(B, lgEllPath(E, s2 * 0.78, s2 * 1.5, th => 0.2 - (Math.abs(th) - 0.78) * 0.12, 0.0105, 6), 0.0021, { segs: 4 });
+    const nb = lgEll(E, 0, -0.01, 0.0158).p; lgSphere(B, nb[0], 0, nb[2], 0.005, 0.011, 0.006, { segs: 8, rings: 5 });   // the nose bridge
+  }
   // ear protection: cups with a grille, on arms up to the helmet rails
   for (const s of [1, -1]) {
     lgPush(B, lgTR(-0.004, s * 0.082, 0.083, -s * Math.PI / 2, 0, 0));
@@ -317,6 +402,18 @@ function lgOpHelmet(B, K) {
     if (hi) { lgMat(B, M.velcro); B.def = lgOnEll(E, 0.0045); const f = lgEll(E, s * 1.3, 0.95, 0.0045).p; lgDecal(B, f, [0.035, 0, 0], [0, -s * 0.02, 0.026], lgQuarterUV(2), { sub: 4, lift: 0 }); B.def = null; }
   }
   lgMat(B, M.metal); lgPush(B, lgEllFrame(E, 0, 0.42, 0.004)); lgBox(B, 0.006, 0, 0, 0.008, 0.026, 0.02, 0.004); if (hi) { lgMat(B, M.visor); for (let i = -1; i <= 1; i++) lgBox(B, 0.0145, i * 0.012, 0.004, 0.001, 0.003, 0.003, 0); } lgPop(B);
+  // 1.9.996: night vision flipped up on the mount (a compact binocular, PVS-31 style: two 3.5 cm tubes about 7 cm long on a
+  // bridge, the eyecups down by the mount and the objectives up over the brow), on its breakaway arm
+  lgPush(B, lgEllFrame(E, 0, 0.42, 0.004));
+  lgMat(B, M.metal); lgBox(B, 0.02, 0, 0.006, 0.012, 0.013, 0.02, 0.004); if (hi) { lgKnobX(B, 0.026, 0.016, 0.008); lgKnobX(B, 0.026, -0.016, 0.008); }
+  lgMat(B, M.poly); lgBox(B, 0.044, 0, 0.034, 0.014, 0.038, 0.02, 0.006);
+  for (const y of [0.031, -0.031]) {
+    lgMat(B, M.poly); lgPush(B, lgTR(0.05, y, 0.004)); lgLimb(B, 0.072, [[0, 0.0168], [0.12, 0.0178], [0.8, 0.0172], [1, 0.0188]], { up: true, segs: 14, rings: 6 }); lgPop(B);
+    lgMat(B, M.rubber); lgPush(B, lgTR(0.05, y, -0.012)); lgLimb(B, 0.016, [[0, 0.0155], [1, 0.0168]], { up: true, segs: 12, capA: false }); lgPop(B);
+    lgMat(B, M.lens); lgSphere(B, 0.05, y, 0.0775, 0.0155, 0.0155, 0.004, { segs: 12, rings: 4 });
+  }
+  if (hi) { lgMat(B, M.web); lgTube(B, [[0.03, 0.02, 0.05], [0.0, 0.04, 0.07], [-0.03, 0.05, 0.06]], 0.0025, { segs: 4 }); }   // the battery cable over the top
+  lgPop(B);
   if (hi) { lgMat(B, M.velcro); B.def = lgOnEll(E, 0.0045); const f = lgEll(E, 0, 1.2, 0.0045).p; lgDecal(B, f, [0, -0.05, 0], [0.035, 0, 0], lgQuarterUV(2), { sub: 4, lift: 0 }); B.def = null; }
   lgMat(B, M.cord); lgPush(B, lgEllFrame(E, Math.PI, 0.18, 0.004)); lgBox(B, 0.015, 0, 0, 0.016, 0.05, 0.03, 0.01); lgPop(B);
   lgMat(B, M.poly); lgPush(B, lgEllFrame(E, Math.PI, 0.92, 0.004)); lgBox(B, 0.01, 0, 0, 0.011, 0.016, 0.02, 0.004); lgMat(B, M.glow); lgBox(B, 0.022, 0, 0.004, 0.002, 0.009, 0.006, 0.001); lgPop(B);
@@ -357,8 +454,15 @@ function lgOpArm(B, K, s) {
   const M = K.M, sg = s === 'L' ? 1 : -1, hi = B.lod < 2, ci = K.ci;
   lgBone(B, 'arm' + s); lgMat(B, M.camo);
   // 1.9.994: an arm with a shoulder: the deltoid caps the joint (so the arm turns under it), the upper arm tapers to the elbow
-  lgSphere(B, -0.004, sg * 0.004, -0.02, 0.055, 0.057, 0.06, { segs: 16, rings: 9 });
-  lgLimb(B, 0.285, [[0, 0.058], [0.14, 0.059], [0.38, 0.054], [0.66, 0.048], [0.9, 0.0445], [1, 0.044]], { segs: 16, rings: 9, sx: 1.04, wr: (a, z) => z < -0.22 ? Math.sin(a * 5 + z * 90) * 0.045 : Math.sin(a * 3 + z * 40) * 0.012 });
+  lgSphere(B, -0.004, sg * 0.006, -0.022, 0.062, 0.062, 0.066, { segs: 16, rings: 9 });
+  // 1.9.996: the biceps in front and the triceps behind under the sleeve, and the sleeve's folds at the elbow
+  const bump = (z, a, b) => z < a && z > b ? Math.sin((z - a) / (b - a) * Math.PI) : 0;
+  // (the sleeve sits loose on the arm: it drapes in long folds from the shoulder and crushes into creases on the inside
+  // of the elbow)
+  lgLimb(B, 0.285, [[0, 0.061], [0.14, 0.063], [0.38, 0.059], [0.66, 0.052], [0.9, 0.0475], [1, 0.047]], { segs: 20, rings: 16, sx: 1.06, wr: (a, z) => {
+    const c = Math.cos(a), drape = 0.032 * Math.sin(a * 5 + 1.4 * Math.sin(z * 17 + a)) * (1 - lgRamp(z, -0.16, -0.22)), crush = 0.085 * lgFold(z * 125 + a * 1.6) * Math.max(0, c) ** 1.5 * lgRamp(z, -0.18, -0.25);
+    return drape + crush + Math.max(0, c) ** 2 * 0.1 * bump(z, -0.06, -0.22) + Math.max(0, -c) ** 2 * 0.085 * bump(z, -0.03, -0.2);
+  } });
   // shoulder pocket, velcro, and the class patch
   lgMat(B, M.camo); lgBox(B, 0.002, sg * 0.05, -0.085, 0.036, 0.008, 0.048, 0.006);
   lgBox(B, 0.002, sg * 0.052, -0.035, 0.038, 0.009, 0.012, 0.005);
@@ -368,7 +472,10 @@ function lgOpArm(B, K, s) {
   lgBone(B, 'fore' + s); lgMat(B, M.camo);
   // the elbow (a ball the upper arm's end turns round), a forearm that narrows to the wrist, oval in section
   lgSphere(B, 0, 0, 0, 0.045, 0.045, 0.046, { segs: 14, rings: 8 });
-  lgLimb(B, 0.27, [[0, 0.045], [0.2, 0.0465], [0.55, 0.0405], [0.85, 0.0345], [1, 0.0335]], { segs: 14, rings: 9, sx: 1.1, wr: (a, z) => z > -0.06 ? Math.sin(a * 5 - z * 80) * 0.04 : z < -0.2 ? Math.sin(a * 6 + z * 120) * 0.035 : 0 });
+  // (the sleeve gathered below the elbow, smooth over the forearm, bunched in rings where it meets the glove)
+  lgLimb(B, 0.27, [[0, 0.047], [0.2, 0.0485], [0.55, 0.042], [0.8, 0.037], [1, 0.0365]], { segs: 18, rings: 15, sx: 1.1, wr: (a, z) => {
+    const c = Math.cos(a); return 0.075 * lgFold(-z * 115 + a * 1.3) * (0.45 + 0.55 * Math.max(0, c)) * (1 - lgRamp(z, -0.04, -0.08)) + 0.085 * lgFold(z * 135 + a * 2.1) * lgRamp(z, -0.18, -0.235) + 0.012 * Math.sin(a * 4 + z * 20);
+  } });
   // the elbow pad: a rubber cap on a padded base, strapped on
   lgMat(B, M.cord); lgSphere(B, -0.026, 0, -0.004, 0.026, 0.04, 0.042, { segs: 12, rings: 7, t0: Math.PI / 2, t1: Math.PI * 1.5 });
   lgMat(B, M.rubber); lgSphere(B, -0.04, 0, -0.004, 0.014, 0.03, 0.032, { segs: 10, rings: 6, t0: Math.PI / 2, t1: Math.PI * 1.5 });
@@ -402,7 +509,7 @@ function lgOpHand(B, K, s) {
   lgBox(B, 0.0, d * 0.0142, -0.046, 0.028, 0.0035, 0.022, 0.004);
   if (top) { lgMat(B, M.poly); for (const z of [-0.034, -0.058]) lgBox(B, 0.0, d * 0.0179, z, 0.022, 0.0006, 0.0012, 0); }
   // the fingers: three segments each, a ball at each joint, a pad on the back of the first segment, a grippy tip
-  const R0 = { idx: [0.0094, 0.0088, 0.0083, 0.0077, 0.0069], fin: [0.0097, 0.0091, 0.0086, 0.008, 0.0071], rng: [0.0093, 0.0087, 0.0081, 0.0075, 0.0067], pnk: [0.0081, 0.0076, 0.0071, 0.0066, 0.006] };
+  const R0 = { idx: [0.0103, 0.0097, 0.0092, 0.0086, 0.0077], fin: [0.0106, 0.01, 0.0095, 0.0089, 0.0079], rng: [0.0101, 0.0095, 0.009, 0.0084, 0.0075], pnk: [0.0089, 0.0084, 0.0079, 0.0074, 0.0067] };   // (1.9.996: gloved fingers, a little fuller)
   for (const [f, x, z, l2, l3] of LG_FINGERS) {
     const r = R0[f], l1 = l2, segs = 10, rings = 3;
     lgBone(B, f + s); lgMat(B, M.gback);
@@ -433,9 +540,22 @@ function lgOpHand(B, K, s) {
 function lgOpLeg(B, K, s) {
   const M = K.M, sg = s === 'L' ? 1 : -1, hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'thigh' + s); lgMat(B, M.camo);
-  lgLimb(B, 0.43, [[0, 0.091], [0.15, 0.088], [0.5, 0.076], [0.86, 0.063], [1, 0.059]], { segs: 18, rings: 10, sx: 1.04, wr: (a, z) => Math.sin(a * 4 + z * 30) * 0.012 + (z < -0.36 ? Math.sin(a * 6 + z * 100) * 0.03 : 0) });
-  lgBox(B, 0.0, sg * 0.072, -0.2, 0.046, 0.014, 0.056, 0.01);
-  lgBox(B, 0.0, sg * 0.075, -0.142, 0.048, 0.016, 0.013, 0.006);
+  // 1.9.996: a thigh, not a tube: the quadriceps fuller in front above the knee, the hamstrings behind, the outer thigh;
+  // combat trousers a little loose over it, folding at the knee
+  const tb = (z, a, b) => z < a && z > b ? Math.sin((z - a) / (b - a) * Math.PI) : 0;
+  lgLimb(B, 0.43, [[0, 0.094], [0.15, 0.092], [0.5, 0.08], [0.86, 0.064], [1, 0.059]], { segs: 18, rings: 12, sx: 1.08, wr: (a, z) => {
+    const c = Math.cos(a), sd = Math.sin(a) * sg;
+    // (the trousers loose: long folds down the thigh, creases behind the knee and crushed above the pad in front)
+    const drape = 0.028 * Math.sin(a * 4 + 2.0 * Math.sin(z * 11 + a * 0.7)), back = 0.075 * lgFold(z * 105 + a * 1.4) * Math.max(0, -c) ** 1.5 * lgRamp(z, -0.33, -0.4), front = 0.05 * lgFold(z * 95 - a) * Math.max(0, c) ** 2 * lgRamp(z, -0.3, -0.36);
+    return drape + back + front + Math.max(0, c) ** 2 * 0.09 * tb(z, -0.06, -0.38) + Math.max(0, -c) ** 2 * 0.07 * tb(z, -0.02, -0.33) + Math.max(0, sd) ** 2 * 0.05 * tb(z, -0.03, -0.3);
+  } });
+  // the thigh's cargo pocket: a bellows pocket on the outside front, its flap and the two snaps; the slash pocket's edge
+  lgPush(B, lgTR(0.012, sg * 0.074, -0.205, 0, 0, sg * 0.35));
+  lgBox(B, 0.0, 0.0, 0.0, 0.054, 0.016, 0.068, 0.012); lgBox(B, 0.0, sg * 0.004, 0.0, 0.05, 0.015, 0.064, 0.012);
+  lgBox(B, 0.0, sg * 0.006, 0.062, 0.057, 0.014, 0.018, 0.006);
+  if (hi) { lgMat(B, M.poly); for (const x of [-0.03, 0.03]) lgSphere(B, x, sg * 0.0205, 0.058, 0.005, 0.003, 0.005, { segs: 6, rings: 4 }); lgMat(B, M.camo); }
+  lgPop(B);
+  lgBox(B, 0.06, sg * 0.05, -0.03, 0.005, 0.03, 0.04, 0.004);
   if (hi) { lgMat(B, M.poly); lgSphere(B, 0.0, sg * 0.0915, -0.15, 0.005, 0.003, 0.005, { segs: 6, rings: 4 }); }
   lgBone(B, 'shin' + s);
   // knee pad: rubber cap on a padded base, two straps
@@ -443,20 +563,28 @@ function lgOpLeg(B, K, s) {
   lgMat(B, M.rubber); lgSphere(B, 0.056, 0, -0.018, 0.026, 0.05, 0.056, { segs: 14, rings: 9, t0: -Math.PI / 2, t1: Math.PI / 2 });
   if (hi) { lgMat(B, M.web); for (const z of [-0.065, 0.03]) lgLathe(B, [[0.064, z - 0.008], [0.066, z - 0.006], [0.066, z + 0.006], [0.064, z + 0.008]], { segs: 14, sx: 1.05 }); }
   lgMat(B, M.camo);
-  lgLimb(B, 0.42, [[0, 0.062], [0.22, 0.063], [0.6, 0.051], [0.78, 0.054], [0.9, 0.06], [1, 0.057]], { segs: 16, rings: 10, wr: (a, z) => z < -0.27 ? Math.sin(a * 7 + z * 140) * 0.06 : Math.sin(a * 3 + z * 30) * 0.01 });
+  // 1.9.996: the calf's muscle swelling behind the upper shin, the shin flatter in front, the trousers stacking over the boot
+  const cb = (z, a, b) => z < a && z > b ? Math.sin((z - a) / (b - a) * Math.PI) : 0;
+  lgLimb(B, 0.42, [[0, 0.062], [0.22, 0.063], [0.6, 0.051], [0.78, 0.054], [0.9, 0.06], [1, 0.057]], { segs: 16, rings: 12, wr: (a, z) => {
+    const c = Math.cos(a); return 0.09 * lgFold(z * 140 + a * 2.3) * lgRamp(z, -0.25, -0.29) + 0.016 * Math.sin(a * 3 + 1.5 * Math.sin(z * 14)) + Math.max(0, -c) ** 2 * 0.17 * cb(z, -0.04, -0.26) - Math.max(0, c) ** 4 * 0.06 * cb(z, -0.05, -0.3);
+  } });
   // boot shaft, laces and hooks
   lgMat(B, M.boot); lgLathe(B, [[0.051, -0.425], [0.055, -0.405], [0.057, -0.33], [0.055, -0.305], [0.05, -0.3]], { segs: 16, sx: 1.06 });
   if (hi) { lgMat(B, M.web); for (let i = 0; i < 5; i++) { const z = -0.315 - i * 0.02; lgBox(B, 0.057, 0, z, 0.003, 0.02, 0.002, 0.001); } }
   if (top) { lgMat(B, M.metal); for (let i = 0; i < 4; i++) for (const y of [0.022, -0.022]) lgSphere(B, 0.054, y, -0.315 - i * 0.025, 0.003, 0.003, 0.003, { segs: 5, rings: 3 }); }
   lgBone(B, 'foot' + s);
-  lgMat(B, M.boot); lgBox(B, 0.028, 0, -0.038, 0.094, 0.047, 0.042, 0.03);
-  lgMat(B, M.bootNy); lgBox(B, 0.0, 0, -0.012, 0.06, 0.05, 0.025, 0.02);
-  lgMat(B, M.sole); lgBox(B, -0.048, 0, -0.072, 0.042, 0.046, 0.013, 0.006); lgBox(B, 0.035, 0, -0.078, 0.1, 0.05, 0.007, 0.004);
+  // 1.9.996: a boot's shape (the upper sloping down from the ankle to the toes, the heel rounded, narrower than the forefoot),
+  // not a box; the nylon side panel; the lugged sole below
+  lgMat(B, M.boot); lgSide(B, [[-0.07, -0.073], [0.136, -0.073], [0.142, -0.058], [0.126, -0.036], [0.084, -0.014], [0.036, 0.012], [-0.022, 0.026], [-0.064, 0.012], [-0.079, -0.024], [-0.079, -0.056]], 0.092, { bev: 0.016, smooth: 0.7, round: true });
+  lgMat(B, M.bootNy); lgSide(B, [[-0.04, -0.06], [0.07, -0.06], [0.06, -0.025], [0.02, 0.002], [-0.035, 0.012], [-0.058, -0.02]], 0.096, { bev: 0.006, smooth: 0.6 });
+  lgMat(B, M.sole); lgBox(B, -0.05, 0, -0.074, 0.03, 0.043, 0.012, 0.01); lgBox(B, 0.035, 0, -0.079, 0.1, 0.047, 0.006, 0.005);
   lgMat(B, M.boot); lgLathe(B, [[0.049, -0.01], [0.052, 0.0], [0.051, 0.03], [0.048, 0.04]], { segs: 14, sx: 1.08, ox: -0.01 });
   if (hi) { lgMat(B, M.web); for (let i = 0; i < 3; i++) lgBox(B, 0.065 + i * 0.02, 0, -0.002 + i * -0.006, 0.003, 0.02, 0.002, 0.001); }
   lgBone(B, 'toe' + s);
-  lgMat(B, M.boot); lgBox(B, 0.042, 0, 0.0, 0.05, 0.046, 0.028, 0.026);
-  lgMat(B, M.sole); lgBox(B, 0.044, 0, -0.022, 0.054, 0.049, 0.007, 0.006); lgBox(B, 0.068, 0, -0.012, 0.032, 0.05, 0.012, 0.011);
+  // 1.9.996: the toe box rounded over the toes, the rubber rand round it, the sole turning up at the tip
+  lgMat(B, M.boot); lgSphere(B, 0.004, 0, -0.012, 0.066, 0.046, 0.026, { segs: 16, rings: 8, t0: -Math.PI / 2, t1: Math.PI / 2, p0: -0.25 });
+  lgBox(B, -0.01, 0, -0.012, 0.016, 0.046, 0.019, 0.012);
+  lgMat(B, M.sole); lgBox(B, 0.03, 0, -0.025, 0.05, 0.048, 0.006, 0.005); lgSphere(B, 0.054, 0, -0.019, 0.022, 0.047, 0.013, { segs: 12, rings: 6, t0: -Math.PI / 2, t1: Math.PI / 2 });
 }
 // the pistol: polymer frame, steel slide, optic, threaded barrel, weapon light, magazine
 function lgOpPistol(B, K) {
@@ -522,6 +650,9 @@ LG_MAKERS.zombie = function (B, key) {
   };
   const torn = (a, z, base) => (Math.abs(Math.sin(a * 7.3 + base) * Math.sin(a * 3.1)) > 0.55 ? -0.25 : 0);
   lgBone(B, 'pelvis'); lgMat(B, M.bot); lgLathe(B, [[0.03, -0.17], [0.09, -0.155], [0.14, -0.11], [0.155, -0.05], [0.152, 0.03], [0.146, 0.08]], { segs: 18, sx: 0.72 });
+  // 1.9.996: the dead get bodies too: the seat over the glutes, joints that stay whole when they bend, muscle under the
+  // cloth, creased and torn clothes
+  for (const s2 of [1, -1]) lgSphere(B, -0.05, s2 * 0.064, -0.08, 0.062, 0.072, 0.08, { segs: 12, rings: 8, t0: Math.PI * 0.5, t1: Math.PI * 1.5 });
   lgMat(B, M.shoe); lgLathe(B, [[0.15, 0.04], [0.153, 0.045], [0.153, 0.068], [0.149, 0.072]], { segs: 18, sx: 0.73 });
   lgBone(B, 'spine'); lgMat(B, d.top === 'chef' ? M.white : M.top); lgLathe(B, [[0.15, -0.05], [0.142, 0.05], [0.146, 0.13], [0.152, 0.21]], { segs: 18, sx: 0.72, wr: (a, z) => z < 0 ? torn(a, z, 1) * 0.1 : 0 });
   lgBone(B, 'chest'); lgMat(B, d.top === 'chef' ? M.white : M.top);
@@ -532,25 +663,29 @@ LG_MAKERS.zombie = function (B, key) {
   if (hi) { lgMat(B, M.blood); lgSphere(B, 0.105, -0.05, 0.12, 0.012, 0.045, 0.06, { segs: 10, rings: 6 }); lgSphere(B, 0.1, 0.06, 0.02, 0.012, 0.03, 0.035, { segs: 8, rings: 5 }); }
   lgBone(B, 'neck'); lgMat(B, M.skin); lgLathe(B, [[0.05, -0.03], [0.048, 0.03], [0.047, 0.08], [0.05, 0.12]], { segs: 12 });
   lgBone(B, 'head'); lgMat(B, M.skin);
-  lgSphere(B, 0.012, 0, 0.09, 0.098, 0.078, 0.115, { segs: 18, rings: 12 });
-  lgSphere(B, 0.052, 0, 0.0, 0.06, 0.058, 0.048, { segs: 14, rings: 9 });
-  lgSphere(B, 0.103, 0, 0.074, 0.02, 0.013, 0.022, { segs: 8, rings: 6 });
+  // (1.9.996: a sculpted skull, slack: the same face as the living under the paint, the jaw hanging a little)
+  const ZE = [0.012, 0, 0.09, 0.098, 0.078, 0.115];
+  B.def = lgSculpt(ZE, 0, { amt: 0.9 }); lgSphere(B, ZE[0], ZE[1], ZE[2], ZE[3], ZE[4], ZE[5], { segs: hi ? 32 : 18, rings: hi ? 22 : 12 }); B.def = null;
   for (const s of [1, -1]) lgSphere(B, -0.005, s * 0.078, 0.085, 0.014, 0.008, 0.024, { segs: 8, rings: 6 });
-  lgMat(B, M.face); { const E = [0.012, 0, 0.09, 0.098, 0.078, 0.115]; B.def = lgOnEll(E, 0.002); lgDecal(B, [0.1, 0, 0.05], [0, -0.07, 0], [0, 0, 0.075], [0.505, 0.005, 0.995, 0.495], { sub: 8, lift: 0 }); B.def = null; }
-  lgMat(B, M.eye); for (const s of [1, -1]) lgSphere(B, 0.098, s * 0.03, 0.098, 0.006, 0.008, 0.005, { segs: 6, rings: 4 });
+  lgMat(B, M.face); B.def = lgSculpt(ZE, 0.002, { amt: 0.9 }); lgDecal(B, [0.1, 0, 0.08], [0, -0.089, 0], [0, 0, 0.085], [0.505, 0.005, 0.995, 0.495], { sub: 12, lift: 0 }); B.def = null;
+  lgMat(B, M.eye); for (const s of [1, -1]) lgSphere(B, 0.094, s * 0.032, 0.1, 0.006, 0.0085, 0.0055, { segs: 8, rings: 5 });
   lgMat(B, M.hair);
   if (d.hair !== 'none' && d.hair !== 'shaved') lgSphere(B, 0.0, 0, 0.12, 0.102, 0.083, 0.09, { segs: 18, rings: 8, p0: d.hair === 'balding' ? -0.2 : 0.1, wr: (th, ph) => Math.sin(th * 13 + ph * 9) * 0.03 + (d.hair === 'balding' && ph > 0.9 ? -0.2 : 0) });
   if (d.top === 'chef') { lgMat(B, M.white); lgLathe(B, [[0.09, 0.17], [0.095, 0.2], [0.11, 0.26], [0.1, 0.29], [0.0, 0.3]], { segs: 16, sx: 1.05, ox: 0.005 }); }
   for (const s of ['L', 'R']) {
     const sg = s === 'L' ? 1 : -1;
-    lgBone(B, 'arm' + s); lgMat(B, d.top === 'chef' ? M.white : M.top); lgLimb(B, 0.28, [[0, 0.055], [0.3, 0.05], [1, 0.042]], { segs: 12, rings: 7, wr: (a, z) => z < -0.22 ? torn(a, z, sg * 2) * 0.12 : 0 });
-    lgBone(B, 'fore' + s); lgMat(B, M.skin); lgLimb(B, 0.27, [[0, 0.04], [0.3, 0.04], [1, 0.03]], { segs: 10, rings: 7 });
+    const zb = (z, a2, b2) => z < a2 && z > b2 ? Math.sin((z - a2) / (b2 - a2) * Math.PI) : 0;
+    lgBone(B, 'arm' + s); lgMat(B, d.top === 'chef' ? M.white : M.top); lgSphere(B, -0.004, sg * 0.004, -0.018, 0.056, 0.056, 0.06, { segs: 12, rings: 8 });
+    lgLimb(B, 0.28, [[0, 0.055], [0.3, 0.052], [1, 0.042]], { segs: 14, rings: 9, sx: 1.06, wr: (a, z) => (z < -0.22 ? torn(a, z, sg * 2) * 0.12 : Math.sin(a * 3 + z * 40) * 0.02) + Math.max(0, Math.cos(a)) ** 2 * 0.09 * zb(z, -0.06, -0.21) + Math.max(0, -Math.cos(a)) ** 2 * 0.07 * zb(z, -0.03, -0.2) });
+    lgBone(B, 'fore' + s); lgMat(B, M.skin); lgSphere(B, 0, 0, 0, 0.041, 0.041, 0.042, { segs: 10, rings: 7 });
+    lgLimb(B, 0.27, [[0, 0.041], [0.22, 0.043], [0.6, 0.034], [1, 0.027]], { segs: 12, rings: 8, sx: 1.12 });
     if (hi && s === 'L') { lgMat(B, M.blood); lgSphere(B, 0.03, 0.02, -0.12, 0.012, 0.02, 0.03, { segs: 8, rings: 5 }); }
-    lgBone(B, 'hand' + s); lgMat(B, M.skin); lgBox(B, 0, 0, -0.048, 0.038, 0.014, 0.048, 0.012);
+    lgBone(B, 'hand' + s); lgMat(B, M.skin); lgLimb(B, 0.084, [[0, 0.028], [0.5, 0.036], [1, 0.037]], { z0: -0.006, sx: 1.05, sy: 0.4, segs: 12, rings: 5, capA: false, capK: 0.3 });
     for (const f of ['idx', 'fin', 'thb']) { lgBone(B, f + s); const xo = f === 'fin' ? [0.002, -0.016, -0.031] : [0]; for (const x of xo) lgLimb(B, f === 'thb' ? 0.04 : 0.042, [[0, 0.0095], [1, 0.0085]], { ox: x, segs: 6, rings: 3 }); lgBone(B, f + '2' + s); for (const x of xo) lgLimb(B, 0.036, [[0, 0.0085], [1, 0.006]], { ox: x, segs: 6, rings: 3 }); }
-    lgBone(B, 'thigh' + s); lgMat(B, M.bot); lgLimb(B, 0.43, [[0, 0.085], [0.5, 0.07], [1, 0.054]], { segs: 14, rings: 8, wr: (a, z) => Math.sin(a * 4 + z * 30) * 0.015 });
-    lgBone(B, 'shin' + s); lgLimb(B, 0.42, [[0, 0.057], [0.6, 0.048], [1, 0.05]], { segs: 12, rings: 8, wr: (a, z) => z < -0.36 ? torn(a, z, sg) * 0.15 : 0 });
-    lgBone(B, 'foot' + s); lgMat(B, M.shoe); lgBox(B, 0.03, 0, -0.045, 0.09, 0.043, 0.035, 0.026);
-    lgBone(B, 'toe' + s); lgBox(B, 0.04, 0, -0.008, 0.048, 0.042, 0.022, 0.02);
+    lgBone(B, 'thigh' + s); lgMat(B, M.bot); lgLimb(B, 0.43, [[0, 0.088], [0.15, 0.086], [0.5, 0.074], [1, 0.055]], { segs: 16, rings: 10, sx: 1.07, wr: (a, z) => Math.sin(a * 4 + z * 30) * 0.017 + Math.max(0, Math.cos(a)) ** 2 * 0.08 * zb(z, -0.06, -0.37) + Math.max(0, -Math.cos(a)) ** 2 * 0.06 * zb(z, -0.02, -0.32) });
+    lgBone(B, 'shin' + s); lgSphere(B, 0.004, 0, 0, 0.056, 0.056, 0.058, { segs: 12, rings: 7 });
+    lgLimb(B, 0.42, [[0, 0.057], [0.22, 0.058], [0.6, 0.048], [1, 0.05]], { segs: 14, rings: 10, wr: (a, z) => (z < -0.36 ? torn(a, z, sg) * 0.15 : Math.sin(a * 3 + z * 30) * 0.012) + Math.max(0, -Math.cos(a)) ** 2 * 0.15 * zb(z, -0.04, -0.25) });
+    lgBone(B, 'foot' + s); lgMat(B, M.shoe); lgSide(B, [[-0.068, -0.073], [0.132, -0.073], [0.138, -0.058], [0.12, -0.038], [0.08, -0.018], [0.03, 0.006], [-0.02, 0.016], [-0.06, 0.006], [-0.074, -0.026], [-0.074, -0.058]], 0.086, { bev: 0.014, smooth: 0.7, round: true });
+    lgBone(B, 'toe' + s); lgSphere(B, 0.004, 0, -0.012, 0.062, 0.043, 0.024, { segs: 12, rings: 7, t0: -Math.PI / 2, t1: Math.PI / 2, p0: -0.3 }); lgBox(B, -0.008, 0, -0.012, 0.014, 0.043, 0.017, 0.01);
   }
 };

@@ -236,7 +236,10 @@ lgClip('mask_tap', 'Mask on', 'Standing', 2.5, false, LG_SRC.merc, 'Two fingers 
   lgBase(P, { crouch: 0.035, lean: 0.07, stance: false }); lgStance(P, 0.13, 0.06, 0.13); lgBreath(P, t, 0.6, 3);
   const k = lgK(t, [[0, 0], [0.45, 1, 'o3'], [0.85, 1], [1.4, 0, 'io']]);
   lgPistolAt(P, LG_POST.sul, { one: true, poleR: LG_POLE.Rt });
-  lgHandTo(P, 'L', 'head', [lgLerp(-0.15, 0.01, k), lgLerp(0.25, 0.16, k), lgLerp(-0.7, -0.03, k)], [lgLerp(0, 0.25, k), lgLerp(0, 2.75, k), 0], [-0.3, 1, -0.6]); P.grip.L = k > 0.5 ? 'point' : 'relax';
+  // (1.9.996: the wrist comes up beside the ear cup and the two fingers go up onto the helmet's rail, the hand carried
+  // on from the forearm; the elbow forward and out at shoulder height, as a man reaches for his night-vision mount, not
+  // winged out level with his head. Placed by its elbow (a pole), so the comfort search does not swing it out.)
+  lgHandTo(P, 'L', 'head', [lgLerp(-0.12, 0.05, k), lgLerp(0.26, 0.165, k), lgLerp(-0.68, 0.02, k)], null, [1, 0.6, -0.6]); lgJm(P, 'L', 'hand', 0, -0.35 * k, 0); P.grip.L = k > 0.5 ? 'point' : 'relax';
   P.mask = lgK(t, [[0, 0], [0.55, 0], [1.6, 1, 'l']]); P.glow = lgK(t, [[0, 0], [1.4, 0], [1.7, 1.6, 'o'], [2.2, 1]]);
   lgLookAt(P, 0.08 * k, lgPulse(t, 1.5, 1.85) * 0.12, -0.12 * k);
 }, [[0.5, 'tap'], [0.6, 'mask'], [1.62, 'maskLock']]);

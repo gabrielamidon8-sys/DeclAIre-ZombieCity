@@ -213,15 +213,20 @@ function luxGather(x0, y0, x1, y1, dt) {
     // long and tight; a reload or a swap drops it; sprinting it swings across with the carried gun
     const A = p.arm, f = A ? (A.focus || 0) : 1, ga = p.lgAim != null ? p.lgAim : aim, st = A ? A.st : '';
     let ox = p.x + Math.cos(aim) * rr, oy = p.y + Math.sin(aim) * rr;
-    if (p.lgMx != null && A) { const c = Math.cos(aim), s = Math.sin(aim); ox = p.x + (c * p.lgMx - s * p.lgMy) * PK; oy = p.y + (s * p.lgMx + c * p.lgMy) * PK; }
-    const low = st === 'reload' || st === 'swapOut' || st === 'swapIn' ? 0.5 : st === 'sprint' ? 0.75 : 1, reach = 330 * (0.55 + 0.45 * SCL) * (A ? 0.7 + 0.42 * f : 1);
-    luxPush(ox, oy, reach, 255, 244, 228, 0.95 * night * low, true, 3, { a: ga, h: A ? 0.6 - 0.25 * f : 0.46, beam: 1 }, 1.2);
+    if (p.lgMx != null && A) { const c = Math.cos(aim), s = Math.sin(aim), lx = p.lgLx != null ? p.lgLx : p.lgMx, ly = p.lgLx != null ? p.lgLy : p.lgMy; ox = p.x + (c * lx - s * ly) * PK; oy = p.y + (s * lx + c * ly) * PK; }
+    // 1.9.996: from the light on the rail, along the barrel as it is held (low ready points it at the ground just ahead)
+    const gb = p.lgBeam != null && A ? p.lgBeam : ga;
+    // (a barrel pointed steeply at the ground, as in the sprint's muzzle-down carry, throws a short wide pool by his feet
+    // rather than a long cone: the reach follows how much of the bore lies level, p.lgBeamD)
+    const bd = p.lgBeamD != null && A ? clamp(p.lgBeamD, 0, 1) : 1;
+    const low = st === 'reload' || st === 'swapOut' || st === 'swapIn' ? 0.5 : st === 'sprint' ? 0.75 : 1, reach = 330 * (0.55 + 0.45 * SCL) * (A ? 0.7 + 0.42 * f : 1) * (0.28 + 0.72 * bd * bd);
+    luxPush(ox, oy, reach, 255, 244, 228, 0.95 * night * low, true, 3, { a: gb, h: (A ? 0.6 - 0.25 * f : 0.46) + 0.35 * (1 - bd), beam: 1 }, 1.2);
   }
   if (NET.started) {
     const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values());
     for (const q of each) if (q && !q.down && night > 0.04 && q.x > x0 - m && q.x < x1 + m && q.y > y0 - m && q.y < y1 + m) {
       luxPush(q.x, q.y, 110, 255, 232, 190, 0.45 * night, false, 1, null, 1.5);
-      if (q.aim != null) { const qa = q.lgAim != null ? q.lgAim : q.aim, qf = q.arm ? (q.arm.focus || 0) : 1; luxPush(q.x + Math.cos(q.aim) * 6, q.y + Math.sin(q.aim) * 6, 420 * (q.arm ? 0.7 + 0.42 * qf : 1), 255, 242, 222, 0.7 * night, true, 1, { a: qa, h: q.arm ? 0.6 - 0.25 * qf : 0.44, beam: 1 }, 1.2); }
+      if (q.aim != null) { const qa = q.lgBeam != null ? q.lgBeam : q.lgAim != null ? q.lgAim : q.aim, qf = q.arm ? (q.arm.focus || 0) : 1, c = Math.cos(q.aim), sn = Math.sin(q.aim), qx = q.lgLx != null ? q.x + (c * q.lgLx - sn * q.lgLy) * PK : q.x + c * 6, qy = q.lgLx != null ? q.y + (sn * q.lgLx + c * q.lgLy) * PK : q.y + sn * 6; luxPush(qx, qy, 420 * (q.arm ? 0.7 + 0.42 * qf : 1), 255, 242, 222, 0.7 * night, true, 1, { a: qa, h: q.arm ? 0.6 - 0.25 * qf : 0.44, beam: 1 }, 1.2); }
     }
   }
 }

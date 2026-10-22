@@ -399,11 +399,30 @@ function lgiFrameY(D) {
   if (asp < 1.1) return 0;   // (a phone held upright: the frame is too narrow for thirds, he stays in the middle and the card sits below him)
   return -(f - 0.5) * 2 * 1.42 * asp;   // (screen right is +y here; 1.42 m is half the frame's height at his distance)
 }
+// 1.9.996: the stoop is cut like a film's quiet scene, four shots on a loop of 26 s, each held long (6 to 9 s, the pace
+// of a calm scene): the low wide pushing in on him; a side medium on the knife and stone; an insert on his hands and
+// the blade; his face, close. Every shot keeps him on the third away from the card (or centred on a phone held upright,
+// raised clear of the card below); the can in the dark always cuts back to the wide.
+const LGI_SHOTS = [{ t: 9, id: 'wide' }, { t: 6, id: 'side' }, { t: 5, id: 'hands' }, { t: 6, id: 'face' }];
+function lgiShotAt(rt) { const T = LGI_SHOTS.reduce((a, b) => a + b.t, 0); let u = ((rt % T) + T) % T; for (let i = 0; i < LGI_SHOTS.length; i++) { if (u < LGI_SHOTS[i].t) return { i: i, id: LGI_SHOTS[i].id, u: u, k: u / LGI_SHOTS[i].t }; u -= LGI_SHOTS[i].t; } return { i: 0, id: 'wide', u: 0, k: 0 }; }
 function lgiCam(rt) {
   const D = LGI.scene, A = MIM.actors[0], c = A && A.W ? mimBone(A, 'chest') : [0, 0, 0.9];
   if (D && D.fy) physSpring(D.fy, lgiFrameY(D), 1.6, Math.min(0.05, Math.max(0, rt - (D.camRt || rt)))); if (D) D.camRt = rt;
-  const fy = D && D.fy ? D.fy.x : 0;
+  const fy = D && D.fy ? D.fy.x : 0, tall = (MIM.asp || 2) < 1.1;
   const al = D && A.player && A.player.a && A.player.a.id === 'sit_alert', alert = al ? lgPulse(A.player.t, 1.1, 5.2) : 0, look = al ? lgPulse(A.player.t, 0.0, 1.6) : 0, side = (D && D.canSide) || 1;
-  const dr = Math.sin(rt * 0.09) * 0.35, push = alert * 0.9;
-  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert) - ((MIM.asp || 2) < 1.1 ? 0.5 : 0)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
+  const sh = al ? { id: 'wide', k: 0, u: 0 } : lgiShotAt(rt);
+  if (sh.id === 'wide' || !A || !A.W) {
+    const dr = Math.sin(rt * 0.09) * 0.35, push = alert * 0.9 + (al ? 0 : sh.k * 0.55);
+    return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert) - (tall ? 0.5 : 0)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
+  }
+  const H = mimBone(A, 'head'), hL = mimBone(A, 'handL'), hR = mimBone(A, 'handR'), hm = mimMid(hL, hR), k = sh.k;
+  let eye, tgt, fov;
+  if (sh.id === 'side') { const m = mimMid(c, hm); eye = [m[0] + 1.75 - 0.25 * k, m[1] - 1.45 + 0.2 * k, m[2] + 0.12]; tgt = [m[0], m[1], m[2] + 0.02]; fov = 0.5; }
+  else if (sh.id === 'hands') { eye = [hm[0] + 0.8 - 0.12 * k, hm[1] - 0.42, hm[2] + 0.34]; tgt = [hm[0], hm[1], hm[2] - 0.01]; fov = 0.42; }
+  else { eye = [H[0] + 0.92 - 0.12 * k, H[1] + 0.52, H[2] - 0.24]; tgt = [H[0] + 0.03, H[1] + 0.01, H[2] + 0.0]; fov = 0.4; }   // (from under the helmet's brim: he is looking down at the blade)
+  // the subject on the third away from the card: the wide's offset scaled to this frame's size, the camera moved across
+  const d = Math.hypot(tgt[0] - eye[0], tgt[1] - eye[1], tgt[2] - eye[2]), hh = d * Math.tan(fov / 2), f = fy * hh / 1.42;
+  const fx = tgt[0] - eye[0], fyv = tgt[1] - eye[1], rl = Math.hypot(fx, fyv) || 1, rx = fyv / rl, ry = -fx / rl;   // (screen right: the view's direction crossed with up)
+  eye = [eye[0] + rx * f, eye[1] + ry * f, eye[2]]; tgt = [tgt[0] + rx * f, tgt[1] + ry * f, tgt[2] - (tall ? hh * 0.35 : 0)];
+  return { eye: eye, tgt: tgt, fov: fov, roll: Math.sin(rt * 0.07) * 0.008, shake: 0.05, flare: 0.6 };
 }

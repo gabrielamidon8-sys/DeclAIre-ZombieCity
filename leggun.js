@@ -93,6 +93,25 @@ function lgTrigger(B, M, xg, xf, z, zt, o) {
   lgMat(B, M.metal); const tx = o.tx == null ? xg + 0.026 : o.tx;
   lgTube(B, [[tx, 0, zt], [tx + 0.004, 0, zt - 0.009], [tx + 0.001, 0, zt - 0.017], [tx - 0.005, 0, zt - 0.021]], 0.0017, { segs: 4, flat: 2.2, up: [0, 1, 0] });
 }
+// 1.9.996: a weapon light (a Surefire M600-style scout light, 14.1 cm long with a 2.9 cm bezel; a compact pistol light
+// under a dust cover is 9 cm): mounted as far forward as the rail allows, nearly flush with the muzzle so the barrel throws
+// little shadow, at the side the support hand's thumb works it (Primary Arms, "Where to mount a light on an AR-15").
+// f: the bezel's front (gun space), y and z: its axis; side: which side of the rail the clamp is on (-1 right, +1 left,
+// 0 under). Its front is where the beam starts in a run.
+function lgWeaponLight(B, M, f, y, z, len, side) {
+  const hi = B.lod < 2, top = B.lod === 0, r = len > 0.12 ? 0.0105 : 0.0095, rb = len > 0.12 ? 0.0145 : 0.0125;
+  lgMat(B, M.gunBlk);
+  lgBore(B, f - len, len - 0.03, [[0, r * 0.82], [0.06, r], [1, r]], y, z);                        // the body, the tailcap end narrower
+  lgBore(B, f - 0.03, 0.03, [[0, r], [0.35, rb * 0.92], [0.8, rb], [1, rb]], y, z);                 // the head flaring to the bezel
+  if (hi) { lgMat(B, M.metal); lgBore(B, f - 0.004, 0.004, rb + 0.0006, y, z); }                   // the bezel ring
+  lgMat(B, M.lens); lgPush(B, lgTR(f + 0.0005, y, z, 0, Math.PI / 2, 0)); lgLimb(B, 0.0012, [[0, rb * 0.82], [1, rb * 0.82]], { up: true, segs: 12 }); lgPop(B);
+  if (hi) { lgMat(B, M.rubber); lgBore(B, f - len - 0.006, 0.008, r * 0.7, y, z); }                // the tailcap switch
+  // the clamp to the rail
+  lgMat(B, M.gunBlk);
+  if (side) lgBox(B, f - len * 0.55, y - side * (r + 0.004), z, 0.016, 0.006, 0.008, 0.002);
+  else lgBox(B, f - len * 0.55, y, z + r + 0.004, 0.016, 0.008, 0.006, 0.002);
+  if (top) { lgMat(B, M.metal); lgKnob(B, f - len * 0.55, y - (side || 0) * (r + 0.011), z, 0.0035, 0.006, side ? -side : -1); }
+}
 // a holographic sight (EXPS style): its mount, the body with the battery cap forward, the hood, the window, the buttons
 function lgHolo(B, M, x, z, hi) {
   const top = B.lod === 0;
@@ -158,6 +177,7 @@ function lgGunM4(B, K) {
   lgPush(B, lgTR(0.31, 0, 0.032, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.008, 0], [0.003, 0.018], [-0.003, 0.018]], 0.009, { bev: 0.001 }); lgPop(B);   // its A-frame
   if (hi) { lgBox(B, 0.31, 0, 0.049, 0.0014, 0.0014, 0.004, 0); lgBox(B, 0.326, 0, -0.012, 0.004, 0.004, 0.006, 0.0015); lgBox(B, 0.302, 0, -0.008, 0.0035, 0.008, 0.004, 0.0012); }   // the post, the bayonet lug, the sling swivel's boss
   lgBirdcage(B, 0.427, 0.042, 0.0108, top);
+  lgWeaponLight(B, M, LG_GUN_DEF.m4a1.light[0], LG_GUN_DEF.m4a1.light[1], LG_GUN_DEF.m4a1.light[2], 0.141, -1);
   // the buffer tube and its castle nut, the stock: a narrow body with the latch, the sling slot and the butt
   lgMat(B, M.gunBlk); lgBore(B, -0.088, 0.17, 0.0145, 0, 0.002, { up: false }); lgBore(B, -0.096, 0.008, 0.0175, 0, 0.002, { up: false });
   if (top) { lgMat(B, M.metal); for (let i = 0; i < 6; i++) lgBox(B, -0.17 - i * 0.012, 0, -0.0125, 0.0022, 0.004, 0.0015, 0.0006); }   // the adjustment holes
@@ -215,6 +235,7 @@ function lgGunAK(B, K) {
   lgMat(B, M.rubber); lgBox(B, -0.341, 0, -0.058, 0.005, 0.0155, 0.06, 0.003);
   if (hi) lgHolo(B, M, 0.06, 0.03, hi);
   // the 30-round magazine in plum polymer: deep and strongly curved, the lug at its back, the reinforced lips
+  lgWeaponLight(B, M, LG_GUN_DEF.ak74m.light[0], LG_GUN_DEF.ak74m.light[1], LG_GUN_DEF.ak74m.light[2], 0.141, -1);
   lgBone(B, 'cmag'); lgMat(B, M.plum); lgCurvedMag(B, 0.085, -0.046, 0.188, 0.4, 0.054, 0.024, { flare: 0.08, ribs: [[0.1, 0.9]], ribF: 0.32 });
   if (hi) { lgMat(B, M.plum); lgBox(B, 0.087, 0, -0.052, 0.03, 0.0135, 0.006, 0.002); lgBox(B, 0.055, 0, -0.05, 0.004, 0.01, 0.006, 0.0015); lgMagTop(B, M, 0.084, -0.046, 0.046, 0.022); }
 }
@@ -251,6 +272,7 @@ function lgGunMk17(B, K) {
   lgMat(B, M.rubber); lgBox(B, -0.377, 0, -0.024, 0.006, 0.019, 0.052, 0.004);
   if (hi) lgHolo(B, M, 0.04, 0.028, hi); else { lgMat(B, M.gunBlk); lgBox(B, 0.04, 0, 0.045, 0.032, 0.016, 0.016, 0.004); }
   // the 20-round 7.62 magazine: deep, nearly straight, its ribbed sides and the witness holes
+  lgWeaponLight(B, M, LG_GUN_DEF.mk17.light[0], LG_GUN_DEF.mk17.light[1], LG_GUN_DEF.mk17.light[2], 0.141, -1);
   lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.063, -0.058, 0.136, 0.06, 0.07, 0.0265, { ribs: [[0.2, 0.85]], ribF: 0.36 });
   if (hi) { if (top) { lgMat(B, M.visor); for (let i = 0; i < 4; i++) for (const s of [1, -1]) lgBox(B, 0.044, s * 0.0137, -0.085 - i * 0.022, 0.0035, 0.0005, 0.0035, 0.001); } lgMagTop(B, M, 0.06, -0.058, 0.06, 0.026); }
 }
@@ -280,6 +302,7 @@ function lgGunM1014(B, K) {
   if (hi) { lgMat(B, M.gunPoly.dk); lgSide(B, [[-0.31, -0.05], [-0.23, -0.026], [-0.23, 0.006], [-0.31, 0.01]], 0.0375, { bev: 0.0012 }); }   // the stock's open frame
   lgMat(B, M.rubber); lgBox(B, -0.352, 0, -0.022, 0.007, 0.02, 0.05, 0.004);
   // the "magazine" bone carries a shell (the one going in, and the port load)
+  lgWeaponLight(B, M, LG_GUN_DEF.m1014.light[0], LG_GUN_DEF.m1014.light[1], LG_GUN_DEF.m1014.light[2], 0.141, -1);
   lgBone(B, 'cmag'); lgMat(B, M.shellRed); lgBore(B, 0.05, 0.05, 0.0105, 0, -0.06); lgMat(B, M.brass); lgBore(B, 0.04, 0.012, 0.0112, 0, -0.06);
 }
 function lgGunPP19(B, K) {
@@ -301,6 +324,7 @@ function lgGunPP19(B, K) {
   lgMat(B, M.rubber); lgBox(B, -0.336, 0, -0.045, 0.005, 0.016, 0.05, 0.003);
   if (hi) lgHolo(B, M, 0.06, 0.03, hi);
   // the 64-round helical magazine under the barrel: a ribbed cylinder, its feed at the back, a hook at the front
+  lgWeaponLight(B, M, LG_GUN_DEF.pp19.light[0], LG_GUN_DEF.pp19.light[1], LG_GUN_DEF.pp19.light[2], 0.141, 0);
   lgBone(B, 'cmag'); lgMat(B, M.gunPoly);
   lgBore(B, 0.05, 0.28, [[0, 0.026], [0.04, 0.028], [0.96, 0.028], [1, 0.024]], 0, -0.054, { segs: 14, wr: hi ? (a, z) => Math.sin(z * 180) * 0.04 : null });
   lgBox(B, 0.045, 0, -0.032, 0.018, 0.014, 0.014, 0.004);
@@ -352,6 +376,7 @@ function lgPistolFrame(B, M, o) {
   lgMat(B, fm); lgSide(B, [[0.048, -0.026], [L - 0.004, -0.026], [L - 0.001, -0.016], [L - 0.003, -0.012], [0.048, -0.012]], sw - 0.0008, { bev: 0.002, round: true });
   lgSide(B, [[-0.002, -0.012], [0.05, -0.012], [0.05, -0.02], [0.0, -0.02]], sw - 0.002, { bev: 0.0015 });
   if (hi && !o.light && !o.nor) { lgMat(B, fm); for (let i = 0; i < 3; i++) lgBox(B, L - 0.06 + i * 0.016, 0, -0.0275, 0.004, sw / 2 - 0.002, 0.0015, 0.0005); }
+  if (o.light) lgWeaponLight(B, M, LG_GUN_DEF.m17.light[0], LG_GUN_DEF.m17.light[1], LG_GUN_DEF.m17.light[2], 0.09, 0);   // 1.9.996: its light under the dust cover
   // the trigger guard (squared, the front of it hooked), the trigger with its safety blade, the slide stop and the takedown
   lgMat(B, fm); const tg = o.round ? [[0.05, -0.026], [0.074, -0.028], [0.088, -0.036], [0.088, -0.048], [0.078, -0.055], [0.056, -0.054], [0.044, -0.046]]
     : [[0.05, -0.026], [0.086, -0.028], [0.092, -0.034], [0.09, -0.05], [0.084, -0.055], [0.056, -0.054], [0.044, -0.046]];
@@ -419,12 +444,12 @@ function lgGunM1917(B, K) {
 // each gun: its builder, the bone family, its muzzle, the support hand, where its magazine's top is, a hand-off for the
 // magazine in the hand; held relative to the original carbine and pistol sockets
 const LG_GUN_DEF = {
-  m4a1: { mk: lgGunM4, fam: 'c', muz: [0.469, 0, 0], sup: 0.205, mag: [0.07, -0.058], gx: -0.02, gz: -0.044 },
-  ak74m: { mk: lgGunAK, fam: 'c', muz: [0.585, 0, 0], sup: 0.29, mag: [0.085, -0.048], gx: 0.006, gz: -0.048 },
-  mk17: { mk: lgGunMk17, fam: 'c', muz: [0.58, 0, 0], sup: 0.24, mag: [0.06, -0.06], gx: -0.026, gz: -0.05 },
-  m1014: { mk: lgGunM1014, fam: 'c', muz: [0.62, 0, 0.006], sup: 0.29, mag: [0.06, -0.06], gx: -0.016, gz: -0.036 },
-  pp19: { mk: lgGunPP19, fam: 'c', muz: [0.365, 0, 0], sup: 0.17, mag: [0.06, -0.032], helix: true, gx: 0.0, gz: -0.038 },
-  m17: { mk: lgGunM17, fam: 'p', muz: [0.202, 0, 0], mag: [0.027, -0.03] },
+  m4a1: { mk: lgGunM4, fam: 'c', muz: [0.469, 0, 0], light: [0.272, -0.039, 0.006], sup: 0.205, mag: [0.07, -0.058], gx: -0.02, gz: -0.044 },
+  ak74m: { mk: lgGunAK, fam: 'c', muz: [0.585, 0, 0], light: [0.396, -0.037, -0.004], sup: 0.29, mag: [0.085, -0.048], gx: 0.006, gz: -0.048 },
+  mk17: { mk: lgGunMk17, fam: 'c', muz: [0.58, 0, 0], light: [0.356, -0.034, 0.002], sup: 0.24, mag: [0.06, -0.06], gx: -0.026, gz: -0.05 },
+  m1014: { mk: lgGunM1014, fam: 'c', muz: [0.62, 0, 0.006], light: [0.382, -0.034, -0.012], sup: 0.29, mag: [0.06, -0.06], gx: -0.016, gz: -0.036 },
+  pp19: { mk: lgGunPP19, fam: 'c', muz: [0.365, 0, 0], light: [0.32, 0, -0.024], sup: 0.17, mag: [0.06, -0.032], helix: true, gx: 0.0, gz: -0.038 },
+  m17: { mk: lgGunM17, fam: 'p', muz: [0.202, 0, 0], light: [0.186, 0, -0.031], mag: [0.027, -0.03] },
   m9: { mk: lgGunM9, fam: 'p', muz: [0.217, 0, 0], mag: [0.027, -0.03] },
   m1911: { mk: lgGunM1911, fam: 'p', muz: [0.202, 0, 0], mag: [0.027, -0.03] },
   m1917: { mk: lgGunM1917, fam: 'p', muz: [0.214, 0, 0.004], mag: [0.0, -0.002], moon: true },

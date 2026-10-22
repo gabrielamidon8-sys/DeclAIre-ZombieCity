@@ -156,13 +156,13 @@ const lgMix3 = (o, c, k) => { o[0] += (c[0] - o[0]) * k; o[1] += (c[1] - o[1]) *
 function lgWeave(x, y, T) { const w = Math.max(1, T >> 7), g = Math.max(2, T >> 4); const wv = (((x / w) | 0) + ((y / w) | 0)) & 1 ? 0.04 : -0.04; const gx = x % g < w * 1.2 || y % g < w * 1.2 ? 0.07 : 0; return [wv + gx, gx]; }
 function lgCamoTile(pal, seed, coarse) {
   return (T, R0) => {
-    const R = lgRng(seed), A = lgOcts(3, 5, R), B2 = lgOcts(4, 5, R), C = lgOcts(6, 4, R), Br = lgLat(28, 3, R), Mi = lgLat(64, 64, R), Wx = lgOcts(4, 3, R), Wy = lgOcts(4, 3, R);
+    const R = lgRng(seed), A = lgOcts(3, 5, R), B2 = lgOcts(4, 5, R), C = lgOcts(4, 4, R), Br = lgLat(28, 3, R), Mi = lgLat(64, 64, R), Wx = lgOcts(4, 3, R), Wy = lgOcts(4, 3, R);
     return { px: (u, v, x, y, o) => {
       // domain warp: the blotches get torn, organic edges instead of following the noise lattice
       const wu = u + (lgFbm(Wx, u, v) - 0.5) * 0.09, wv0 = v + (lgFbm(Wy, u, v) - 0.5) * 0.09;
       const n1 = lgFbm(A, wu, wv0), n2 = lgFbm(B2, wu + 0.31, wv0 + 0.17), n3 = lgFbm(C, wu + 0.7, wv0 + 0.45), b = lgVal(Br, wu, v), m = lgVal(Mi, u, v);
       const c = pal[0].slice();
-      lgMix3(c, pal[1], lgSS(0.5, 0.515, n1)); lgMix3(c, pal[2], lgSS(0.555, 0.57, n2)); lgMix3(c, pal[3], lgSS(0.6, 0.615, n3) * (1 - lgSS(0.5, 0.515, n1)));
+      lgMix3(c, pal[1], lgSS(0.5, 0.515, n1)); lgMix3(c, pal[2], lgSS(0.555, 0.57, n2)); lgMix3(c, pal[3], lgSS(0.635, 0.65, n3) * (1 - lgSS(0.5, 0.515, n1)));
       lgMix3(c, pal[4], (1 - lgSS(0.0, 0.03, Math.abs(b - 0.5))) * 0.8 * lgSS(0.45, 0.6, n2));
       const wv = coarse ? lgCordH(x, y, T) : lgWeave(x, y, T), sh = 1 + wv[0] * 0.4 + (m - 0.5) * 0.07;
       o[0] = c[0] * sh; o[1] = c[1] * sh; o[2] = c[2] * sh; o[3] = 0.5 + wv[0]; o[4] = 0.8 + (m - 0.5) * 0.2; o[5] = 1 - wv[1] * 0.3;
@@ -176,7 +176,7 @@ function lgCordH(x, y, T) {   // Cordura: a 2x2 basket weave of thick yarns
 }
 const LG_TILES = [
   // 0 storm camo (original): khaki ground, olive and brown blotches, light highlights, dark twigs; ripstop weave
-  lgCamoTile([[0.34, 0.35, 0.3], [0.22, 0.26, 0.18], [0.3, 0.25, 0.19], [0.46, 0.46, 0.4], [0.13, 0.13, 0.11]], 11, false),
+  lgCamoTile([[0.34, 0.35, 0.3], [0.22, 0.26, 0.18], [0.3, 0.25, 0.19], [0.43, 0.43, 0.37], [0.13, 0.13, 0.11]], 11, false),
   // 1 night camo (original): charcoal ground, near-black and grey blotches; Cordura weave (plate carrier and pouches)
   lgCamoTile([[0.15, 0.15, 0.15], [0.075, 0.075, 0.08], [0.22, 0.22, 0.21], [0.3, 0.29, 0.27], [0.05, 0.05, 0.05]], 23, true),
   // 2 ripstop
@@ -291,8 +291,34 @@ function lgDrawPosters(gA, gH, T) {
 }
 function lgDrawFaces(gA, gH, T) {
   lgQuarters(gA, gH, T, [
-    // the Operator's eyes through the balaclava
-    (a, h, x, y, s) => { const g = a.createLinearGradient(x, y + s * 0.3, x, y + s * 0.7); g.addColorStop(0, '#6b4a38'); g.addColorStop(0.5, '#a07a60'); g.addColorStop(1, '#6b4a38'); a.fillStyle = g; a.fillRect(x, y + s * 0.3, s, s * 0.4); for (const ex of [0.3, 0.7]) { a.fillStyle = '#d9d2c4'; a.beginPath(); a.ellipse(x + s * ex, y + s * 0.5, s * 0.11, s * 0.05, 0, 0, TAU); a.fill(); a.fillStyle = '#3a2a1c'; a.beginPath(); a.arc(x + s * ex + s * 0.01, y + s * 0.5, s * 0.042, 0, TAU); a.fill(); a.fillStyle = '#0a0806'; a.beginPath(); a.arc(x + s * ex + s * 0.01, y + s * 0.5, s * 0.02, 0, TAU); a.fill(); a.fillStyle = 'rgba(255,255,255,0.8)'; a.beginPath(); a.arc(x + s * ex - s * 0.01, y + s * 0.485, s * 0.008, 0, TAU); a.fill(); a.strokeStyle = '#3a271b'; a.lineWidth = s * 0.018; a.beginPath(); a.ellipse(x + s * ex, y + s * 0.5, s * 0.115, s * 0.055, 0, Math.PI * 1.05, Math.PI * 1.95); a.stroke(); } h.fillStyle = lgCover(h, 0.5, 0.45); h.fillRect(x, y + s * 0.3, s, s * 0.4); },
+    // the Operator's eyes through the balaclava (1.9.996: drawn as eyes, not a cartoon's: almond-shaped openings under a
+    // heavy upper lid with its crease and lashes, the white mostly hidden and shaded by the lid, a dark brown iris with a
+    // limbal ring and a small catchlight, the skin of the brow and cheekbones in the opening, darker toward the knit)
+    (a, h, x, y, s) => {
+      const band = a.createLinearGradient(x, y + s * 0.3, x, y + s * 0.7); band.addColorStop(0, '#3b2b22'); band.addColorStop(0.18, '#7c5a46'); band.addColorStop(0.5, '#9a735b'); band.addColorStop(0.82, '#7a5743'); band.addColorStop(1, '#3a2a21');
+      a.fillStyle = band; a.fillRect(x, y + s * 0.3, s, s * 0.4);
+      for (const ex of [0.3, 0.7]) {
+        const cx = x + s * ex, cy = y + s * 0.505, w = s * 0.1, hh = s * 0.034, inner = ex < 0.5 ? 1 : -1;
+        // the socket's shadow under the brow, the cheek's light below
+        const so = a.createRadialGradient(cx, cy - s * 0.01, s * 0.01, cx, cy, s * 0.16); so.addColorStop(0, 'rgba(40,24,16,0.35)'); so.addColorStop(1, 'rgba(40,24,16,0)'); a.fillStyle = so; a.fillRect(cx - s * 0.17, cy - s * 0.12, s * 0.34, s * 0.22);
+        // the opening: an almond, the inner corner lower and pointed, the outer a little higher
+        const path = () => { a.beginPath(); a.moveTo(cx + inner * w, cy + hh * 0.25); a.bezierCurveTo(cx + inner * w * 0.45, cy - hh * 1.45, cx - inner * w * 0.55, cy - hh * 1.3, cx - inner * w * 1.02, cy - hh * 0.15); a.bezierCurveTo(cx - inner * w * 0.5, cy + hh * 0.95, cx + inner * w * 0.45, cy + hh * 1.05, cx + inner * w, cy + hh * 0.25); a.closePath(); };
+        a.save(); path(); a.clip();
+        const scl = a.createLinearGradient(cx, cy - hh, cx, cy + hh); scl.addColorStop(0, '#9a8e80'); scl.addColorStop(0.45, '#d6cec2'); scl.addColorStop(1, '#bfb3a4'); a.fillStyle = scl; a.fillRect(cx - w * 1.1, cy - hh * 1.6, w * 2.2, hh * 3.2);
+        const ir = a.createRadialGradient(cx + inner * w * 0.08, cy, s * 0.004, cx + inner * w * 0.08, cy, s * 0.03); ir.addColorStop(0, '#2a1a10'); ir.addColorStop(0.35, '#5a3a22'); ir.addColorStop(0.8, '#3e2716'); ir.addColorStop(1, '#1a100a');
+        a.fillStyle = ir; a.beginPath(); a.arc(cx + inner * w * 0.08, cy + hh * 0.05, s * 0.03, 0, TAU); a.fill();
+        a.fillStyle = '#070504'; a.beginPath(); a.arc(cx + inner * w * 0.08, cy + hh * 0.05, s * 0.012, 0, TAU); a.fill();
+        // the upper lid's shadow across the top of the eye
+        const ls = a.createLinearGradient(cx, cy - hh * 1.4, cx, cy); ls.addColorStop(0, 'rgba(20,10,6,0.75)'); ls.addColorStop(1, 'rgba(20,10,6,0)'); a.fillStyle = ls; a.fillRect(cx - w * 1.1, cy - hh * 1.5, w * 2.2, hh * 1.5);
+        a.fillStyle = 'rgba(255,250,240,0.85)'; a.beginPath(); a.arc(cx + inner * w * 0.08 - s * 0.009, cy - hh * 0.25, s * 0.0045, 0, TAU); a.fill();
+        a.restore();
+        // the lid's edge and lashes, the crease above, the lower lid
+        a.strokeStyle = '#1e130c'; a.lineWidth = s * 0.011; a.beginPath(); a.moveTo(cx + inner * w, cy + hh * 0.25); a.bezierCurveTo(cx + inner * w * 0.45, cy - hh * 1.45, cx - inner * w * 0.55, cy - hh * 1.3, cx - inner * w * 1.02, cy - hh * 0.15); a.stroke();
+        a.strokeStyle = 'rgba(60,38,26,0.8)'; a.lineWidth = s * 0.006; a.beginPath(); a.moveTo(cx + inner * w * 0.85, cy - hh * 0.7); a.bezierCurveTo(cx + inner * w * 0.4, cy - hh * 2.3, cx - inner * w * 0.5, cy - hh * 2.2, cx - inner * w * 1.05, cy - hh * 0.9); a.stroke();
+        a.strokeStyle = 'rgba(90,60,44,0.7)'; a.lineWidth = s * 0.005; a.beginPath(); a.moveTo(cx - inner * w * 1.0, cy - hh * 0.1); a.bezierCurveTo(cx - inner * w * 0.5, cy + hh * 1.05, cx + inner * w * 0.45, cy + hh * 1.1, cx + inner * w, cy + hh * 0.3); a.stroke();
+      }
+      h.fillStyle = lgCover(h, 0.55, 0.6); h.fillRect(x, y + s * 0.3, s, s * 0.4);
+    },
     // a dead face: sunken sockets with a faint glow, a slack mouth with teeth
     (a, h, x, y, s) => { a.fillStyle = '#b8b8b0'; a.fillRect(x, y, s, s); h.fillStyle = lgCover(h, 0.5, 0.5); h.fillRect(x, y, s, s); for (const ex of [0.32, 0.68]) { const g = a.createRadialGradient(x + s * ex, y + s * 0.38, 0, x + s * ex, y + s * 0.38, s * 0.14); g.addColorStop(0, '#fff4c0'); g.addColorStop(0.18, '#3a2a24'); g.addColorStop(1, 'rgba(60,40,40,0)'); a.fillStyle = g; a.beginPath(); a.arc(x + s * ex, y + s * 0.38, s * 0.14, 0, TAU); a.fill(); } a.fillStyle = '#2a1414'; a.beginPath(); a.ellipse(x + s * 0.5, y + s * 0.74, s * 0.16, s * 0.08, 0, 0, TAU); a.fill(); a.fillStyle = '#cfc6a8'; for (let i = 0; i < 6; i++) a.fillRect(x + s * (0.38 + i * 0.042), y + s * 0.69, s * 0.03, s * 0.04); a.strokeStyle = '#5a2a2a'; a.lineWidth = s * 0.012; a.beginPath(); a.moveTo(x + s * 0.2, y + s * 0.6); a.lineTo(x + s * 0.3, y + s * 0.66); a.stroke(); },
     // velcro loop panel
@@ -381,7 +407,10 @@ const LG_SKEL = [
   ['thighR', 'pelvis', 0, -0.095, -0.045], ['shinR', 'thighR', 0, 0, -0.43], ['footR', 'shinR', 0, 0, -0.42], ['toeR', 'footR', 0.135, 0, -0.055],
   // props (placed in the root's space every frame) and the mask's seven plates (on the head)
   ['pistol', 'root', 0, 0, 0], ['slide', 'pistol', 0, 0, 0], ['mag', 'pistol', 0, 0, 0], ['knife', 'root', 0, 0, 0], ['carbine', 'root', 0, 0, 0], ['cmag', 'carbine', 0, 0, 0],
-  ['mBrow', 'head', 0, 0, 0], ['mCheekL', 'head', 0, 0, 0], ['mCheekR', 'head', 0, 0, 0], ['mJawL', 'head', 0, 0, 0], ['mJawR', 'head', 0, 0, 0], ['mChin', 'head', 0, 0, 0], ['mVisor', 'head', 0, 0, 0]
+  ['mBrow', 'head', 0, 0, 0], ['mCheekL', 'head', 0, 0, 0], ['mCheekR', 'head', 0, 0, 0], ['mJawL', 'head', 0, 0, 0], ['mJawR', 'head', 0, 0, 0], ['mChin', 'head', 0, 0, 0], ['mVisor', 'head', 0, 0, 0],
+  // 1.9.996: the kit that swings (the radio's antenna, the dump pouch on the belt, the cummerbund's strap tails), each on a
+  // hinge where it hangs, moved by the gear's springs (legperf.js, legloco.js)
+  ['antenna', 'chest', -0.012, 0.19, 0.08], ['dump', 'pelvis', -0.118, 0.066, 0.034], ['tailL', 'spine', 0.105, 0.16, 0.025], ['tailR', 'spine', 0.105, -0.16, 0.025]
 ];
 const LGB = {}; LG_SKEL.forEach((b, i) => { LGB[b[0]] = i; });
 const LG_NB = LG_SKEL.length;
@@ -407,7 +436,7 @@ function lgJm(P, side, base, rx, ry, rz) { const s = side === 'L' ? 1 : -1; lgJ(
 // fingers fan apart. Right hand; the left mirrors.
 const LGH_HOLD = { pistol: 1, trigger: 1, support: 1, cup: 1, knife: 1 };
 const LG_GRIPS = {
-  relax: { f: [[0.22, 0.32, 0.18], [0.3, 0.42, 0.22], [0.36, 0.48, 0.26], [0.44, 0.52, 0.3]], t: [-0.22, 0.5, 0.55, 0.22, 0.16], sp: 0.35 },
+  relax: { f: [[0.34, 0.52, 0.3], [0.4, 0.58, 0.32], [0.46, 0.62, 0.34], [0.54, 0.62, 0.36]], t: [-0.18, 0.45, 0.5, 0.25, 0.18], sp: 0.14 },   // (1.9.996: a hand at rest curls, the fingers together)
   open: { f: [[0.02, 0.04, 0.02], [0.02, 0.04, 0.02], [0.03, 0.04, 0.02], [0.04, 0.05, 0.03]], t: [-0.55, 0.2, 0.35, 0.05, 0.02], sp: 0.9 },
   fist: { f: [[1.45, 1.6, 0.85], [1.5, 1.62, 0.85], [1.52, 1.62, 0.85], [1.55, 1.6, 0.85]], t: [-0.2, 0.95, 0.85, 0.55, 0.45], sp: 0 },
   pistol: { f: [[0.32, 0.2, 0.08], [1.05, 1.5, 0.62], [1.12, 1.5, 0.62], [1.2, 1.48, 0.6]], t: [-0.3, 0.78, 0.65, 0.12, 0.08], sp: 0.05 },
@@ -991,7 +1020,9 @@ const LG_FS = function (deriv) {
   'uniform float uGlow, uWet, uTime, uExpo, uDesat, uShOn, uRfOn, uShTx, uSat, uCut;\n' +
   'uniform vec2 uRes; uniform vec4 uGrade;\n' +
   'varying vec3 vP; varying vec3 vN; varying vec2 vU; varying vec4 vC; varying vec4 vM; varying vec2 vX; varying vec4 vL;\n' +
-  'vec2 tuv(float t, vec2 u) { vec2 f = clamp(fract(u), uTx, 1.0 - uTx); return (vec2(mod(t, uGrid.x), floor(t / uGrid.x + 0.001)) + f) / uGrid; }\n' +
+  // (1.9.996: the tile's column and row from a whole tile number: the index arrives interpolated, and 14.99999 put a
+  // twill (tile 15, the clothes of the dead) or knit (5) fragment into the next tile's edge, printing dashes like text)
+  'vec2 tuv(float t, vec2 u) { vec2 f = clamp(fract(u), uTx, 1.0 - uTx); float r = floor(t / uGrid.x + 0.001); return (vec2(t - r * uGrid.x, r) + f) / uGrid; }\n' +
   'float unpackD(vec4 c) { return dot(c, vec4(1.0, 1.0 / 255.0, 1.0 / 65025.0, 1.0 / 16581375.0)); }\n' +
   'float shadowAt(vec4 L, float bias) { vec3 p = L.xyz / L.w * 0.5 + 0.5; if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0) return 1.0; float s = 0.0;\n' +
   ' s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(-uShTx, -uShTx)))); s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(uShTx, -uShTx))));\n' +
@@ -1003,7 +1034,7 @@ const LG_FS = function (deriv) {
   '  float h = hash(c); float ph = fract(t * (0.9 + h * 0.6) + h * 7.0); vec2 o = vec2(hash(c + 1.3), hash(c + 2.9)) - 0.5; vec2 d = f - o * 0.6; float r = length(d);\n' +
   '  float ring = sin((r - ph * 0.45) * 60.0) * smoothstep(0.08, 0.0, abs(r - ph * 0.45)) * (1.0 - ph); g += d / max(r, 0.001) * ring; } return g * 0.5; }\n' +
   'void main() {\n' +
-  ' float slot = vC.a; float cut = step(3.5, slot); float sl = slot - 4.0 * cut; float tile = vM.x;\n' +
+  ' float slot = vC.a; float cut = step(3.5, slot); float sl = slot - 4.0 * cut; float tile = floor(vM.x + 0.5);\n' +
   ' vec3 N = normalize(vN); vec3 V = normalize(uEye - vP); if (dot(N, V) < 0.0) N = -N;\n' +
   ' vec3 base = (sl > 0.5 && sl < 2.5) ? uAcc : vC.rgb; vec3 alb = base; float rough = vM.y; float metal = vM.z; float ao = 1.0; float lum = 1.0; vec4 th = vec4(0.5, 0.6, 1.0, 1.0);\n' +
   ' if (tile >= 0.0) { vec2 tu = tuv(tile, vU); vec3 ta = texture2D(uA, tu).rgb; th = texture2D(uH, tu);\n' +
@@ -1163,12 +1194,12 @@ function lgTickPlayer(pl, dt, rootM, onEv) {
   const t0 = pl.t; pl.t += dt * pl.sp;
   if (!a.loop && pl.t >= a.dur) { pl.t = a.dur; pl.done = true; }
   if (onEv && a.ev) for (const e of a.ev) { const et = e[0]; if (a.loop) { const c0 = Math.floor(t0 / a.dur), c1 = Math.floor(pl.t / a.dur); for (let c = c0; c <= c1; c++) { const at = c * a.dur + et; if (at > t0 && at <= pl.t) onEv(e[1], e[2]); } } else if (et > t0 && et <= pl.t) onEv(e[1], e[2]); }
-  lgEvalClip(a, pl.t, pl.P, pl.ctx);
+  if (pl.perf !== false && typeof lgpEval === 'function') lgpEval(a, pl.t, pl.P, pl.ctx, pl.perfO); else lgEvalClip(a, pl.t, pl.P, pl.ctx);   // (1.9.996: the performance layer)
   lgSolve(pl.P, pl.L, pl.W, rootM || lgRootM(pl.P));
   if (pl.fade > 0 && pl.prev) {
     pl.fade = Math.max(0, pl.fade - dt); const k = 1 - pl.fade / pl.fadeDur, s = k * k * (3 - 2 * k);
     // the old clip keeps playing underneath as it fades
-    pl.pt += dt; lgEvalClip(pl.prev, pl.pt, pl.P2, pl.ctx); lgSolve(pl.P2, pl.L2, pl.W2, rootM || lgRootM(pl.P2));
+    pl.pt += dt; if (pl.perf !== false && typeof lgpEval === 'function') lgpEval(pl.prev, pl.pt, pl.P2, pl.ctx, pl.perfO); else lgEvalClip(pl.prev, pl.pt, pl.P2, pl.ctx); lgSolve(pl.P2, pl.L2, pl.W2, rootM || lgRootM(pl.P2));
     lgBlendL(pl.L2, pl.L, s, pl.L); lgWorldAll(pl.W, pl.L, rootM || lgRootM(pl.P));
     if (pl.fade <= 0) pl.prev = null;
   }
