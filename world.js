@@ -62,7 +62,7 @@ function setSeason(i, quiet) {
   i = ((i | 0) % 4 + 4) % 4; if (i === WORLD.season) return;
   WORLD.season = i;
   // the city's art is redrawn for the new season, one block per frame so nothing stutters
-  for (const c of chunks.values()) { c.stale = 1; c.wcan = null; c.skyStale = true; }
+  for (const c of chunks.values()) { c.stale = 1; c.wcan = null; c.skyStale = true; c.bf = undefined; }
   if (typeof WSPR !== 'undefined') WSPR.clear();
   if (!quiet && G.mode !== 'title') toast('The season turns', SEASONS[i], ['#ffa8e0', '#7dff4a', '#ff9a3a', '#bfe6ff'][i]);
 }
@@ -120,6 +120,15 @@ function distAt(cx, cy) {
   return d;
 }
 function bioAt(x, y) { return distAt(Math.floor(x / CHS), Math.floor(y / CHS)).bio; }
+// the share of district b round the camera (0..1); without a mix yet, all or nothing by the current district
+function bioK(b) { const m = WORLD.mixv; if (m && m[b] != null) return m[b]; return WORLD.cur ? (WORLD.cur.bio === b ? 1 : 0) : (b === 'city' ? 1 : 0); }
+// a table of per-district numbers (or arrays of numbers) mixed by the share of each district round the camera
+function bioBlend(T, out) {
+  const m = WORLD.mixv, def = T.city; let s = 0;
+  if (!m) { const v = T[WORLD.cur ? WORLD.cur.bio : 'city'] || def; return out && Array.isArray(v) ? (out.length = 0, out.push(...v), out) : v; }
+  if (Array.isArray(def)) { out = out || []; out.length = def.length; out.fill(0); for (const b in m) { const w = m[b], v = T[b] || def; if (!w) continue; for (let i = 0; i < v.length; i++) out[i] += v[i] * w; s += w; } if (s > 0 && s !== 1) for (let i = 0; i < out.length; i++) out[i] /= s; return out; }
+  let v = 0; for (const b in m) { const w = m[b]; if (!w) continue; v += (T[b] != null ? T[b] : def) * w; s += w; } return s > 0 ? v / s : def;
+}
 
 /* ---------- rivers and ponds ---------- */
 // a ridge of noise: zero along the river's centre line. Negative values are water, below -1.15 is deep.
@@ -672,6 +681,9 @@ function pickStart(R) {
 // the district under the camera; a new one is announced
 function trackDistrict(x, y) {
   const D = distAt(Math.floor(x / CHS), Math.floor(y / CHS));
+  // 1.9.998: how much of each district is round the camera (the same falloff as the ground blend), so the colour grade
+  // and the shaders shade from one district into the next over a block instead of switching at a line
+  if (typeof bioMix === 'function') WORLD.mixv = bioMix(x, y, WORLD.mixv || {});
   if (D === WORLD.cur) return D;
   const prev = WORLD.cur; WORLD.cur = D;
   if (prev && G.mode === 'play' && SET.districts && G.time - WORLD.bannerT > 6) {
@@ -748,9 +760,10 @@ function chunkPaint(c) {
   // the road
   g.fillStyle = B.road; g.fillRect(ox, oy, CH, CH);
   speckle(g, R, ox, oy, CH, CH, Math.floor(260 * dm), 'rgba(255,255,255,0.03)', 'rgba(0,0,0,0.16)');
+  // where another paved district owns some of this road, its asphalt (before the lines go on: TEXEL's district blend)
+  if (typeof texelBlend === 'function') texelBlend(g, c, 0);
   drawRoadMarks(g, c, B, R);
   roadDetail(g, c, B, win, sea);
-  blendSeams(g, c, B, R);
   t1 = performance.now(); RT.road += t1 - t0; t0 = t1;
   // the block
   drawBlock(g, c, B, R, win, sea);
@@ -758,7 +771,8 @@ function chunkPaint(c) {
   drawStreetFurniture(g, c, B, Z.mulberry32(Z.hash32(c.cx * 7919 + c.cy * 104729 + 0x5f)), win);
   // the surface of the street (the texture engine): aggregate in the asphalt, concrete, grass, sand, snow, wear
   if (typeof texelGround === 'function') texelGround(g, c, win);
-  if (typeof texelSplats === 'function') texelSplats(g, c, win);   // one material growing into another, ragged district borders
+  if (typeof texelSplats === 'function') texelSplats(g, c, win);   // one material growing into another
+  if (typeof texelBlend === 'function') texelBlend(g, c, 1);       // the neighbouring districts' ground, wherever the blend field gives it to them
   t1 = performance.now(); RT.block += t1 - t0; t0 = t1;
   // rivers, ponds and bridges
   if (c.fv) drawWaterArt(g, c, B);
@@ -816,33 +830,6 @@ function windAngle(c) { return ((WORLD.seed >>> 3) % 628) / 100 + (c.D.warm - 0.
 function bloodSplat(g, x, y, r, R, col) {
   g.fillStyle = col; g.beginPath(); g.ellipse(x, y, r, r * (0.6 + R() * 0.3), R() * 3, 0, TAU); g.fill();
   const a = R() * TAU; for (let i = 0; i < 6; i++) { const d = r * (1 + R() * 1.6), s = r * (0.12 + R() * 0.22), aa = a + (R() - 0.5) * 1.2; g.beginPath(); g.arc(x + Math.cos(aa) * d, y + Math.sin(aa) * d, s, 0, TAU); g.fill(); }
-}
-// where two districts meet on a road, the asphalt shades from one into the other instead of changing at a line,
-// and snow or sand from a frozen or desert district next door blows a little way over the border
-function blendSeams(g, c, B, R) {
-  const ox = c.ox, oy = c.oy, me = c.bio;
-  const sides = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-  for (const [dx, dy] of sides) {
-    const nb = distAt(c.cx + dx, c.cy + dy).bio; if (nb === me) continue;
-    const NB = BIO[nb], L = 90;
-    // the stretch of road that touches the neighbour: our top road for left/right, our left road for up/down
-    let x0, y0, w, h, gx0, gy0, gx1, gy1;
-    if (dx) { y0 = oy; h = ROAD; if (dx < 0) { x0 = ox; w = L; gx0 = ox; gx1 = ox + L; } else { x0 = ox + CH - L; w = L; gx0 = ox + CH; gx1 = ox + CH - L; } gy0 = gy1 = oy; }
-    else { x0 = ox; w = ROAD; if (dy < 0) { y0 = oy; h = L; gy0 = oy; gy1 = oy + L; } else { y0 = oy + CH - L; h = L; gy0 = oy + CH; gy1 = oy + CH - L; } gx0 = gx1 = ox; }
-    const gr = g.createLinearGradient(gx0, gy0, gx1, gy1), col = NB.road;
-    const rgb = parseInt(col.slice(1), 16), cc = (rgb >> 16) + ',' + ((rgb >> 8) & 255) + ',' + (rgb & 255);
-    gr.addColorStop(0, 'rgba(' + cc + ',0.5)'); gr.addColorStop(1, 'rgba(' + cc + ',0)');
-    g.fillStyle = gr; g.fillRect(x0, y0, w, h);
-    if ((nb === 'snow' || nb === 'desert') && me !== nb) {
-      const rgb2 = nb === 'snow' ? '226,232,238' : '160,128,86';
-      // drifts along the curbs of the shared road, thinning out with distance from the border
-      for (let i = 0; i < 7; i++) {
-        const k = R() * R(), edge = R() < 0.5, d = 6 + R() * 8;
-        const x = dx ? (dx < 0 ? ox + k * 160 : ox + CH - k * 160) : ox + (edge ? d * 0.4 : ROAD - d * 0.4), y = dx ? oy + (edge ? d * 0.4 : ROAD - d * 0.4) : (dy < 0 ? oy + k * 160 : oy + CH - k * 160);
-        softBlob(g, x, y, dx ? 24 + R() * 30 : d, dx ? d : 24 + R() * 30, 0, rgb2, (nb === 'snow' ? 0.5 : 0.4) * (1 - k * 0.8));
-      }
-    }
-  }
 }
 // on the sidewalks: fire hydrants, traffic signals at the corner, a bus stop, newspaper boxes; and on the road:
 // stop lines, manholes, storm drains, skid marks and oil stains. All of it is paint on the ground, nothing to bump into.

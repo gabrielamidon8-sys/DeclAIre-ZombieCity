@@ -522,8 +522,12 @@ function drawWeatherScreen(rdt) {
   const grade = SET.grade !== false, L = [];
   if (WX.dark > 0.02 && lv > 0) L.push([8, 12, 22, WX.dark * (LUX.live ? 0.2 : 0.55)]);   // with the lighting engine on, storms darken the ambient light instead (so lamps still cut through)
   if (grade) {
-    const bio = WORLD.cur ? WORLD.cur.bio : 'city', g = GRADE[bio] || GRADE.city, gr = WX.gr;
-    const e = Math.min(1, rdt * 0.8); for (let i = 0; i < 4; i++) gr[i] += (g[i] - gr[i]) * e;
+    // (the grade is mixed from the districts round the camera, colour weighted by each one's strength)
+    const g = WX.grT || (WX.grT = [0, 0, 0, 0]), m = WORLD.mixv; let ga = 0, r = 0, gg = 0, bb = 0;
+    if (m) { for (const b in m) { const w = m[b], G0 = GRADE[b] || GRADE.city; if (!w) continue; const a = G0[3] * w; ga += a; r += G0[0] * a; gg += G0[1] * a; bb += G0[2] * a; } }
+    else { const G0 = GRADE[WORLD.cur ? WORLD.cur.bio : 'city'] || GRADE.city; ga = G0[3]; r = G0[0] * ga; gg = G0[1] * ga; bb = G0[2] * ga; }
+    if (ga > 0) { g[0] = r / ga; g[1] = gg / ga; g[2] = bb / ga; } g[3] = ga;
+    const gr = WX.gr, e = Math.min(1, rdt * 0.8); for (let i = 0; i < 4; i++) gr[i] += (g[i] - gr[i]) * e;
     if (gr[3] > 0.005) L.push([gr[0], gr[1], gr[2], gr[3]]);
     if (lv > 0 && WX.sand > 0.05) L.push([160, 112, 58, WX.sand * 0.16]);
     if (lv > 0 && WX.snow > 0.6 && WX.wind > 0.6) L.push([220, 230, 240, (WX.snow - 0.6) * WX.wind * 0.35]);

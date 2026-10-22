@@ -145,6 +145,14 @@ function texelGroundTex(kind) {
       const x = (R() * n) | 0, y = (R() * n) | 0, r = 1 + R() * 2.6, v = 128 + (R() - 0.5) * 90;
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const q = dx * dx + dy * dy; if (q > r * r) continue; put((((y + dy + n) % n) * n + ((x + dx + n) % n)), v + (dy < 0 ? 18 : -14)); }
     }
+  } else if (kind === 'snowcover') {
+    // 1.9.998: snow lying on a road, in drifts and thin patches with bare asphalt between (white, its own alpha; laid on
+    // in world space so it runs on across blocks and over a district border unbroken)
+    const a = texelNoise(n, 64, 163), b = texelNoise(n, 20, 167), e = texelNoise(n, 6, 173);
+    for (let i = 0; i < n * n; i++) {
+      const v = a[i] * 0.6 + b[i] * 0.3 + e[i] * 0.1, t = clamp((v - 0.42) / 0.16, 0, 1), k = i * 4, sh = 236 + (b[i] - 0.5) * 30;
+      d[k] = clamp(sh - 8, 0, 255); d[k + 1] = clamp(sh - 3, 0, 255); d[k + 2] = clamp(sh + 4, 0, 255); d[k + 3] = t * t * (3 - 2 * t) * 235;
+    }
   } else if (kind === 'macro') {
     // big soft patches of dirt and wear (a multiply map: white leaves the picture alone)
     const a = texelNoise(n, 64, 151), b = texelNoise(n, 22, 157);
@@ -171,30 +179,35 @@ function texelGroundPat(g, kind, scale) {
 // street's surface, by district. g draws in the block's art units.
 function texelGround(g, c, win) {
   if (texelLevel() < 1 || (Q.deco || 1) < 0.6) return;
-  const t0 = performance.now(), ox = c.ox, oy = c.oy, bio = c.bio, bx = ox + ROAD, by = oy + ROAD, snow = bio === 'snow' || win;
+  const t0 = performance.now(), ox = c.ox, oy = c.oy, by = oy + ROAD;
   try {
     g.save();
-    const fill = (kind, scale, op, a, rects) => {
-      const pat = texelGroundPat(g, kind, scale); if (!pat) return;
-      g.globalCompositeOperation = op; g.globalAlpha = a; g.fillStyle = pat;
-      for (const r of rects) g.fillRect(r[0], r[1], r[2], r[3]);
-    };
-    const road = [[ox, oy, CH, ROAD], [ox, by, ROAD, BS]], block = [[bx, by, BS, BS]], all = [[ox, oy, CH, CH]];
-    // the road: aggregate in the asphalt (sand and snow lie on it in those districts)
-    if (bio === 'desert') fill('sand', 0.5, 'overlay', 0.5, all);
-    else if (snow) { fill('asphalt', 0.25, 'overlay', 0.35, road); fill('snow', 0.5, 'overlay', 0.45, all); }
-    else fill('asphalt', 0.25, 'overlay', 0.6, road);
-    // the block: concrete, grass, rubble
-    if (!snow && bio !== 'desert') {
-      if (bio === 'suburb') fill('turf', 0.3, 'overlay', 0.55, block);
-      else if (bio === 'ruins' || bio === 'ash' || bio === 'burning') { fill('concrete', 0.35, 'overlay', 0.4, block); fill('gravel', 0.3, 'overlay', bio === 'ruins' ? 0.4 : 0.25, block); }
-      else fill('concrete', 0.35, 'overlay', 0.45, block);
-    }
-    // wear and dirt over everything, big and soft
-    fill('macro', 1.6, 'multiply', bio === 'snow' ? 0.18 : 0.32, all);
+    texelGroundFor(g, c.bio, win, [[ox, oy, CH, ROAD], [ox, by, ROAD, BS]], [[ox + ROAD, by, BS, BS]]);
     g.restore();
   } catch (e) { g.restore(); texelHurt(e); }
   TEXEL.groundMs = (TEXEL.groundMs || 0) * 0.8 + (performance.now() - t0) * 0.2;
+}
+// one district's surfaces over the given road and block rectangles (the district blend paints a neighbour's ground with it)
+function texelGroundFor(g, bio, win, road, block) {
+  const snow = bio === 'snow' || win, all = road.concat(block);
+  const fill = (kind, scale, op, a, rects) => {
+    if (!rects.length) return; const pat = texelGroundPat(g, kind, scale); if (!pat) return;
+    g.globalCompositeOperation = op; g.globalAlpha = a; g.fillStyle = pat;
+    for (const r of rects) g.fillRect(r[0], r[1], r[2], r[3]);
+  };
+  // the road: aggregate in the asphalt (sand and snow lie on it in those districts)
+  if (bio === 'desert') fill('sand', 0.5, 'overlay', 0.5, all);
+  else if (snow) { fill('asphalt', 0.25, 'overlay', 0.35, road); fill('snow', 0.5, 'overlay', 0.45, all); }
+  else fill('asphalt', 0.25, 'overlay', 0.6, road);
+  // the block: concrete, grass, rubble
+  if (!snow && bio !== 'desert') {
+    if (bio === 'suburb') fill('turf', 0.3, 'overlay', 0.55, block);
+    else if (bio === 'ruins' || bio === 'ash' || bio === 'burning') { fill('concrete', 0.35, 'overlay', 0.4, block); fill('gravel', 0.3, 'overlay', bio === 'ruins' ? 0.4 : 0.25, block); }
+    else fill('concrete', 0.35, 'overlay', 0.45, block);
+  }
+  // wear and dirt over everything, big and soft
+  fill('macro', 1.6, 'multiply', bio === 'snow' ? 0.18 : 0.32, all);
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
 }
 /* ---------- material blending: one surface growing into another ----------
    Hard edges between materials are what make a procedural city look procedural. On top of the base surfaces, each block
@@ -238,27 +251,218 @@ function texelSplats(g, c, win) {
     const onRoad = () => R() < 0.5 ? [ox + R() * CH, oy + 8 + R() * (ROAD - 16)] : [ox + 8 + R() * (ROAD - 16), by + R() * BS];
     const onBlock = () => [bx + 10 + R() * (BS - 20), by + 10 + R() * (BS - 20)];
     const atCurb = () => { const e = (R() * 4) | 0, t = R(); return e === 0 ? [bx + t * BS, by + 4] : e === 1 ? [bx + 4, by + t * BS] : e === 2 ? [bx + t * BS, oy + ROAD - 3] : [ox + ROAD - 3, by + t * BS]; };
-    const put = (k, at, s, n, a) => { const q = at(); texelSplat(g, c, k, q[0], q[1], s * (0.7 + R() * 0.6), s * (0.7 + R() * 0.6), n || 5, R, a); };
+    const at = { road: onRoad, block: onBlock, curb: atCurb };
     for (let i = 0; i < N; i++) {
-      const u = R();
-      if (snow) { if (u < 0.45) put('snow', onRoad, 34, 6, 0.8); else if (u < 0.7) put('slush', onRoad, 26, 5, 0.6); else put('snow', atCurb, 22, 5, 0.85); }
-      else if (bio === 'desert') { if (u < 0.55) put('sand', onRoad, 40, 6, 0.75); else if (u < 0.8) put('sand', atCurb, 26, 5, 0.85); else put('dirt', onBlock, 30, 5, 0.6); }
-      else if (bio === 'suburb') { if (u < 0.3) put('dirt', onBlock, 30, 6, 0.7); else if (u < 0.5) put('leaves', atCurb, 20, 5, 0.7); else if (u < 0.65) put('mud', onBlock, 22, 5, 0.6); else if (u < 0.8) put('weeds', atCurb, 16, 4, 0.75); else put('oil', onRoad, 16, 4, 0.5); }
-      else if (bio === 'ruins' || bio === 'ash' || bio === 'burning') { if (u < 0.3) put('rubble', atCurb, 28, 6, 0.75); else if (u < 0.5) put('ash', onRoad, 34, 6, 0.6); else if (u < 0.65) put('soot', onBlock, 36, 5, 0.6); else if (u < 0.8) put('weeds', onBlock, 18, 4, 0.6); else put('cracked', onBlock, 30, 5, 0.6); }
-      else { if (u < 0.25) put('oil', onRoad, 18, 4, 0.55); else if (u < 0.4) put('tar', onRoad, 26, 5, 0.5); else if (u < 0.55) put('weeds', atCurb, 12, 4, 0.7); else if (u < 0.7) put('dirt', atCurb, 16, 4, 0.55); else if (u < 0.85) put('cracked', onBlock, 26, 5, 0.55); else put('moss', onBlock, 18, 4, 0.5); }
+      const p = texelSplatPick(bio, snow, R()), q = at[p[1]]();
+      texelSplat(g, c, p[0], q[0], q[1], p[2] * (0.7 + R() * 0.6), p[2] * (0.7 + R() * 0.6), p[3], R, p[4]);
     }
-    // where two districts meet: each one's ground reaches into the other in ragged tongues
-    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      const nb = distAt(c.cx + dx, c.cy + dy).bio; if (nb === bio) continue;
-      const k = nb === 'snow' ? 'snow' : nb === 'desert' ? 'sand' : nb === 'suburb' ? 'weeds' : nb === 'ruins' || nb === 'ash' || nb === 'burning' ? 'ash' : 'tar';
-      for (let i = 0; i < (lvl >= 2 ? 6 : 3); i++) {
-        const t = R(), d = R() * R() * 140, x = dx ? (dx < 0 ? ox + d : ox + CH - d) : ox + t * CH, y = dy ? (dy < 0 ? oy + d : oy + CH - d) : oy + t * CH;
-        texelSplat(g, c, k, x, y, 26 + R() * 30, 26 + R() * 30, 6, R, 0.7 * (1 - d / 160));
-      }
-    }
+    // (1.9.998: where two districts meet is the district blend's job now, texelBlend)
     g.restore();
   } catch (e) { g.restore(); texelHurt(e); }
   TEXEL.splatMs = (TEXEL.splatMs || 0) * 0.8 + (performance.now() - t0) * 0.2;
+}
+// which blend a district grows, for a roll u in 0..1: [material, where (road, block or curb), size, blobs, opacity]
+function texelSplatPick(bio, snow, u) {
+  if (snow) return u < 0.45 ? ['snow', 'road', 34, 6, 0.8] : u < 0.7 ? ['slush', 'road', 26, 5, 0.6] : ['snow', 'curb', 22, 5, 0.85];
+  if (bio === 'desert') return u < 0.55 ? ['sand', 'road', 40, 6, 0.75] : u < 0.8 ? ['sand', 'curb', 26, 5, 0.85] : ['dirt', 'block', 30, 5, 0.6];
+  if (bio === 'suburb') return u < 0.3 ? ['dirt', 'block', 30, 6, 0.7] : u < 0.5 ? ['leaves', 'curb', 20, 5, 0.7] : u < 0.65 ? ['mud', 'block', 22, 5, 0.6] : u < 0.8 ? ['weeds', 'curb', 16, 4, 0.75] : ['oil', 'road', 16, 4, 0.5];
+  if (bio === 'ruins' || bio === 'ash' || bio === 'burning') return u < 0.3 ? ['rubble', 'curb', 28, 6, 0.75] : u < 0.5 ? ['ash', 'road', 34, 6, 0.6] : u < 0.65 ? ['soot', 'block', 36, 5, 0.6] : u < 0.8 ? ['weeds', 'block', 18, 4, 0.6] : ['cracked', 'block', 30, 5, 0.6];
+  return u < 0.25 ? ['oil', 'road', 18, 4, 0.55] : u < 0.4 ? ['tar', 'road', 26, 5, 0.5] : u < 0.55 ? ['weeds', 'curb', 12, 4, 0.7] : u < 0.7 ? ['dirt', 'curb', 16, 4, 0.55] : u < 0.85 ? ['cracked', 'block', 26, 5, 0.55] : ['moss', 'block', 18, 4, 0.5];
+}
+
+/* ---------- 1.9.998: district blending ----------
+   Districts used to change at a block's edge: a straight line of snow, a road that turned from sand to asphalt at a seam.
+   Now every point of the city has a weight for each district near it, falling off over almost a whole block (about
+   19 m) from that district's blocks, plus a district's own noise in four octaves (big tongues down to a ragged fine
+   edge). Whichever district scores highest owns the ground there. The field is a function of world position alone, so
+   the two blocks either side of a border paint exactly complementary halves of one wandering contour, with islands of
+   one ground left inside the other, and corners and diagonals come out right because the weights come from distances to
+   whole blocks. A block paints a neighbour's ground where the neighbour owns it: that district's road, sidewalk and lot
+   colours over this block's layout, its surface textures and its own patches of snow, sand, weeds or rubble, seen
+   through a soft mask made from the field. Snow and sand cover everything (roads, sidewalks, lines); between two paved
+   districts the asphalt shades across before the road markings are painted, and the lots change while the sidewalks stay
+   sidewalks. */
+const TXB = { res: 0.55, L: 0.95, amp: 2.4, oct: [[260, 0.3], [96, 0.16], [34, 0.08], [12, 0.045]], off: { city: 11.3, burning: 23.9, chaos: 37.1, ruins: 51.7, ash: 67.3, suburb: 83.9, desert: 97.1, snow: 113.3 } };
+function txbCover(bio, win) { return bio === 'snow' || bio === 'desert' || !!win; }
+function txbWin(bio) { return WORLD.season === 3 && !!TEMPERATE[bio]; }
+function txbNoise(b, x, y) { const o = TXB.off[b] || 0; let n = 0; for (const q of TXB.oct) n += perlin(x / q[0] + o, y / q[0] - o * 0.61) * q[1]; return n * TXB.amp; }
+// each district's weight at (x, y) in art units: 1 inside its blocks, falling to 0 at TXB.L blocks away. nb is the 3x3 of
+// district names round the block; the result goes in W by district (only districts in nb)
+function txbWeights(nb, cx, cy, x, y, W) {
+  const L = TXB.L * CH;
+  for (const k in W) W[k] = 0;
+  for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) {
+    const b = nb[j * 3 + i], x0 = (cx + i - 1) * CH, y0 = (cy + j - 1) * CH;
+    const dx = x < x0 ? x0 - x : x > x0 + CH ? x - x0 - CH : 0, dy = y < y0 ? y0 - y : y > y0 + CH ? y - y0 - CH : 0, d = Math.sqrt(dx * dx + dy * dy);
+    const w = d >= L ? 0 : 1 - d / L; if (w > W[b]) W[b] = w;
+  }
+  return W;
+}
+// the block's field: for each other district that owns some of this block's ground, a mask (alpha per grid node,
+// (CH / cell + 1) square) and its box. Cached on the block; null when the whole neighbourhood is one district.
+function txbField(c) {
+  if (c.bf !== undefined) return c.bf;
+  const me = c.bio, nb = []; let any = false;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const b = distAt(c.cx + i, c.cy + j).bio; nb.push(b); if (b !== me && txbDiffers(me, b)) any = true; }
+  if (!any) return c.bf = null;   // (one district all round, or neighbours whose ground looks the same as this one's)
+  // two grids: the weights and the two big octaves on a coarse one (32 units), interpolated onto a fine one (4 units)
+  // where the two finest octaves are added and the edge is decided, so the border is crisp and ragged without
+  // computing everything at the fine spacing
+  const t0 = performance.now(), low = (Q.deco || 1) < 0.6, CC = 32, cell = low ? 8 : 4, GC = CH / CC + 1, G = Math.round(CH / cell) + 1, ox = c.cx * CH, oy = c.cy * CH;
+  const bios = [...new Set(nb)], nB = bios.length, W = {}; for (const b of bios) W[b] = 0;
+  const others = bios.filter(b => b !== me && txbDiffers(me, b)), masks = {};
+  for (const b of others) masks[b] = { a: new Uint8ClampedArray(G * G), x0: G, y0: G, x1: -1, y1: -1, n: 0 };
+  const SC = bios.map(() => new Float32Array(GC * GC)), oct = TXB.oct;
+  for (let gy = 0; gy < GC; gy++) for (let gx = 0; gx < GC; gx++) {
+    const x = ox + gx * CC, y = oy + gy * CC; txbWeights(nb, c.cx, c.cy, x, y, W);
+    for (let k = 0; k < nB; k++) {
+      const b = bios[k], w = W[b]; if (w <= 0) { SC[k][gy * GC + gx] = -3; continue; }
+      const o = TXB.off[b] || 0; let n = 0; for (let q = 0; q < 2; q++) n += perlin(x / oct[q][0] + o, y / oct[q][0] - o * 0.61) * oct[q][1];
+      SC[k][gy * GC + gx] = w + n * TXB.amp;
+    }
+  }
+  const S = new Float32Array(nB), e = 0.1, FA2 = oct[2][1] * TXB.amp, FA = oct[3][1] * TXB.amp, near = (FA + FA2) * 1.25 + e;
+  // each coarse cell, for each other district: none of it (well below the best at all four corners), all of it (well
+  // above every other at all four corners) or an edge runs through it; only edge cells are worked out node by node
+  const oK = others.map(b => bios.indexOf(b)), nO = oK.length, m = Math.round(CC / cell), lim = near + 0.02, st = new Uint8Array(nO);
+  const mark = (M, gx, gy, a) => { M.a[gy * G + gx] = a; M.n++; if (gx < M.x0) M.x0 = gx; if (gx > M.x1) M.x1 = gx; if (gy < M.y0) M.y0 = gy; if (gy > M.y1) M.y1 = gy; };
+  for (let j0 = 0; j0 < GC - 1; j0++) for (let i0 = 0; i0 < GC - 1; i0++) {
+    const q = j0 * GC + i0, Q4 = [q, q + 1, q + GC, q + GC + 1]; let any = false, mixed = false;
+    for (let t = 0; t < nO; t++) {
+      const k = oK[t], A = SC[k]; let lo = 9, hi = -9;
+      for (const qq of Q4) { let best = -9; for (let o = 0; o < nB; o++) if (o !== k && SC[o][qq] > best) best = SC[o][qq]; const d = A[qq] < -1 ? -9 : A[qq] - best; if (d < lo) lo = d; if (d > hi) hi = d; }
+      st[t] = hi < -lim ? 0 : lo > lim ? 1 : 2; if (st[t]) any = true; if (st[t] === 2) mixed = true;
+    }
+    if (!any) continue;
+    const gy1 = j0 === GC - 2 ? G - 1 : (j0 + 1) * m - 1, gx1 = i0 === GC - 2 ? G - 1 : (i0 + 1) * m - 1;
+    for (let gy = j0 * m; gy <= gy1; gy++) {
+      const fy = (gy - j0 * m) / m;
+      for (let gx = i0 * m; gx <= gx1; gx++) {
+        for (let t = 0; t < nO; t++) if (st[t] === 1) mark(masks[bios[oK[t]]], gx, gy, 255);
+        if (!mixed) continue;
+        const fx = (gx - i0 * m) / m, x = ox + gx * cell, y = oy + gy * cell;
+        for (let k = 0; k < nB; k++) {
+          const A = SC[k]; let v = (A[q] * (1 - fx) + A[q + 1] * fx) * (1 - fy) + (A[q + GC] * (1 - fx) + A[q + GC + 1] * fx) * fy;
+          // the fine edge: the two smallest octaves for each district in play here
+          if (v > -1) { const o = TXB.off[bios[k]] || 0; v += perlin(x / oct[2][0] + o, y / oct[2][0] - o * 0.61) * FA2 + perlin(x / oct[3][0] + o, y / oct[3][0] - o * 0.61) * FA; }
+          S[k] = v;
+        }
+        for (let t = 0; t < nO; t++) {
+          if (st[t] !== 2) continue; const k = oK[t]; if (S[k] < -1) continue;
+          let best = -9; for (let o = 0; o < nB; o++) if (o !== k && S[o] > best) best = S[o];
+          const d = S[k] - best; if (d < -e) continue;
+          const u = d >= e ? 1 : (d + e) / (2 * e); mark(masks[bios[k]], gx, gy, u * u * (3 - 2 * u) * 255);
+        }
+      }
+    }
+  }
+  const out = [];
+  for (const b of others) if (masks[b].n) { const M = masks[b]; M.bio = b; M.G = G; M.cell = cell; out.push(M); }
+  WORLD.blendMs = (WORLD.blendMs || 0) + performance.now() - t0; WORLD.blendN = (WORLD.blendN || 0) + 1;
+  return c.bf = out.length ? out : null;
+}
+// snow lying on the roads of the frozen north (its own blocks and wherever it owns another's ground): two layers of the
+// drift texture at different sizes, anchored to the world
+function texelRoadSnow(g, rects) {
+  if (!rects.length) return;
+  for (const [sc, a] of [[1, 0.8], [0.43, 0.45]]) {
+    const pat = texelGroundPat(g, 'snowcover', sc); if (!pat) return;
+    g.globalAlpha = a; g.fillStyle = pat; for (const r of rects) g.fillRect(r[0], r[1], r[2], r[3]);
+  }
+  g.globalAlpha = 1;
+}
+// a district's ground colours: road, sidewalk (and its kerb line) and lot; desert and snow blocks are all lot
+function txbPal(b, win) {
+  const B = BIO[b], sea = WORLD.season, grass = sea === 0 ? '#29421f' : sea === 1 ? '#233c1d' : sea === 2 ? '#3a3520' : '#2f3a2a';
+  if (b === 'desert' || b === 'snow') return { road: B.road, ring: 0, lot: B.lot, walk: B.lot };
+  return { road: B.road, ring: 1, walk: win ? '#7d8890' : B.walk, edge: win ? '#9aa5ad' : B.edge, lot: win ? (b === 'suburb' ? '#8d99a3' : '#7d8890') : b === 'suburb' ? grass : B.lot };
+}
+// whether two districts' grounds look different enough to blend (two paved districts with asphalt and lots a shade
+// apart do not: the field skips them, and their blocks cost nothing extra)
+function txbDiffers(a, b) {
+  if (a === b) return false;
+  const wa = txbWin(a), wb = txbWin(b);
+  if (txbCover(a, wa) !== txbCover(b, wb)) return true;
+  const pa = txbPal(a, wa), pb = txbPal(b, wb);
+  return !txbNear(pa.road, pb.road) || !txbNear(pa.lot, pb.lot) || !txbNear(pa.walk, pb.walk);
+}
+function txbNear(a, b) { const p = parseInt(a.slice(1), 16), q = parseInt(b.slice(1), 16); return Math.abs((p >> 16) - (q >> 16)) + Math.abs(((p >> 8) & 255) - ((q >> 8) & 255)) + Math.abs((p & 255) - (q & 255)) < 24; }
+const TXB_SPECK = { desert: ['rgba(255,230,180,0.06)', 'rgba(60,40,20,0.12)'], snow: ['rgba(255,255,255,0.12)', 'rgba(60,80,100,0.08)'], suburb: ['rgba(120,170,90,0.10)', 'rgba(0,0,0,0.14)'], road: ['rgba(255,255,255,0.03)', 'rgba(0,0,0,0.16)'] };
+function txbMaskCanvas(M) {
+  if (M.can) return M.can;
+  const cv = texelMk(M.G, M.G), g = cv.getContext('2d'), im = g.createImageData(M.G, M.G), d = im.data;
+  for (let i = 0; i < M.a.length; i++) { const k = i * 4; d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = M.a[i]; }
+  g.putImageData(im, 0, 0); return M.can = cv;
+}
+// paints the neighbours' ground into block c where they own it. late = 0 is the early pass (before road markings): the
+// asphalt between two paved districts; late = 1 is everything else, after this block's own surfaces and patches
+function texelBlend(g, c, late) {
+  if (TXB.disabled) return;
+  if (late && c.bio === 'snow') { const ox = c.ox, oy = c.oy; texelRoadSnow(g, [[ox, oy, CH, ROAD], [ox, oy + ROAD, ROAD, BS]]); }   // (under any neighbour's ground)
+  let F; try { F = txbField(c); } catch (e) { texelHurt(e); return; }
+  if (!F) return;
+  const t0 = performance.now(), ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, px = c.px || 1, me = c.bio, meCov = txbCover(me, winterOn(c)), lvl = texelLevel();
+  const roadR = [[ox, oy, CH, ROAD], [ox, by, ROAD, BS]], blockR = [bx, by, BS, BS], innerR = [bx + 16, by + 16, BS - 32, BS - 32];
+  for (const M of F) {
+    const b = M.bio, win = txbWin(b), cov = txbCover(b, win), full = cov || meCov;
+    if (!late && (full || txbNear(BIO[b].road, BIO[me].road))) continue;   // (covering grounds are all painted in the late pass; two asphalts within a shade of each other need no early pass)
+    const P = txbPal(b, win), R = Z.mulberry32(Z.hash32(c.cx * 7349 + c.cy * 91813 + b.length * 131 + (late ? 17 : 3)));
+    // the box of the mask, in art units, with a cell of margin for the soft edge
+    const cell = M.cell, ax0 = ox + (M.x0 - 1) * cell, ay0 = oy + (M.y0 - 1) * cell, ax1 = ox + (M.x1 + 1) * cell, ay1 = oy + (M.y1 + 1) * cell;
+    const x0 = Math.max(ox, ax0), y0 = Math.max(oy, ay0), x1 = Math.min(ox + CH, ax1), y1 = Math.min(oy + CH, ay1);
+    if (x1 - x0 < 2 || y1 - y0 < 2) continue;
+    // (painted at a little over half the block's sharpness: it is soft ground seen through a soft mask, and a quarter of
+    // the pixels to fill)
+    const hp = Math.max(px * TXB.res, Math.min(px, 0.9)), Sw = Math.ceil((x1 - x0) * hp), Sh = Math.ceil((y1 - y0) * hp), T = texelScratch(5, Math.max(Sw, Sh)), t = T.g;
+    t.setTransform(hp, 0, 0, hp, -x0 * hp, -y0 * hp);
+    const box = (r) => { const a = Math.max(r[0], x0), b2 = Math.max(r[1], y0), w = Math.min(r[0] + r[2], x1) - a, h = Math.min(r[1] + r[3], y1) - b2; return w > 0 && h > 0 ? [a, b2, w, h] : null; };
+    const roads = [], blocks = [];
+    if (!late || full) for (const r of roadR) { const q = box(r); if (q) { t.fillStyle = P.road; t.fillRect(q[0], q[1], q[2], q[3]); roads.push(q); } }
+    if (late) {
+      if (full) {
+        const q = box(blockR); if (q) { t.fillStyle = P.ring ? P.walk : P.lot; t.fillRect(q[0], q[1], q[2], q[3]); blocks.push(q); }
+        if (P.ring) { t.strokeStyle = P.edge; t.lineWidth = 2; t.strokeRect(bx + 1, by + 1, BS - 2, BS - 2); }
+      }
+      if (P.ring) { const q = box(innerR); if (q) { t.fillStyle = P.lot; t.fillRect(q[0], q[1], q[2], q[3]); if (!full) blocks.push(q); } }
+      else if (!full) { const q = box(innerR); if (q) { t.fillStyle = P.lot; t.fillRect(q[0], q[1], q[2], q[3]); blocks.push(q); } }
+    }
+    if (!roads.length && !blocks.length) continue;
+    // grain: the district's speckle on its ground
+    const dm = Q.deco || 1, sp = TXB_SPECK[b === 'suburb' && win ? 'snow' : b] || null;
+    for (const q of roads) speckle(t, R, q[0], q[1], q[2], q[3], Math.floor(q[2] * q[3] / 1600 * dm), TXB_SPECK.road[0], TXB_SPECK.road[1]);
+    if (sp) for (const q of blocks) speckle(t, R, q[0], q[1], q[2], q[3], Math.floor(q[2] * q[3] / 900 * dm), sp[0], sp[1]);
+    if (late) {
+      if (lvl >= 1 && dm >= 0.6) texelGroundFor(t, b, win, roads, blocks);
+      if (b === 'snow') texelRoadSnow(t, roads);
+      // the district's own patches, set where it owns the ground most firmly
+      // (only the loose covers: snow, sand, ash and rubble lie anywhere; a paved district's oil and weeds belong to its own layout)
+      const snowy = b === 'snow' || win, kinds = snowy ? ['snow', 'slush', 'snow'] : b === 'desert' ? ['sand', 'sand', 'dirt'] : b === 'ruins' || b === 'ash' || b === 'burning' ? ['ash', 'rubble', 'soot'] : null;
+      const N = kinds ? (lvl >= 2 ? 4 : 2) : 0, G = M.G;
+      for (let i = 0, tries = 0; i < N && tries < 50; tries++) {
+        const gx = M.x0 + ((R() * (M.x1 - M.x0 + 1)) | 0), gy = M.y0 + ((R() * (M.y1 - M.y0 + 1)) | 0); if (M.a[gy * G + gx] < 220) continue;
+        const sx = ox + gx * cell, sy = oy + gy * cell, k = kinds[i % 3], sz = k === 'sand' ? 38 : k === 'snow' ? 32 : 26; i++;
+        if (lvl >= 1) texelSplat(t, c, k, sx, sy, sz * (0.8 + R() * 0.6), sz * (0.8 + R() * 0.6), 5, R, 0.75);
+        if (snowy && i % 2) softBlob(t, sx, sy, 40 + R() * 50, 10 + R() * 7, windAngle(c), '250,252,255', 0.4);
+      }
+    }
+    // through the mask
+    t.globalCompositeOperation = 'destination-in'; t.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in t) t.imageSmoothingQuality = 'low';
+    t.drawImage(txbMaskCanvas(M), ox - cell / 2, oy - cell / 2, (M.G) * cell, (M.G) * cell);
+    t.globalCompositeOperation = 'source-over'; t.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = late ? (full ? 0.96 : 0.9) : 0.92; g.drawImage(T, 0, 0, Sw, Sh, x0, y0, Sw / hp, Sh / hp); g.globalAlpha = 1;
+  }
+  TEXEL.blendMs = (TEXEL.blendMs || 0) * 0.8 + (performance.now() - t0) * 0.2;
+}
+// how much of each district is round a point (x, y in world pixels), for the shaders and the colour grade: the same
+// weights as the ground blend without its noise, sharpened so a district's own middle is all its own
+function bioMix(x, y, out) {
+  out = out || {}; for (const k in out) out[k] = 0;
+  const ax = x / SCL, ay = y / SCL, cx = Math.floor(ax / CH), cy = Math.floor(ay / CH), nb = [];
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) nb.push(distAt(cx + i, cy + j).bio);
+  const W = {}; for (const b of nb) W[b] = 0; txbWeights(nb, cx, cy, ax, ay, W);
+  let s = 0; for (const b in W) { const v = W[b] * W[b] * W[b] * W[b]; W[b] = v; s += v; }
+  for (const b in W) out[b] = s > 0 ? W[b] / s : 0;
+  return out;
 }
 // a pattern of a library texture, drawn at `scale` (pattern pixels per unit of the context it paints)
 function texelPattern(g, kind, scale) {

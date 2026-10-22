@@ -52,7 +52,7 @@ function luxAmbient(out) {
   const N = LUX_NIGHT[SET.nightDark === 'deep' ? 1 : 0];
   let r = N[0] + (1 - N[0]) * day, g = N[1] + (1 - N[1]) * day, b = N[2] + (1 - N[2]) * day;
   r = Math.min(1, r * (1 + 0.1 * tw)); g *= 1 - 0.2 * tw; b *= 1 - 0.4 * tw;      // golden at the edges of the day
-  const k = clamp(1 - WX.dark * 0.8 - (WORLD.cur && WORLD.cur.bio === 'ash' ? 0.07 : 0), 0.35, 1), fl = WX.flash > 0.01 ? WX.flash * 0.7 : 0;
+  const k = clamp(1 - WX.dark * 0.8 - bioK('ash') * 0.07, 0.35, 1), fl = WX.flash > 0.01 ? WX.flash * 0.7 : 0;
   out[0] = Math.min(1, r * k + fl); out[1] = Math.min(1, g * k + fl); out[2] = Math.min(1, b * k + fl);
   LUX.day = day;
   return out;
@@ -817,12 +817,12 @@ function luxGI(m, tr, s, lq) {
     const wx = GI.gx * cell, wy = GI.gy * cell, sx = tr.a * wx + tr.e, sy = tr.d * wy + tr.f, sw = tr.a * gw * cell, sh = tr.d * gh * cell;
     GI.acg.setTransform(1, 0, 0, 1, 0, 0); GI.acg.fillStyle = '#555'; GI.acg.fillRect(0, 0, gw, gh); GI.acg.drawImage(cv, sx, sy, sw, sh, 0, 0, gw, gh);
     const d = GI.acg.getImageData(0, 0, gw, gh).data; if (!GI.alb || GI.alb.length !== N * 3) GI.alb = new Float32Array(N * 3);
-    const A = GI.alb, base = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city;
+    const A = GI.alb, base = bioBlend(GI_ALB, GI.albM || (GI.albM = []));
     for (let i = 0; i < N; i++) { const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], m = Math.max(r, g, b) + 20; A[i * 3] = base[0] * 0.4 + r / m * 0.24; A[i * 3 + 1] = base[1] * 0.4 + g / m * 0.24; A[i * 3 + 2] = base[2] * 0.4 + b / m * 0.24; }
   }
   // trace: half the cells this frame, the other half next frame. What a ray finds is the light there plus the bounce
   // already gathered there (so light keeps bouncing, a little less each time), coloured by the surface
-  const occ = GI.occ, src = GI.src, acc = GI.acc, vis = GI.vis, alb = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city, AL = GI.alb && GI.alb.length === N * 3 ? GI.alb : null;
+  const occ = GI.occ, src = GI.src, acc = GI.acc, vis = GI.vis, alb = bioBlend(GI_ALB, GI.albM2 || (GI.albM2 = [])), AL = GI.alb && GI.alb.length === N * 3 ? GI.alb : null;
   const R = LUX.level >= 3 ? 3 : 2, S = 10, blend = 0.22, WALL = 0.5;
   let seed = GI.seed = (GI.seed * 1664525 + 1013904223) >>> 0, rays = 0;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };

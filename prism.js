@@ -252,7 +252,7 @@ function prismGrade() {
     const h = LUX.hour, sea = WORLD.season, rise = LUX_RISE[sea], set = LUX_SET[sea], gold = Math.max(0, 1 - Math.min(Math.abs(h - set), Math.abs(h - rise)) / 1.3);
     K = 6500 - gold * 2600 * (1 - night) + night * 2200;
   }
-  K += (WX.dark || 0) * 1200 + (WX.snow || 0) * 700 + (WX.fog || 0) * 500 - (WX.sand || 0) * 1400 - (bio === 'desert' ? 500 : 0) - (bio === 'burning' ? 700 : 0);
+  K += (WX.dark || 0) * 1200 + (WX.snow || 0) * 700 + (WX.fog || 0) * 500 - (WX.sand || 0) * 1400 - bioK('desert') * 500 - bioK('burning') * 700;
   const t = SET.temp || 'auto'; K += t === 'warm' ? -1100 : t === 'cool' ? 1400 : 0;
   // blend toward neutral, so the effect is a tint and not a filter
   prismKelvin(clamp(K, 2500, 12000), PRISM.wb);
@@ -290,7 +290,7 @@ function prismGpu() {
     g.a = prismFbo(g.a, gw, gh); g.b = prismFbo(g.b, gw, gh);
     if (resize) { for (const f of [g.a, g.b]) { gl.bindFramebuffer(gl.FRAMEBUFFER, f.f); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); } g.gx = G2.gx; g.gy = G2.gy; }
     const sx = (G2.gx - g.gx) / gw, sy = -(G2.gy - g.gy) / gh;
-    gl.useProgram(giP.p); const u = giP.u, t = PRISM.tr, alb = GI_ALB[WORLD.cur ? WORLD.cur.bio : 'city'] || GI_ALB.city;
+    gl.useProgram(giP.p); const u = giP.u, t = PRISM.tr, alb = bioBlend(GI_ALB, PRISM.albM || (PRISM.albM = []));
     gl.uniform2f(u.uG, gw, gh); gl.uniform2f(u.uOrg, G2.gx * G2.cell, G2.gy * G2.cell); gl.uniform2f(u.uCv, cw, ch); gl.uniform2f(u.uShift, sx, sy);
     gl.uniform1f(u.uCell, G2.cell); gl.uniform1f(u.uFrame, PRISM.frames % 997); gl.uniform1f(u.uBlend, resize ? 1 : 0.18); gl.uniform4f(u.uTr, t.a, t.e, t.d, t.f); gl.uniform3f(u.uAlb, alb[0], alb[1], alb[2]);
     prismBind(giP, 'uOcc', 0, T.occ); prismBind(giP, 'uM', 1, T.amb); prismBind(giP, 'uPrev', 2, g.a.t); prismBind(giP, 'uS', 3, T.scene);
@@ -356,9 +356,10 @@ function prismGpu() {
   // the detail normal map: uploaded once, stronger in the dark (the lamps carve it) and at the higher levels
   if (PRISM.det && u.uDet != null) {
     if (!PRISM.detUp) { try { prismUpload(T.det, texelDetail()); PRISM.detUp = true; } catch (e) { PRISM.det = false; } }
-    const bio = WORLD.cur ? WORLD.cur.bio : 'city', soft = bio === 'snow' || bio === 'desert' || bio === 'ash';
-    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.48 : 0.28) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (soft ? 0.6 : 1);
-    gl.uniform1f(u.uDetK, dk); gl.uniform1f(u.uDetTile, 150 * (typeof PK === 'number' && PK > 0 ? PK : 1)); gl.uniform1f(u.uCrack, soft ? 0 : bio === 'suburb' ? 0.5 : 1); if (dk > 0) prismBind(fp, 'uDet', 8, T.det);
+    // (how soft the ground is and how much it cracks, mixed from the districts round the camera)
+    const soft = bioK('snow') + bioK('desert') + bioK('ash'), crack = Math.max(0, 1 - soft - bioK('suburb') * 0.5);
+    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.48 : 0.28) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (1 - 0.4 * soft);
+    gl.uniform1f(u.uDetK, dk); gl.uniform1f(u.uDetTile, 150 * (typeof PK === 'number' && PK > 0 ? PK : 1)); gl.uniform1f(u.uCrack, crack); if (dk > 0) prismBind(fp, 'uDet', 8, T.det);
   }
   prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
   prismBind(fp, 'uRf', 5, refl ? T.rfa : T.black); prismBind(fp, 'uRw', 6, refl ? T.rfw : T.black); prismBind(fp, 'uRb', 7, PRISM.bloomGpu ? PRISM.F.b0.t : T.black);
