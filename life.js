@@ -64,7 +64,7 @@ function hitProp(o, b) {
   const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, m = PROPS[o.k].m;
   o.vx += ux * 160 / m; o.vy += uy * 160 / m; o.va += (Math.random() - 0.5) * 12 / m;
   if (o.k === 'barrel') { o.hp -= b.dmg; o.flash = 0.12; burst(b.x, b.y, 3, '#ffcf6a', 120, 2, 0.2); if (o.hp <= 0) { o.fuse = 0.05; } return true; }
-  if (o.k === 'can') o.down = true;
+  if (o.k === 'can' || o.k === 'bin') o.down = true;
   burst(b.x, b.y, 2, '#d8d2c4', 90, 2, 0.2); SFX.propHit(o.k);
   return o.k === 'crate';
 }
@@ -119,7 +119,7 @@ function worldBlast(x, y, R, src) {
     const dx = o.x - x, dy = o.y - y, d = Math.hypot(dx, dy) || 1; if (d > R) continue;
     const k = (1 - d / R) * 600 / PROPS[o.k].m; o.vx += dx / d * k; o.vy += dy / d * k; o.va += (Math.random() - 0.5) * 20;
     if (o.k === 'barrel' && !o.fuse) { o.hp -= 40 * (1 - d / R) + 10; if (o.hp <= 0) o.fuse = 0.1 + Math.random() * 0.12; }
-    if (o.k === 'can') o.down = true;
+    if (o.k === 'can' || o.k === 'bin') o.down = true;
   }
   for (const d of WD.act) { const e = Math.hypot(d.x - x, d.y - y); if (e < R * 1.6) touch(d, x, y, Math.min(1, 1.3 - e / (R * 1.6)), false); }
   for (const b of WD.birds) if (b.st === 0 && Math.hypot(b.x - x, b.y - y) < 520) flee(b, x, y);
@@ -453,6 +453,31 @@ function drawProp(o) {
       ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(0, 0, o.r, 0, TAU); ctx.fill(); ctx.fillStyle = '#2a2a2a'; ctx.beginPath(); ctx.arc(0, 0, o.r * 0.5, 0, TAU); ctx.fill();
       ctx.strokeStyle = '#333'; ctx.lineWidth = 1; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; ctx.beginPath(); ctx.moveTo(Math.cos(a) * o.r * 0.6, Math.sin(a) * o.r * 0.6); ctx.lineTo(Math.cos(a) * o.r, Math.sin(a) * o.r); ctx.stroke(); }
       break;
+    // 1.9.998: a wheelie bin (lid, hinge, handle; on its side with the trash spilling out once knocked over), a
+    // shopping cart (wire basket, the child seat folded at the handle end, four casters), a bicycle lying on its side
+    case 'bin': {
+      const col = ['#2f5a3a', '#3a3d42', '#2f4f7a', '#1c1d20', '#5a4a2a'][(o.r * 7 + Math.round(o.x)) % 5 & 7] || '#3a3d42';
+      if (o.down) { ctx.fillStyle = col; ctx.fillRect(-12, -9, 24, 18); ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(10, -9, 3, 18); ctx.fillStyle = 'rgba(110,95,70,0.75)'; for (let i = 0; i < 5; i++) ctx.fillRect(13 + i * 2.4, -6 + (i * 5) % 12, 3, 2.4); ctx.fillStyle = '#121214'; ctx.fillRect(-13, -8, 3, 4); ctx.fillRect(-13, 4, 3, 4); break; }
+      ctx.fillStyle = col; rrect(ctx, -9.5, -12, 19, 24, 2.5); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(-8, -10.5, 16, 7); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-9.5, 9, 19, 3);   // the lid's shine; the hinge
+      ctx.fillStyle = '#121214'; ctx.fillRect(-6, 11.5, 12, 2.4);
+      break;
+    }
+    case 'cart': {
+      ctx.strokeStyle = '#a7abb1'; ctx.lineWidth = 1.2; ctx.strokeRect(-17, -9, 30, 18);
+      ctx.strokeStyle = 'rgba(167,171,177,0.6)'; ctx.lineWidth = 0.7; ctx.beginPath(); for (let x = -14; x < 13; x += 3.5) { ctx.moveTo(x, -9); ctx.lineTo(x, 9); } for (let y = -6; y < 9; y += 3.5) { ctx.moveTo(-17, y); ctx.lineTo(13, y); } ctx.stroke();
+      ctx.strokeStyle = '#c9402e'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(15.5, -9.5); ctx.lineTo(15.5, 9.5); ctx.stroke();
+      ctx.fillStyle = 'rgba(167,171,177,0.5)'; ctx.fillRect(9, -8, 4, 16);
+      ctx.fillStyle = '#141414'; for (const [x, y] of [[-15, -10], [-15, 8.5], [11, -10], [11, 8.5]]) ctx.fillRect(x, y, 2.6, 1.8);
+      break;
+    }
+    case 'bike': {
+      ctx.strokeStyle = '#141414'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(-17, 0, 10, 3, 0, 0, TAU); ctx.ellipse(17, 0, 10, 3, 0, 0, TAU); ctx.stroke();
+      const fc = ['#c9402e', '#2f6fb0', '#e8e6e0', '#3d8a4a', '#d8a22a'][Math.round(Math.abs(o.x)) % 5];
+      ctx.strokeStyle = fc; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(-17, 0); ctx.lineTo(-3, -1); ctx.lineTo(9, -1); ctx.lineTo(17, 0); ctx.moveTo(-3, -1); ctx.lineTo(1, 2); ctx.lineTo(9, -1); ctx.stroke();
+      ctx.strokeStyle = '#2a2c30'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(12, -5); ctx.lineTo(12, 4); ctx.stroke(); ctx.fillStyle = '#1a1a1c'; ctx.fillRect(-6, -2.4, 6, 3);
+      break;
+    }
     case 'crate':
       ctx.fillStyle = '#8a6a40'; ctx.fillRect(-o.r, -o.r, o.r * 2, o.r * 2); ctx.strokeStyle = '#5a4428'; ctx.lineWidth = 2; ctx.strokeRect(-o.r + 1, -o.r + 1, o.r * 2 - 2, o.r * 2 - 2);
       ctx.beginPath(); ctx.moveTo(-o.r, -o.r); ctx.lineTo(o.r, o.r); ctx.moveTo(o.r, -o.r); ctx.lineTo(-o.r, o.r); ctx.stroke();

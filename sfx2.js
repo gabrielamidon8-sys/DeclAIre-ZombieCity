@@ -450,7 +450,7 @@
     rustle: function (v, dry) { if (!ok() || !throttle('rustle', 110)) return; play(dry ? 'rustleD' : 'rustleA', ac.currentTime, 0.5 * (v || 1), 0.9 + Math.random() * 0.2, sfxBus); },
     flap: function (big) { if (!ok() || !throttle('flap', 300)) return; play(big ? 'flapB' : 'flap', ac.currentTime, 0.7, 0.9 + Math.random() * 0.2, ambBus); },
     splash: function (v) { if (!ok() || !throttle('splash', 250)) return; play('splash', ac.currentTime, 0.7 * (v || 1), 0.9 + Math.random() * 0.2, sfxBus); },
-    propHit: function (k) { if (!ok() || !throttle('prop' + k, 70)) return; play('p_' + k, ac.currentTime, 0.7, 0.9 + Math.random() * 0.2, sfxBus); },
+    propHit: function (k) { k = { bin: 'can', cart: 'can', bike: 'can' }[k] || k; if (!ok() || !throttle('prop' + k, 70)) return; play('p_' + k, ac.currentTime, 0.7, 0.9 + Math.random() * 0.2, sfxBus); },
     step: function (s) { if (!ok() || !throttle('step', 140)) return; play('st_' + s + (Math.random() < 0.5 ? 0 : 1), ac.currentTime, 0.75, 0.92 + Math.random() * 0.16, sfxBus); },
     // a horde coming: the rumble of hundreds of feet and a rising chorus of moans from one side (bigger, louder, longer)
     horde: function (pan, n) {

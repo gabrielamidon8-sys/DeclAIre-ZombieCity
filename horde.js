@@ -125,18 +125,19 @@ function hordeKnocks(z) {
 }
 
 /* ---------- whatever it takes: crossing what is in the way ---------- */
-const HD_LOW = { bench: 0.8, trough: 0.9, log: 0.5, wood: 1.2, barrier: 1.0, rail: 0.9, drift: 0.6, bones: 0.4 };
+const HD_LOW = { bench: 0.8, trough: 0.9, log: 0.5, wood: 1.2, barrier: 0.81, rail: 0.9, drift: 0.6, bones: 0.4, bags: 0.6, pallets: 0.7 };
 // how tall a thing is (m) and what it costs to cross on the pathfinding map (0: it cannot be crossed)
 function hordeRectH(b) {
   if (b.k === 'car') { const v = typeof VEH !== 'undefined' && VEH[b.vt]; return b.flip ? 1.2 : v ? v.h : 1.5; }
   if (b.k === 'wreck') return b.ht || 3;
-  return HD_LOW[b.k] || (b.k === 'fence' ? 1.8 : b.k === 'dumpster' ? 1.6 : b.k === 'rub' ? 2.2 : (typeof LUX_HT !== 'undefined' && LUX_HT[b.k]) || 3);
+  return HD_LOW[b.k] || (b.k === 'fence' ? 1.8 : b.k === 'dumpster' ? (b.ht || 1.6) : b.k === 'rolloff' ? 1.22 : b.k === 'rub' ? 2.2 : (typeof LUX_HT !== 'undefined' && LUX_HT[b.k]) || 3);
 }
 function hordeCrossCost(b) {
   if (b.k === 'car') return hordeRectH(b) <= 1.95 ? 3.2 : 0;
   if (HD_LOW[b.k]) return 1.6;
   if (b.k === 'fence') return 8;
   if (b.k === 'dumpster') return 3.6;
+  if (b.k === 'rolloff') return 3.2;
   if (b.k === 'rub') return 3;
   if (b.k === 'wreck') return b.low ? 2.5 : 0;
   return 0;

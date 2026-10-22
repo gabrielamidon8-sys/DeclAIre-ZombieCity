@@ -14,31 +14,35 @@
      police, news or military. The pieces are solid, so they are cover; their shadows move with the sun.
    Everything here is generated from the block's seed, so every player in co-op sees the same cars in the same places. */
 const VPAL = ['#7b2f2b', '#2f4f6b', '#6b6b6b', '#c9c3b5', '#2d3a2c', '#8a6a2a', '#22262b', '#5a3a5e', '#9aa0a6', '#1d2f4a', '#6e1f1c', '#d8d4cc', '#3e5a3a', '#b86a2a', '#26323a', '#4a4f57'];
-// L, W: length and width in the block's drawing units (a sedan is 58 x 28, 4.4 m by 2.1 m) · h: height in metres
+// L, W: length and width in the block's drawing units (13.33 to the metre) · h: height in metres
 // g: glass along the length, as [from, to] fractions of L from the middle (front is +0.5) · r: corner radius
+// 1.9.998: every size is the real vehicle's: a Golf, a Camry, a Passat wagon, a Mustang, an SUV between a RAV4 and an
+// Explorer, an F-150 crew cab, a high-roof Transit, an Odyssey, a Charger interceptor, a Type III ambulance, a pumper, a
+// 28-foot box truck, a 40-foot bus, a Type C school bus, a tractor with a 53-foot trailer, a rear loader, a Humvee, a
+// Stryker, a Class C camper and a step-van ice cream truck (cars were up to a third too wide before)
 const VEH = {
-  hatch: { L: 50, W: 26, h: 1.45, r: 7, g: [[0.06, 0.24], [-0.43, -0.32]] },
-  sedan: { L: 58, W: 28, h: 1.45, r: 6, g: [[0.08, 0.26], [-0.36, -0.23]] },
-  wagon: { L: 62, W: 28, h: 1.5, r: 6, g: [[0.1, 0.26], [-0.48, -0.43]] },
-  coupe: { L: 56, W: 27, h: 1.25, r: 8, g: [[0.0, 0.2], [-0.32, -0.2]] },
-  suv: { L: 62, W: 30, h: 1.8, r: 5, g: [[0.14, 0.28], [-0.48, -0.42]] },
-  pickup: { L: 68, W: 30, h: 1.85, r: 5, g: [[0.22, 0.33], [0.02, 0.05]] },
-  van: { L: 70, W: 30, h: 2.3, r: 4, g: [[0.36, 0.45]] },
-  minivan: { L: 64, W: 29, h: 1.75, r: 7, g: [[0.2, 0.34], [-0.5, -0.44]] },
-  taxi: { L: 58, W: 28, h: 1.45, r: 6, g: [[0.08, 0.26], [-0.36, -0.23]] },
-  police: { L: 60, W: 28, h: 1.5, r: 6, g: [[0.08, 0.26], [-0.36, -0.23]] },
-  ambulance: { L: 82, W: 32, h: 2.7, r: 4, g: [[0.37, 0.46]] },
-  fire: { L: 120, W: 34, h: 3.1, r: 4, g: [[0.42, 0.48]] },
-  box: { L: 100, W: 33, h: 3.3, r: 3, g: [[0.4, 0.47]] },
-  bus: { L: 160, W: 34, h: 3.1, r: 6, g: [[0.46, 0.5]] },
-  school: { L: 150, W: 33, h: 3.0, r: 5, g: [[0.38, 0.44]] },
-  semi: { L: 210, W: 34, h: 4.0, r: 3, g: [[0.43, 0.47]] },
-  garbage: { L: 104, W: 33, h: 3.4, r: 4, g: [[0.4, 0.47]] },
-  humvee: { L: 64, W: 31, h: 1.9, r: 4, g: [[0.18, 0.27]] },
-  apc: { L: 86, W: 36, h: 2.6, r: 6, g: [] },
-  moto: { L: 28, W: 11, h: 1.1, r: 4, g: [] },
-  camper: { L: 96, W: 32, h: 3.2, r: 6, g: [[0.38, 0.46]] },
-  icecream: { L: 74, W: 30, h: 2.6, r: 5, g: [[0.36, 0.45]] }
+  hatch: { L: 57, W: 24, h: 1.46, r: 7, g: [[0.06, 0.24], [-0.43, -0.32]] },
+  sedan: { L: 65, W: 24.5, h: 1.45, r: 6, g: [[0.08, 0.26], [-0.36, -0.23]] },
+  wagon: { L: 64, W: 24.4, h: 1.5, r: 6, g: [[0.1, 0.26], [-0.48, -0.43]] },
+  coupe: { L: 64, W: 25.6, h: 1.38, r: 8, g: [[0.0, 0.2], [-0.32, -0.2]] },
+  suv: { L: 65, W: 25.7, h: 1.75, r: 5, g: [[0.14, 0.28], [-0.48, -0.42]] },
+  pickup: { L: 78.5, W: 27, h: 1.96, r: 5, g: [[0.22, 0.33], [0.02, 0.05]] },
+  van: { L: 80, W: 27.5, h: 2.5, r: 4, g: [[0.36, 0.45]] },
+  minivan: { L: 69.5, W: 26.5, h: 1.74, r: 7, g: [[0.2, 0.34], [-0.5, -0.44]] },
+  taxi: { L: 65, W: 24.5, h: 1.45, r: 6, g: [[0.08, 0.26], [-0.36, -0.23]] },
+  police: { L: 68, W: 25.3, h: 1.48, r: 6, g: [[0.08, 0.26], [-0.36, -0.23]] },
+  ambulance: { L: 93, W: 32, h: 2.9, r: 4, g: [[0.37, 0.46]] },
+  fire: { L: 140, W: 33.3, h: 3.1, r: 4, g: [[0.42, 0.48]] },
+  box: { L: 113, W: 33.3, h: 3.5, r: 3, g: [[0.4, 0.47]] },
+  bus: { L: 167, W: 34.5, h: 3.2, r: 6, g: [[0.46, 0.5]] },
+  school: { L: 155, W: 32.5, h: 3.2, r: 5, g: [[0.38, 0.44]] },
+  semi: { L: 287, W: 34.5, h: 4.1, r: 3, g: [[0.43, 0.47]] },
+  garbage: { L: 133, W: 33.3, h: 3.6, r: 4, g: [[0.4, 0.47]] },
+  humvee: { L: 61, W: 28.8, h: 1.83, r: 4, g: [[0.18, 0.27]] },
+  apc: { L: 93, W: 36.3, h: 2.64, r: 6, g: [] },
+  moto: { L: 28, W: 10.7, h: 1.1, r: 4, g: [] },
+  camper: { L: 97, W: 32, h: 3.4, r: 6, g: [[0.38, 0.46]] },
+  icecream: { L: 87, W: 32, h: 2.9, r: 5, g: [[0.36, 0.45]] }
 };
 // what parks where: weights per kind of street
 const VMIX = {
@@ -356,14 +360,25 @@ function crashSite(c, R) {
   GARAGE.wrecks++;
 }
 // a light plane or a helicopter dropped wherever there is room for it in the block (after the block is laid out)
+// 1.9.998: helicopters at their real sizes, three kinds: a UH-60 Black Hawk for the military (16.4 m rotor, 15.3 m
+// fuselage), an AS350 for the police (10.7 m rotor, three blades) and an EC135 for the news and air ambulance (10.2 m
+// rotor, a shrouded fenestron tail). In block units (13.33 to the metre): cab = cabin length, cw its width, boom and bw
+// the tail boom, tr the tail rotor, rr the main rotor's radius, nb its blades
+const HELI = {
+  uh60: { cab: 127, cw: 31, boom: 80, bw: 12, tr: 45, rr: 109, nb: 4, ht: 3.8 },
+  as350: { cab: 60, cw: 25, boom: 69, bw: 8, tr: 25, rr: 71, nb: 3, ht: 3.1 },
+  ec135: { cab: 61, cw: 27, boom: 72, bw: 9, tr: 13, rr: 68, nb: 4, fen: 1, ht: 3.5 }
+};
+function heliType(w) { return w.mil ? 'uh60' : (w.s & 1) ? 'as350' : 'ec135'; }
 function smallWreck(c, R, kind) {
-  const bx = c.ox + ROAD, by = c.oy + ROAD, L = kind === 'cessna' ? 110 : 150, span = kind === 'cessna' ? 150 : 46;
+  const mil = kind === 'heli' && (c.bio === 'chaos' || R() < 0.35), ht = kind === 'heli' ? HELI[mil ? 'uh60' : 'ec135'] : null;
+  const bx = c.ox + ROAD, by = c.oy + ROAD, L = kind === 'cessna' ? 110 : ht.cab + ht.boom + 12, span = kind === 'cessna' ? 150 : ht.cw + 10;
   for (let t = 0; t < 10; t++) {
     const a = R() * TAU, cx = bx + 70 + R() * (BS - 140), cy = by + 70 + R() * (BS - 140), ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a));
     const hw = (L * ca + span * sa) / 2, hh = (L * sa + span * ca) / 2;
     if (!freeAt(c, cx - hw, cy - hh, hw * 2, hh * 2, 6)) continue;
     c.wrecks = c.wrecks || [];
-    const w = { k: kind, x: cx, y: cy, a: a, s: (R() * 1e9) | 0, mil: kind === 'heli' && (c.bio === 'chaos' || R() < 0.35), livery: ['#2f4f6b', '#c9402e', '#e8e6e0', '#1b2a4a', '#d8a22a'][Math.floor(R() * 5)] };
+    const w = { k: kind, x: cx, y: cy, a: a, s: (R() * 1e9) | 0, mil: mil, livery: ['#2f4f6b', '#c9402e', '#e8e6e0', '#1b2a4a', '#d8a22a'][Math.floor(R() * 5)] };
     c.wrecks.push(w); wreckRects(c, w);
     if (R() < 0.75) addFire(c, cx + (R() - 0.5) * 40, cy + (R() - 0.5) * 30, 10 + R() * 8, false);
     GARAGE.wrecks++;
@@ -382,16 +397,18 @@ function wreckRects(c, w) {
   };
   const ca = Math.cos(w.a), sa = Math.sin(w.a), P = (t, o) => [w.x + ca * t - sa * o, w.y + sa * t + ca * o];
   if (w.k === 'airliner') {
-    const f0 = P(230, 0), f1 = P(90, 0), m0 = P(90 - w.gap1, 6), m1 = P(-80 - w.gap1, 6), t0 = P(-80 - w.gap1 - w.gap2, -4), t1 = P(-200 - w.gap1 - w.gap2, -4);
-    add(f0[0], f0[1], f1[0], f1[1], 34, 4); add(m0[0], m0[1], m1[0], m1[1], 36, 4.2); add(t0[0], t0[1], t1[0], t1[1], 30, 4);
-    const wa = P(10 - w.gap1, 30), wb = P(-40 - w.gap1, 190); add(wa[0], wa[1], wb[0], wb[1], 20, 1.6);   // the wing still on
-    const da = P(40, -110), db = P(-90, -230); add(da[0], da[1], db[0], db[1], 20, 1.4);                 // the one torn off
+    // (an A320: a 3.95 m fuselage, 4.1 m tall, 37.6 m long; wings of 35.8 m span)
+    const f0 = P(240, 0), f1 = P(92, 0), m0 = P(90 - w.gap1, 6), m1 = P(-82 - w.gap1, 6), t0 = P(-82 - w.gap1 - w.gap2, -4), t1 = P(-215 - w.gap1 - w.gap2, -4);
+    add(f0[0], f0[1], f1[0], f1[1], 50, 4.1); add(m0[0], m0[1], m1[0], m1[1], 53, 4.1); add(t0[0], t0[1], t1[0], t1[1], 44, 4);
+    const wa = P(-w.gap1 - 6, 34), wb = P(-60 - w.gap1, 230); add(wa[0], wa[1], wb[0], wb[1], 40, 1.8);   // the wing still on
+    const da = P(40, -120), db = P(-110, -270); add(da[0], da[1], db[0], db[1], 38, 1.6);                 // the one torn off
   } else if (w.k === 'cessna') {
     const a0 = P(45, 0), a1 = P(-55, 0); add(a0[0], a0[1], a1[0], a1[1], 16, 1.8);
     const b0 = P(12, -70), b1 = P(12, 70); add(b0[0], b0[1], b1[0], b1[1], 12, 1.4);
   } else {
-    const a0 = P(48, 0), a1 = P(-10, 0); add(a0[0], a0[1], a1[0], a1[1], 30, 3);
-    const b0 = P(-20, 0), b1 = P(-95, 0); add(b0[0], b0[1], b1[0], b1[1], 10, 1.6);
+    const H = HELI[heliType(w)], f = H.cab * 0.6, bk = -H.cab * 0.4;
+    const a0 = P(f, 0), a1 = P(bk, 0); add(a0[0], a0[1], a1[0], a1[1], H.cw, H.ht * 0.85);
+    const b0 = P(bk, 0), b1 = P(bk - H.boom, 0); add(b0[0], b0[1], b1[0], b1[1], Math.max(10, H.bw + 2), 1.6);
   }
 }
 function hull8(P, out) {
@@ -439,7 +456,7 @@ function wreckScorch(g, len, wid, R) {
   for (let i = 0; i < 8; i++) soot(g, (R() - 0.5) * len * 1.2, (R() - 0.5) * wid * 1.4, 20 + R() * 40, 0.4);
 }
 function drawAirliner(g, w, R) {
-  wreckScorch(g, 330, 150, R);
+  wreckScorch(g, 360, 180, R);
   const g1 = w.gap1, g2 = w.gap2, body = '#d9dcdf', dark = '#9ea3a8';
   // debris: panels, seats, suitcases, burnt foam
   for (let i = 0; i < 70; i++) { const x = (R() - 0.5) * 520, y = (R() - 0.5) * 300, s = 2 + R() * 7; g.fillStyle = ['#b9bdc2', '#7a7e84', '#2a2c30', '#4a3e5a', '#6a3030', '#a89870', '#1d1e20', '#5a5e64'][Math.floor(R() * 8)]; g.save(); g.translate(x, y); g.rotate(R() * 3); g.fillRect(-s / 2, -s / 3, s, s * 0.66); g.restore(); }
@@ -457,15 +474,25 @@ function drawAirliner(g, w, R) {
     g.restore();
   };
   // wings first, under the fuselage: the attached one, its engine, and the detached one lying further off
-  const wing = (x, y, a, len, eng) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.moveTo(6, 6); g.lineTo(len + 6, 26); g.lineTo(len - 4, 44); g.lineTo(-30, 30); g.closePath(); g.fill(); g.fillStyle = dark; g.beginPath(); g.moveTo(0, 0); g.lineTo(len, 20); g.lineTo(len - 10, 38); g.lineTo(-36, 24); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.moveTo(0, 0); g.lineTo(len, 20); g.lineTo(len - 2, 25); g.lineTo(-6, 6); g.closePath(); g.fill(); if (eng) { g.fillStyle = '#5a5e64'; rrect(g, len * 0.3, 18, 40, 16, 8); g.fill(); g.fillStyle = '#16171a'; g.beginPath(); g.ellipse(len * 0.3 + 38, 26, 3, 7, 0, 0, TAU); g.fill(); } g.restore(); };
-  wing(-g1 - 10, 20, 1.45, 170, true);
-  wing(40, -120, -1.9, 160, R() < 0.5);
-  seg(240, 90, 0, 34, true, false);
-  seg(90 - g1, -80 - g1, 6, 36, false, false);
-  seg(-80 - g1 - g2, -205 - g1 - g2, -4, 30, false, true);
-  // the tail fin lying over, with the airline's colour
-  g.save(); g.translate(-185 - g1 - g2, -4); g.rotate(w.tw); g.fillStyle = w.livery; g.beginPath(); g.moveTo(0, 0); g.lineTo(-30, -52); g.lineTo(-8, -52); g.lineTo(24, 0); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(-12, -40, 10, 6); g.restore();
-  g.fillStyle = dark; g.beginPath(); g.moveTo(-200 - g1 - g2, -2); g.lineTo(-215 - g1 - g2, -34); g.lineTo(-195 - g1 - g2, -34); g.closePath(); g.fill();
+  // (swept back 25 degrees: a 6 m root chord tapering to 1.6 m at the tip; the engine nacelle 4.4 m long and 2.4 m across)
+  const wing = (x, y, a, len, eng) => {
+    g.save(); g.translate(x, y); g.rotate(a); const sw = len * 0.47;
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.moveTo(6, 6); g.lineTo(len + 6, sw + 6); g.lineTo(len + 2, sw + 27); g.lineTo(-6, 86); g.closePath(); g.fill();
+    g.fillStyle = dark; g.beginPath(); g.moveTo(0, 0); g.lineTo(len, sw); g.lineTo(len - 4, sw + 21); g.lineTo(-12, 80); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.moveTo(0, 0); g.lineTo(len, sw); g.lineTo(len - 1, sw + 5); g.lineTo(-2, 8); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 1; g.beginPath(); for (const t of [0.3, 0.55, 0.8]) { g.moveTo(len * t, sw * t + 21 + (1 - t) * 50); g.lineTo(len * t - 6, sw * t + 6); } g.stroke();   // flap tracks
+    if (eng) { const ex = len * 0.34, ey = sw * 0.34 - 22; g.fillStyle = '#5a5e64'; rrect(g, ex - 16, ey, 32, 59, 14); g.fill(); g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(ex - 10, ey + 6, 6, 44); g.fillStyle = '#16171a'; g.beginPath(); g.ellipse(ex, ey + 2, 13, 4, 0, 0, TAU); g.fill(); }
+    g.restore();
+  };
+  wing(-g1 - 6, 30, 1.45, 210, true);
+  wing(40, -120, -1.9, 200, R() < 0.5);
+  seg(250, 92, 0, 50, true, false);
+  seg(90 - g1, -82 - g1, 6, 53, false, false);
+  seg(-82 - g1 - g2, -222 - g1 - g2, -4, 44, false, true);
+  // the tail fin lying over (about 6 m), with the airline's colour; the stabilisers (12.5 m across) still on
+  const tx = -200 - g1 - g2;
+  g.fillStyle = dark; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(tx + 14, -4 + sd * 18); g.lineTo(tx - 10, -4 + sd * 84); g.lineTo(tx - 28, -4 + sd * 84); g.lineTo(tx - 22, -4 + sd * 18); g.closePath(); g.fill(); }
+  g.save(); g.translate(tx + 10, -4); g.rotate(w.tw); g.fillStyle = w.livery; g.beginPath(); g.moveTo(0, 0); g.lineTo(-44, -84); g.lineTo(-16, -84); g.lineTo(36, 0); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(-20, -62, 14, 9); g.restore();
   for (let i = 0; i < 6; i++) soot(g, (R() - 0.5) * 380, (R() - 0.5) * 60, 18 + R() * 24, 0.35);
 }
 function drawCessna(g, w, R) {
@@ -480,21 +507,40 @@ function drawCessna(g, w, R) {
   for (let i = 0; i < 14; i++) { g.fillStyle = ['#e8e6e0', '#9ea3a8', col, '#2a2c30'][Math.floor(R() * 4)]; g.fillRect((R() - 0.5) * 160, (R() - 0.5) * 120, 2 + R() * 4, 2 + R() * 3); }
 }
 function drawHeli(g, w, R) {
-  wreckScorch(g, 120, 60, R);
-  const col = w.mil ? '#4b5236' : w.livery;
-  g.fillStyle = 'rgba(0,0,0,0.35)'; rrect(g, -12, -11, 66, 30, 14); g.fill(); g.fillRect(-96, -1, 86, 9);
-  g.fillStyle = vShade(col, -0.15); g.fillRect(-98, -4, 90, 8);                                   // the tail boom
-  g.fillStyle = col; g.fillRect(-104, -12, 10, 24); g.strokeStyle = '#2a2c30'; g.lineWidth = 2; g.beginPath(); g.moveTo(-100, -16); g.lineTo(-100, 16); g.stroke();   // tail rotor
-  g.fillStyle = col; rrect(g, -16, -15, 66, 30, 14); g.fill();
-  const gr = g.createLinearGradient(0, -15, 0, 15); gr.addColorStop(0, 'rgba(0,0,0,0.3)'); gr.addColorStop(0.4, 'rgba(255,255,255,0.15)'); gr.addColorStop(1, 'rgba(0,0,0,0.35)'); g.fillStyle = gr; rrect(g, -16, -15, 66, 30, 14); g.fill();
-  g.fillStyle = '#1b2531'; g.beginPath(); g.ellipse(36, 0, 13, 12, 0, -1.3, 1.3); g.fill();
-  if (!w.mil) { g.fillStyle = '#e8e6e0'; g.fillRect(-14, -2, 56, 4); }
-  g.fillStyle = '#2a2c30'; g.fillRect(-6, -18, 40, 2.4); g.fillRect(-6, 15.6, 40, 2.4);           // the skids
-  // the rotor: four blades, two snapped off and bent
-  g.fillStyle = '#26282b'; g.beginPath(); g.arc(12, 0, 4, 0, TAU); g.fill();
-  g.strokeStyle = '#1e2023'; g.lineWidth = 3.4; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(12, 0); g.lineTo(12 + 78, -18); g.moveTo(12, 0); g.quadraticCurveTo(-10, 30, -30, 70); g.moveTo(12, 0); g.lineTo(-8, -26); g.moveTo(12, 0); g.lineTo(32, 22); g.stroke(); g.lineCap = 'butt';
-  for (let i = 0; i < 10; i++) { g.fillStyle = [col, '#2a2c30', '#9ea3a8'][Math.floor(R() * 3)]; g.fillRect((R() - 0.5) * 160, (R() - 0.5) * 100, 2 + R() * 5, 2 + R() * 3); }
+  const H = HELI[heliType(w)], t = heliType(w), col = w.mil ? '#3f4632' : t === 'as350' ? (w.livery === '#e8e6e0' ? '#1b2a4a' : '#e8e6e0') : w.livery;
+  const f = H.cab * 0.6, bk = -H.cab * 0.4, cw = H.cw, tail = bk - H.boom;
+  wreckScorch(g, H.cab + H.boom * 0.5, H.cw * 2.2, R);
+  // shadows: the cabin, the boom
+  g.fillStyle = 'rgba(0,0,0,0.35)'; rrect(g, bk + 4, -cw / 2 + 5, H.cab, cw, cw * 0.45); g.fill(); g.fillRect(tail + 4, -H.bw / 2 + 4, H.boom, H.bw);
+  // the tail boom, its fin and the tail rotor (or the fenestron's ring)
+  g.fillStyle = vShade(col, -0.15); rrect(g, tail, -H.bw / 2, H.boom + 6, H.bw, H.bw / 2); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(tail + 4, -H.bw / 2 + 1, H.boom - 6, H.bw * 0.25);
+  if (H.fen) { g.fillStyle = col; g.beginPath(); g.ellipse(tail + 4, 0, 9, H.tr * 0.7, 0, 0, TAU); g.fill(); g.fillStyle = '#16171a'; g.beginPath(); g.ellipse(tail + 4, 0, 5, H.tr * 0.45, 0, 0, TAU); g.fill(); }
+  else { g.fillStyle = col; g.fillRect(tail - 4, -H.bw * 0.8, 10, H.bw * 1.6); g.strokeStyle = '#2a2c30'; g.lineWidth = 2; g.beginPath(); g.moveTo(tail - 1, -H.tr / 2); g.lineTo(tail - 1, H.tr / 2); g.stroke(); }
+  // horizontal stabiliser
+  g.fillStyle = vShade(col, -0.25); g.fillRect(tail + 8, -H.bw * (t === 'uh60' ? 2.4 : 1.8), 8, H.bw * (t === 'uh60' ? 4.8 : 3.6));
+  // the cabin: rounded nose, a cockpit glazed across the front, the engine cowling and exhausts on top
+  g.fillStyle = col; rrect(g, bk, -cw / 2, H.cab, cw, cw * 0.45); g.fill();
+  const gr = g.createLinearGradient(0, -cw / 2, 0, cw / 2); gr.addColorStop(0, 'rgba(0,0,0,0.3)'); gr.addColorStop(0.4, 'rgba(255,255,255,0.15)'); gr.addColorStop(1, 'rgba(0,0,0,0.35)'); g.fillStyle = gr; rrect(g, bk, -cw / 2, H.cab, cw, cw * 0.45); g.fill();
+  g.fillStyle = '#1b2531'; g.beginPath(); g.ellipse(f - cw * 0.42, 0, cw * 0.4, cw * 0.42, 0, -1.25, 1.25); g.fill();
+  g.fillStyle = 'rgba(170,210,235,0.25)'; g.beginPath(); g.ellipse(f - cw * 0.42, -cw * 0.08, cw * 0.32, cw * 0.18, 0, -1, 0.4); g.fill();
+  g.fillStyle = vShade(col, -0.1); rrect(g, bk + H.cab * 0.15, -cw * 0.28, H.cab * 0.42, cw * 0.56, 4); g.fill();
+  g.fillStyle = '#24262a'; g.fillRect(bk + H.cab * 0.12, -cw * 0.2, 4, cw * 0.14); g.fillRect(bk + H.cab * 0.12, cw * 0.06, 4, cw * 0.14);
+  if (w.mil) { g.fillStyle = '#2a2d22'; g.fillRect(bk + H.cab * 0.2, -cw / 2 - 1, H.cab * 0.36, 3); g.fillRect(bk + H.cab * 0.2, cw / 2 - 2, H.cab * 0.36, 3); }   // the cabin doors' rails
+  else { g.fillStyle = t === 'as350' ? '#2f6fb0' : '#e8e6e0'; g.fillRect(bk + 4, -2, H.cab - 14, 4); if (t === 'as350') { g.fillStyle = '#e8e6e0'; g.font = 'bold 7px sans-serif'; g.save(); g.rotate(Math.PI / 2); g.fillText('POLICE', -12, -bk - H.cab * 0.55); g.restore(); } }
+  // skids (wheels on the Black Hawk)
+  if (w.mil) { g.fillStyle = '#121314'; for (const [x, y] of [[f - 14, -cw / 2 - 3], [f - 14, cw / 2 - 1], [tail + 14, -2]]) g.fillRect(x - 5, y, 10, 4); }
+  else { g.fillStyle = '#2a2c30'; g.fillRect(bk + 4, -cw / 2 - 4, H.cab * 0.72, 2.6); g.fillRect(bk + 4, cw / 2 + 1.4, H.cab * 0.72, 2.6); }
+  // the main rotor: its hub over the cabin and the blades, some snapped off short and some bent where they hit the ground
+  const hx = bk + H.cab * 0.42; g.fillStyle = '#26282b'; g.beginPath(); g.arc(hx, 0, 5, 0, TAU); g.fill();
+  g.strokeStyle = '#1e2023'; g.lineWidth = t === 'uh60' ? 5 : 3.6; g.lineCap = 'round'; g.beginPath();
+  const a0 = (w.s % 628) / 100;
+  for (let i = 0; i < H.nb; i++) {
+    const a = a0 + i * TAU / H.nb, k = R(), L = k < 0.3 ? H.rr * (0.25 + R() * 0.3) : H.rr * (0.85 + R() * 0.15), bend = k > 0.65 ? (R() - 0.5) * 1.2 : 0;
+    g.moveTo(hx, 0); if (bend) g.quadraticCurveTo(hx + Math.cos(a) * L * 0.55, Math.sin(a) * L * 0.55, hx + Math.cos(a + bend) * L, Math.sin(a + bend) * L); else g.lineTo(hx + Math.cos(a) * L, Math.sin(a) * L);
+  }
+  g.stroke(); g.lineCap = 'butt';
+  for (let i = 0; i < 12; i++) { g.fillStyle = [col, '#2a2c30', '#9ea3a8'][Math.floor(R() * 3)]; g.fillRect((R() - 0.5) * (H.cab + H.boom) * 1.2, (R() - 0.5) * H.rr, 2 + R() * 5, 2 + R() * 3); }
 }
 
 coreAdd({

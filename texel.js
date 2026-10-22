@@ -150,7 +150,7 @@ function texelGroundTex(kind) {
     // in world space so it runs on across blocks and over a district border unbroken)
     const a = texelNoise(n, 64, 163), b = texelNoise(n, 20, 167), e = texelNoise(n, 6, 173);
     for (let i = 0; i < n * n; i++) {
-      const v = a[i] * 0.6 + b[i] * 0.3 + e[i] * 0.1, t = clamp((v - 0.42) / 0.16, 0, 1), k = i * 4, sh = 236 + (b[i] - 0.5) * 30;
+      const v = a[i] * 0.6 + b[i] * 0.3 + e[i] * 0.1, t = clamp((v - 0.34) / 0.3, 0, 1), k = i * 4, sh = 236 + (b[i] - 0.5) * 30;
       d[k] = clamp(sh - 8, 0, 255); d[k + 1] = clamp(sh - 3, 0, 255); d[k + 2] = clamp(sh + 4, 0, 255); d[k + 3] = t * t * (3 - 2 * t) * 235;
     }
   } else if (kind === 'macro') {
@@ -365,7 +365,7 @@ function txbField(c) {
 // drift texture at different sizes, anchored to the world
 function texelRoadSnow(g, rects) {
   if (!rects.length) return;
-  for (const [sc, a] of [[1, 0.8], [0.43, 0.45]]) {
+  for (const [sc, a] of [[1.6, 0.7], [0.6, 0.3]]) {
     const pat = texelGroundPat(g, 'snowcover', sc); if (!pat) return;
     g.globalAlpha = a; g.fillStyle = pat; for (const r of rects) g.fillRect(r[0], r[1], r[2], r[3]);
   }

@@ -627,7 +627,7 @@ function luxSun(amb) {
   return S;
 }
 // how tall things stand, in metres (a building's height comes from its own seed, so it is the same every time)
-const LUX_HT = { car: 1.5, tanker: 3.4, plow: 3, planter: 4, rub: 2.4, barrier: 1, rail: 0.9, fence: 1.8, rock: 2, mesa: 22, cactus: 3, pump: 1.6, bench: 0.8, dumpster: 1.6, hoop: 3, kiosk: 3, log: 0.5, stall: 2.8, tank: 8, trough: 0.9, windmill: 11, wood: 1.2, checkpoint: 3, statue: 6 };
+const LUX_HT = { bags: 0.6, pallets: 0.6, rolloff: 1.22, car: 1.5, tanker: 3.4, plow: 3, planter: 4, rub: 2.4, barrier: 1, rail: 0.9, fence: 1.8, rock: 2, mesa: 22, cactus: 3, pump: 1.6, bench: 0.8, dumpster: 1.6, hoop: 3, kiosk: 3, log: 0.5, stall: 2.8, tank: 8, trough: 0.9, windmill: 11, wood: 1.2, checkpoint: 3, statue: 6 };
 function luxHeight(r) {
   if (r._ht !== undefined) return r._ht;
   let h = 0;
@@ -638,7 +638,7 @@ function luxHeight(r) {
   else if (r.k === 'car') h = ((typeof VEH !== 'undefined' && VEH[r.vt]) || { h: 1.5 }).h * (r.flip ? 0.75 : r.burnt ? 0.85 : 1);
   else if (r.k === 'wreck') h = r.ht || 3;
   else if (r.k === 'pillar') h = typeof SKY_H !== 'undefined' ? SKY_H : 7.5;
-  else h = LUX_HT[r.k] || 0;
+  else h = r.ht || LUX_HT[r.k] || 0;
   return r._ht = h;
 }
 // the shadow a box throws, minus the box itself (so its own roof stays in the sun): an L-shaped outline. Every outline

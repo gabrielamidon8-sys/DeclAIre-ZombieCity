@@ -231,6 +231,7 @@ function genChunk(cx, cy) {
   if (!c.lm && !c.wm && Rw() < crashP) crashSite(c, R); else k(c, R, B);
   if (typeof skyPillars === 'function') skyPillars(c, R);
   roadside(c, R);
+  streetLife(c, chunkRng(cx, cy, 0x51fe));
   railings(c);
   const heliP = bio === 'chaos' ? 0.05 : bio === 'city' || bio === 'burning' ? 0.02 : 0.014, planeP = bio === 'desert' ? 0.03 : bio === 'snow' ? 0.02 : bio === 'suburb' ? 0.012 : 0.006;
   if (c.type !== 'crash') { if (Rw() < heliP) smallWreck(c, Rw, 'heli'); else if (Rw() < planeP) smallWreck(c, Rw, 'cessna'); }
@@ -315,7 +316,9 @@ function addProp(c, k, x, y, R) {
   c.props.push(p); return p;
 }
 function addFire(c, x, y, r, hz) { c.fires.push({ x: x, y: y, r: r, hz: !!hz, ph: Math.random() * 10, lit: 1 }); }
-const PROPS = { barrel: { r: 11, hp: 26, m: 3 }, cone: { r: 7, hp: 1e9, m: 0.6 }, can: { r: 9, hp: 1e9, m: 1.2 }, tire: { r: 10, hp: 1e9, m: 1.6 }, crate: { r: 11, hp: 1e9, m: 2.2 } };
+const PROPS = { barrel: { r: 11, hp: 26, m: 3 }, cone: { r: 7, hp: 1e9, m: 0.6 }, can: { r: 9, hp: 1e9, m: 1.2 }, tire: { r: 10, hp: 1e9, m: 1.6 }, crate: { r: 11, hp: 1e9, m: 2.2 },
+  // 1.9.998: a wheelie bin (0.58 by 0.74 m), a shopping cart (1.06 by 0.58 m), a bicycle on its side (1.75 m)
+  bin: { r: 10, hp: 1e9, m: 1.8 }, cart: { r: 12, hp: 1e9, m: 1.4 }, bike: { r: 13, hp: 1e9, m: 1.0 } };
 
 // the usual city block layouts, shared by downtown, burning, riot and ash districts
 function urbanBlock(c, R, B, opts) {
@@ -333,8 +336,9 @@ function urbanBlock(c, R, B, opts) {
     for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) if (R() < 0.88) addB(c, R, B, xs[i], ys[j], ws[i], hs[j]);
     if (R() < 0.7) alleyProps(c, R, bx + M + s1, by + M, al, IN, true, opts); else alleyProps(c, R, bx + M, by + M + s2, IN, al, false, opts);
   } else if (type === 'lot') {
-    for (let row = 0; row < 3; row++) for (let i = 0; i < 7; i++) if (R() < 0.5) { const vt = vehPick(R, 'lot', 54, 30), V = VEH[vt]; placeVeh(c, R, 'lot', bx + 44 + i * 64 + (30 - V.W) / 2, by + 60 + row * 150 + (54 - V.L) / 2, false, R() < 0.5 ? 1 : -1, { vt: vt, burnt: opts.burnt ? R() < opts.burnt : R() < 0.15 }); }
+    // 1.9.998: real stalls (2.7 by 5.5 m) in four rows, two of them back to back, with 7 m aisles; cars nose in or back in
     addB(c, R, B, bx + BS - 96, by + BS - 92, 54, 50);
+    for (const ry of LOT_ROWS) for (let i = 0; i < 13; i++) if (R() < 0.5) { const vt = vehPick(R, 'lot', 72, 30), V = VEH[vt]; placeVeh(c, R, 'lot', bx + 20 + i * 36 + (36 - V.W) / 2, by + ry + (73 - V.L) / 2, false, R() < 0.5 ? 1 : -1, { vt: vt, burnt: opts.burnt ? R() < opts.burnt : R() < 0.15 }); }
   } else if (type === 'plaza') {
     const q = [[0.22, 0.22], [0.78, 0.22], [0.22, 0.78], [0.78, 0.78]], cxp = bx + BS / 2, cyp = by + BS / 2;
     // the landmark square keeps its fountain (or tanker, checkpoint...); the others are one of four kinds of square
@@ -369,13 +373,17 @@ function urbanBlock(c, R, B, opts) {
     }
   }
 }
+const LOT_ROWS = [28, 194, 267, 433];   // the stall rows of a parking lot (top edges, block units below the block's corner)
 // what fills an alley between two buildings: a dumpster or two against the wall, bags of trash, the odd crate
 function alleyProps(c, R, x, y, w, h, vert, opts) {
   const n = R() < 0.75 ? 1 + (R() < 0.35 ? 1 : 0) : 0;
   for (let i = 0; i < n; i++) {
     const wall = R() < 0.5, burnt = !!opts.burnt && R() < opts.burnt;
-    if (vert) addThing(c, 'dumpster', wall ? x + 3 : x + w - 23, y + 40 + R() * (h - 110), 20, 34, { col: R(), burnt: burnt });
-    else addThing(c, 'dumpster', x + 40 + R() * (w - 110), wall ? y + 3 : y + h - 23, 34, 20, { col: R(), burnt: burnt });
+    // (1.9.998: real front-load dumpsters, 1.83 m wide against the wall and 2, 4, 6 or 8 yards deep; bags piled beside)
+    const yd = Math.floor(R() * 4), dp = [12, 18, 22, 24][yd], ht = [1.0, 1.2, 1.5, 1.85][yd], L = 24.4;
+    const d = vert ? addThing(c, 'dumpster', wall ? x + 3 : x + w - 3 - dp, y + 40 + R() * (h - 110), dp, L, { col: R(), burnt: burnt, ht: ht, yd: yd })
+      : addThing(c, 'dumpster', x + 40 + R() * (w - 110), wall ? y + 3 : y + h - 3 - dp, L, dp, { col: R(), burnt: burnt, ht: ht, yd: yd });
+    if (d && R() < 0.65) { const bw = 14 + R() * 6, bh = 10 + R() * 4; if (vert) addThing(c, 'bags', wall ? x + 3 : x + w - 3 - bh, d.y + d.h + 2, bh, bw, { low: true, s: (R() * 1e9) | 0 }, 1); else addThing(c, 'bags', d.x + d.w + 2, wall ? y + 3 : y + h - 3 - bh, bw, bh, { low: true, s: (R() * 1e9) | 0 }, 1); }
   }
   c.decals.push({ k: 'alley', x: x, y: y, w: w, h: h, v: vert, s: (R() * 1e9) | 0 });
   if (R() < 0.4) addProp(c, R() < 0.5 ? 'can' : 'crate', vert ? x + w / 2 : x + 40 + R() * (w - 80), vert ? y + 40 + R() * (h - 80) : y + h / 2, R);
@@ -408,8 +416,10 @@ const BIOGEN = {
       const horiz = R() < 0.5, at = (horiz ? ox : oy) + ROAD + 40 + R() * (BS - 160), gap = Math.floor(R() * 3);
       for (let k = 0; k < 3; k++) {
         if (k === gap) continue;
-        if (horiz) { const y = oy + 6 + k * 36; if (waterAtC(c, at, y) !== 3) c.rects.push({ x: at, y: y, w: 14, h: 30, k: 'barrier' }); }
-        else { const x = ox + 6 + k * 36; if (waterAtC(c, x, at) !== 3) c.rects.push({ x: x, y: at, w: 30, h: 14, k: 'barrier' }); }
+        // (1.9.998: real jersey barriers, 3.05 m long and 0.61 m thick, two across the road and a gap to squeeze through)
+        const o = gap === 0 ? [28, 68][k - 1] : gap === 1 ? [4, 68][k === 0 ? 0 : 1] : [4, 44][k];
+        if (horiz) { const y = oy + o; if (waterAtC(c, at, y) !== 3) c.rects.push({ x: at, y: y, w: 8, h: 40, k: 'barrier' }); }
+        else { const x = ox + o; if (waterAtC(c, x, at) !== 3) c.rects.push({ x: x, y: at, w: 40, h: 8, k: 'barrier' }); }
       }
     }
     if (R() < 0.6) { const x = ox + ROAD + 40 + R() * (BS - 140), y = oy + 30 + R() * 30; placeVeh(c, R, 'chaos', x, y, true, R() < 0.5 ? 1 : -1, { vt: R() < 0.75 ? 'police' : R() < 0.5 ? 'humvee' : 'ambulance', burnt: false }); }
@@ -478,7 +488,7 @@ const BIOGEN = {
       if (dx > lx + 4 && dx + 36 < lx + half - 4 && freeAt(c, dx, d0, 36, d1 - d0, 0)) {
         c.decals.push({ k: 'drive', x: dx, y: d0, w: 36, h: d1 - d0, top: !qy, s: (R() * 1e9) | 0 });
         keepClear(c, dx, d0, 36, d1 - d0);
-        if (R() < 0.55) { c.nb.pop(); const vt = vehPick(R, 'drive', 56, 30), V = VEH[vt]; placeVeh(c, R, 'drive', dx + (36 - V.W) / 2, qy ? by + BS - 18 - V.L : by + 16, false, qy ? 1 : -1, { vt: vt, burnt: false }); keepClear(c, dx, d0, 36, d1 - d0); }
+        if (R() < 0.55) { c.nb.pop(); const vt = vehPick(R, 'drive', 72, 30), V = VEH[vt]; placeVeh(c, R, 'drive', dx + (36 - V.W) / 2, qy ? by + BS - 18 - V.L : by + 16, false, qy ? 1 : -1, { vt: vt, burnt: false }); keepClear(c, dx, d0, 36, d1 - d0); }
       }
       const back = qy ? -1 : 1;   // the side of the house away from the street
       if (R() < 0.24) { const pw = 58 + R() * 20, ph = 34 + R() * 10, px = hs.x + (hs.w - pw) * R(), py = back > 0 ? hs.y + hs.h + 18 : hs.y - ph - 18; addThing(c, 'pool', px, py, pw, ph, { low: true, s: (R() * 1e9) | 0 }, 6); }
@@ -598,6 +608,31 @@ function roadside(c, R) {
       if (!deck(x, y, V.W, V.L)) placeVeh(c, R, mix, x, y, false, left ? 1 : -1, { vt: vt, burnt: R() < burnt });
     }
   }
+}
+// 1.9.998: the small things of a street, at their real sizes and from their own random stream (so adding them moves
+// nothing else): wheelie bins out on the sidewalks and at the ends of driveways, shopping carts left in the lots and
+// the streets, bicycles dropped on their side, pallets stacked in the alleys and among the ruins, bags of trash, and
+// roll-off containers (6.7 by 2.4 m) of rubble at the curb where a building was being cleared
+function streetLife(c, R) {
+  const bio = c.bio, ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, urban = bio === 'city' || bio === 'chaos' || bio === 'burning' || bio === 'ash' || bio === 'ruins';
+  if (bio === 'desert' || bio === 'snow') { if (R() < 0.25) addThing(c, 'pallets', bx + 20 + R() * (BS - 60), by + 20 + R() * (BS - 60), 16, 13, { low: true, n: 1 + Math.floor(R() * 3), s: (R() * 1e9) | 0 }, 2); return; }
+  // bins on the sidewalk ring, by the buildings
+  const nb = urban ? Math.floor(R() * 4) : 0;
+  for (let i = 0; i < nb; i++) { const e = Math.floor(R() * 2), t = 30 + R() * (BS - 60); addProp(c, 'bin', e ? bx + 8 : bx + t, e ? by + t : by + 8, R); }
+  // the suburbs put their bins out at the end of the driveway
+  if (bio === 'suburb') for (const d of c.decals) if (d.k === 'drive' && R() < 0.6) { const yy = d.top ? d.y + 10 : d.y + d.h - 10; addProp(c, 'bin', d.x + d.w + 8, yy, R); if (R() < 0.5) addProp(c, 'bin', d.x + d.w + 8, yy + (d.top ? 16 : -16), R); if (R() < 0.18) addProp(c, 'bike', d.x + d.w / 2, d.top ? d.y + 70 : d.y + d.h - 70, R); }
+  // carts: in the parking lots, and pushed out into the street
+  if (c.type === 'lot') for (let i = 0; i < 1 + Math.floor(R() * 3); i++) addProp(c, 'cart', bx + 30 + R() * (BS - 60), by + 120 + R() * 60 + (R() < 0.5 ? 0 : 240), R);
+  if (urban && R() < 0.3) addProp(c, 'cart', ox + 20 + R() * (CH - 40), oy + 20 + R() * (ROAD - 40), R);
+  if ((urban || bio === 'suburb') && R() < 0.2) addProp(c, 'bike', bx + 8 + R() * 4, by + 40 + R() * (BS - 80), R);
+  // pallets in the ruins and the lots
+  if ((bio === 'ruins' || c.type === 'lot' || bio === 'burning') && R() < 0.5) addThing(c, 'pallets', bx + 24 + R() * (BS - 70), by + 24 + R() * (BS - 70), 16, 13, { low: true, n: 1 + Math.floor(R() * 4), s: (R() * 1e9) | 0 }, 2);
+  // a roll-off at the curb
+  if ((bio === 'ruins' || bio === 'burning' || bio === 'city') && R() < (bio === 'city' ? 0.12 : 0.3)) {
+    const top = R() < 0.5, x = bx + 40 + R() * (BS - 160); addThing(c, 'rolloff', x, top ? oy + 14 : oy + ROAD - 14 - 33, 89, 33, { ht: 1.22, col: R(), s: (R() * 1e9) | 0, burnt: bio === 'burning' && R() < 0.6 }, 3);
+  }
+  // bags of trash dumped along the curb when the collections stopped
+  if (urban && R() < 0.45) { const n = 1 + Math.floor(R() * 3), x0 = bx + 20 + R() * (BS - 120); for (let i = 0; i < n; i++) addThing(c, 'bags', x0 + i * 18, by + 2, 15, 10, { low: true, s: (R() * 1e9) | 0 }, 0); }
 }
 // railings along the sides of a bridge, where the water below is deep enough to matter. Bullets fly over them.
 function railings(c) {
@@ -1217,7 +1252,10 @@ function drawBlock(g, c, B, R, win, sea) {
   } else if (c.type === 'lot') {
     inner(win ? '#838e96' : bio === 'ash' ? '#2f2f31' : '#1b1d21');
     g.strokeStyle = 'rgba(230,226,214,0.22)'; g.lineWidth = 2;
-    for (let row = 0; row < 3; row++) for (let i = 0; i <= 7; i++) { const x = bx + 37 + i * 64, y = by + 52 + row * 150; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 68); g.stroke(); }
+    for (const ry of LOT_ROWS) { g.beginPath(); for (let i = 0; i <= 13; i++) { const x = bx + 20 + i * 36; g.moveTo(x, by + ry); g.lineTo(x, by + ry + 73); } g.stroke(); }
+    // the arrows painted in the aisles and the wheel stops
+    g.fillStyle = 'rgba(230,226,214,0.16)'; for (const ay of [101 + 47, 340 + 47]) for (let i = 0; i < 3; i++) { const x = bx + 90 + i * 150, y = by + ay - 47; g.beginPath(); g.moveTo(x + 18, y); g.lineTo(x + 6, y - 7); g.lineTo(x + 6, y - 3); g.lineTo(x - 14, y - 3); g.lineTo(x - 14, y + 3); g.lineTo(x + 6, y + 3); g.lineTo(x + 6, y + 7); g.closePath(); g.fill(); }
+    g.fillStyle = 'rgba(200,196,186,0.35)'; for (const [ry, top] of [[28, 1], [194, 0], [267, 1], [433, 0]]) for (let i = 0; i < 13; i++) g.fillRect(bx + 26 + i * 36, by + ry + (top ? 4 : 66), 24, 3);
   } else if (c.type === 'ruins') {
     inner(win ? '#7f8a92' : '#24221f');
     speckle(g, R, bx + 16, by + 16, BS - 32, BS - 32, Math.floor(500 * dm), 'rgba(200,190,170,0.06)', 'rgba(0,0,0,0.2)');
@@ -1670,6 +1708,39 @@ function drawThing(g, r, c, B, win, Rb) {
       g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(r.x + 3, r.y + 4, r.w, r.h);
       g.fillStyle = '#d9d5c9'; g.fillRect(r.x, r.y, r.w, r.h); g.strokeStyle = '#e0602e'; g.lineWidth = 2; g.beginPath(); g.arc(cx + (r.x < c.ox + CH / 2 ? 9 : -9), cy, 5, 0, TAU); g.stroke();
       break;
+    case 'bags': {
+      // black and green bin bags, knotted, one split open
+      const R = Z.mulberry32(r.s || 9), n = 3 + Math.floor(R() * 3);
+      for (let i = 0; i < n; i++) { const x = r.x + 4 + R() * (r.w - 8), y = r.y + 3 + R() * (r.h - 6), rr = 3.6 + R() * 2.2, col = R() < 0.7 ? '#141516' : R() < 0.5 ? '#2a3a26' : '#3a3d42';
+        g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.ellipse(x + 1.5, y + 2, rr, rr * 0.85, 0, 0, TAU); g.fill();
+        g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rr, rr * 0.85, R(), 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.ellipse(x - rr * 0.3, y - rr * 0.3, rr * 0.35, rr * 0.2, -0.6, 0, TAU); g.fill();
+        g.fillStyle = '#0a0a0a'; g.beginPath(); g.arc(x + rr * 0.6, y - rr * 0.5, 1, 0, TAU); g.fill(); }
+      if (R() < 0.5) { g.fillStyle = 'rgba(120,100,70,0.7)'; for (let i = 0; i < 6; i++) g.fillRect(r.x + r.w * R(), r.y + r.h + R() * 6, 1.6 + R() * 2, 1.2 + R() * 1.6); }
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.6)'; g.fillRect(r.x + 2, r.y + 1, r.w - 4, r.h * 0.4); }
+      break;
+    }
+    case 'pallets': {
+      // a stack of wooden pallets (1.2 by 1.0 m), deck boards across the stringers
+      const R = Z.mulberry32(r.s || 4), n = r.n || 1; shadow(2 + n, 3 + n, 0.35);
+      g.fillStyle = '#6a4a2a'; g.fillRect(r.x, r.y, r.w, r.h);
+      g.fillStyle = '#a07a4a'; for (let i = 0; i < 5; i++) g.fillRect(r.x + 0.5, r.y + 0.5 + i * (r.h - 1) / 4.5, r.w - 1, 1.8);
+      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(r.x + 1, r.y, 1.4, r.h); g.fillRect(r.x + r.w / 2 - 0.7, r.y, 1.4, r.h); g.fillRect(r.x + r.w - 2.4, r.y, 1.4, r.h);
+      if (n > 1) { g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 0.8; g.strokeRect(r.x + 0.5 + R(), r.y + 0.5, r.w - 1, r.h - 1); }
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.75)'; g.fillRect(r.x, r.y, r.w, r.h * 0.6); }
+      break;
+    }
+    case 'rolloff': {
+      // a roll-off container: steel walls with ribs, the rails it slides on, rubble and junk heaped inside
+      const R = Z.mulberry32(r.s || 6), horiz = r.w > r.h, col = r.burnt ? '#2e2a26' : ['#2f5f8a', '#c25a1e', '#3d6a3a', '#6b6f75'][Math.floor((r.col || 0) * 4)];
+      shadow(4, 6, 0.45); g.fillStyle = col; g.fillRect(r.x, r.y, r.w, r.h);
+      g.fillStyle = 'rgba(0,0,0,0.25)'; if (horiz) for (let x = r.x + 6; x < r.x + r.w - 2; x += 9) { g.fillRect(x, r.y, 1.6, 2.4); g.fillRect(x, r.y + r.h - 2.4, 1.6, 2.4); } else for (let y = r.y + 6; y < r.y + r.h - 2; y += 9) { g.fillRect(r.x, y, 2.4, 1.6); g.fillRect(r.x + r.w - 2.4, y, 2.4, 1.6); }
+      g.fillStyle = '#2a2622'; g.fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
+      for (let i = 0; i < 26; i++) { const s = 2 + R() * 6; g.fillStyle = ['#8a8478', '#6b5a48', '#4a4a4e', '#a39a88', '#5a3d26', '#2f2f33'][Math.floor(R() * 6)]; g.save(); g.translate(r.x + 5 + R() * (r.w - 10), r.y + 5 + R() * (r.h - 10)); g.rotate(R() * 3); g.fillRect(-s / 2, -s / 3, s, s * 0.66); g.restore(); }
+      g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 1; g.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+      if (r.burnt) soot(g, cx, cy, Math.max(r.w, r.h) * 0.5, 0.5);
+      if (snowy) { g.fillStyle = 'rgba(236,241,245,0.7)'; g.fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6); }
+      break;
+    }
     case 'dumpster': {
       shadow(4, 5, 0.45); const horiz = r.w > r.h;
       g.fillStyle = r.burnt ? '#2a2724' : ['#2f5a3a', '#2f4a6a', '#5a4a2a'][Math.floor((r.col || 0) * 3)]; g.fillRect(r.x, r.y, r.w, r.h);
