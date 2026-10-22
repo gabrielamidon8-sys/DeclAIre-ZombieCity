@@ -378,9 +378,13 @@ function lgvStep(p, B) {
     const w = mv || L.turn ? 11 : 6, x = L.hip - tgt; L.vh += (-w * w * x - 2 * w * L.vh) * dt; L.hip += L.vh * dt;
     if (!mv && !L.turn) L.hip -= angD(B.chest, B.chestWas == null ? B.chest : B.chestWas);
     L.hip = clamp(L.hip, -0.95, 0.95); B.leg = B.chest + L.hip;
-    if (mv) { B.stopPh = null; const vb = lgvVB(L.v), G = locoParams(vb, { back: L.back, load: 0.3 }); B.ph = (B.ph + (G.stride > 0 ? sp / G.stride : 0) * dt) % 1; B.vb = vb; }
+    // (the painted gait changes bucket only once the new speed has held for a moment: a start or a stop passes through
+    // the slow buckets in a fifth of a second, and painting whole series for that cost the frame rate, most in co-op;
+    // the phase still advances by the real speed over the shown gait's stride, so the feet keep the ground)
+    if (mv) { B.stopPh = null; const vt = lgvVB(L.v); if (B.vb == null || vt === B.vb) { B.vbC = vt; B.vbT = 0; } else { if (B.vbC !== vt) { B.vbC = vt; B.vbT = 0; } B.vbT += dt; if (B.vbT > 0.22) B.vb = vt; } if (B.vb == null) B.vb = vt;
+      const G = locoParams(B.vb, { back: L.back, load: 0.3 }); B.ph = (B.ph + (G.stride > 0 ? sp / G.stride : 0) * dt) % 1; }
     else if (B.stopPh != null) { const rem = B.stopPh - B.ph; if (rem <= 0.004 || rem > 0.6) { B.ph = B.stopPh % 1; B.stopPh = null; B.clip = clip = 'idle_ready'; } else B.ph += Math.min(rem, dt * Math.max(2.2, rem / 0.13)); }
-    else if (L.turn) { B.ph = B.turnPh % 1; B.vb = 1.3; }
+    else if (L.turn) { B.ph = B.turnPh % 1; }
     else { const near = Math.round(B.ph * 2) / 2; B.ph += (near - B.ph) * Math.min(1, dt * 3); }
   }
   B.chestWas = B.chest;
@@ -409,6 +413,8 @@ function lgvStep(p, B) {
 /* ---------- frames: legs, upper body, head ---------- */
 // 1.9.996: the speeds the legs are painted at (m/s): a walk, a fast walk, a jog, a run, a fast run, a sprint; the game's own
 // speeds fall into a few of them (the run's 4.6 to 5.4 into 4.8, the sprint into 7.8), so few frames are needed
+// leg frames painted per gait cycle (12: about 18 a second at a run's cadence, plenty for legs seen from above)
+const LGV_LEGN = 12;
 const LGV_VB = [1.3, 2.4, 3.6, 4.8, 6.2, 7.8];
 function lgvVB(v) { let b = LGV_VB[0], d = Infinity; for (const x of LGV_VB) { const e = Math.abs(x - v); if (e < d) { d = e; b = x; } } return b; }
 // each layer's frame: [left, right, top, bottom] in sprite units around its centre (forward is right; the gun reaches far)
@@ -443,14 +449,15 @@ function lgvPaint(lgId, mk, f, hide, box, px, centre) {
   const dt = performance.now() - t0; LGV.made++; LGV.ms += dt; LG.spriteMade++; LG.spriteMs += dt; coreCost('LEGEND', dt);
   return { o: o, W: W, P: P, gp: mk.gp, gs: mk.gs };
 }
-// one frame, any layer, cached; the key says everything it depends on
+// one frame, any layer, cached; the key says everything it depends on (1.9.996: room for each teammate's frames too, so
+// three legends in co-op do not push each other's frames out and repaint them every few seconds)
 function lgvGet(key, make) {
   let s = LG.sprites.get(key);
   if (s) { LG.sprites.delete(key); LG.sprites.set(key, s); return s; }
   if (LG.spriteBudget <= 0) return undefined;
   LG.spriteBudget--;
   try { s = make(); } catch (e) { lgHurt(e); s = null; }
-  if (s) { LG.sprites.set(key, s); const cap = [200, 260, 360, 480][LG.lvl | 0] || 360; while (LG.sprites.size > cap) LG.sprites.delete(LG.sprites.keys().next().value); }
+  if (s) { LG.sprites.set(key, s); const mates = typeof NET !== 'undefined' && NET.started ? (NET.role === 'host' ? NET.peers.size : NET.others.size) : 0, cap = Math.min(640, Math.round(([200, 260, 360, 480][LG.lvl | 0] || 360) * (1 + 0.3 * Math.min(3, mates)))); while (LG.sprites.size > cap) LG.sprites.delete(LG.sprites.keys().next().value); }
   return s;
 }
 // the nearest frame already painted of a series (while a new one waits its turn)
@@ -571,8 +578,11 @@ function lgvDraw(p, ctx2) {
   // gait cross-fades over a few frames instead of jumping
   const holP = fam === 'c' ? 1 : 0, Lo = B.loco || {};
   if (!B.legs) B.legs = { key: '', prev: '', fade: 0, t: G.time || 0 };
-  const moving = B.clip === 'loco' || B.clip === 'turn', vb = moving ? (B.vb || 1.3) : 0, dirB = moving ? (Math.abs(Lo.dir || 0) < 0.39 ? 0 : (Lo.dir > 0 ? 1 : -1)) : 0, bk = moving && Lo.back ? 1 : 0;
-  const nL = moving ? 16 : 1, iL = moving ? Math.floor(B.ph * nL) % nL : 0, lkey = moving ? 'loco|' + vb + '|' + dirB + '|' + bk : 'stand';
+  // (the steps' direction with a little hysteresis, so sweeping the aim while moving does not flicker between series)
+  const moving = B.clip === 'loco' || B.clip === 'turn', vb = moving ? (B.clip === 'turn' ? 1.3 : (B.vb || 1.3)) : 0, ad = Math.abs(Lo.dir || 0);
+  if (!moving) B.dirB = 0; else if (ad > 0.45) B.dirB = Lo.dir > 0 ? 1 : -1; else if (ad < 0.33) B.dirB = 0;
+  const dirB = moving ? (B.dirB || 0) : 0, bk = moving && Lo.back ? 1 : 0;
+  const nL = moving ? LGV_LEGN : 1, iL = moving ? Math.floor(B.ph * nL) % nL : 0, lkey = moving ? 'loco|' + vb + '|' + dirB + '|' + bk : 'stand';
   const LS = B.legs, now = G.time || 0, ldt = clamp(now - LS.t, 0, 0.1); LS.t = now;
   if (lkey !== LS.key) { LS.prev = LS.key; LS.fade = LS.key ? 1 : 0; LS.key = lkey; }
   LS.fade = Math.max(0, LS.fade - ldt / 0.16);
@@ -584,7 +594,7 @@ function lgvDraw(p, ctx2) {
     }, holP ? LGV_M.legsH : LGV_M.legs, LGV_BOX.legs, px, null);
     return r ? r.o : null;
   });
-  const legs = legLayer(lkey, iL, nL), legsPrev = LS.fade > 0 && LS.prev ? legLayer(LS.prev, LS.prev === 'stand' ? 0 : Math.floor(B.ph * 16) % 16, LS.prev === 'stand' ? 1 : 16) : null;
+  const legs = legLayer(lkey, iL, nL), legsPrev = LS.fade > 0 && LS.prev ? legLayer(LS.prev, LS.prev === 'stand' ? 0 : Math.floor(B.ph * LGV_LEGN) % LGV_LEGN, LS.prev === 'stand' ? 1 : LGV_LEGN) : null;
   // the upper body: its ARMS series
   const up = lgvLayer('up', lgId, mk, U.st + fam + (U.ctx.gun || '') + (U.sub || ''), U.i, U.n, px, () => lgvMakeUp(lgId, mk, U.st, U.i, U.n, U.ctx, px));
   // the head: the mask on, level or looking down at the hands
@@ -614,7 +624,7 @@ function lgvWarm(n) {
   if (!LGV.on || SET.legend === 'none' || !LG.atlas || !LG.atlas.done || typeof armsLoad !== 'function') return 0;
   const W0 = armsPrimary(), W1 = armsSecondary(), fake = { arm: { w: [W0, W1] }, weapon: W0, lc: SET.legendClass || 'attack' }, lgId = SET.legend || 'operator', mk = lgvModelKey(fake), px = SPR * PK;
   const ctx = { run: true, fam: 'c', gun: W0.arms.key, kind: W0.arms.reload.kind, rk: 'tac', keep: false, t: 0 };
-  const jobs = [['up', 'relaxed', 6], ['up', 'ready', 6], ['up', 'raise', 4], ['legs1', 'stand', 1], ['legs1', 'loco|4.8|0|0', 16], ['head', 'h', 2]];
+  const jobs = [['up', 'relaxed', 6], ['up', 'ready', 6], ['up', 'raise', 4], ['legs1', 'stand', 1], ['legs1', 'loco|4.8|0|0', LGV_LEGN], ['head', 'h', 2]];
   let made = 0;
   for (const [kind, st, cnt] of jobs) for (let i = 0; i < cnt && made < n; i++) {
     const sk = kind === 'up' ? st + 'c' + W0.arms.key : st, base = lgvBase(kind, lgId, mk, sk, px); if (LG.sprites.has(base + i)) continue;

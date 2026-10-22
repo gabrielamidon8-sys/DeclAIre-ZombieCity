@@ -40,7 +40,14 @@ const LGP_IDX = Object.keys(LGP_SPRING).map(n => [LGB[n], LGP_W[n], n]);
 function lgpEval(a, t, P, ctx, o) {
   o = o || {};
   lgEvalClip(a, t, P, ctx);
-  if (!LGP.on || o.springs === 0) return P;
+  if (!LGP.on) return P;
+  // (springs 0: the micro-motion alone, for the weakest devices; the past samples are most of the layer's cost)
+  if (o.springs !== 0) lgpSprings(a, t, P, ctx, o);
+  lgpNoise(P, t, o);
+  LGP.n++;
+  return P;
+}
+function lgpSprings(a, t, P, ctx, o) {
   const tc = lgClipT(a, t);
   // the clip's own past, a sample per tau (a looped clip wraps; a one-shot holds its first frame before it starts)
   for (let k = 1; k < LGP_TAUS.length; k++) lgEvalClip(a, a.loop ? tc - LGP_TAUS[k] : Math.max(0, tc - LGP_TAUS[k]), LGP_TMP[k], ctx);
@@ -69,8 +76,9 @@ function lgpEval(a, t, P, ctx, o) {
     lgJadd(P, 'tailL', cl(dT[1] * 9, 0.9), cl(dT[2] * 12 - dT[0] * 8 + dT[3] * 2, 1.0), 0);
     lgJadd(P, 'tailR', cl(dT[1] * 9, 0.9), cl(dT[2] * 12 - dT[0] * 8 + dT[3] * 2, 1.0), 0);
   }
-  // micro-motion: slow sway over the feet, small corrections of the trunk and head, a breath (scaled down as the body
-  // moves fast, where it would be lost anyway)
+}
+// micro-motion: slow sway over the feet, small corrections of the trunk and head, a breath
+function lgpNoise(P, t, o) {
   const nz = (o.noise == null ? 1 : o.noise), s = o.seed || 0;
   if (nz > 0) {
     const pi = LGB.pelvis * 3;
@@ -80,6 +88,4 @@ function lgpEval(a, t, P, ctx, o) {
     lgJadd(P, 'head', lgN1(t * 0.9, 41 + s) * 0.006 * nz, lgN1(t * 0.8, 43 + s) * 0.008 * nz, lgN1(t * 0.7, 47 + s) * 0.01 * nz);
     const br = Math.sin(t * TAU / 4.4 + s) * nz; lgJadd(P, 'chest', 0, -0.008 * br, 0); lgJadd(P, 'clavL', 0.006 * br, 0, 0); lgJadd(P, 'clavR', -0.006 * br, 0, 0);
   }
-  LGP.n++;
-  return P;
 }

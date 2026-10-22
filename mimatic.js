@@ -303,7 +303,9 @@ function mimActor(o) {
 }
 // 1.9.996: every actor's clip goes through the performance layer (legperf.js): overlap, follow-through and micro-motion,
 // scrubbable (a.perf = false turns it off for an actor, a.perfO tunes it)
-function mimEval(clip, t, P, ctx, a) { return typeof lgpEval === 'function' && (!a || a.perf !== false) ? lgpEval(clip, t, P, ctx, Object.assign({ seed: a && a.seed || 0 }, a && a.perfO)) : lgEvalClip(clip, t, P, ctx); }
+// (1.9.996: every actor through LEGEND's performance layer; on the weakest step only its micro-motion, the springs cost twelve
+// evaluations of the clip a frame)
+function mimEval(clip, t, P, ctx, a) { return typeof lgpEval === 'function' && (!a || a.perf !== false) ? lgpEval(clip, t, P, ctx, Object.assign({ seed: a && a.seed || 0, springs: MIM.lvl === 0 ? 0 : 1 }, a && a.perfO)) : lgEvalClip(clip, t, P, ctx); }
 function mimRootAt(a, st) { const r = lgK(st, a.root.map(k => [k[0], [k[1], k[2], k[3], k[4]], k[5] || 'l'])); return r; }
 function mimActorEval(a, st) {
   const tr = a.track; let i = 0; while (i < tr.length - 1 && tr[i + 1][0] <= st) i++;
