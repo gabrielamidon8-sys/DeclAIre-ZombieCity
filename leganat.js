@@ -245,9 +245,11 @@ function lgaArmSearch(W, L, ia, ib, ic, T, ps, rootM, free) {
     // the author's pole is the default (a strong pull toward it); the wrist's comfort and gravity move it only as far as they must
     const comfort = (flex / 80) * (flex / 80) * 0.35 + (dev / 25) * (dev / 25) * 0.35 + (pro / 90) * (pro / 90) * 0.3 + Math.max(0, hang) * 1.4 + (hang + 1) * 0.7 + (phi / Math.PI) * (phi / Math.PI) * 2.4;
     const body = LGA.body ? inBody(e) : 0;
-    // (1.9.997: the body's cost saturates: an arm the clip put against the chest keeps its natural elbow, it is not thrown
-    // out wide to clear a wall that is not there)
-    return { cost: exc * exc * 0.05 + exc * 0.5 + (exc > 1.5 ? 20 : 0) + comfort + 2.5 * (1 - Math.exp(-body / 0.02)), exc: exc, wex: wex, flex: flex, dev: dev, pro: pro, p: p, F: [xf, curV3.cross(nf, xf), nf], body: body };
+    // (1.9.997: the body's cost saturates for contact: an arm the clip put against the chest keeps its natural elbow, it is
+    // not thrown out wide to clear a wall that is not there. Past 3 cm into the body as modelled (the ellipse, cloth and
+    // give already allowed) it is a limb through the chest, and that grows steeply again: the hanging elbow's comfort must
+    // never buy a forearm through the ribs or an upper arm through the head (LEGEND's v5 exam caught 11 clips doing it))
+    return { cost: exc * exc * 0.05 + exc * 0.5 + (exc > 1.5 ? 20 : 0) + comfort + 2.5 * (1 - Math.exp(-body / 0.02)) + (body > 0.03 ? (body - 0.03) * (LGA.bodyK == null ? 300 : LGA.bodyK) : 0), exc: exc, wex: wex, flex: flex, dev: dev, pro: pro, p: p, F: [xf, curV3.cross(nf, xf), nf], body: body };
   };
   let best = ev(0), bphi = 0;
   if (LGA.trace) { for (let i = -12; i <= 12; i++) { const phi = i * Math.PI / 13, r = ev(phi), e = curV3.add(S, curV3.add(curV3.mul(d, a * ca), curV3.mul(r.p, a * sa))); LGA.trace.push({ phi: +phi.toFixed(2), cost: +r.cost.toFixed(2), exc: +r.exc.toFixed(1), flex: Math.round(r.flex), dev: Math.round(r.dev), pro: Math.round(r.pro), body: +r.body.toFixed(3), ez: +(e[2] - S[2]).toFixed(2), ey: +(e[1] - S[1]).toFixed(2) }); } }
