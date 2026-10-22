@@ -416,7 +416,7 @@ function armsEquipCur() {
 function armsSelfTest() {
   let n = 0, pass = 0, why = '';
   try {
-    n++; if (ARMS_PRI.length === 5 && ARMS_SEC.length === 5) pass++; else why = 'not five and five';
+    n++; if (ARMS_PRI.length === 10 && ARMS_SEC.length === 10) pass++; else why = 'not ten and ten';   // (1.9.997: ten of each)
     n++; if (ARMS_LIST.every(w => BAL_GUN[w.arms.key] && GUN_LEN[w.arms.key] && MZ[w.arms.key] && ARMS_BEATS[w.arms.reload.kind])) pass++; else why = why || 'a gun is missing from a shared table';
     // a reload on a dummy: a tactical reload leaves thirty plus one, an empty one thirty; the tube takes one a shell
     const q = { x: 0, y: 0, aim: 0, walk: 0, ix: 0, iy: 0, S: { rof: 10 }, db: {}, fireCd: 0, jamT: 0, frozenT: 0 };
@@ -431,8 +431,10 @@ function armsSelfTest() {
     q.arm.st = 'relaxed'; q.arm.t = 0; const early = armsFire(q, null, 0);
     n++; if (!early && q.arm.st === 'raise') pass++; else why = why || 'it fired before the gun was up';
     // each gun's round against the real one: muzzle energy (all the pellets for buckshot) within a quarter of the published figure
-    const REF = [['5.56', 1700], ['5.45', 1400], ['7.62×51', 3300], ['12 gauge', 2700], ['9×18', 310], ['9×19', 520], ['.45', 480]];
-    const off = ARMS_LIST.filter(w => { const A = w.arms, r = REF.find(x => A.cal.indexOf(x[0]) >= 0); if (!r) return true; const E = 0.5 * A.g / 1000 * A.v * A.v * (A.pellets || 1); return Math.abs(E / r[1] - 1) > 0.25; });
+    // (1.9.997: the new cartridges: .44 Magnum about 1,300 J (240 gr at 1,350 ft/s), .50 AE about 1,950 J (300 gr at 1,450 ft/s),
+    // 5.7×28 about 500 J from the pistol; the coach gun's buckshot leaves 12-inch barrels at about 1,150 ft/s, about 1,950 J)
+    const REF = [['5.56', 1700], ['5.45', 1400], ['7.62×51', 3300], ['12 gauge', 2700], ['9×18', 310], ['9×19', 520], ['.45', 480], ['.44', 1300], ['.50 Action', 1950], ['5.7×28', 500]], REF_GUN = { coach: 1950 };
+    const off = ARMS_LIST.filter(w => { const A = w.arms, r = REF_GUN[A.key] ? [A.key, REF_GUN[A.key]] : REF.find(x => A.cal.indexOf(x[0]) >= 0); if (!r) return true; const E = 0.5 * A.g / 1000 * A.v * A.v * (A.pellets || 1); return Math.abs(E / r[1] - 1) > 0.25; });
     n++; if (!off.length) pass++; else why = why || 'a round is off its real energy: ' + off.map(w => w.arms.key).join(', ');
   } catch (e) { why = String(e && e.message || e); }
   ARMS.testing = false; ARMS.reloads = Math.max(0, ARMS.reloads - 2); ARMS.tac = Math.max(0, ARMS.tac - 1); ARMS.specials = Math.max(0, ARMS.specials - 1);
@@ -454,7 +456,7 @@ coreDefine({ name: 'ARMS', kind: 'sim', ver: 1, does: 'The armorer: the ten rebu
   selfTest: () => armsSelfTest(),
   learned: () => { const u = Object.entries(ARMS.uses).sort((a, b) => (b[1].r + b[1].s) - (a[1].r + a[1].s))[0]; return ARMS.fired ? ['You have fired ' + ARMS.fired + ' rounds this session, reloaded ' + ARMS.reloads + ' times (' + ARMS.tac + ' tactical, magazine kept) and rolled ' + ARMS.dodges + ' times.' + (u ? ' The gun you reload most: the ' + ARMS_BY[u[0]].name + '; its frames are warmed first.' : '')] : []; },
   on: { run: () => { ARMS.hudK = ''; } },
-  spec: { files: ['arms', 'weapons'], parts: ['ten real guns', 'primary and secondary', 'magazines and chambers', 'eight reload techniques', 'special reloads', 'tactical reload', 'press check', 'ready up and down', 'sprint', 'the dodge roll', 'recoil by calibre', 'the armory racks'], procs: ['cpu'],
+  spec: { files: ['arms', 'weapons'], parts: ['twenty real guns', 'primary and secondary', 'magazines, belts and chambers', 'fifteen reload techniques', 'special reloads', 'tactical reload', 'press check', 'ready up and down', 'sprint', 'the dodge roll', 'recoil by calibre', 'the armory racks'], procs: ['cpu'],
     effort: false, effortWhy: 'How the guns handle has to be the same for every player and in co-op.' }
 });
 setInterval(() => { if (ARMS.useDirty) { ARMS.useDirty = false; store.set('zc_armsUse', ARMS.uses); } }, 15000);
