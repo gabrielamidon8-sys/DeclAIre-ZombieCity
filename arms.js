@@ -133,7 +133,7 @@ function armsTick(p, dt, moving) {
 function armsFire(p, target, ang, auto) {
   const a = p.arm; if (!a) { fireWeapon(target, ang); return true; }
   const w = p.weapon, A = w.arms;
-  armsEngage(p); a.fireT = G.time || 0;
+  armsEngage(p); if (!auto) a.fireT = G.time || 0;   // (only a trigger held keeps him out of the sprint: the gun that aims and fires on its own (touch, auto aim) leaves the sprint to the sprint button)
   if (a.st === 'knife') { if (typeof bladeShot === 'function') bladeShot(p, target, auto); return false; }   // (in the chain: the point-blank shot, knife.js)
   if (a.st === 'sprint') { a.latch = false; G.touchSprint = false; armsSet(p, 'sprintOut', A.ready * 1.15); armsSnd('readyUp', 1); return false; }
   if (a.st === 'relaxed') { armsSet(p, 'raise', A.ready); armsSnd('readyUp', 1); return false; }
