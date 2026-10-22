@@ -5590,13 +5590,14 @@ var SFX = (function () {
   //   ck: crack [hp Hz, dur, vol]   bd: body [Hz, dur, vol, end Hz]   kn: knock [Hz, dur, vol]   sb: sub [f0, f1, dur, vol]
   //   mech: the action (pre: what happens before the shot)   tl: tail per shot [dur, vol, lp Hz]   tlL: the long tail
   //   rg: frame ring [Hz, vol]   gp: cylinder-gap blast   sat: saturated body share   dur: sample length   cap: peak
-  //   stream: trimmed per shot, long tail at burst end (gap: the gun's cycle)   duck: how far the radio dips   vol: level
+  //   stream: trimmed per shot, long tail at burst end (gap: the gun's cycle)   duck: how far the radio dips   vol: level at play
+  //   (a 5.56 carbine is a few dB louder than a 9 mm pistol at the shooter's ear; the stream guns also play at 0.85 a round)
   var G20 = {
     // ---- 5.56 / 5.45: hard crack, bright report, light sub ----
-    m4a1: { ck: [3400, 0.012, 0.9], bd: [1700, 0.09, 0.5, 600], kn: [600, 0.06, 0.2], sb: [150, 45, 0.1, 0.3], mech: 'buffer', tl: [0.2, 0.12, 1100], tlL: [0.5, 0.16, 1100], sat: 0.2, dur: 0.42, cap: 0.76, stream: 1, gap: 0.075, duck: 0.26 },
-    ak74m: { ck: [3000, 0.012, 0.75], bd: [1300, 0.1, 0.52, 500], kn: [500, 0.07, 0.26], sb: [140, 45, 0.1, 0.32], mech: 'akrun', tl: [0.22, 0.13, 1000], tlL: [0.52, 0.17, 1000], sat: 0.24, dur: 0.45, cap: 0.76, stream: 1, gap: 0.092, duck: 0.26 },
-    aug: { ck: [3300, 0.011, 0.85], bd: [1700, 0.08, 0.45, 600], kn: [600, 0.06, 0.18], sb: [150, 46, 0.09, 0.28], mech: 'bullpup', tl: [0.2, 0.11, 1100], tlL: [0.48, 0.15, 1100], sat: 0.18, dur: 0.42, cap: 0.76, stream: 1, gap: 0.086, duck: 0.26 },
-    m249: { ck: [3300, 0.012, 0.85], bd: [1600, 0.085, 0.5, 560], kn: [560, 0.06, 0.2], sb: [145, 45, 0.09, 0.3], mech: 'belt', tl: [0.16, 0.1, 1000], tlL: [0.6, 0.18, 1000], sat: 0.22, dur: 0.36, cap: 0.76, stream: 1, gap: 0.07, duck: 0.28 },
+    m4a1: { ck: [3400, 0.012, 0.9], bd: [1700, 0.09, 0.5, 600], kn: [600, 0.06, 0.2], sb: [150, 45, 0.1, 0.3], mech: 'buffer', tl: [0.2, 0.12, 1100], tlL: [0.5, 0.16, 1100], sat: 0.2, dur: 0.42, cap: 0.76, stream: 1, gap: 0.075, duck: 0.26, vol: 1.2 },
+    ak74m: { ck: [3000, 0.012, 0.75], bd: [1300, 0.1, 0.52, 500], kn: [500, 0.07, 0.26], sb: [140, 45, 0.1, 0.32], mech: 'akrun', tl: [0.22, 0.13, 1000], tlL: [0.52, 0.17, 1000], sat: 0.24, dur: 0.45, cap: 0.76, stream: 1, gap: 0.092, duck: 0.26, vol: 1.2 },
+    aug: { ck: [3300, 0.011, 0.85], bd: [1700, 0.08, 0.45, 600], kn: [600, 0.06, 0.18], sb: [150, 46, 0.09, 0.28], mech: 'bullpup', tl: [0.2, 0.11, 1100], tlL: [0.48, 0.15, 1100], sat: 0.18, dur: 0.42, cap: 0.76, stream: 1, gap: 0.086, duck: 0.26, vol: 1.2 },
+    m249: { ck: [3300, 0.012, 0.85], bd: [1600, 0.085, 0.5, 560], kn: [560, 0.06, 0.2], sb: [145, 45, 0.09, 0.3], mech: 'belt', tl: [0.16, 0.1, 1000], tlL: [0.6, 0.18, 1000], sat: 0.22, dur: 0.36, cap: 0.76, stream: 1, gap: 0.07, duck: 0.28, vol: 1.2 },
     // ---- 7.62×51: fuller low-mids, longer tails ----
     mk17: { ck: [2800, 0.013, 0.72], bd: [1000, 0.15, 0.7, 420], kn: [450, 0.08, 0.32], sb: [110, 35, 0.2, 0.6], mech: 'piston', tl: [0.6, 0.22, 900], sat: 0.3, dur: 0.85, cap: 0.82, duck: 0.34, vol: 1.08 },
     mk14: { ck: [2900, 0.013, 0.72], bd: [1050, 0.15, 0.7, 430], kn: [460, 0.09, 0.32], sb: [112, 36, 0.21, 0.6], mech: 'oprod', tl: [0.65, 0.22, 900], sat: 0.3, dur: 0.9, cap: 0.82, duck: 0.34, vol: 1.08 },
@@ -5608,7 +5609,7 @@ var SFX = (function () {
     m17: { ck: [3600, 0.009, 0.55], bd: [1500, 0.075, 0.45, 600], kn: [650, 0.05, 0.18], sb: [180, 55, 0.07, 0.24], mech: 'slideP', tl: [0.3, 0.12, 1100], sat: 0.14, dur: 0.5, cap: 0.72, duck: 0.18 },
     g17: { ck: [3650, 0.009, 0.55], bd: [1550, 0.072, 0.45, 620], kn: [660, 0.05, 0.17], sb: [182, 56, 0.07, 0.24], mech: 'slideP', tl: [0.3, 0.12, 1100], sat: 0.14, dur: 0.5, cap: 0.72, duck: 0.18 },
     m9: { ck: [3500, 0.009, 0.53], bd: [1450, 0.078, 0.46, 580], kn: [640, 0.05, 0.18], sb: [178, 54, 0.072, 0.24], mech: 'slideS', rf: 1900, rv: 0.035, tl: [0.3, 0.12, 1100], sat: 0.14, dur: 0.5, cap: 0.72, duck: 0.18 },
-    fiveseven: { ck: [4400, 0.008, 0.8], bd: [2100, 0.055, 0.38, 800], kn: [800, 0.04, 0.12], sb: [190, 70, 0.05, 0.16], mech: 'slideP', tl: [0.28, 0.1, 1300], sat: 0.1, dur: 0.46, cap: 0.7, duck: 0.16 },
+    fiveseven: { ck: [4400, 0.008, 0.8], bd: [2100, 0.055, 0.38, 800], kn: [800, 0.04, 0.12], sb: [190, 70, 0.05, 0.16], mech: 'slideP', tl: [0.28, 0.1, 1300], sat: 0.1, dur: 0.46, cap: 0.7, duck: 0.16, vol: 1.12 },
     // ---- .45 ACP: subsonic, no crack, a slower boom ----
     m1911: { ck: [2600, 0.01, 0.3], bd: [900, 0.11, 0.6, 380], kn: [420, 0.08, 0.4], sb: [130, 42, 0.12, 0.5], mech: 'slideS', rf: 1500, rv: 0.05, tl: [0.4, 0.16, 950], sat: 0.22, dur: 0.62, cap: 0.76, duck: 0.22 },
     m1917: { ck: [2600, 0.01, 0.3], bd: [900, 0.12, 0.62, 380], kn: [420, 0.09, 0.42], sb: [128, 42, 0.13, 0.5], mech: 'frame', rg: [2100, 0.05], gp: 0.22, tl: [0.46, 0.17, 950], sat: 0.22, dur: 0.68, cap: 0.76, duck: 0.22 },
@@ -16339,7 +16340,7 @@ const PR_FS = {
     '#ifdef DET\n' +
     ' if (uDetK > 0.0) { vec2 dpx = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 dw = vec2((dpx.x - uTr.y) / uTr.x, (dpx.y - uTr.w) / uTr.z) / uDetTile; float de = 1.0 / 256.0;\n' +
     '  float dh = dth(dw), dhn = dth(dw + vec2(0.0, -de)), dhs = dth(dw + vec2(0.0, de)), dhe = dth(dw + vec2(de, 0.0)), dhw = dth(dw - vec2(de, 0.0));\n' +
-    '  nd = normalize(vec3((dhw - dhe) * 2.4 * uDetK, (dhs - dhn) * 2.4 * uDetK, 1.0)); c *= 1.0 + (dh - 0.5) * 0.08 * uDetK + (texture2D(uDet, dw * 3.0).g - 0.5) * 0.04 * uDetK; }\n' +
+    '  nd = normalize(vec3((dhw - dhe) * 2.4 * uDetK, (dhs - dhn) * 2.4 * uDetK, 1.0)); c *= 1.0 + (dh - 0.5) * 0.06 * uDetK + (texture2D(uDet, dw * 3.0).g - 0.5) * 0.035 * uDetK; }\n' +
     '#endif\n' +
     // relief: the picture's own detail (asphalt grain, roof gravel, cracks, skin) lit from the sun's side
     ' if (uRelief > 0.0) { float ln = dot(tap(uv + vec2(0.0, uIn.y)), W3), ls = dot(tap(uv - vec2(0.0, uIn.y)), W3), le = dot(tap(uv + vec2(uIn.x, 0.0)), W3), lw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
@@ -16586,7 +16587,7 @@ function prismGpu() {
   if (PRISM.det && u.uDet != null) {
     if (!PRISM.detUp) { try { prismUpload(T.det, texelDetail()); PRISM.detUp = true; } catch (e) { PRISM.det = false; } }
     const bio = WORLD.cur ? WORLD.cur.bio : 'city', soft = bio === 'snow' || bio === 'desert' || bio === 'ash';
-    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.6 : 0.35) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (soft ? 0.6 : 1);
+    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.48 : 0.28) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (soft ? 0.6 : 1);
     gl.uniform1f(u.uDetK, dk); gl.uniform1f(u.uDetTile, 150 * (typeof PK === 'number' && PK > 0 ? PK : 1)); gl.uniform1f(u.uCrack, soft ? 0 : bio === 'suburb' ? 0.5 : 1); if (dk > 0) prismBind(fp, 'uDet', 8, T.det);
   }
   prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
@@ -23488,7 +23489,7 @@ function armsTick(p, dt, moving) {
 function armsFire(p, target, ang, auto) {
   const a = p.arm; if (!a) { fireWeapon(target, ang); return true; }
   const w = p.weapon, A = w.arms;
-  armsEngage(p); a.fireT = G.time || 0;
+  armsEngage(p); if (!auto) a.fireT = G.time || 0;   // (only a trigger held keeps him out of the sprint: the gun that aims and fires on its own (touch, auto aim) leaves the sprint to the sprint button)
   if (a.st === 'knife') { if (typeof bladeShot === 'function') bladeShot(p, target, auto); return false; }   // (in the chain: the point-blank shot, knife.js)
   if (a.st === 'sprint') { a.latch = false; G.touchSprint = false; armsSet(p, 'sprintOut', A.ready * 1.15); armsSnd('readyUp', 1); return false; }
   if (a.st === 'relaxed') { armsSet(p, 'raise', A.ready); armsSnd('readyUp', 1); return false; }
@@ -23771,7 +23772,7 @@ function armsEquipCur() {
 function armsSelfTest() {
   let n = 0, pass = 0, why = '';
   try {
-    n++; if (ARMS_PRI.length === 5 && ARMS_SEC.length === 5) pass++; else why = 'not five and five';
+    n++; if (ARMS_PRI.length === 10 && ARMS_SEC.length === 10) pass++; else why = 'not ten and ten';   // (1.9.997: ten of each)
     n++; if (ARMS_LIST.every(w => BAL_GUN[w.arms.key] && GUN_LEN[w.arms.key] && MZ[w.arms.key] && ARMS_BEATS[w.arms.reload.kind])) pass++; else why = why || 'a gun is missing from a shared table';
     // a reload on a dummy: a tactical reload leaves thirty plus one, an empty one thirty; the tube takes one a shell
     const q = { x: 0, y: 0, aim: 0, walk: 0, ix: 0, iy: 0, S: { rof: 10 }, db: {}, fireCd: 0, jamT: 0, frozenT: 0 };
@@ -23786,8 +23787,10 @@ function armsSelfTest() {
     q.arm.st = 'relaxed'; q.arm.t = 0; const early = armsFire(q, null, 0);
     n++; if (!early && q.arm.st === 'raise') pass++; else why = why || 'it fired before the gun was up';
     // each gun's round against the real one: muzzle energy (all the pellets for buckshot) within a quarter of the published figure
-    const REF = [['5.56', 1700], ['5.45', 1400], ['7.62×51', 3300], ['12 gauge', 2700], ['9×18', 310], ['9×19', 520], ['.45', 480]];
-    const off = ARMS_LIST.filter(w => { const A = w.arms, r = REF.find(x => A.cal.indexOf(x[0]) >= 0); if (!r) return true; const E = 0.5 * A.g / 1000 * A.v * A.v * (A.pellets || 1); return Math.abs(E / r[1] - 1) > 0.25; });
+    // (1.9.997: the new cartridges: .44 Magnum about 1,300 J (240 gr at 1,350 ft/s), .50 AE about 1,950 J (300 gr at 1,450 ft/s),
+    // 5.7×28 about 500 J from the pistol; the coach gun's buckshot leaves 12-inch barrels at about 1,150 ft/s, about 1,950 J)
+    const REF = [['5.56', 1700], ['5.45', 1400], ['7.62×51', 3300], ['12 gauge', 2700], ['9×18', 310], ['9×19', 520], ['.45', 480], ['.44', 1300], ['.50 Action', 1950], ['5.7×28', 500]], REF_GUN = { coach: 1950 };
+    const off = ARMS_LIST.filter(w => { const A = w.arms, r = REF_GUN[A.key] ? [A.key, REF_GUN[A.key]] : REF.find(x => A.cal.indexOf(x[0]) >= 0); if (!r) return true; const E = 0.5 * A.g / 1000 * A.v * A.v * (A.pellets || 1); return Math.abs(E / r[1] - 1) > 0.25; });
     n++; if (!off.length) pass++; else why = why || 'a round is off its real energy: ' + off.map(w => w.arms.key).join(', ');
   } catch (e) { why = String(e && e.message || e); }
   ARMS.testing = false; ARMS.reloads = Math.max(0, ARMS.reloads - 2); ARMS.tac = Math.max(0, ARMS.tac - 1); ARMS.specials = Math.max(0, ARMS.specials - 1);
@@ -23809,7 +23812,7 @@ coreDefine({ name: 'ARMS', kind: 'sim', ver: 1, does: 'The armorer: the ten rebu
   selfTest: () => armsSelfTest(),
   learned: () => { const u = Object.entries(ARMS.uses).sort((a, b) => (b[1].r + b[1].s) - (a[1].r + a[1].s))[0]; return ARMS.fired ? ['You have fired ' + ARMS.fired + ' rounds this session, reloaded ' + ARMS.reloads + ' times (' + ARMS.tac + ' tactical, magazine kept) and rolled ' + ARMS.dodges + ' times.' + (u ? ' The gun you reload most: the ' + ARMS_BY[u[0]].name + '; its frames are warmed first.' : '')] : []; },
   on: { run: () => { ARMS.hudK = ''; } },
-  spec: { files: ['arms', 'weapons'], parts: ['ten real guns', 'primary and secondary', 'magazines and chambers', 'eight reload techniques', 'special reloads', 'tactical reload', 'press check', 'ready up and down', 'sprint', 'the dodge roll', 'recoil by calibre', 'the armory racks'], procs: ['cpu'],
+  spec: { files: ['arms', 'weapons'], parts: ['twenty real guns', 'primary and secondary', 'magazines, belts and chambers', 'fifteen reload techniques', 'special reloads', 'tactical reload', 'press check', 'ready up and down', 'sprint', 'the dodge roll', 'recoil by calibre', 'the armory racks'], procs: ['cpu'],
     effort: false, effortWhy: 'How the guns handle has to be the same for every player and in co-op.' }
 });
 setInterval(() => { if (ARMS.useDirty) { ARMS.useDirty = false; store.set('zc_armsUse', ARMS.uses); } }, 15000);
@@ -28499,7 +28502,7 @@ function lgGun2Mats(K) {
     M.augMag = lgMtl({ c: '#8ea089', t: LT.poly, r: 0.3, w: 0.05, n: 0.3, k: 0.05 });                  // its translucent magazine (a pale shell)
     M.chrome = lgMtl({ c: '#b8bcc2', t: LT.metal, r: 0.18, m: 0.95, w: 0.02, n: 0.2, k: 0.08 });        // the Desert Eagle's brushed steel
     M.alu = lgMtl({ c: '#55585c', t: LT.metal, r: 0.46, m: 0.7, w: 0.04, n: 0.6, k: 0.1 });            // the Mossberg's and the chassis's aluminium
-    M.canvas = lgMtl({ c: '#4f5240', t: LT.cloth, r: 0.8, w: 0.1, n: 0.9, k: 0.1 });                   // the M249's ammunition pouch
+    M.canvas = lgMtl({ c: '#4f5240', t: LT.cord, r: 0.86, w: 0.1, n: 0.9, k: 0.1 });                    // the M249's ammunition pouch (Cordura; 1.9.997: it named a texture that does not exist and drew as plain plastic)
     M.wood = lgMtl({ c: '#7a4a2a', t: LT.leather, r: 0.4, w: 0.2, n: 0.5, k: 0.06 });                  // the Model 29's target grips
     M.link = lgMtl({ c: '#5c5e60', t: LT.metal, r: 0.5, m: 0.7, w: 0.04, n: 0.6, k: 0.1 });
   }
@@ -28516,6 +28519,10 @@ function lgGunMP5(B, K) {
   lgBore(B, 0.03, 0.28, [[0, 0.01], [0.9, 0.0105], [1, 0.0095]], 0, 0.026, { segs: 10 });   // the cocking tube
   if (top) for (let i = 0; i < 9; i++) lgBox(B, 0.11 + i * 0.02, 0, 0.0365, 0.006, 0.0022, 0.0008, 0);   // its slots
   lgBox(B, -0.112, 0, 0.0, 0.004, 0.019, 0.019, 0.003);                                                    // the rear cap
+  // (1.9.997, the detail pass: the stamped receiver wraps up round the cocking tube, so the tube is part of the gun and
+  // not a bar floating over it; the pressed ribs on the receiver's sides; the two push pins that hold the trigger group)
+  lgSide(B, [[-0.1, 0.004], [0.25, 0.004], [0.25, 0.03], [-0.07, 0.03], [-0.1, 0.022]], 0.03, { bev: 0.003, round: true });
+  if (hi) { for (const sy of [1, -1]) lgBox(B, -0.03, sy * 0.0186, 0.004, 0.06, 0.0008, 0.0022, 0.0008); lgMat(B, M.metal); lgPin(B, -0.088, -0.009, 0.0026, 0.034); lgPin(B, 0.032, -0.009, 0.0026, 0.034); lgMat(B, M.gunBlk); }
   // the magazine housing and the paddle release behind it
   lgSide(B, [[0.045, -0.012], [0.105, -0.012], [0.105, -0.036], [0.047, -0.036]], 0.03, { bev: 0.0025, round: true });
   if (hi) { lgMat(B, M.gunBlk); lgSide(B, [[0.036, -0.03], [0.046, -0.032], [0.046, -0.046], [0.034, -0.044]], 0.014, { bev: 0.001 }); }   // the paddle
@@ -28561,11 +28568,19 @@ function lgGunM249(B, K) {
   lgMat(B, M.gunPoly); B.M.dk = M.gunPoly.dk; lgARGrip(B, -0.02, -0.05, 0.03);
   lgTrigger(B, M, -0.024, 0.044, -0.07, -0.052, { tx: 0.004 });
   if (hi) { lgMat(B, M.metal); lgKnob(B, -0.04, 0.026, -0.03, 0.004, 0.004, 1); lgKnob(B, 0.2, 0.026, 0.0, 0.004, 0.006, 1); }   // the safety, the barrel latch
+  // (1.9.997, the detail pass: the STANAG magazine well on the left with its sprung dust cover, the ejection port under the
+  // receiver (the M249 throws its cases and links down), the rows of rivets on the stamped receiver)
+  lgMat(B, M.gunBlk); lgBox(B, 0.105, 0.04, -0.036, 0.028, 0.014, 0.016, 0.003);
+  if (hi) { lgMat(B, M.gunPoly); lgBox(B, 0.105, 0.0545, -0.036, 0.026, 0.0012, 0.014, 0.001); lgMat(B, M.visor); lgBox(B, 0.165, 0, -0.0505, 0.032, 0.013, 0.0008, 0); }
+  if (top) { lgMat(B, M.metal); for (const sy of [1, -1]) for (let i = 0; i < 7; i++) lgKnob(B, -0.1 + i * 0.06, sy * 0.0262, 0.034, 0.0022, 0.0012, sy); }
   // the handguard with its heat vents, the gas tube under the barrel, the barrel with its carry handle, the gas block
   // and front sight, the birdcage; the bipod folded under the gas tube
   lgMat(B, M.gunPoly); lgSide(B, [[0.3, -0.038], [0.53, -0.034], [0.53, 0.03], [0.3, 0.034]], 0.05, { bev: 0.006, round: true });
   if (hi) { lgMat(B, M.gunPoly.dk); for (let i = 0; i < 6; i++) for (const s of [1, -1]) lgBox(B, 0.33 + i * 0.032, s * 0.025, 0.0, 0.009, 0.0006, 0.012, 0.002); }
   lgMat(B, M.gunBlk); lgBore(B, 0.53, 0.33, [[0, 0.012], [0.3, 0.0115], [1, 0.011]]); lgBore(B, 0.5, 0.36, 0.009, 0, -0.03);   // the barrel, the gas tube
+  // (1.9.997: the heat shield over the barrel's first stretch, open underneath, with its row of vents)
+  lgPush(B, lgTR(0.535, 0, 0.0, 0, Math.PI / 2, 0)); lgLathe(B, [[0.0158, 0], [0.0172, 0.004], [0.0172, 0.15], [0.0158, 0.154]], { segs: 14, a0: -1.45, a1: 1.45 }); lgPop(B);
+  if (hi) { lgMat(B, M.visor); for (let i = 0; i < 6; i++) lgBox(B, 0.555 + i * 0.023, 0, 0.0173, 0.006, 0.004, 0.0006, 0.001); lgMat(B, M.gunBlk); }
   lgBox(B, 0.6, 0, 0.0, 0.014, 0.012, 0.026, 0.003); if (hi) { lgBox(B, 0.6, 0, 0.032, 0.0014, 0.0014, 0.007, 0); for (const s of [1, -1]) lgBox(B, 0.6, s * 0.007, 0.03, 0.003, 0.0015, 0.008, 0.001); }   // the gas block and sight
   lgBore(B, 0.86, 0.06, [[0, 0.0125], [0.1, 0.013], [0.9, 0.013], [1, 0.012]], 0, 0, { segs: 12, wr: top ? (a, z) => (z > 0.015 && z < 0.05 && Math.sin(a * 5) > 0.55 ? -0.35 : 0) : null });
   lgMat(B, M.gunPoly); lgTube(B, [[0.46, 0, 0.012], [0.46, 0, 0.05], [0.56, 0, 0.05], [0.56, 0, 0.012]], 0.006, { segs: 6 });   // the carry handle, folded flat is a bar: left up
@@ -28584,7 +28599,12 @@ function lgGunM249(B, K) {
   // the charging handle on the right: non-reciprocating, pulled back and pushed home
   lgBone(B, 'ccharge'); lgMat(B, M.gunBlk); lgBox(B, 0.06, -0.03, 0.01, 0.012, 0.006, 0.006, 0.002); lgMat(B, M.gunPoly); lgBox(B, 0.06, -0.04, 0.01, 0.014, 0.005, 0.009, 0.003);
   // the 200-round pouch under the tray (on the magazine bone: it comes off and the new one hangs on)
-  lgBone(B, 'cmag'); lgMat(B, M.canvas); lgBox(B, 0.1, 0.0, -0.13, 0.1, 0.05, 0.075, 0.012);
+  // (1.9.997, the detail pass: a soft bag, not a box: the sides bulge, the bottom is rounded, the flap's seam, the strap
+  // and its buckle on the outside)
+  lgBone(B, 'cmag'); lgMat(B, M.canvas);
+  lgSide(B, [[0.012, -0.06], [0.19, -0.06], [0.2, -0.08], [0.202, -0.15], [0.19, -0.195], [0.15, -0.206], [0.05, -0.206], [0.01, -0.194], [-0.002, -0.15], [0.0, -0.08]], 0.094, { bev: 0.02, smooth: 0.8, round: true });
+  lgSide(B, [[0.02, -0.08], [0.18, -0.08], [0.188, -0.15], [0.17, -0.19], [0.03, -0.19], [0.012, -0.15]], 0.104, { bev: 0.018, smooth: 0.9, round: true });   // the bulge
+  if (hi) { M.canvas.dk = M.canvas.dk || lgMtl({ c: '#3f4130', t: LT.cord, r: 0.92, w: 0.1, n: 1.0, k: 0.04 }); lgMat(B, M.canvas.dk); lgBox(B, 0.1, 0, -0.072, 0.092, 0.049, 0.002, 0.001); for (const sy of [1, -1]) { lgBox(B, 0.1, sy * 0.052, -0.135, 0.009, 0.0015, 0.065, 0.001); lgMat(B, M.gunPoly); lgBox(B, 0.1, sy * 0.054, -0.12, 0.012, 0.002, 0.009, 0.002); lgMat(B, M.canvas.dk); } }
   lgMat(B, M.gunPoly); lgBox(B, 0.1, 0.0, -0.052, 0.07, 0.03, 0.006, 0.002);   // its plastic mouth clipped to the gun
   if (hi) { lgMat(B, M.link); lgBox(B, 0.1, 0.0, -0.058, 0.02, 0.028, 0.002, 0.0005); }
 }
@@ -28659,9 +28679,14 @@ function lgGunAUG(B, K) {
   M.augGrn.dk = M.augGrn.dk || lgMtl({ c: '#36432d', t: LT.poly, r: 0.7, w: 0.08, n: 0.9, k: 0.05 });
   // the one-piece polymer body: the stock with the magazine well behind the grip, the receiver housing over the grip,
   // the butt; the grip and its guard are part of it
-  lgMat(B, M.augGrn); lgSide(B, [[-0.3, -0.056], [-0.17, -0.06], [-0.07, -0.056], [0.0, -0.05], [0.12, -0.04], [0.15, -0.03], [0.15, 0.03], [0.1, 0.034], [-0.1, 0.036], [-0.26, 0.04], [-0.3, 0.03]], 0.046, { bev: 0.008, smooth: 0.4, round: true });
+  // (1.9.997, the detail pass: the shell's real line: the butt raked back at the toe, the underside curving up from the
+  // magazine well to the toe, the cheek rising to the receiver; a crowned middle band so the section is round, not a slab;
+  // the moulded seam along its top, the sling swivel at the butt, the magazine release behind the well)
+  lgMat(B, M.augGrn); lgSide(B, [[-0.296, -0.05], [-0.27, -0.06], [-0.22, -0.062], [-0.17, -0.06], [-0.07, -0.056], [0.0, -0.05], [0.06, -0.046], [0.12, -0.04], [0.148, -0.03], [0.152, 0.0], [0.15, 0.03], [0.1, 0.034], [0.02, 0.036], [-0.1, 0.04], [-0.2, 0.043], [-0.262, 0.042], [-0.284, 0.036]], 0.046, { bev: 0.009, smooth: 0.6, round: true });
+  lgSide(B, [[-0.27, -0.048], [-0.17, -0.05], [-0.06, -0.046], [0.1, -0.034], [0.13, 0.0], [0.1, 0.028], [-0.1, 0.034], [-0.26, 0.034]], 0.052, { bev: 0.012, smooth: 0.7, round: true });   // the crown
   lgSide(B, [[-0.17, -0.056], [-0.07, -0.056], [-0.075, -0.07], [-0.165, -0.07]], 0.036, { bev: 0.004, round: true });   // the well's mouth
-  lgMat(B, M.rubber); lgBox(B, -0.304, 0, -0.008, 0.005, 0.0235, 0.046, 0.004);
+  lgMat(B, M.rubber); lgPush(B, lgTR(-0.297, 0, -0.006, 0, -0.1, 0)); lgBox(B, 0, 0, 0, 0.005, 0.0235, 0.047, 0.004); lgPop(B);   // the butt plate, raked
+  if (hi) { lgMat(B, M.augGrn.dk); lgBox(B, -0.1, 0, 0.0405, 0.15, 0.0005, 0.0006, 0); lgMat(B, M.metal); lgPin(B, -0.27, -0.054, 0.002, 0.05); lgTube(B, [[-0.276, 0.0, -0.058], [-0.282, 0.0, -0.07], [-0.262, 0.0, -0.07], [-0.266, 0.0, -0.058]], 0.0016, { segs: 4 }); lgMat(B, M.gunPoly); lgBox(B, -0.178, 0, -0.064, 0.005, 0.012, 0.004, 0.0015); }
   if (hi) { lgMat(B, M.augGrn.dk); lgBox(B, -0.12, -0.0232, 0.006, 0.02, 0.0006, 0.009, 0.002); lgBox(B, -0.12, 0.0232, 0.006, 0.02, 0.0006, 0.009, 0.002); lgBox(B, -0.19, 0.0235, -0.03, 0.01, 0.0015, 0.006, 0.001); }   // the ejection ports (one covered), the bolt release
   lgMat(B, M.augGrn); B.M.dk = M.augGrn.dk; lgARGrip(B, -0.016, -0.05, 0.03);
   lgMat(B, M.augGrn); lgTube(B, [[-0.03, 0, -0.05], [-0.02, 0, -0.1], [0.06, 0, -0.104], [0.1, 0, -0.075], [0.11, 0, -0.04]], 0.0035, { segs: 6, flat: 2.2, up: [0, 1, 0] });   // the big guard that takes a gloved hand
@@ -28725,7 +28750,7 @@ function lgGunM29(B, K) {
   lgMat(B, M.steel); lgBore(B, 0.06, 0.146, 0.0038, 0, -0.012); if (hi) lgBore(B, 0.204, 0.006, 0.0048, 0, -0.012);
   lgMat(B, M.glow); lgPush(B, lgTR(0.208, 0, 0.019, 0, 0, 0)); lgSide(B, [[-0.009, 0], [0.005, 0], [0.004, 0.009], [-0.004, 0.01]], 0.0035, { bev: 0.0006 }); lgPop(B);   // the red ramp
   // the trigger guard, the wide target trigger, the target grips over the square butt
-  lgMat(B, M.blued); lgTube(B, [[0.04, 0, -0.028], [0.056, 0, -0.036], [0.06, 0, -0.05], [0.046, 0, -0.058], [0.026, 0, -0.054], [0.016, 0, -0.04]], 0.003, { segs: 6, flat: 2.2, up: [0, 1, 0] });
+  lgMat(B, M.blued); lgTube(B, [[0.044, 0, -0.026], [0.056, 0, -0.036], [0.06, 0, -0.05], [0.046, 0, -0.058], [0.026, 0, -0.054], [0.014, 0, -0.04], [0.009, 0, -0.03]], 0.003, { segs: 6, flat: 2.2, up: [0, 1, 0] });   // (1.9.997: closed onto the frame at both ends)
   lgMat(B, M.steel); lgTube(B, [[0.036, 0, -0.028], [0.043, 0, -0.037], [0.041, 0, -0.046], [0.034, 0, -0.05]], 0.0028, { segs: 5, flat: 2.0, up: [0, 1, 0] });
   lgMat(B, M.blued); lgSide(B, [[0.014, -0.028], [0.0, -0.064], [-0.008, -0.1], [-0.018, -0.118], [-0.048, -0.116], [-0.054, -0.09], [-0.042, -0.036], [-0.022, -0.006], [-0.012, -0.004]], 0.02, { bev: 0.003, round: true });
   lgMat(B, M.wood); lgSide(B, [[0.012, -0.034], [-0.002, -0.066], [-0.01, -0.1], [-0.02, -0.112], [-0.046, -0.11], [-0.05, -0.088], [-0.038, -0.038], [-0.028, -0.02], [-0.018, -0.012]], 0.036, { bev: 0.007, smooth: 0.7, round: true });
@@ -28748,7 +28773,7 @@ function lgGunCoach(B, K) {
   lgBone(B, 'pistol');
   // the action body: the standing breech, the top lever, the two triggers in their guard, the bird's-head grip in walnut
   lgMat(B, M.park); lgSide(B, [[-0.01, -0.026], [0.096, -0.03], [0.1, -0.012], [0.1, 0.02], [0.09, 0.026], [0.0, 0.028], [-0.012, 0.016]], 0.05, { bev: 0.005, round: true });
-  if (hi) { lgMat(B, M.steel); lgBox(B, 0.02, 0, 0.03, 0.03, 0.004, 0.003, 0.001); lgBox(B, -0.006, 0.006, 0.032, 0.012, 0.0025, 0.0025, 0.001); if (top) { lgMat(B, M.visor); lgBox(B, 0.05, -0.0252, 0.0, 0.014, 0.0005, 0.006, 0.001); } }   // the tang, the lever, the hinge pin's mark
+  if (hi) { lgMat(B, M.steel); lgBox(B, 0.02, 0, 0.03, 0.03, 0.004, 0.003, 0.001); lgBox(B, -0.006, 0.006, 0.032, 0.012, 0.0025, 0.0025, 0.001); } if (hi) { lgMat(B, M.steel); lgPin(B, 0.094, -0.014, 0.0045, 0.0516); lgMat(B, M.park); for (const sy of [1, -1]) lgSphere(B, 0.097, sy * 0.017, 0.017, 0.007, 0.009, 0.009, { segs: 10, rings: 6 }); if (top) { lgMat(B, M.gunBlk); for (const sy of [1, -1]) { const y = sy * 0.0252; lgBox(B, 0.045, y, 0.019, 0.04, 0.0004, 0.0005, 0); lgBox(B, 0.045, y, -0.021, 0.04, 0.0004, 0.0005, 0); lgBox(B, 0.006, y, -0.001, 0.0005, 0.0004, 0.02, 0); lgBox(B, 0.084, y, -0.001, 0.0005, 0.0004, 0.02, 0); } } }   // (1.9.997: the hinge pin where the barrels really pivot, the fences at the breech, the boxlock's inset border)   // the tang, the lever, the hinge pin's mark
   lgMat(B, M.park); lgTube(B, [[0.036, 0, -0.03], [0.05, 0, -0.04], [0.09, 0, -0.056], [0.11, 0, -0.05], [0.112, 0, -0.034]], 0.003, { segs: 6, flat: 2.4, up: [0, 1, 0] });
   lgMat(B, M.steel); for (const x of [0.056, 0.074]) lgTube(B, [[x, 0, -0.03], [x + 0.004, 0, -0.038], [x + 0.003, 0, -0.046], [x - 0.002, 0, -0.05]], 0.002, { segs: 4, flat: 2, up: [0, 1, 0] });
   lgMat(B, M.walnut); lgSide(B, [[0.034, -0.028], [0.02, -0.06], [0.004, -0.094], [-0.014, -0.11], [-0.046, -0.108], [-0.056, -0.09], [-0.046, -0.06], [-0.03, -0.034], [-0.014, -0.026]], 0.036, { bev: 0.008, smooth: 0.7, round: true });
@@ -31928,7 +31953,7 @@ function mimRender(w, h, rt, st) {
     // shot's subject (a wide aperture on the inserts, a stop or two down on the wides), the 180-degree shutter's motion blur
     // from the camera's own move (none across a cut), a low mist that thickens with distance, rays off the lamp when it is
     // in frame, and a teal-and-orange look; the studio and the line-up keep the plain pass
-    const lensOn = q.lens && vq.mb && (scene === 'alley' || scene === 'stoop') && !MIM.reduce && typeof vxlRender === 'function' && !MIM.camOverride;
+    const lensOn = q.lens && vq.mb && (scene === 'alley' || scene === 'stoop') && !MIM.reduce && typeof vxlRender === 'function' && !MIM.camOverride && !MIM.noLens;   // (noLens: the audits' A/B switch)
     let lensed = false;
     if (lensOn) {
       const fd = look.focus || Math.hypot(cam.tgt[0] - cam.eye[0], cam.tgt[1] - cam.eye[1], cam.tgt[2] - cam.eye[2]) || 2;
@@ -36867,7 +36892,7 @@ for (const n of ['LEGEND', 'MIMATIC', 'VFXRAY']) { const e = CORE.by[n]; if (e &
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[388,0,4,71797],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[620,35,88,53126],"lux":[744,37,139,69252],"prism":[372,21,67,43499],"mirror":[117,9,26,12376],"texel":[339,18,83,35224],"gore":[692,49,106,65891],"muzzle":[264,13,67,30527],"tracer":[237,22,53,24052],"aura":[124,12,20,11472],"swarm":[649,66,110,55819],"roster":[149,8,36,36227],"anima":[1173,58,123,107174],"anilook":[445,31,64,61057],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65058],"dashes":[249,36,13,31089],"physics":[269,23,50,26017],"arms":[391,37,62,42535],"knife":[236,19,39,22446],"gamecam":[45,4,28,6655],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[347,30,50,29270],"settings":[366,23,23,38822],"legend":[1283,122,223,149018],"legmodel":[535,26,157,69205],"leggun":[420,30,119,58894],"leggun2":[237,11,82,37741],"legfire":[39,5,32,6190],"leghand":[166,17,31,13241],"leganim":[444,22,68,57821],"legloco":[235,12,99,29241],"legperf":[67,3,33,8332],"legrun":[681,43,143,76972],"vfxray":[291,27,42,34778],"mimatic":[659,50,156,88559],"legidle":[353,20,72,46740],"curric":[47,14,21,6603],"leganat":[376,31,115,42149],"legobj":[365,25,71,40189],"legmove":[277,36,107,41490],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,58099],"engroom":[371,18,36,45077],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83479],"intro":[660,32,55,48828],"sfx2":[458,79,57,45498],"gunsfx":[91,9,32,14291],"cinesfx":[185,14,33,26793],"armsfx":[79,13,11,9185],"audio":[946,216,87,85598],"radio":[434,74,35,40166],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[78,7,5,5383]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[388,0,4,71797],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[620,35,88,53126],"lux":[744,37,139,69252],"prism":[372,21,67,43501],"mirror":[117,9,26,12376],"texel":[339,18,83,35224],"gore":[692,49,106,65891],"muzzle":[264,13,67,30527],"tracer":[237,22,53,24052],"aura":[124,12,20,11472],"swarm":[649,66,110,55819],"roster":[149,8,36,36227],"anima":[1173,58,123,107174],"anilook":[445,31,64,61057],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65058],"dashes":[249,36,13,31089],"physics":[269,23,50,26017],"arms":[391,37,64,43122],"knife":[236,19,39,22446],"gamecam":[45,4,28,6655],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[347,30,50,29270],"settings":[366,23,23,38822],"legend":[1283,122,223,149018],"legmodel":[535,26,157,69205],"leggun":[420,30,119,58894],"leggun2":[249,11,92,42038],"legfire":[39,5,32,6190],"leghand":[166,17,31,13241],"leganim":[444,22,68,57821],"legloco":[235,12,99,29241],"legperf":[67,3,33,8332],"legrun":[681,43,143,76972],"vfxray":[291,27,42,34778],"mimatic":[659,50,156,88612],"legidle":[353,20,72,46740],"curric":[47,14,21,6603],"leganat":[376,31,115,42149],"legobj":[365,25,71,40189],"legmove":[277,36,107,41490],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,58099],"engroom":[371,18,36,45077],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83479],"intro":[660,32,55,48828],"sfx2":[458,79,57,45498],"gunsfx":[91,9,33,14476],"cinesfx":[185,14,33,26793],"armsfx":[79,13,11,9185],"audio":[946,216,87,85598],"radio":[434,74,35,40166],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[78,7,5,5383]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };
