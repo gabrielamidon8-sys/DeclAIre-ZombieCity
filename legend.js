@@ -641,6 +641,9 @@ function lgMagState(m, W, i, hand, sock) {
 // one after another, with a little overshoot as it locks (the click)
 const LG_MASK = [];   // filled by the model: { b: bone, piv: pivot (head space), r0: stowed rotation, d0: stowed offset, a: start, e: end }
 function lgMaskApply(P, L, W, rootM) {
+  // (1.9.995: the plates' table is filled when a model is built; a pose solved before any model was built found it
+  // empty and left every plate where it was built, locked over the face, so a model is built for it first)
+  if (!LG_MASK.length && !LG.maskBuilding) { LG.maskBuilding = true; try { lgModel('operator', 2, 'attack'); } catch (e) { } LG.maskBuilding = false; }
   const m = clamp(P.mask, 0, 1);
   for (const pl of LG_MASK) {
     let k = clamp((m - pl.a) / (pl.e - pl.a), 0, 1);
@@ -1103,7 +1106,10 @@ function lgFBO(name, w, h, depth) {
   const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-  let rb = null; if (depth) { rb = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, rb); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb); }
+  // (1.9.995: depth and stencil together, which gives 24 bits of depth where 16 left close layers fighting, a face over
+  // its balaclava striped in rings, a patch lost into its sleeve; 16 bits only if the device refuses it)
+  let rb = null; if (depth) { rb = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, rb); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_STENCIL, w, h); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, rb);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) { gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, null); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb); } }
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   f = { fb: fb, tex: tex, rb: rb, w: w, h: h }; LGR.fbo[name] = f; return f;
 }

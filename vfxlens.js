@@ -91,7 +91,10 @@ function vxlLut(look) {
 // S: the scene (as for lgGLScene); o: { lens: mimcBody, dof, mb (with prevVP), fog: { rho, H, zb, col }, vig, rays: { p (world), col, r, decay, weight, density, exposure }, look, lookK, out: fbo or null }
 function vxlRender(S, w, h, o) {
   if (!vxlInit()) return false; const gl = LGR.gl, t0 = performance.now(); o = o || {};
-  const scene = lgFBO('vxl_s', w, h, true); lgGLScene(S, w, h, scene); const dep = vxlDepth(S, w, h), cam = S.cam;
+  const scene = lgFBO('vxl_s', w, h, true); lgGLScene(S, w, h, scene);
+  // what is drawn into the scene itself, depth-tested against it (the rain, the splashes, the sprites of the effects)
+  if (o.extra) { gl.bindFramebuffer(gl.FRAMEBUFFER, scene.fb); gl.viewport(0, 0, w, h); o.extra(S); }
+  const dep = vxlDepth(S, w, h), cam = S.cam;
   let cur = scene; const ping = n => lgFBO('vxl_' + n, w, h, false), inv = lgInv(lgM4(), cam.VP), lens = o.lens || mimcBody({ f: mimcFocal(cam.fov, 's35', w / h) }), g = mimcGate(lens.sensor, w / h);
   const step = (name, P, setU) => { const dst = ping(name); vxlPass(P, dst, w, h, U => { vxlTex(0, cur.tex, U.uS); setU(U); }); cur = dst; };
   if (o.dof) step('a', VXL.P.dof, U => { vxlTex(1, dep.tex, U.uD); gl.uniform2f(U.uRes, w, h); gl.uniform2f(U.uNF, cam.near, cam.far); gl.uniform4f(U.uLens, lens.f / 1000, lens.f / 1000 / lens.N, lens.focus, h / (g.h / 1000)); gl.uniform1f(U.uMax, o.dofMax || 24); });

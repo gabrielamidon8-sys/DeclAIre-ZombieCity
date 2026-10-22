@@ -291,6 +291,8 @@ function brdPlan(g, B, x, y, w, h, o) {
   o = o || {}; const f0 = brdW(B, 0), fN = brdW(B, B.C.dur), pts = []; for (const W of f0.W.concat(fN.W)) pts.push(lgaP(W, 'pelvis')); for (const sh of B.shots) if (sh.eye) pts.push(sh.eye);
   const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2, span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 3) * 1.15, sc = Math.min(w, h) / span;
   const P = p => [x + w / 2 - (p[1] - cy) * sc, y + h / 2 - (p[0] - cx) * sc];   // (x up the page, y to the left)
+  // (everything inside the plan's own box: the metre grid used to run out over the panels above it)
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
   g.fillStyle = '#f4efe4'; g.fillRect(x, y, w, h); g.strokeStyle = 'rgba(0,0,0,0.08)'; g.lineWidth = 1; for (let k = -10; k <= 10; k++) { const a = P([cx + k, cy - 10]), b = P([cx + k, cy + 10]); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); const c = P([cx - 10, cy + k]), d = P([cx + 10, cy + k]); g.beginPath(); g.moveTo(c[0], c[1]); g.lineTo(d[0], d[1]); g.stroke(); }
   // the line of action
   const L = brdLine(B, B.C.dur * 0.5), a = P(curV3.sub(L.p, curV3.mul(L.d, 3))), b = P(curV3.add(L.p, curV3.mul(L.d, 4))); g.setLineDash([6, 5]); g.strokeStyle = 'rgba(178,34,34,0.8)'; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); g.setLineDash([]);
@@ -303,6 +305,7 @@ function brdPlan(g, B, x, y, w, h, o) {
   const cams = [];
   for (const sh of B.shots) { if (!sh.eye) continue; const e = P(sh.eye), dir = Math.atan2(sh.tgt[1] - sh.eye[1], sh.tgt[0] - sh.eye[0]), hf = mimcAOV(sh.lens, 's35', 1.85).h / 2, len = 1.2, l1 = P(curV3.add(sh.eye, [Math.cos(dir + hf) * len, Math.sin(dir + hf) * len, 0])), l2 = P(curV3.add(sh.eye, [Math.cos(dir - hf) * len, Math.sin(dir - hf) * len, 0]));
     g.fillStyle = 'rgba(30,30,30,0.08)'; g.strokeStyle = 'rgba(30,30,30,0.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(e[0], e[1]); g.lineTo(l1[0], l1[1]); g.lineTo(l2[0], l2[1]); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#222'; g.fillRect(e[0] - 4, e[1] - 4, 8, 8); g.font = 'bold 10px sans-serif'; g.fillText(String(sh.n), e[0] + 6, e[1] + 4); cams.push({ n: sh.n, at: e, fov: hf * 2 }); }
+  g.restore();
   return { cams: cams, scale: sc };
 }
 // continuity: the 180-degree rule, screen direction and eyelines from shot to shot

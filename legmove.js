@@ -155,20 +155,24 @@ function lgmReach(o) {
   return lgmPerf({ kind: 'reach', dur: dur, beats: beats, gr: gr, MT: MT, E: E, D: D, w: w, mga: mga, kOpen: kOpen, t: { hand: tHand, touch: tTouch, secure: tSecure, lift: tLift, up: tUp, carry: tCarry }, OW: OW, H0: H0, H1: H1, side: s, at: at, key: key, pct: pct });
 }
 /* ---------- two hands: a heavy box from the floor, lifted with the legs ---------- */
+const LGM_LIFT = { squatMax: 0.5, leanMax: 1.45, stance: 0.21, toe: 0.5, at: [0.36, 0, 0], yaw: 0 };
 function lgmLiftBox(o) {
-  const key = o.key || 'crate', ob = LGO_OBJ[key], root = o.root || [0, 0, 0, 0], at0 = o.at || [0.36, 0, 0], pct = ob.kg / 80 * 100;
-  const OW0 = lgMul(lgM4(), lgTR(at0[0], at0[1], at0[2]), lgRot(lgM4(), 0, 0, root[3]));
+  // (the legs do the work: a deep squat first, the trunk only as much as is left. Squatting deeper took the trunk's lean
+  // from 86 to 67 degrees with every check still passing; turning the crate side-on between wider feet was tried and
+  // failed its exams, the hands short of the grips and the arms into the thighs. LGM_LIFT holds the numbers)
+  const LP = Object.assign({}, LGM_LIFT, o), key = o.key || 'crate', ob = LGO_OBJ[key], root = o.root || [0, 0, 0, 0], at0 = o.at || LP.at, pct = ob.kg / 80 * 100;
+  const OW0 = lgMul(lgM4(), lgTR(at0[0], at0[1], at0[2]), lgRot(lgM4(), 0, 0, root[3] + LP.yaw));
   const gR = lgoGrasp(key, { side: 'R', type: 'twoHand' }), gL = lgoGrasp(key, { side: 'L', type: 'twoHand' });
   const tDown = 0.9, tGrip = tDown + 0.2, tUp = tGrip + 1.1, tHold = tUp + 0.6, upZ = o.upZ || 0.86;
   // how deep to squat and how far to lean to get both hands onto the box: the legs first (a long back), then the trunk
   const need = (() => {
     let squat = 0.3, lean = 0.35; const HR = lgmGraspM(OW0, gR), HL = lgmGraspM(OW0, gL);
     for (let it = 0; it < 14; it++) {
-      const P = lgPose(); lgPoseReset(P); P.root = root.slice(); lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgStance(P, 0.21, 0.0, 0.5);
+      const P = lgPose(); lgPoseReset(P); P.root = root.slice(); lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgStance(P, LP.stance, 0.0, LP.toe);
       lgJadd(P, 'pelvis', 0, lean * 0.5, 0); lgJadd(P, 'spine', 0, lean * 0.3, 0); lgJadd(P, 'chest', 0, lean * 0.2, 0);
       const W = lgmSolve(P), dR = curV3.len(curV3.sub([HR[12], HR[13], HR[14]], lgaP(W, 'armR'))), dL = curV3.len(curV3.sub([HL[12], HL[13], HL[14]], lgaP(W, 'armL'))), d = Math.max(dR, dL);
-      if (d < 0.535) break; if (squat < 0.42) squat += Math.min(0.06, (d - 0.52) * 0.5); else lean += Math.min(0.1, (d - 0.52) * 1.2);
-      if (lean > 1.45) break;
+      if (d < 0.535) break; if (squat < LP.squatMax) squat += Math.min(0.06, (d - 0.52) * 0.5); else lean += Math.min(0.1, (d - 0.52) * 1.2);
+      if (lean > LP.leanMax) break;
     }
     return { squat: squat, lean: lean };
   })();
@@ -179,7 +183,7 @@ function lgmLiftBox(o) {
     // the box: on the floor, then rising to the height of the hips, close to the body
     const OW = OW0.slice(); OW[12] = at0[0] + (0.27 - at0[0]) * ku; OW[14] = at0[2] + (upZ - 0.42 - at0[2]) * ku;
     const squat = need.squat * kd * (1 - ku), lean = need.lean * kd * (1 - ku);
-    lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgStance(P, 0.21, 0.0, 0.5);
+    lgBase(P, { lean: 0.02, crouch: 0.03 + squat }); P.t[LGB.pelvis * 3 + 2] = -0.03 - squat; lgStance(P, LP.stance, 0.0, LP.toe);
     lgJadd(P, 'pelvis', 0, lean * 0.5, 0); lgJadd(P, 'spine', 0, lean * 0.3, 0); lgJadd(P, 'chest', 0, lean * 0.2, 0); lgJadd(P, 'neck', 0, -lean * 0.5, 0);
     const HR = lgmGraspM(OW, gR), HL = lgmGraspM(OW, gL), R = lgRootM(P);
     // before the grip the hands come down toward the box from the sides

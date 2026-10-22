@@ -16,7 +16,9 @@ const MIMV = { made: 0 };
 function mimvMark(W, n) {
   const hd = W.subarray(LGB.head * 16, LGB.head * 16 + 16), at = (x, y, z) => lgPt(hd, x, y, z), mid = (a, b, k) => curV3.lerp(lgaP(W, a), lgaP(W, b), k);
   switch (n) {
-    case 'eyes': return at(0.085, 0, 0.075); case 'brow': return at(0.09, 0, 0.11); case 'nose': return at(0.11, 0, 0.035); case 'chin': return at(0.085, 0, -0.025); case 'top': return lgaMark(W, 'headTop');
+    // (1.9.995: on the face as LEGEND models it: the eyes at the decal on the shell, the tip of the nose; they sat 2 to 3 cm
+    // low and behind, which an extreme close-up, 7 cm tall, could not afford)
+    case 'eyes': return at(0.108, 0, 0.099); case 'brow': return at(0.1, 0, 0.114); case 'nose': return at(0.112, 0, 0.065); case 'chin': return at(0.085, 0, -0.025); case 'top': return lgaMark(W, 'headTop');
     case 'chestTop': return mid('pelvis', 'neck', 0.82); case 'midChest': return mid('pelvis', 'neck', 0.62); case 'waist': return mid('pelvis', 'neck', 0.12);
     case 'midThigh': return curV3.lerp(curV3.lerp(lgaP(W, 'thighL'), lgaP(W, 'shinL'), 0.55), curV3.lerp(lgaP(W, 'thighR'), lgaP(W, 'shinR'), 0.55), 0.5);
     case 'knees': return curV3.lerp(lgaP(W, 'shinL'), lgaP(W, 'shinR'), 0.5); case 'ankles': return curV3.lerp(lgaP(W, 'footL'), lgaP(W, 'footR'), 0.5);
