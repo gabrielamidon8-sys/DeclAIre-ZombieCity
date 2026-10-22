@@ -192,9 +192,14 @@ function lgGunAUG(B, K) {
   M.augGrn.dk = M.augGrn.dk || lgMtl({ c: '#36432d', t: LT.poly, r: 0.7, w: 0.08, n: 0.9, k: 0.05 });
   // the one-piece polymer body: the stock with the magazine well behind the grip, the receiver housing over the grip,
   // the butt; the grip and its guard are part of it
-  lgMat(B, M.augGrn); lgSide(B, [[-0.3, -0.056], [-0.17, -0.06], [-0.07, -0.056], [0.0, -0.05], [0.12, -0.04], [0.15, -0.03], [0.15, 0.03], [0.1, 0.034], [-0.1, 0.036], [-0.26, 0.04], [-0.3, 0.03]], 0.046, { bev: 0.008, smooth: 0.4, round: true });
+  // (1.9.997, the detail pass: the shell's real line: the butt raked back at the toe, the underside curving up from the
+  // magazine well to the toe, the cheek rising to the receiver; a crowned middle band so the section is round, not a slab;
+  // the moulded seam along its top, the sling swivel at the butt, the magazine release behind the well)
+  lgMat(B, M.augGrn); lgSide(B, [[-0.296, -0.05], [-0.27, -0.06], [-0.22, -0.062], [-0.17, -0.06], [-0.07, -0.056], [0.0, -0.05], [0.06, -0.046], [0.12, -0.04], [0.148, -0.03], [0.152, 0.0], [0.15, 0.03], [0.1, 0.034], [0.02, 0.036], [-0.1, 0.04], [-0.2, 0.043], [-0.262, 0.042], [-0.284, 0.036]], 0.046, { bev: 0.009, smooth: 0.6, round: true });
+  lgSide(B, [[-0.27, -0.048], [-0.17, -0.05], [-0.06, -0.046], [0.1, -0.034], [0.13, 0.0], [0.1, 0.028], [-0.1, 0.034], [-0.26, 0.034]], 0.052, { bev: 0.012, smooth: 0.7, round: true });   // the crown
   lgSide(B, [[-0.17, -0.056], [-0.07, -0.056], [-0.075, -0.07], [-0.165, -0.07]], 0.036, { bev: 0.004, round: true });   // the well's mouth
-  lgMat(B, M.rubber); lgBox(B, -0.304, 0, -0.008, 0.005, 0.0235, 0.046, 0.004);
+  lgMat(B, M.rubber); lgPush(B, lgTR(-0.297, 0, -0.006, 0, -0.1, 0)); lgBox(B, 0, 0, 0, 0.005, 0.0235, 0.047, 0.004); lgPop(B);   // the butt plate, raked
+  if (hi) { lgMat(B, M.augGrn.dk); lgBox(B, -0.1, 0, 0.0405, 0.15, 0.0005, 0.0006, 0); lgMat(B, M.metal); lgPin(B, -0.27, -0.054, 0.002, 0.05); lgTube(B, [[-0.276, 0.0, -0.058], [-0.282, 0.0, -0.07], [-0.262, 0.0, -0.07], [-0.266, 0.0, -0.058]], 0.0016, { segs: 4 }); lgMat(B, M.gunPoly); lgBox(B, -0.178, 0, -0.064, 0.005, 0.012, 0.004, 0.0015); }
   if (hi) { lgMat(B, M.augGrn.dk); lgBox(B, -0.12, -0.0232, 0.006, 0.02, 0.0006, 0.009, 0.002); lgBox(B, -0.12, 0.0232, 0.006, 0.02, 0.0006, 0.009, 0.002); lgBox(B, -0.19, 0.0235, -0.03, 0.01, 0.0015, 0.006, 0.001); }   // the ejection ports (one covered), the bolt release
   lgMat(B, M.augGrn); B.M.dk = M.augGrn.dk; lgARGrip(B, -0.016, -0.05, 0.03);
   lgMat(B, M.augGrn); lgTube(B, [[-0.03, 0, -0.05], [-0.02, 0, -0.1], [0.06, 0, -0.104], [0.1, 0, -0.075], [0.11, 0, -0.04]], 0.0035, { segs: 6, flat: 2.2, up: [0, 1, 0] });   // the big guard that takes a gloved hand
