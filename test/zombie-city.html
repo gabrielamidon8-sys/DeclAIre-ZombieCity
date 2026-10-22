@@ -7357,7 +7357,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.995';
+const ZC_VERSION = '1.9.996';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -11039,10 +11039,10 @@ const ENG_DOCS = {
   LEGEND: {
     title: 'The Rigger',
     character: 'Builds a person out of shapes, then teaches him to stand like a soldier. Patient and exacting: after a pose it measures every bone, and a hand that misses its grip by two millimetres fails its test. Its first legend is the Operator, the beginner every player starts with.',
-    does: 'The legends: real 3D characters made entirely in code, with no model files. A shape builder (lathes, limbs, bevelled boxes, extrusions, tubes, decals) skins every vertex to a 47-bone rig: the spine, each finger and thumb, the props (a pistol with its own slide and magazine, a knife, a carbine) and the seven plates of the Operator\'s exotech mask, which fold out from the helmet and click shut over his face one plate at a time. A procedural atlas paints 20 materials with height, roughness and cavity: camo with ripstop, Cordura plate carrier, leather, polymer, Cerakote, brushed steel, and carbon with etched circuits that glow in the class colour. Two-bone reach (IK) puts hands on grips and keeps feet planted, and a hand that cannot quite reach brings its shoulder forward, as a real arm does for a handguard. There are fifty animations in seven groups (moving, standing, pistol, long gun, close quarters, special, hits and down), with cross-fades and events (footsteps, shots, the mask locking). Three levels of detail: about 65,000 triangles up close, 26,000, and 6,000. Two renderers: WebGL with shadows, puddle reflections, relief normals, rim light and the class glow; and a processor painter that draws the same meshes when there is no GPU. Since v2 (1.9.993) the survivor in a run is built in three layers painted from straight above: the legs (walking, strafing, backing up, sprinting, each paced by what it measured), the upper body with the gun in his hands, and the head; they turn on their own the way a body does: the head turns first, the chest follows it and the legs follow the movement, with a limit on the twist, so he looks around a corner before he turns into it. Springs give him weight: he leans into a start and settles after a stop, each shot kicks his shoulders by the gun\'s calibre, and near a wall he cants the gun and leans to slice the corner. Each of the ten rebuilt guns is modelled with its own grips, rails, optic and magazine, so the hands land on that gun\'s grip and handguard, and the magazine hand goes to that gun\'s magazine well; the knife sits in a reverse grip, the blade out of the little-finger side of the fist. A hundred and seven animations now: the fifty, thirty-two seated idles for the stoop (the knife sharpened on a whetstone, the can, a lamp flicker, a coin across the knuckles, a doze, a radio check and more, cross-faded into one another) and thirteen arms moves you can watch in the Legends studio. The Operator also has a face now (stubble, brows, the balaclava rolled down) for when his mask is down. Since 1.9.994 the hands are real hands: an anatomical glove over three bones a finger (the thumb too), and every grip is fitted to the actual gun: the palm slides onto the grip until it touches, then each finger and the thumb close joint by joint until they meet the surface (the model of that gun, sampled point by point), so the fingers wrap the grip, the handguard, the slide and the knife\'s handle instead of floating; the fits are kept on the device and warmed in the background for the guns you carry. The ten guns were rebuilt to their real proportions: a 5.56 magazine as deep as its round is long, the AK\'s deep curve, the Mk 17\'s straight 20-rounder, slimmer raked grips with texture panels, stocks with their slots and cut-outs, and the pistols on real slides (serrations front and back, the port with the barrel hood in it, sights with their dots, the M17\'s red dot), real grip angles with beavertails and wooden panels, and a revolver with its top strap and fluted cylinder; edges are rounded in two facets. The legend\'s page has an armory on its left: each gun drawn from its own model through a depth buffer (smooth light, clean edges, lit by the class), the one in view big with its numbers and its special reload, and picking one puts it in his hands in the studio at once. Ten knife moves (the combos) join the arms moves in the studio. Since 1.9.995 (v3 to v5, its course) it has studied anatomy and handling things. Every joint keeps the range a human joint has (shoulder, elbow, forearm, wrist, fingers, hip, knee, ankle, neck and spine, from the AAOS and Soucie tables): the arm swivels to keep the wrist in range, poses the clips made by hand are brought back inside the ranges (1,495 joint angles out of range across the game\'s clips before, none after), the arms are kept out of the body, and the centre of mass and the base of support are tracked frame by frame. It holds thirteen everyday things in the grasp people choose for each (Feix\'s taxonomy: a hook for a mug, wraps, a power sphere for a ball, a tripod for a pen, pinches for a coin and a key, two hands for a crate), the hand settling until the pads touch without sinking in and the contacts can hold the thing against gravity (friction cones). It reaches to grasp with the bell of speed and the opening of real prehension (widest at about 70% of the reach, 55 mm plus 0.75 of the thing\'s width), follows Fitts\'s law, lifts a 12 kg crate with the legs, hands a bottle to another person with the weight passing in 0.3 s, and throws a ball with the kinetic chain (hips, then trunk, elbow and arm), learning when to let go so it lands on its target. It checks its own movement like an animation supervisor (feet that slide, limbs into the body, smoothness by SPARC, arcs, the eyes leading the hand, breathing at rest) and performs one action in different Laban efforts (a punch, a float, a glide, a slash).',
+    does: 'The legends: real 3D characters made entirely in code, with no model files. A shape builder (lathes, limbs, bevelled boxes, extrusions, tubes, decals) skins every vertex to a 47-bone rig: the spine, each finger and thumb, the props (a pistol with its own slide and magazine, a knife, a carbine) and the seven plates of the Operator\'s exotech mask, which fold out from the helmet and click shut over his face one plate at a time. A procedural atlas paints 20 materials with height, roughness and cavity: camo with ripstop, Cordura plate carrier, leather, polymer, Cerakote, brushed steel, and carbon with etched circuits that glow in the class colour. Two-bone reach (IK) puts hands on grips and keeps feet planted, and a hand that cannot quite reach brings its shoulder forward, as a real arm does for a handguard. There are fifty animations in seven groups (moving, standing, pistol, long gun, close quarters, special, hits and down), with cross-fades and events (footsteps, shots, the mask locking). Three levels of detail: about 65,000 triangles up close, 26,000, and 6,000. Two renderers: WebGL with shadows, puddle reflections, relief normals, rim light and the class glow; and a processor painter that draws the same meshes when there is no GPU. Since v2 (1.9.993) the survivor in a run is built in three layers painted from straight above: the legs (walking, strafing, backing up, sprinting, each paced by what it measured), the upper body with the gun in his hands, and the head; they turn on their own the way a body does: the head turns first, the chest follows it and the legs follow the movement, with a limit on the twist, so he looks around a corner before he turns into it. Springs give him weight: he leans into a start and settles after a stop, each shot kicks his shoulders by the gun\'s calibre, and near a wall he cants the gun and leans to slice the corner. Each of the ten rebuilt guns is modelled with its own grips, rails, optic and magazine, so the hands land on that gun\'s grip and handguard, and the magazine hand goes to that gun\'s magazine well; the knife sits in a reverse grip, the blade out of the little-finger side of the fist. A hundred and seven animations now: the fifty, thirty-two seated idles for the stoop (the knife sharpened on a whetstone, the can, a lamp flicker, a coin across the knuckles, a doze, a radio check and more, cross-faded into one another) and thirteen arms moves you can watch in the Legends studio. The Operator also has a face now (stubble, brows, the balaclava rolled down) for when his mask is down. Since 1.9.994 the hands are real hands: an anatomical glove over three bones a finger (the thumb too), and every grip is fitted to the actual gun: the palm slides onto the grip until it touches, then each finger and the thumb close joint by joint until they meet the surface (the model of that gun, sampled point by point), so the fingers wrap the grip, the handguard, the slide and the knife\'s handle instead of floating; the fits are kept on the device and warmed in the background for the guns you carry. The ten guns were rebuilt to their real proportions: a 5.56 magazine as deep as its round is long, the AK\'s deep curve, the Mk 17\'s straight 20-rounder, slimmer raked grips with texture panels, stocks with their slots and cut-outs, and the pistols on real slides (serrations front and back, the port with the barrel hood in it, sights with their dots, the M17\'s red dot), real grip angles with beavertails and wooden panels, and a revolver with its top strap and fluted cylinder; edges are rounded in two facets. The legend\'s page has an armory on its left: each gun drawn from its own model through a depth buffer (smooth light, clean edges, lit by the class), the one in view big with its numbers and its special reload, and picking one puts it in his hands in the studio at once. Ten knife moves (the combos) join the arms moves in the studio. Since 1.9.995 (v3 to v5, its course) it has studied anatomy and handling things. Every joint keeps the range a human joint has (shoulder, elbow, forearm, wrist, fingers, hip, knee, ankle, neck and spine, from the AAOS and Soucie tables): the arm swivels to keep the wrist in range, poses the clips made by hand are brought back inside the ranges (1,495 joint angles out of range across the game\'s clips before, none after), the arms are kept out of the body, and the centre of mass and the base of support are tracked frame by frame. It holds thirteen everyday things in the grasp people choose for each (Feix\'s taxonomy: a hook for a mug, wraps, a power sphere for a ball, a tripod for a pen, pinches for a coin and a key, two hands for a crate), the hand settling until the pads touch without sinking in and the contacts can hold the thing against gravity (friction cones). It reaches to grasp with the bell of speed and the opening of real prehension (widest at about 70% of the reach, 55 mm plus 0.75 of the thing\'s width), follows Fitts\'s law, lifts a 12 kg crate with the legs, hands a bottle to another person with the weight passing in 0.3 s, and throws a ball with the kinetic chain (hips, then trunk, elbow and arm), learning when to let go so it lands on its target. It checks its own movement like an animation supervisor (feet that slide, limbs into the body, smoothness by SPARC, arcs, the eyes leading the hand, breathing at rest) and performs one action in different Laban efforts (a punch, a float, a glide, a slash). Since 1.9.996 (slice 13): LOCO, a gait built from measured human walking and running: the cadence, stride and share of stance for each speed (treadmill studies, Fukuchi 2017 for running), the hip, knee and ankle through the step as measured curves, the planted foot pivoting on its heel and then its ball and never sliding, the stride warped to the speed, the hips turned toward the way he moves (up to 45 degrees off the chest, which stays on the aim) and swung round past 100 degrees so he backs up properly, the hips riding the stance leg in a walk and bouncing in a run; the walk, patrol, jog, run, sprint, crouch walk, strafes and backpedal are rebuilt on it, and in a run his legs are painted from it at the speeds he really moves, with a step finished, not melted, when he stops. LGP, the performance layer: every joint answers its parent a little late and settles past the mark (a damped spring per part, computed from the clip\'s own past so a film can still be scrubbed), a standing body sways and breathes, and the kit hangs on four new bones that swing (the radio\'s antenna, the dump pouch, the cummerbund\'s strap tails). The weapon light is on the gun\'s rail (an M600-style light on each long gun, a compact light on the pistol) and the beam goes along the barrel. The heads are sculpted as one surface (brow, eye sockets, nose, cheekbones, lips, chin), with ballistic glasses resting on the nose, brows, stubble and hair when his face shows; the sleeves and trousers fold, the cargo pockets are full-size and the pads sit low.',
     adapts: 'Its level comes from the device\'s tier and the ecosystem. It decides the texture size on the Legends screen (128 to 512 px tiles), whether run frames are supersampled, and how many frames are kept (120 to 320). In a run it paints at most two new frames a frame, or one when stepped down. Until a new frame is ready it borrows the nearest phase already painted, so a new pose never stalls the game. The Legends screen has its own governor: when the cinematic runs slow, the effects step down first, then the director, then the characters, and they climb back in the other order.',
-    repairs: 'Six errors in ten seconds and it rests for a minute while the old survivor stands in for the legend. Its check catches frames piling up. Its repair clears the frames and the error count. Its fresh start frees every model from the GPU and rebuilds them. Its self-test at start runs random poses (every bone must keep its exact length), puts both hands on the pistol and on the carbine (each must land within 2 mm of its grip; since 1.9.995 the support hand may roll round the handguard to keep its wrist in range, and must stay on it), checks that all fifty animations are there with the seated idles and the arms moves, and checks that the knife is held the right way round.',
-    learns: 'What a run frame costs to paint on this device. It also teaches itself as it plays: every time it paints the upper body it measures where the support hand landed against that gun\'s grip in that posture; if it is off by more than 6 mm it moves that gun\'s posture in toward the shoulder by most of the miss, paints it again and checks again (most land within 2 mm after a try or two), and if moving the gun does not bring the hand closer it puts the posture back and leaves it. What it learned is kept on the device. It measures how far a planted foot really travels in each walk the first time it is used and paces the steps by that, so the feet do not slide. Its course: five versions, each with an exam measured on its own output (proportions against de Leva, 120 reaches, the grips on ten guns, joint ranges, balance, the grasps, reach, lift, handover, throw, the quality of movement); a version is held only while every exam before it passes, and the results are kept on the device. It also learns by practice: the support-hand grip\'s cost falls from 415 to under 5 over its tries, the balance gain is found in a few practice reaches, and the throw\'s release in a few practice throws (the miss goes from a metre to a centimetre).',
+    repairs: 'Six errors in ten seconds and it rests for a minute while the old survivor stands in for the legend. Its check catches frames piling up. Its repair clears the frames and the error count. Its fresh start frees every model from the GPU and rebuilds them. Its self-test at start runs random poses (every bone must keep its exact length), puts both hands on the pistol and on the carbine (each must land within 2 mm of its grip; since 1.9.995 the support hand may roll round the handguard to keep its wrist in range, and must stay on it), checks that all fifty animations are there with the seated idles and the arms moves, checks that the knife is held the right way round, and (since 1.9.996) that the walk keeps a measured cadence (100 to 122 steps a minute at 1.33 m/s), that a flat foot slides less than 2.5 cm while it is down, and that the performance layer leaves a held pose where the clip put it.',
+    learns: 'What a run frame costs to paint on this device. It also teaches itself as it plays: every time it paints the upper body it measures where the support hand landed against that gun\'s grip in that posture; if it is off by more than 6 mm it moves that gun\'s posture in toward the shoulder by most of the miss, paints it again and checks again (most land within 2 mm after a try or two), and if moving the gun does not bring the hand closer it puts the posture back and leaves it. What it learned is kept on the device. Its steps are paced by the gait itself (the phase advances by the ground covered over the stride for that speed), so a planted foot holds the ground; it keeps the leg frames it has painted at the speeds the survivor has actually moved. Its course: five versions, each with an exam measured on its own output (proportions against de Leva, 120 reaches, the grips on ten guns, joint ranges, balance, the grasps, reach, lift, handover, throw, the quality of movement); a version is held only while every exam before it passes, and the results are kept on the device. It also learns by practice: the support-hand grip\'s cost falls from 415 to under 5 over its tries, the balance gain is found in a few practice reaches, and the throw\'s release in a few practice throws (the miss goes from a metre to a centimetre).',
     works: 'Needs CORE. MIMATIC directs it and VFXRAY finishes its frames. In a run ARMS decides what the hands and the gun do and LEGEND moves the body to match, PHYSICS gives it its springs, it draws inside the city, and the muzzle flash, the brass and the weapon light come out of the real gun in the pose. In co-op each player\'s legend, class and gun travel with them, so teammates see the right character doing the right thing.',
     runs: 'The GPU (WebGL 1) on the Legends screen, with the processor painter as a fallback. Run frames are painted on the processor and kept.',
     tune: 'Effort: how sharp the run frames are and how many are kept. GPU or processor for the Legends screen; the three Legends engines share one renderer, so the processor wins if any of them is set to it.'
@@ -11050,7 +11050,7 @@ const ENG_DOCS = {
   MIMATIC: {
     title: 'The Director',
     character: 'Mimatic means cinematic mimicry. It studies how films are shot, keeps the techniques rather than the images, and blends them the way a director would: it chooses where the camera stands, when time slows, and where the music hits. It references; it never copies.',
-    does: 'Turns a beat sheet into a film. A library of 13 film techniques, each with a note on why it works and where it comes from: low-angle hero, tracking shot, macro insert and push-in, over the shoulder, Dutch angle, whip pan, punch-in and impact shake, handheld energy, speed ramp, freeze frame and bullet time, lightning as light, title card, and hit points. From the beats it builds the shots (framed on the actors\' bones, so the camera follows a real head or a real hand), a time curve for speed ramps and freezes, and cues for the score and effects. The Operator\'s cinematic (14.5 seconds, 15 shots, rebuilt in 1.9.994): he walks a rain-soaked alley carrying your sidearm, the mask closes, a door bangs, two of the dead rush him; a whip pan, a muzzle-lit headshot, a grab, a tactical throw; down on a knee and the knife goes in; a third one out of the dark behind him; he comes up turning, the knife at its collar in slow motion, the pistol past the knife arm, point blank (knife, knife, shot, the in-game combo\'s rhythm), and time stops on the muzzle flash while lightning freezes the frame on his name; the score is rewritten to the new cut. It also stages the line-up (the five classes standing in the rain behind the selection), the hub, and the studio, where the model turns front-on and then the camera tilts up and over to look straight down, the way the game sees him (a seated clip plays there on his chair). Since v2 (1.9.993): the stoop, the idle scene behind each face on the selection screen: the Operator sits on a wooden chair under a dim bulb swinging on its cable over a shop shutter, mask down, sharpening his knife, the camera on the street at floor level looking up at him; a director picks from thirty seated idles and cross-fades them so he is never still the same way twice, and somewhere in the first quarter-minute a can is kicked in the dark: he is up off the chair with the knife out, and there is nothing there. Every actor carries weight now (springs that lag the head and the chest behind the hips), the knife is held the right way, the alley has neon that buzzes and flickers, bottles and cans the fight knocks over, papers in the wind, a passing car\'s lights sweeping the walls and a siren far off. And it directs the run\'s camera: lead room ahead of where you look when engaged and where you move when not, a slight push in when you focus, a pull out when you sprint, and a kick by each gun\'s calibre that springs back. In the studio the Operator carries the guns from the armory, his hands fitted to them, and a pick turns the camera three-quarters from his gun side to watch him take it. Since 1.9.995 (v3 to v5, its course): a camera body and lens (Super 35 and full frame, focal length and angle of view, aperture, focus, depth of field by the thin-lens formula, shutter angle, exposure value, the judder limit on pans) and its rigs (locked, pan, tilt, whip, dolly, crane, arc, steadicam, handheld, dolly zoom, rack focus) with minimum-jerk starts and stops; the shot sizes from extreme close-up to extreme wide, framed on the face as LEGEND models it, composition and clear sightlines; light designed for the subject (key, fill and back at the look\'s ratio, 2:1 to 16:1, colour temperatures through Planck\'s law) and metered by two renders until the ratio is right; and directing: coverage of a scene (master, two-shot, singles, overs, inserts), continuity (the 180-degree and 30-degree rules, match on action) and the cut chosen over all the possibilities by Murch\'s rule of six. With BOARD and VFXRAY it shoots a written scene: the set and its practical lights from the heading (a night avenue of sodium lamps and neon, a warehouse under bulbs), the light per shot, the director\'s camera following its subject, focus pulled to the eyes, a kick on the camera when a blow lands.',
+    does: 'Turns a beat sheet into a film. A library of 13 film techniques, each with a note on why it works and where it comes from: low-angle hero, tracking shot, macro insert and push-in, over the shoulder, Dutch angle, whip pan, punch-in and impact shake, handheld energy, speed ramp, freeze frame and bullet time, lightning as light, title card, and hit points. From the beats it builds the shots (framed on the actors\' bones, so the camera follows a real head or a real hand), a time curve for speed ramps and freezes, and cues for the score and effects. The Operator\'s cinematic (14.5 seconds, 15 shots, rebuilt in 1.9.994): he walks a rain-soaked alley carrying your sidearm, the mask closes, a door bangs, two of the dead rush him; a whip pan, a muzzle-lit headshot, a grab, a tactical throw; down on a knee and the knife goes in; a third one out of the dark behind him; he comes up turning, the knife at its collar in slow motion, the pistol past the knife arm, point blank (knife, knife, shot, the in-game combo\'s rhythm), and time stops on the muzzle flash while lightning freezes the frame on his name; the score is rewritten to the new cut. It also stages the line-up (the five classes standing in the rain behind the selection), the hub, and the studio, where the model turns front-on and then the camera tilts up and over to look straight down, the way the game sees him (a seated clip plays there on his chair). Since v2 (1.9.993): the stoop, the idle scene behind each face on the selection screen: the Operator sits on a wooden chair under a dim bulb swinging on its cable over a shop shutter, mask down, sharpening his knife, the camera on the street at floor level looking up at him; a director picks from thirty seated idles and cross-fades them so he is never still the same way twice, and somewhere in the first quarter-minute a can is kicked in the dark: he is up off the chair with the knife out, and there is nothing there. Every actor carries weight now (springs that lag the head and the chest behind the hips), the knife is held the right way, the alley has neon that buzzes and flickers, bottles and cans the fight knocks over, papers in the wind, a passing car\'s lights sweeping the walls and a siren far off. And it directs the run\'s camera: lead room ahead of where you look when engaged and where you move when not, a slight push in when you focus, a pull out when you sprint, and a kick by each gun\'s calibre that springs back. In the studio the Operator carries the guns from the armory, his hands fitted to them, and a pick turns the camera three-quarters from his gun side to watch him take it. Since 1.9.995 (v3 to v5, its course): a camera body and lens (Super 35 and full frame, focal length and angle of view, aperture, focus, depth of field by the thin-lens formula, shutter angle, exposure value, the judder limit on pans) and its rigs (locked, pan, tilt, whip, dolly, crane, arc, steadicam, handheld, dolly zoom, rack focus) with minimum-jerk starts and stops; the shot sizes from extreme close-up to extreme wide, framed on the face as LEGEND models it, composition and clear sightlines; light designed for the subject (key, fill and back at the look\'s ratio, 2:1 to 16:1, colour temperatures through Planck\'s law) and metered by two renders until the ratio is right; and directing: coverage of a scene (master, two-shot, singles, overs, inserts), continuity (the 180-degree and 30-degree rules, match on action) and the cut chosen over all the possibilities by Murch\'s rule of six. With BOARD and VFXRAY it shoots a written scene: the set and its practical lights from the heading (a night avenue of sodium lamps and neon, a warehouse under bulbs), the light per shot, the director\'s camera following its subject, focus pulled to the eyes, a kick on the camera when a blow lands. Since 1.9.996: every actor plays through LEGEND\'s performance layer, so the films move as if motion-captured; the alley was watched frame by frame from a fixed witness camera and fixed: the mask-on reach (elbow forward, his hand to the helmet\'s rail) shot from his left with a warm key light, the shoulder throw turned round the contact on his back (he drops and bends, it rolls over and is slammed down), the head shots that drop as dead weight, the last of the dead clawing at the knife in its collar on the freeze, and no jump before it. The stoop is cut like a film\'s quiet scene: four held shots on a 26-second loop (a wide pushing in, a side medium on the knife, an insert on his hands and the blade, his face from under the helmet\'s brim), each keeping him clear of the class card.',
     adapts: 'Its level sets the resolution the cinematic renders at (55% to 100%) and the detail of the characters it casts (the hero and the line-up separately). The screen\'s governor steps it down after the effects when frames run slow.',
     repairs: 'A clock gone bad is reset to the start of the shot. Repeated errors rest it while the screen holds a still. Its self-test at start directs the Operator\'s cinematic and checks that no two shots leave a gap, that time never runs backwards through the speed ramps and the freeze, and that every shot uses a technique from its library.',
     learns: 'What a cinematic frame costs on this device at its current resolution. It also checks its own framing as it plays: where the subject\'s head lands in each shot (off the edge, or with no headroom over the eyes) and corrects that shot next time, a little wider or the target moved, keeping the corrections on the device. Its course: five versions with exams on its own output (the cinematic\'s time curve, framing learned from its own frames, lens arithmetic and a dolly zoom measured on renders, framing within 1%, colour temperatures against Planck, lighting ratios metered within 2%, an edit with no crossings and no jump cuts that beats a careless one by the rule of six); a version is held only while every earlier exam passes.',
@@ -15286,15 +15286,20 @@ function luxGather(x0, y0, x1, y1, dt) {
     // long and tight; a reload or a swap drops it; sprinting it swings across with the carried gun
     const A = p.arm, f = A ? (A.focus || 0) : 1, ga = p.lgAim != null ? p.lgAim : aim, st = A ? A.st : '';
     let ox = p.x + Math.cos(aim) * rr, oy = p.y + Math.sin(aim) * rr;
-    if (p.lgMx != null && A) { const c = Math.cos(aim), s = Math.sin(aim); ox = p.x + (c * p.lgMx - s * p.lgMy) * PK; oy = p.y + (s * p.lgMx + c * p.lgMy) * PK; }
-    const low = st === 'reload' || st === 'swapOut' || st === 'swapIn' ? 0.5 : st === 'sprint' ? 0.75 : 1, reach = 330 * (0.55 + 0.45 * SCL) * (A ? 0.7 + 0.42 * f : 1);
-    luxPush(ox, oy, reach, 255, 244, 228, 0.95 * night * low, true, 3, { a: ga, h: A ? 0.6 - 0.25 * f : 0.46, beam: 1 }, 1.2);
+    if (p.lgMx != null && A) { const c = Math.cos(aim), s = Math.sin(aim), lx = p.lgLx != null ? p.lgLx : p.lgMx, ly = p.lgLx != null ? p.lgLy : p.lgMy; ox = p.x + (c * lx - s * ly) * PK; oy = p.y + (s * lx + c * ly) * PK; }
+    // 1.9.996: from the light on the rail, along the barrel as it is held (low ready points it at the ground just ahead)
+    const gb = p.lgBeam != null && A ? p.lgBeam : ga;
+    // (a barrel pointed steeply at the ground, as in the sprint's muzzle-down carry, throws a short wide pool by his feet
+    // rather than a long cone: the reach follows how much of the bore lies level, p.lgBeamD)
+    const bd = p.lgBeamD != null && A ? clamp(p.lgBeamD, 0, 1) : 1;
+    const low = st === 'reload' || st === 'swapOut' || st === 'swapIn' ? 0.5 : st === 'sprint' ? 0.75 : 1, reach = 330 * (0.55 + 0.45 * SCL) * (A ? 0.7 + 0.42 * f : 1) * (0.28 + 0.72 * bd * bd);
+    luxPush(ox, oy, reach, 255, 244, 228, 0.95 * night * low, true, 3, { a: gb, h: (A ? 0.6 - 0.25 * f : 0.46) + 0.35 * (1 - bd), beam: 1 }, 1.2);
   }
   if (NET.started) {
     const each = NET.role === 'host' ? Array.from(NET.peers.values()).map(q => q.p).filter(Boolean) : Array.from(NET.others.values());
     for (const q of each) if (q && !q.down && night > 0.04 && q.x > x0 - m && q.x < x1 + m && q.y > y0 - m && q.y < y1 + m) {
       luxPush(q.x, q.y, 110, 255, 232, 190, 0.45 * night, false, 1, null, 1.5);
-      if (q.aim != null) { const qa = q.lgAim != null ? q.lgAim : q.aim, qf = q.arm ? (q.arm.focus || 0) : 1; luxPush(q.x + Math.cos(q.aim) * 6, q.y + Math.sin(q.aim) * 6, 420 * (q.arm ? 0.7 + 0.42 * qf : 1), 255, 242, 222, 0.7 * night, true, 1, { a: qa, h: q.arm ? 0.6 - 0.25 * qf : 0.44, beam: 1 }, 1.2); }
+      if (q.aim != null) { const qa = q.lgBeam != null ? q.lgBeam : q.lgAim != null ? q.lgAim : q.aim, qf = q.arm ? (q.arm.focus || 0) : 1, c = Math.cos(q.aim), sn = Math.sin(q.aim), qx = q.lgLx != null ? q.x + (c * q.lgLx - sn * q.lgLy) * PK : q.x + c * 6, qy = q.lgLx != null ? q.y + (sn * q.lgLx + c * q.lgLy) * PK : q.y + sn * 6; luxPush(qx, qy, 420 * (q.arm ? 0.7 + 0.42 * qf : 1), 255, 242, 222, 0.7 * night, true, 1, { a: qa, h: q.arm ? 0.6 - 0.25 * qf : 0.44, beam: 1 }, 1.2); }
     }
   }
 }
@@ -25347,13 +25352,13 @@ const lgMix3 = (o, c, k) => { o[0] += (c[0] - o[0]) * k; o[1] += (c[1] - o[1]) *
 function lgWeave(x, y, T) { const w = Math.max(1, T >> 7), g = Math.max(2, T >> 4); const wv = (((x / w) | 0) + ((y / w) | 0)) & 1 ? 0.04 : -0.04; const gx = x % g < w * 1.2 || y % g < w * 1.2 ? 0.07 : 0; return [wv + gx, gx]; }
 function lgCamoTile(pal, seed, coarse) {
   return (T, R0) => {
-    const R = lgRng(seed), A = lgOcts(3, 5, R), B2 = lgOcts(4, 5, R), C = lgOcts(6, 4, R), Br = lgLat(28, 3, R), Mi = lgLat(64, 64, R), Wx = lgOcts(4, 3, R), Wy = lgOcts(4, 3, R);
+    const R = lgRng(seed), A = lgOcts(3, 5, R), B2 = lgOcts(4, 5, R), C = lgOcts(4, 4, R), Br = lgLat(28, 3, R), Mi = lgLat(64, 64, R), Wx = lgOcts(4, 3, R), Wy = lgOcts(4, 3, R);
     return { px: (u, v, x, y, o) => {
       // domain warp: the blotches get torn, organic edges instead of following the noise lattice
       const wu = u + (lgFbm(Wx, u, v) - 0.5) * 0.09, wv0 = v + (lgFbm(Wy, u, v) - 0.5) * 0.09;
       const n1 = lgFbm(A, wu, wv0), n2 = lgFbm(B2, wu + 0.31, wv0 + 0.17), n3 = lgFbm(C, wu + 0.7, wv0 + 0.45), b = lgVal(Br, wu, v), m = lgVal(Mi, u, v);
       const c = pal[0].slice();
-      lgMix3(c, pal[1], lgSS(0.5, 0.515, n1)); lgMix3(c, pal[2], lgSS(0.555, 0.57, n2)); lgMix3(c, pal[3], lgSS(0.6, 0.615, n3) * (1 - lgSS(0.5, 0.515, n1)));
+      lgMix3(c, pal[1], lgSS(0.5, 0.515, n1)); lgMix3(c, pal[2], lgSS(0.555, 0.57, n2)); lgMix3(c, pal[3], lgSS(0.635, 0.65, n3) * (1 - lgSS(0.5, 0.515, n1)));
       lgMix3(c, pal[4], (1 - lgSS(0.0, 0.03, Math.abs(b - 0.5))) * 0.8 * lgSS(0.45, 0.6, n2));
       const wv = coarse ? lgCordH(x, y, T) : lgWeave(x, y, T), sh = 1 + wv[0] * 0.4 + (m - 0.5) * 0.07;
       o[0] = c[0] * sh; o[1] = c[1] * sh; o[2] = c[2] * sh; o[3] = 0.5 + wv[0]; o[4] = 0.8 + (m - 0.5) * 0.2; o[5] = 1 - wv[1] * 0.3;
@@ -25367,7 +25372,7 @@ function lgCordH(x, y, T) {   // Cordura: a 2x2 basket weave of thick yarns
 }
 const LG_TILES = [
   // 0 storm camo (original): khaki ground, olive and brown blotches, light highlights, dark twigs; ripstop weave
-  lgCamoTile([[0.34, 0.35, 0.3], [0.22, 0.26, 0.18], [0.3, 0.25, 0.19], [0.46, 0.46, 0.4], [0.13, 0.13, 0.11]], 11, false),
+  lgCamoTile([[0.34, 0.35, 0.3], [0.22, 0.26, 0.18], [0.3, 0.25, 0.19], [0.43, 0.43, 0.37], [0.13, 0.13, 0.11]], 11, false),
   // 1 night camo (original): charcoal ground, near-black and grey blotches; Cordura weave (plate carrier and pouches)
   lgCamoTile([[0.15, 0.15, 0.15], [0.075, 0.075, 0.08], [0.22, 0.22, 0.21], [0.3, 0.29, 0.27], [0.05, 0.05, 0.05]], 23, true),
   // 2 ripstop
@@ -25482,8 +25487,34 @@ function lgDrawPosters(gA, gH, T) {
 }
 function lgDrawFaces(gA, gH, T) {
   lgQuarters(gA, gH, T, [
-    // the Operator's eyes through the balaclava
-    (a, h, x, y, s) => { const g = a.createLinearGradient(x, y + s * 0.3, x, y + s * 0.7); g.addColorStop(0, '#6b4a38'); g.addColorStop(0.5, '#a07a60'); g.addColorStop(1, '#6b4a38'); a.fillStyle = g; a.fillRect(x, y + s * 0.3, s, s * 0.4); for (const ex of [0.3, 0.7]) { a.fillStyle = '#d9d2c4'; a.beginPath(); a.ellipse(x + s * ex, y + s * 0.5, s * 0.11, s * 0.05, 0, 0, TAU); a.fill(); a.fillStyle = '#3a2a1c'; a.beginPath(); a.arc(x + s * ex + s * 0.01, y + s * 0.5, s * 0.042, 0, TAU); a.fill(); a.fillStyle = '#0a0806'; a.beginPath(); a.arc(x + s * ex + s * 0.01, y + s * 0.5, s * 0.02, 0, TAU); a.fill(); a.fillStyle = 'rgba(255,255,255,0.8)'; a.beginPath(); a.arc(x + s * ex - s * 0.01, y + s * 0.485, s * 0.008, 0, TAU); a.fill(); a.strokeStyle = '#3a271b'; a.lineWidth = s * 0.018; a.beginPath(); a.ellipse(x + s * ex, y + s * 0.5, s * 0.115, s * 0.055, 0, Math.PI * 1.05, Math.PI * 1.95); a.stroke(); } h.fillStyle = lgCover(h, 0.5, 0.45); h.fillRect(x, y + s * 0.3, s, s * 0.4); },
+    // the Operator's eyes through the balaclava (1.9.996: drawn as eyes, not a cartoon's: almond-shaped openings under a
+    // heavy upper lid with its crease and lashes, the white mostly hidden and shaded by the lid, a dark brown iris with a
+    // limbal ring and a small catchlight, the skin of the brow and cheekbones in the opening, darker toward the knit)
+    (a, h, x, y, s) => {
+      const band = a.createLinearGradient(x, y + s * 0.3, x, y + s * 0.7); band.addColorStop(0, '#3b2b22'); band.addColorStop(0.18, '#7c5a46'); band.addColorStop(0.5, '#9a735b'); band.addColorStop(0.82, '#7a5743'); band.addColorStop(1, '#3a2a21');
+      a.fillStyle = band; a.fillRect(x, y + s * 0.3, s, s * 0.4);
+      for (const ex of [0.3, 0.7]) {
+        const cx = x + s * ex, cy = y + s * 0.505, w = s * 0.1, hh = s * 0.034, inner = ex < 0.5 ? 1 : -1;
+        // the socket's shadow under the brow, the cheek's light below
+        const so = a.createRadialGradient(cx, cy - s * 0.01, s * 0.01, cx, cy, s * 0.16); so.addColorStop(0, 'rgba(40,24,16,0.35)'); so.addColorStop(1, 'rgba(40,24,16,0)'); a.fillStyle = so; a.fillRect(cx - s * 0.17, cy - s * 0.12, s * 0.34, s * 0.22);
+        // the opening: an almond, the inner corner lower and pointed, the outer a little higher
+        const path = () => { a.beginPath(); a.moveTo(cx + inner * w, cy + hh * 0.25); a.bezierCurveTo(cx + inner * w * 0.45, cy - hh * 1.45, cx - inner * w * 0.55, cy - hh * 1.3, cx - inner * w * 1.02, cy - hh * 0.15); a.bezierCurveTo(cx - inner * w * 0.5, cy + hh * 0.95, cx + inner * w * 0.45, cy + hh * 1.05, cx + inner * w, cy + hh * 0.25); a.closePath(); };
+        a.save(); path(); a.clip();
+        const scl = a.createLinearGradient(cx, cy - hh, cx, cy + hh); scl.addColorStop(0, '#9a8e80'); scl.addColorStop(0.45, '#d6cec2'); scl.addColorStop(1, '#bfb3a4'); a.fillStyle = scl; a.fillRect(cx - w * 1.1, cy - hh * 1.6, w * 2.2, hh * 3.2);
+        const ir = a.createRadialGradient(cx + inner * w * 0.08, cy, s * 0.004, cx + inner * w * 0.08, cy, s * 0.03); ir.addColorStop(0, '#2a1a10'); ir.addColorStop(0.35, '#5a3a22'); ir.addColorStop(0.8, '#3e2716'); ir.addColorStop(1, '#1a100a');
+        a.fillStyle = ir; a.beginPath(); a.arc(cx + inner * w * 0.08, cy + hh * 0.05, s * 0.03, 0, TAU); a.fill();
+        a.fillStyle = '#070504'; a.beginPath(); a.arc(cx + inner * w * 0.08, cy + hh * 0.05, s * 0.012, 0, TAU); a.fill();
+        // the upper lid's shadow across the top of the eye
+        const ls = a.createLinearGradient(cx, cy - hh * 1.4, cx, cy); ls.addColorStop(0, 'rgba(20,10,6,0.75)'); ls.addColorStop(1, 'rgba(20,10,6,0)'); a.fillStyle = ls; a.fillRect(cx - w * 1.1, cy - hh * 1.5, w * 2.2, hh * 1.5);
+        a.fillStyle = 'rgba(255,250,240,0.85)'; a.beginPath(); a.arc(cx + inner * w * 0.08 - s * 0.009, cy - hh * 0.25, s * 0.0045, 0, TAU); a.fill();
+        a.restore();
+        // the lid's edge and lashes, the crease above, the lower lid
+        a.strokeStyle = '#1e130c'; a.lineWidth = s * 0.011; a.beginPath(); a.moveTo(cx + inner * w, cy + hh * 0.25); a.bezierCurveTo(cx + inner * w * 0.45, cy - hh * 1.45, cx - inner * w * 0.55, cy - hh * 1.3, cx - inner * w * 1.02, cy - hh * 0.15); a.stroke();
+        a.strokeStyle = 'rgba(60,38,26,0.8)'; a.lineWidth = s * 0.006; a.beginPath(); a.moveTo(cx + inner * w * 0.85, cy - hh * 0.7); a.bezierCurveTo(cx + inner * w * 0.4, cy - hh * 2.3, cx - inner * w * 0.5, cy - hh * 2.2, cx - inner * w * 1.05, cy - hh * 0.9); a.stroke();
+        a.strokeStyle = 'rgba(90,60,44,0.7)'; a.lineWidth = s * 0.005; a.beginPath(); a.moveTo(cx - inner * w * 1.0, cy - hh * 0.1); a.bezierCurveTo(cx - inner * w * 0.5, cy + hh * 1.05, cx + inner * w * 0.45, cy + hh * 1.1, cx + inner * w, cy + hh * 0.3); a.stroke();
+      }
+      h.fillStyle = lgCover(h, 0.55, 0.6); h.fillRect(x, y + s * 0.3, s, s * 0.4);
+    },
     // a dead face: sunken sockets with a faint glow, a slack mouth with teeth
     (a, h, x, y, s) => { a.fillStyle = '#b8b8b0'; a.fillRect(x, y, s, s); h.fillStyle = lgCover(h, 0.5, 0.5); h.fillRect(x, y, s, s); for (const ex of [0.32, 0.68]) { const g = a.createRadialGradient(x + s * ex, y + s * 0.38, 0, x + s * ex, y + s * 0.38, s * 0.14); g.addColorStop(0, '#fff4c0'); g.addColorStop(0.18, '#3a2a24'); g.addColorStop(1, 'rgba(60,40,40,0)'); a.fillStyle = g; a.beginPath(); a.arc(x + s * ex, y + s * 0.38, s * 0.14, 0, TAU); a.fill(); } a.fillStyle = '#2a1414'; a.beginPath(); a.ellipse(x + s * 0.5, y + s * 0.74, s * 0.16, s * 0.08, 0, 0, TAU); a.fill(); a.fillStyle = '#cfc6a8'; for (let i = 0; i < 6; i++) a.fillRect(x + s * (0.38 + i * 0.042), y + s * 0.69, s * 0.03, s * 0.04); a.strokeStyle = '#5a2a2a'; a.lineWidth = s * 0.012; a.beginPath(); a.moveTo(x + s * 0.2, y + s * 0.6); a.lineTo(x + s * 0.3, y + s * 0.66); a.stroke(); },
     // velcro loop panel
@@ -25572,7 +25603,10 @@ const LG_SKEL = [
   ['thighR', 'pelvis', 0, -0.095, -0.045], ['shinR', 'thighR', 0, 0, -0.43], ['footR', 'shinR', 0, 0, -0.42], ['toeR', 'footR', 0.135, 0, -0.055],
   // props (placed in the root's space every frame) and the mask's seven plates (on the head)
   ['pistol', 'root', 0, 0, 0], ['slide', 'pistol', 0, 0, 0], ['mag', 'pistol', 0, 0, 0], ['knife', 'root', 0, 0, 0], ['carbine', 'root', 0, 0, 0], ['cmag', 'carbine', 0, 0, 0],
-  ['mBrow', 'head', 0, 0, 0], ['mCheekL', 'head', 0, 0, 0], ['mCheekR', 'head', 0, 0, 0], ['mJawL', 'head', 0, 0, 0], ['mJawR', 'head', 0, 0, 0], ['mChin', 'head', 0, 0, 0], ['mVisor', 'head', 0, 0, 0]
+  ['mBrow', 'head', 0, 0, 0], ['mCheekL', 'head', 0, 0, 0], ['mCheekR', 'head', 0, 0, 0], ['mJawL', 'head', 0, 0, 0], ['mJawR', 'head', 0, 0, 0], ['mChin', 'head', 0, 0, 0], ['mVisor', 'head', 0, 0, 0],
+  // 1.9.996: the kit that swings (the radio's antenna, the dump pouch on the belt, the cummerbund's strap tails), each on a
+  // hinge where it hangs, moved by the gear's springs (legperf.js, legloco.js)
+  ['antenna', 'chest', -0.012, 0.19, 0.08], ['dump', 'pelvis', -0.118, 0.066, 0.034], ['tailL', 'spine', 0.105, 0.16, 0.025], ['tailR', 'spine', 0.105, -0.16, 0.025]
 ];
 const LGB = {}; LG_SKEL.forEach((b, i) => { LGB[b[0]] = i; });
 const LG_NB = LG_SKEL.length;
@@ -25598,7 +25632,7 @@ function lgJm(P, side, base, rx, ry, rz) { const s = side === 'L' ? 1 : -1; lgJ(
 // fingers fan apart. Right hand; the left mirrors.
 const LGH_HOLD = { pistol: 1, trigger: 1, support: 1, cup: 1, knife: 1 };
 const LG_GRIPS = {
-  relax: { f: [[0.22, 0.32, 0.18], [0.3, 0.42, 0.22], [0.36, 0.48, 0.26], [0.44, 0.52, 0.3]], t: [-0.22, 0.5, 0.55, 0.22, 0.16], sp: 0.35 },
+  relax: { f: [[0.34, 0.52, 0.3], [0.4, 0.58, 0.32], [0.46, 0.62, 0.34], [0.54, 0.62, 0.36]], t: [-0.18, 0.45, 0.5, 0.25, 0.18], sp: 0.14 },   // (1.9.996: a hand at rest curls, the fingers together)
   open: { f: [[0.02, 0.04, 0.02], [0.02, 0.04, 0.02], [0.03, 0.04, 0.02], [0.04, 0.05, 0.03]], t: [-0.55, 0.2, 0.35, 0.05, 0.02], sp: 0.9 },
   fist: { f: [[1.45, 1.6, 0.85], [1.5, 1.62, 0.85], [1.52, 1.62, 0.85], [1.55, 1.6, 0.85]], t: [-0.2, 0.95, 0.85, 0.55, 0.45], sp: 0 },
   pistol: { f: [[0.32, 0.2, 0.08], [1.05, 1.5, 0.62], [1.12, 1.5, 0.62], [1.2, 1.48, 0.6]], t: [-0.3, 0.78, 0.65, 0.12, 0.08], sp: 0.05 },
@@ -26182,7 +26216,9 @@ const LG_FS = function (deriv) {
   'uniform float uGlow, uWet, uTime, uExpo, uDesat, uShOn, uRfOn, uShTx, uSat, uCut;\n' +
   'uniform vec2 uRes; uniform vec4 uGrade;\n' +
   'varying vec3 vP; varying vec3 vN; varying vec2 vU; varying vec4 vC; varying vec4 vM; varying vec2 vX; varying vec4 vL;\n' +
-  'vec2 tuv(float t, vec2 u) { vec2 f = clamp(fract(u), uTx, 1.0 - uTx); return (vec2(mod(t, uGrid.x), floor(t / uGrid.x + 0.001)) + f) / uGrid; }\n' +
+  // (1.9.996: the tile's column and row from a whole tile number: the index arrives interpolated, and 14.99999 put a
+  // twill (tile 15, the clothes of the dead) or knit (5) fragment into the next tile's edge, printing dashes like text)
+  'vec2 tuv(float t, vec2 u) { vec2 f = clamp(fract(u), uTx, 1.0 - uTx); float r = floor(t / uGrid.x + 0.001); return (vec2(t - r * uGrid.x, r) + f) / uGrid; }\n' +
   'float unpackD(vec4 c) { return dot(c, vec4(1.0, 1.0 / 255.0, 1.0 / 65025.0, 1.0 / 16581375.0)); }\n' +
   'float shadowAt(vec4 L, float bias) { vec3 p = L.xyz / L.w * 0.5 + 0.5; if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0) return 1.0; float s = 0.0;\n' +
   ' s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(-uShTx, -uShTx)))); s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(uShTx, -uShTx))));\n' +
@@ -26194,7 +26230,7 @@ const LG_FS = function (deriv) {
   '  float h = hash(c); float ph = fract(t * (0.9 + h * 0.6) + h * 7.0); vec2 o = vec2(hash(c + 1.3), hash(c + 2.9)) - 0.5; vec2 d = f - o * 0.6; float r = length(d);\n' +
   '  float ring = sin((r - ph * 0.45) * 60.0) * smoothstep(0.08, 0.0, abs(r - ph * 0.45)) * (1.0 - ph); g += d / max(r, 0.001) * ring; } return g * 0.5; }\n' +
   'void main() {\n' +
-  ' float slot = vC.a; float cut = step(3.5, slot); float sl = slot - 4.0 * cut; float tile = vM.x;\n' +
+  ' float slot = vC.a; float cut = step(3.5, slot); float sl = slot - 4.0 * cut; float tile = floor(vM.x + 0.5);\n' +
   ' vec3 N = normalize(vN); vec3 V = normalize(uEye - vP); if (dot(N, V) < 0.0) N = -N;\n' +
   ' vec3 base = (sl > 0.5 && sl < 2.5) ? uAcc : vC.rgb; vec3 alb = base; float rough = vM.y; float metal = vM.z; float ao = 1.0; float lum = 1.0; vec4 th = vec4(0.5, 0.6, 1.0, 1.0);\n' +
   ' if (tile >= 0.0) { vec2 tu = tuv(tile, vU); vec3 ta = texture2D(uA, tu).rgb; th = texture2D(uH, tu);\n' +
@@ -26354,12 +26390,12 @@ function lgTickPlayer(pl, dt, rootM, onEv) {
   const t0 = pl.t; pl.t += dt * pl.sp;
   if (!a.loop && pl.t >= a.dur) { pl.t = a.dur; pl.done = true; }
   if (onEv && a.ev) for (const e of a.ev) { const et = e[0]; if (a.loop) { const c0 = Math.floor(t0 / a.dur), c1 = Math.floor(pl.t / a.dur); for (let c = c0; c <= c1; c++) { const at = c * a.dur + et; if (at > t0 && at <= pl.t) onEv(e[1], e[2]); } } else if (et > t0 && et <= pl.t) onEv(e[1], e[2]); }
-  lgEvalClip(a, pl.t, pl.P, pl.ctx);
+  if (pl.perf !== false && typeof lgpEval === 'function') lgpEval(a, pl.t, pl.P, pl.ctx, pl.perfO); else lgEvalClip(a, pl.t, pl.P, pl.ctx);   // (1.9.996: the performance layer)
   lgSolve(pl.P, pl.L, pl.W, rootM || lgRootM(pl.P));
   if (pl.fade > 0 && pl.prev) {
     pl.fade = Math.max(0, pl.fade - dt); const k = 1 - pl.fade / pl.fadeDur, s = k * k * (3 - 2 * k);
     // the old clip keeps playing underneath as it fades
-    pl.pt += dt; lgEvalClip(pl.prev, pl.pt, pl.P2, pl.ctx); lgSolve(pl.P2, pl.L2, pl.W2, rootM || lgRootM(pl.P2));
+    pl.pt += dt; if (pl.perf !== false && typeof lgpEval === 'function') lgpEval(pl.prev, pl.pt, pl.P2, pl.ctx, pl.perfO); else lgEvalClip(pl.prev, pl.pt, pl.P2, pl.ctx); lgSolve(pl.P2, pl.L2, pl.W2, rootM || lgRootM(pl.P2));
     lgBlendL(pl.L2, pl.L, s, pl.L); lgWorldAll(pl.W, pl.L, rootM || lgRootM(pl.P));
     if (pl.fade <= 0) pl.prev = null;
   }
@@ -26695,6 +26731,60 @@ function lgEllFrame(E, th, ph, off, spin) {
 }
 // keep a small decal on an ellipsoid (projected, lifted by off)
 function lgOnEll(E, off) { return (P, N) => { let dx = (P[0] - E[0]) / E[3], dy = (P[1] - E[1]) / E[4], dz = (P[2] - E[2]) / E[5]; const l = Math.hypot(dx, dy, dz) || 1; dx /= l; dy /= l; dz /= l; let nx = dx / E[3], ny = dy / E[4], nz = dz / E[5]; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl; P[0] = E[0] + dx * E[3] + nx * off; P[1] = E[1] + dy * E[4] + ny * off; P[2] = E[2] + dz * E[5] + nz * off; N[0] = nx; N[1] = ny; N[2] = nz; }; }
+// 1.9.996: a sculpted head. The skull's ellipsoid is reshaped into a face as one surface (a face built of separate
+// spheres catches a rim of light round every one of them and reads as a doll's): the lower face narrows to the jaw, the
+// front flattens across the eyes, and the features rise and sink as smooth swellings (brow, sockets, nose, cheekbones,
+// lips, chin). lgSculpt(E, off) returns a deformer for lgV: any point is taken to its place on the skull, moved, lifted
+// off the sculpted surface by off, and given the sculpted surface's normal (by differences), so decals and shells laid
+// over the head follow its shape too.
+const LG_FACE_G = [
+  // [y, z, sigma y, sigma z, height] (metres, in the head's space; the front of the face only)
+  [0.032, 0.1, 0.014, 0.0105, -0.0065], [-0.032, 0.1, 0.014, 0.0105, -0.0065],          // the eye sockets
+  [0.031, 0.119, 0.02, 0.0062, 0.0042], [-0.031, 0.119, 0.02, 0.0062, 0.0042],          // the brow's ridge
+  [0, 0.113, 0.008, 0.007, 0.002],                                                      // between the brows
+  [0.046, 0.081, 0.014, 0.0105, 0.0052], [-0.046, 0.081, 0.014, 0.0105, 0.0052],        // the cheekbones
+  [0.044, 0.052, 0.013, 0.012, -0.0035], [-0.044, 0.052, 0.013, 0.012, -0.0035],        // under them
+  [0.0155, 0.062, 0.0062, 0.0058, 0.0075], [-0.0155, 0.062, 0.0062, 0.0058, 0.0075],    // the nostrils' wings
+  [0, 0.0442, 0.017, 0.0046, 0.005], [0, 0.0328, 0.0145, 0.005, 0.0044],               // the upper and lower lip
+  [0, 0.0388, 0.019, 0.0014, -0.0021],                                                  // the line of the mouth
+  [0, 0.0095, 0.0145, 0.0115, 0.0135],                                                  // the chin
+  [0.062, 0.122, 0.012, 0.014, -0.0028], [-0.062, 0.122, 0.012, 0.014, -0.0028]         // the temples
+];
+function lgFaceH(y, z) {
+  let h = 0;
+  for (const g of LG_FACE_G) { const a = (y - g[0]) / g[2], b = (z - g[1]) / g[3]; h += g[4] * Math.exp(-0.5 * (a * a + b * b)); }
+  // the nose: a ridge from the bridge (z 0.104) to the tip (z 0.062), rising and widening as it goes, cut off under the tip
+  const u = clamp((0.104 - z) / 0.042, 0, 1), zr = z > 0.104 ? (z - 0.104) / 0.006 : z < 0.062 ? (0.062 - z) / 0.0042 : 0, sy = lgLerp(0.0062, 0.0105, u);
+  h += lgLerp(0.0042, 0.0205, u * u * (3 - 2 * u)) * Math.exp(-0.5 * ((y / sy) ** 2 + zr * zr));
+  return h;
+}
+function lgSculpt(E, off, o) {
+  o = o || {}; const amt = o.amt == null ? 1 : o.amt;
+  const at = (ux, uy, uz, out) => {
+    // the skull point, reshaped: the lower face narrows toward the chin; the front flattens across the eyes
+    let x = E[0] + ux * E[3], y = E[1] + uy * E[4], z = E[2] + uz * E[5];
+    const front = clamp((ux - 0.1) / 0.5, 0, 1);
+    y *= 1 - 0.16 * amt * clamp((0.075 - z) / 0.085, 0, 1) * (0.4 + 0.6 * front);
+    if (ux > 0) x = E[0] + (x - E[0]) * (1 + 0.1 * amt * uy * uy * (1 - uz * uz));
+    // the features, along the skull's normal (the front of the face only)
+    let nx = ux / E[3], ny = uy / E[4], nz = uz / E[5]; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    const h = front > 0 ? lgFaceH(y, z) * amt * clamp((ux - 0.25) / 0.35, 0, 1) : 0;
+    out[0] = x + nx * h; out[1] = y + ny * h; out[2] = z + nz * h;
+  };
+  const A = [0, 0, 0], C = [0, 0, 0], F = [0, 0, 0];
+  return (P, N) => {
+    let ux = (P[0] - E[0]) / E[3], uy = (P[1] - E[1]) / E[4], uz = (P[2] - E[2]) / E[5]; const l = Math.hypot(ux, uy, uz) || 1; ux /= l; uy /= l; uz /= l;
+    // two tangents on the unit sphere, and the sculpted surface's normal from differences along them
+    let t1x = -uy, t1y = ux, t1z = 0; const t1l = Math.hypot(t1x, t1y); if (t1l < 1e-4) { t1x = 1; t1y = 0; } else { t1x /= t1l; t1y /= t1l; }
+    const t2x = uy * t1z - uz * t1y, t2y = uz * t1x - ux * t1z, t2z = ux * t1y - uy * t1x, e = 0.0025;
+    // (forward differences: three evaluations a vertex instead of five; the step is a quarter of a millimetre on the skull)
+    at(ux, uy, uz, F); at(ux + t1x * e, uy + t1y * e, uz + t1z * e, A); at(ux + t2x * e, uy + t2y * e, uz + t2z * e, C);
+    const ax = A[0] - F[0], ay = A[1] - F[1], az = A[2] - F[2], cx = C[0] - F[0], cy = C[1] - F[1], cz = C[2] - F[2];
+    let nx = ay * cz - az * cy, ny = az * cx - ax * cz, nz = ax * cy - ay * cx; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    if (nx * ux + ny * uy + nz * uz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    P[0] = F[0] + nx * off; P[1] = F[1] + ny * off; P[2] = F[2] + nz * off; N[0] = nx; N[1] = ny; N[2] = nz;
+  };
+}
 // a curved plate on an ellipsoid: theta and phi ranges (phi range may follow theta), offset off the surface, thickness
 function lgShell(B, E, th0, th1, ph0, ph1, off, thick, o) {
   o = o || {}; const p = lgPart(B), nu = lgSeg(B, o.nu || 16), nv = Math.max(2, lgSeg(B, o.nv || 8)), base = p.n, ru = (E[3] + E[4]) / 2;
@@ -26723,11 +26813,13 @@ function lgShell(B, E, th0, th1, ph0, ph1, off, thick, o) {
 function lgEllPath(E, th0, th1, ph, off, n) { const pts = []; const PH = typeof ph === 'function' ? ph : () => ph; for (let i = 0; i <= n; i++) { const th = th0 + (th1 - th0) * i / n; pts.push(lgEll(E, th, PH(th), off).p); } return pts; }
 const lgC = (h) => lgHex(h);
 
+// a small knob standing out along y from the surface (for the NVG mount's tension screws)
+function lgKnobX(B, x, y, z) { lgPush(B, lgTR(x, y, z, Math.PI / 2, 0, 0)); lgLimb(B, 0.006, [[0, 0.004], [1, 0.004]], { up: true, segs: 8 }); lgPop(B); }
 /* ---------- the Operator's materials and his class kit ---------- */
 function lgOpKit(cls) {
   const c = LG_CLASS_BY[cls] || LG_CLASSES[0];
   const M = {
-    camo: lgMtl({ c: [1, 1, 1], t: LT.camo, r: 0.88, w: 1, n: 0.45, k: 0.3 }),
+    camo: lgMtl({ c: [1, 1, 1], t: LT.camo, r: 0.88, w: 1, n: 0.45, k: 0.21 }),
     shirt: lgMtl({ c: '#55574f', t: LT.knit, r: 0.86, w: 1, n: 0.7, k: 0.07 }),
     ncamo: lgMtl({ c: [1, 1, 1], t: LT.ncamo, r: 0.82, w: 0.9, n: 1, k: 0.3 }),
     molle: lgMtl({ c: '#30312c', t: LT.molle, r: 0.82, w: 0.9, n: 1.5, k: 0.152 }),
@@ -26752,6 +26844,7 @@ function lgOpKit(cls) {
     polyHi: lgMtl({ c: '#2e302c', t: LT.poly, r: 0.55, w: 0.08, n: 0.6, k: 0.06 }),
     visor: lgMtl({ c: '#07090c', r: 0.05, m: 0.4, w: 0, n: 0 }),
     lens: lgMtl({ c: '#1a2a35', r: 0.04, m: 0.5, w: 0, n: 0 }),
+    smoke: lgMtl({ c: '#0b0d0f', r: 0.08, m: 0.25, w: 0, n: 0 }),
     glow: lgMtl({ c: [1, 1, 1], s: 2, e: 2.4, r: 0.3, w: 0, n: 0 }),
     glowSoft: lgMtl({ c: [1, 1, 1], s: 2, e: 0.9, r: 0.4, w: 0, n: 0 }),
     white: lgMtl({ c: '#e8e4d8', r: 0.5, w: 0.2, e: 0.6 }),
@@ -26804,6 +26897,10 @@ function lgQuarterUV(q, crop) { const x = (q & 1) * 0.5, y = (q >> 1) * 0.5, c =
   LG_SOCK.cmagHand = lgBasis([0, 0, 1], [0, 1, 0], [-1, 0, 0], [-0.098, -0.02, -0.104]);   // (1.9.994: on the M4's magazine, which the generic carbine now is)
 })();
 
+// 1.9.996: cloth folds: a ridge-and-valley profile, half sine and half triangle wave (crisper than a sine, as fabric
+// creases are); lgRamp: 0 to 1 across a band of z (a in, b fully in)
+const lgFold = t => { const tr = 1 - 2 * Math.abs(((t / Math.PI) % 2 + 2) % 2 - 1); return 0.55 * Math.sin(t) + 0.45 * tr; };
+const lgRamp = (z, a, b) => clamp((z - a) / (b - a), 0, 1);
 /* ---------- the Operator ---------- */
 LG_MAKERS.operator = function (B, cls) {
   // cls may carry a loadout: "class|primary|secondary" (1.9.993: each rebuilt gun has its own model, leggun.js)
@@ -26820,6 +26917,8 @@ function lgOpPelvis(B, K) {
   // hips in camo trousers
   lgMat(B, M.camo);
   lgLathe(B, [[0.03, -0.172], [0.085, -0.16], [0.135, -0.12], [0.158, -0.07], [0.166, -0.02], [0.162, 0.04], [0.156, 0.085]], { segs: 22, sx: 0.7, wr: (a, z) => z < -0.1 ? Math.sin(a * 6) * 0.015 : 0 });
+  // 1.9.996: the seat of the trousers over the glutes (a body has a back to it, not a tube)
+  for (const s2 of [1, -1]) lgSphere(B, -0.052, s2 * 0.066, -0.078, 0.066, 0.076, 0.084, { segs: 14, rings: 9, t0: Math.PI * 0.5, t1: Math.PI * 1.5 });
   // battle belt (MOLLE, night) and the rigger's belt with its buckle
   lgMat(B, M.molle); lgLathe(B, [[0.17, -0.005], [0.178, 0.005], [0.179, 0.055], [0.172, 0.066]], { segs: 24, sx: 0.71, capB: false });
   lgMat(B, M.web); lgLathe(B, [[0.178, 0.058], [0.182, 0.062], [0.182, 0.082], [0.178, 0.086]], { segs: 24, sx: 0.72 });
@@ -26846,7 +26945,10 @@ function lgOpPelvis(B, K) {
     lgPop(B);
   }
   // dump pouch (rolled), back left; tourniquet, back right
-  lgPush(B, lgTR(-0.115, 0.06, 0.02, Math.PI / 2, 0, 0)); lgMat(B, M.pouch); lgLimb(B, 0.11, [[0, 0.028], [1, 0.028]], { up: true, z0: -0.055, segs: 10 }); lgPop(B);
+  // (1.9.996: the dump pouch hangs from the belt on its own hinge and swings: rolled, held by its bungee, a pull tab)
+  lgBone(B, 'dump'); lgPush(B, lgTR(0.003, -0.006, -0.03, Math.PI / 2, 0, 0)); lgMat(B, M.pouch); lgLimb(B, 0.11, [[0, 0.028], [0.1, 0.03], [0.9, 0.03], [1, 0.028]], { up: true, z0: -0.055, segs: 10 }); lgPop(B);
+  lgMat(B, M.web); lgBox(B, 0.0, -0.006, -0.002, 0.012, 0.03, 0.008, 0.003); if (hi) { lgTube(B, [[-0.03, 0.03, -0.03], [-0.032, -0.006, -0.032], [-0.03, -0.045, -0.03]], 0.0022, { segs: 4 }); lgMat(B, M.red); lgBox(B, -0.033, -0.05, -0.04, 0.003, 0.006, 0.012, 0.002); }
+  lgBone(B, 'pelvis');
   if (hi) {
     lgPush(B, lgTR(-0.12, -0.09, 0.0, 0, 0, 0)); lgMat(B, M.rubber); lgLimb(B, 0.1, [[0, 0.017], [1, 0.017]], { up: true, z0: -0.05, segs: 8 }); lgMat(B, M.red); lgBox(B, -0.012, 0, 0.055, 0.008, 0.006, 0.01, 0.003); lgPop(B);
   }
@@ -26860,16 +26962,21 @@ function lgOpSpine(B, K) {
   lgMat(B, M.shirt); lgLathe(B, [[0.148, -0.03], [0.152, 0.05], [0.158, 0.13], [0.164, 0.21]], { segs: 20, sx: 0.74 });
   // the cummerbund round the sides and back
   lgMat(B, M.molle); lgLathe(B, [[0.166, 0.03], [0.176, 0.04], [0.179, 0.09], [0.178, 0.165], [0.17, 0.178]], { segs: 24, sx: 0.79 });
+  // 1.9.996: the cummerbund's adjustment straps: their tails hang loose at the front corners and swing as he moves
+  for (const [bn, sg2] of [['tailL', 1], ['tailR', -1]]) { lgBone(B, bn); lgMat(B, M.web); lgBox(B, 0.0, 0, -0.04, 0.0015, 0.011, 0.042, 0.001); lgMat(B, M.poly); lgBox(B, 0.0, 0, -0.084, 0.002, 0.011, 0.004, 0.001); }
+  lgBone(B, 'spine');
   if (K.cls === 'attack') { for (const y of [0.17, -0.17]) { lgPush(B, lgTR(0.03, y, 0.1, 0, 0, y > 0 ? 1.2 : -1.2)); lgMat(B, M.pouch); lgBox(B, 0.015, 0, 0, 0.012, 0.03, 0.045, 0.006); lgMat(B, M.poly); lgBox(B, 0.015, 0, 0.05, 0.009, 0.026, 0.008, 0.003); lgPop(B); } }
 }
 function lgOpChest(B, K) {
   const M = K.M, hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'chest');
   // torso in the knit shirt, and the mock collar
-  lgMat(B, M.shirt); lgLathe(B, [[0.166, -0.04], [0.17, 0.05], [0.178, 0.13], [0.172, 0.19], [0.142, 0.228], [0.085, 0.255], [0.062, 0.272]], { segs: 22, sx: 0.68 });
+  lgMat(B, M.shirt); lgLathe(B, [[0.166, -0.04], [0.172, 0.05], [0.181, 0.13], [0.175, 0.19], [0.145, 0.228], [0.088, 0.255], [0.062, 0.272]], { segs: 22, sx: 0.72 });
+  // 1.9.996: the trapezius sloping from the neck to the shoulders, under the carrier's straps
+  for (const s2 of [1, -1]) lgSphere(B, -0.016, s2 * 0.088, 0.236, 0.058, 0.075, 0.036, { segs: 14, rings: 8 });
   lgLathe(B, [[0.06, 0.232], [0.066, 0.246], [0.065, 0.285], [0.058, 0.292]], { segs: 18, sx: 0.98 });
   // shoulders (sleeve caps)
-  lgMat(B, M.camo); for (const s of [1, -1]) lgSphere(B, -0.012, s * 0.168, 0.188, 0.068, 0.066, 0.062, { segs: 16, rings: 10 });
+  lgMat(B, M.camo); for (const s of [1, -1]) lgSphere(B, -0.012, s * 0.17, 0.19, 0.072, 0.07, 0.066, { segs: 16, rings: 10 });
   // front plate bag: curved, shooter's cuts, night camo; velcro panel with the name and ID tapes
   const plate = [[-0.132, -0.16], [0.132, -0.16], [0.132, 0.08], [0.078, 0.158], [-0.078, 0.158], [-0.132, 0.08]];
   const bendF = lgBendXZ(0.33), bendB = lgBendXZ(-0.38);
@@ -26903,7 +27010,10 @@ function lgOpChest(B, K) {
   lgMat(B, M.pouch); lgBox(B, 0.0, 0.19, -0.005, 0.034, 0.03, 0.06, 0.01);
   lgMat(B, M.poly); lgBox(B, 0.0, 0.19, 0.065, 0.026, 0.022, 0.012, 0.005);
   if (hi) { lgMat(B, M.metal); lgLimb(B, 0.012, [[0, 0.006], [1, 0.006]], { up: true, z0: 0.078, ox: -0.01, oy: 0.19, segs: 8 }); }
-  lgMat(B, M.rubber); lgTube(B, [[-0.012, 0.19, 0.08], [-0.05, 0.19, 0.2], [-0.075, 0.17, 0.32], [-0.09, 0.155, 0.44]], (t) => 0.005 - t * 0.003, { segs: 5 });
+  // (1.9.996: the antenna on its own hinge so it whips as he moves: a 30 cm blade on its base)
+  lgBone(B, 'antenna'); lgMat(B, M.rubber); lgTube(B, [[0, 0, 0], [-0.034, 0, 0.11], [-0.058, -0.016, 0.22], [-0.074, -0.03, 0.34]], (t) => 0.005 - t * 0.0032, { segs: 5 });
+  lgMat(B, M.metal); lgLimb(B, 0.022, [[0, 0.0068], [1, 0.0058]], { up: true, z0: -0.008, segs: 8 });
+  lgBone(B, 'chest');
   if (hi) { lgMat(B, M.web); lgTube(B, [[0.03, 0.2, 0.05], [0.09, 0.17, 0.12], [0.13, 0.12, 0.16], [0.152, 0.1, 0.17]], 0.003, { segs: 4 }); lgMat(B, M.poly); lgBox(B, 0.158, 0.098, 0.17, 0.008, 0.015, 0.02, 0.004); }
   lgMat(B, K.cls === 'medic' ? M.red : M.pouch); lgBox(B, 0.0, -0.19, -0.005, K.cls === 'medic' ? 0.045 : 0.034, 0.03, K.cls === 'medic' ? 0.07 : 0.055, 0.012);
   lgMat(B, M.red); lgBox(B, 0.0, -0.22, 0.05, 0.008, 0.004, 0.012, 0.002);
@@ -26919,22 +27029,34 @@ function lgOpHead(B, K) {
   // the balaclava pulled down off his face: a rolled ring of knit round the neck
   if (K.face) lgLathe(B, [[0.056, 0.05], [0.066, 0.06], [0.072, 0.085], [0.068, 0.11], [0.056, 0.12]], { segs: 18, sx: 1.08 });
   lgBone(B, 'head'); lgMat(B, M.bala);
-  lgSphere(B, 0.015, 0, 0.09, 0.1, 0.079, 0.118, { segs: 22, rings: 14 });
-  const skin = K.face ? lgMtl({ c: '#a07a60', r: 0.5, w: 0.15, n: 0.3 }) : M.bala, stub = K.face ? lgMtl({ c: '#5b4536', r: 0.75, w: 0.4, n: 0.5 }) : M.bala;
-  lgMat(B, K.face ? stub : M.bala); lgSphere(B, 0.04, 0, 0.012, 0.064, 0.064, 0.052, { segs: 16, rings: 10 });
-  lgMat(B, skin); lgSphere(B, 0.1, 0, 0.074, 0.018, 0.012, 0.02, { segs: 10, rings: 8 });
-  lgSphere(B, 0.088, 0, 0.115, 0.032, 0.07, 0.018, { segs: 12, rings: 6 });
+  // (1.9.996: one sculpted surface: the knit over a face, its brow, nose, cheekbones and chin)
+  const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118], skin = K.face ? lgMtl({ c: '#a07a60', r: 0.5, w: 0.15, n: 0.3 }) : M.bala, stub = K.face ? lgMtl({ c: '#86675a', r: 0.8, w: 0.35, n: 0.6 }) : M.bala;
+  // (with the balaclava pulled down his head is bare: skin, and short dark hair under the helmet down to the nape)
+  if (K.face) lgMat(B, skin);
+  B.def = lgSculpt(E, 0, { amt: K.face ? 1 : 0.8 }); lgSphere(B, E[0], E[1], E[2], E[3], E[4], E[5], { segs: 40, rings: 28 }); B.def = null;
   if (K.face) {
-    // his face: skin over the front of the head, stubble over the jaw, a straight nose, the brow, a set mouth; the eyes
-    // are the decal below (lifted clear of the skin)
-    const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118];
-    lgShell(B, E, -1.1, 1.1, -0.62, 0.55, 0.0008, 0.0008, { nu: 16, nv: 10, inner: false });
-    lgMat(B, stub); lgShell(B, E, -1.05, 1.05, -0.76, -0.38, 0.0018, 0.0008, { nu: 14, nv: 5, inner: false });
-    lgMat(B, skin); lgSphere(B, 0.108, 0, 0.08, 0.009, 0.007, 0.022, { segs: 10, rings: 8 }); lgSphere(B, 0.112, 0, 0.065, 0.009, 0.011, 0.008, { segs: 10, rings: 6 });
-    for (const s of [1, -1]) { lgMat(B, lgMtl({ c: '#2a1f18', r: 0.8 })); lgBox(B, 0.1135, s * 0.028, 0.114, 0.002, 0.016, 0.0022, 0.0012); }
-    lgMat(B, lgMtl({ c: '#5e3e33', r: 0.45 })); lgBox(B, 0.1095, 0, 0.047, 0.0015, 0.016, 0.0016, 0.0008);
+    // his face: stubble over the jaw and lip (its edge follows a beard's line up to the sideburns), the brows and a set
+    // mouth on the sculpted surface; the eyes are the decal
+    const ss = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+    lgMat(B, lgMtl({ c: '#2b211b', r: 0.85, w: 0.5, n: 0.8 })); B.def = lgSculpt(E, 0.0028); lgShell(B, E, -Math.PI, Math.PI, th => lgLerp(0.6, -0.5, ss(0.75, 1.6, Math.abs(th))), Math.PI / 2 - 0.02, 0, 0, { nu: 44, nv: 9, inner: false }); B.def = null;
+    lgMat(B, stub); B.def = lgSculpt(E, 0.0012); lgShell(B, E, -1.12, 1.12, -0.82, th => lgLerp(-0.345, -0.02, ss(0.3, 1.0, Math.abs(th))), 0, 0, { nu: 30, nv: 9, inner: false }); B.def = null;
+    const brow = lgMtl({ c: '#2a1f18', r: 0.85 }); lgMat(B, brow); B.def = lgSculpt(E, 0.0011);
+    for (const s of [1, -1]) lgDecal(B, [0.116, s * 0.031, 0.1205], [0, -0.0175, s * 0.0016], [0, 0, 0.0029], [0, 0, 0.01, 0.01], { sub: 5, lift: 0 });
+    lgMat(B, lgMtl({ c: '#6a463a', r: 0.45 })); lgDecal(B, [0.112, 0, 0.0388], [0, -0.016, 0], [0, 0, 0.0011], [0, 0, 0.01, 0.01], { sub: 5, lift: 0 }); B.def = null;
   }  // the eyes, through the balaclava (seen when the mask is open)
-  lgMat(B, M.eyes); { const E = [0.015, 0, 0.09, 0.1, 0.079, 0.118]; B.def = lgOnEll(E, K.face ? 0.0024 : 0.0035); if (K.face) lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.0085], [0.005, 0.214, 0.495, 0.286], { sub: 6, lift: 0 }); else lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.023], [0.005, 0.15, 0.495, 0.35], { sub: 6, lift: 0 }); B.def = null; }
+  lgMat(B, M.eyes); B.def = lgSculpt(E, K.face ? 0.0024 : 0.0035, { amt: K.face ? 1 : 0.8 }); if (K.face) lgDecal(B, [0.11, 0, 0.099], [0, -0.058, 0], [0, 0, 0.0085], [0.005, 0.214, 0.495, 0.286], { sub: 8, lift: 0 }); else lgDecal(B, [0.11, 0, 0.1], [0, -0.056, 0], [0, 0, 0.0165], [0.005, 0.18, 0.495, 0.32], { sub: 8, lift: 0 }); B.def = null;
+  // 1.9.996: ballistic eye protection over the balaclava (always worn kitted up): one smoked wraparound lens, its top
+  // frame and the arms back under the headset's cups (behind the mask's visor when the plates close); the lens is cut
+  // up over the nose where it rests on the bridge
+  if (!K.face) {
+    // the lens: its lower edge dips under each eye and rises over the cheekbone toward the temple and up over the nose;
+    // its upper edge follows the brow
+    const lo = th => { const a = Math.abs(th); return -0.13 + 0.16 * (a - 0.34) ** 2 + 0.08 * Math.exp(-((th / 0.12) ** 2)) + 0.12 * Math.max(0, a - 0.62); };
+    lgMat(B, M.smoke); lgShell(B, E, -0.8, 0.8, lo, th => 0.275 - 0.05 * Math.abs(th) ** 2, 0.0112, 0.0018, { nu: 30, nv: 7, innerM: M.smoke });
+    lgMat(B, M.poly); lgTube(B, lgEllPath(E, -0.8, 0.8, th => 0.28 - 0.05 * Math.abs(th) ** 2, 0.0128, lgSeg(B, 18)), 0.0024, { segs: 5 });
+    for (const s2 of [1, -1]) lgTube(B, lgEllPath(E, s2 * 0.78, s2 * 1.5, th => 0.2 - (Math.abs(th) - 0.78) * 0.12, 0.0105, 6), 0.0021, { segs: 4 });
+    const nb = lgEll(E, 0, -0.01, 0.0158).p; lgSphere(B, nb[0], 0, nb[2], 0.005, 0.011, 0.006, { segs: 8, rings: 5 });   // the nose bridge
+  }
   // ear protection: cups with a grille, on arms up to the helmet rails
   for (const s of [1, -1]) {
     lgPush(B, lgTR(-0.004, s * 0.082, 0.083, -s * Math.PI / 2, 0, 0));
@@ -26961,6 +27083,18 @@ function lgOpHelmet(B, K) {
     if (hi) { lgMat(B, M.velcro); B.def = lgOnEll(E, 0.0045); const f = lgEll(E, s * 1.3, 0.95, 0.0045).p; lgDecal(B, f, [0.035, 0, 0], [0, -s * 0.02, 0.026], lgQuarterUV(2), { sub: 4, lift: 0 }); B.def = null; }
   }
   lgMat(B, M.metal); lgPush(B, lgEllFrame(E, 0, 0.42, 0.004)); lgBox(B, 0.006, 0, 0, 0.008, 0.026, 0.02, 0.004); if (hi) { lgMat(B, M.visor); for (let i = -1; i <= 1; i++) lgBox(B, 0.0145, i * 0.012, 0.004, 0.001, 0.003, 0.003, 0); } lgPop(B);
+  // 1.9.996: night vision flipped up on the mount (a compact binocular, PVS-31 style: two 3.5 cm tubes about 7 cm long on a
+  // bridge, the eyecups down by the mount and the objectives up over the brow), on its breakaway arm
+  lgPush(B, lgEllFrame(E, 0, 0.42, 0.004));
+  lgMat(B, M.metal); lgBox(B, 0.02, 0, 0.006, 0.012, 0.013, 0.02, 0.004); if (hi) { lgKnobX(B, 0.026, 0.016, 0.008); lgKnobX(B, 0.026, -0.016, 0.008); }
+  lgMat(B, M.poly); lgBox(B, 0.044, 0, 0.034, 0.014, 0.038, 0.02, 0.006);
+  for (const y of [0.031, -0.031]) {
+    lgMat(B, M.poly); lgPush(B, lgTR(0.05, y, 0.004)); lgLimb(B, 0.072, [[0, 0.0168], [0.12, 0.0178], [0.8, 0.0172], [1, 0.0188]], { up: true, segs: 14, rings: 6 }); lgPop(B);
+    lgMat(B, M.rubber); lgPush(B, lgTR(0.05, y, -0.012)); lgLimb(B, 0.016, [[0, 0.0155], [1, 0.0168]], { up: true, segs: 12, capA: false }); lgPop(B);
+    lgMat(B, M.lens); lgSphere(B, 0.05, y, 0.0775, 0.0155, 0.0155, 0.004, { segs: 12, rings: 4 });
+  }
+  if (hi) { lgMat(B, M.web); lgTube(B, [[0.03, 0.02, 0.05], [0.0, 0.04, 0.07], [-0.03, 0.05, 0.06]], 0.0025, { segs: 4 }); }   // the battery cable over the top
+  lgPop(B);
   if (hi) { lgMat(B, M.velcro); B.def = lgOnEll(E, 0.0045); const f = lgEll(E, 0, 1.2, 0.0045).p; lgDecal(B, f, [0, -0.05, 0], [0.035, 0, 0], lgQuarterUV(2), { sub: 4, lift: 0 }); B.def = null; }
   lgMat(B, M.cord); lgPush(B, lgEllFrame(E, Math.PI, 0.18, 0.004)); lgBox(B, 0.015, 0, 0, 0.016, 0.05, 0.03, 0.01); lgPop(B);
   lgMat(B, M.poly); lgPush(B, lgEllFrame(E, Math.PI, 0.92, 0.004)); lgBox(B, 0.01, 0, 0, 0.011, 0.016, 0.02, 0.004); lgMat(B, M.glow); lgBox(B, 0.022, 0, 0.004, 0.002, 0.009, 0.006, 0.001); lgPop(B);
@@ -27001,8 +27135,15 @@ function lgOpArm(B, K, s) {
   const M = K.M, sg = s === 'L' ? 1 : -1, hi = B.lod < 2, ci = K.ci;
   lgBone(B, 'arm' + s); lgMat(B, M.camo);
   // 1.9.994: an arm with a shoulder: the deltoid caps the joint (so the arm turns under it), the upper arm tapers to the elbow
-  lgSphere(B, -0.004, sg * 0.004, -0.02, 0.055, 0.057, 0.06, { segs: 16, rings: 9 });
-  lgLimb(B, 0.285, [[0, 0.058], [0.14, 0.059], [0.38, 0.054], [0.66, 0.048], [0.9, 0.0445], [1, 0.044]], { segs: 16, rings: 9, sx: 1.04, wr: (a, z) => z < -0.22 ? Math.sin(a * 5 + z * 90) * 0.045 : Math.sin(a * 3 + z * 40) * 0.012 });
+  lgSphere(B, -0.004, sg * 0.006, -0.022, 0.062, 0.062, 0.066, { segs: 16, rings: 9 });
+  // 1.9.996: the biceps in front and the triceps behind under the sleeve, and the sleeve's folds at the elbow
+  const bump = (z, a, b) => z < a && z > b ? Math.sin((z - a) / (b - a) * Math.PI) : 0;
+  // (the sleeve sits loose on the arm: it drapes in long folds from the shoulder and crushes into creases on the inside
+  // of the elbow)
+  lgLimb(B, 0.285, [[0, 0.061], [0.14, 0.063], [0.38, 0.059], [0.66, 0.052], [0.9, 0.0475], [1, 0.047]], { segs: 20, rings: 16, sx: 1.06, wr: (a, z) => {
+    const c = Math.cos(a), drape = 0.032 * Math.sin(a * 5 + 1.4 * Math.sin(z * 17 + a)) * (1 - lgRamp(z, -0.16, -0.22)), crush = 0.085 * lgFold(z * 125 + a * 1.6) * Math.max(0, c) ** 1.5 * lgRamp(z, -0.18, -0.25);
+    return drape + crush + Math.max(0, c) ** 2 * 0.1 * bump(z, -0.06, -0.22) + Math.max(0, -c) ** 2 * 0.085 * bump(z, -0.03, -0.2);
+  } });
   // shoulder pocket, velcro, and the class patch
   lgMat(B, M.camo); lgBox(B, 0.002, sg * 0.05, -0.085, 0.036, 0.008, 0.048, 0.006);
   lgBox(B, 0.002, sg * 0.052, -0.035, 0.038, 0.009, 0.012, 0.005);
@@ -27012,10 +27153,14 @@ function lgOpArm(B, K, s) {
   lgBone(B, 'fore' + s); lgMat(B, M.camo);
   // the elbow (a ball the upper arm's end turns round), a forearm that narrows to the wrist, oval in section
   lgSphere(B, 0, 0, 0, 0.045, 0.045, 0.046, { segs: 14, rings: 8 });
-  lgLimb(B, 0.27, [[0, 0.045], [0.2, 0.0465], [0.55, 0.0405], [0.85, 0.0345], [1, 0.0335]], { segs: 14, rings: 9, sx: 1.1, wr: (a, z) => z > -0.06 ? Math.sin(a * 5 - z * 80) * 0.04 : z < -0.2 ? Math.sin(a * 6 + z * 120) * 0.035 : 0 });
+  // (the sleeve gathered below the elbow, smooth over the forearm, bunched in rings where it meets the glove)
+  lgLimb(B, 0.27, [[0, 0.047], [0.2, 0.0485], [0.55, 0.042], [0.8, 0.037], [1, 0.0365]], { segs: 18, rings: 15, sx: 1.1, wr: (a, z) => {
+    const c = Math.cos(a); return 0.075 * lgFold(-z * 115 + a * 1.3) * (0.45 + 0.55 * Math.max(0, c)) * (1 - lgRamp(z, -0.04, -0.08)) + 0.085 * lgFold(z * 135 + a * 2.1) * lgRamp(z, -0.18, -0.235) + 0.012 * Math.sin(a * 4 + z * 20);
+  } });
   // the elbow pad: a rubber cap on a padded base, strapped on
-  lgMat(B, M.cord); lgSphere(B, -0.026, 0, -0.004, 0.026, 0.04, 0.042, { segs: 12, rings: 7, t0: Math.PI / 2, t1: Math.PI * 1.5 });
-  lgMat(B, M.rubber); lgSphere(B, -0.04, 0, -0.004, 0.014, 0.03, 0.032, { segs: 10, rings: 6, t0: Math.PI / 2, t1: Math.PI * 1.5 });
+  // (1.9.996: low and wide, as a real pad sits on the joint: it read as a ball from the side)
+  lgMat(B, M.cord); lgSphere(B, -0.031, 0, -0.006, 0.0185, 0.041, 0.045, { segs: 14, rings: 7, t0: Math.PI / 2, t1: Math.PI * 1.5 });
+  lgMat(B, M.rubber); lgSphere(B, -0.043, 0, -0.006, 0.0085, 0.03, 0.034, { segs: 12, rings: 6, t0: Math.PI / 2, t1: Math.PI * 1.5 });
   lgMat(B, M.camo); lgLathe(B, [[0.034, -0.273], [0.0365, -0.265], [0.0365, -0.247], [0.034, -0.241]], { segs: 14, sx: 1.08 });
   if (hi) { lgMat(B, M.web); lgBox(B, 0.03, sg * 0.0, -0.243, 0.012, 0.024, 0.008, 0.004); }
   if (s === 'L') { lgMat(B, M.poly); lgBox(B, 0.0, 0.04, -0.215, 0.019, 0.008, 0.017, 0.005); lgMat(B, M.visor); lgBox(B, 0.0, 0.0485, -0.215, 0.014, 0.0012, 0.012, 0.003); }
@@ -27046,7 +27191,7 @@ function lgOpHand(B, K, s) {
   lgBox(B, 0.0, d * 0.0142, -0.046, 0.028, 0.0035, 0.022, 0.004);
   if (top) { lgMat(B, M.poly); for (const z of [-0.034, -0.058]) lgBox(B, 0.0, d * 0.0179, z, 0.022, 0.0006, 0.0012, 0); }
   // the fingers: three segments each, a ball at each joint, a pad on the back of the first segment, a grippy tip
-  const R0 = { idx: [0.0094, 0.0088, 0.0083, 0.0077, 0.0069], fin: [0.0097, 0.0091, 0.0086, 0.008, 0.0071], rng: [0.0093, 0.0087, 0.0081, 0.0075, 0.0067], pnk: [0.0081, 0.0076, 0.0071, 0.0066, 0.006] };
+  const R0 = { idx: [0.0103, 0.0097, 0.0092, 0.0086, 0.0077], fin: [0.0106, 0.01, 0.0095, 0.0089, 0.0079], rng: [0.0101, 0.0095, 0.009, 0.0084, 0.0075], pnk: [0.0089, 0.0084, 0.0079, 0.0074, 0.0067] };   // (1.9.996: gloved fingers, a little fuller)
   for (const [f, x, z, l2, l3] of LG_FINGERS) {
     const r = R0[f], l1 = l2, segs = 10, rings = 3;
     lgBone(B, f + s); lgMat(B, M.gback);
@@ -27077,30 +27222,51 @@ function lgOpHand(B, K, s) {
 function lgOpLeg(B, K, s) {
   const M = K.M, sg = s === 'L' ? 1 : -1, hi = B.lod < 2, top = B.lod === 0;
   lgBone(B, 'thigh' + s); lgMat(B, M.camo);
-  lgLimb(B, 0.43, [[0, 0.091], [0.15, 0.088], [0.5, 0.076], [0.86, 0.063], [1, 0.059]], { segs: 18, rings: 10, sx: 1.04, wr: (a, z) => Math.sin(a * 4 + z * 30) * 0.012 + (z < -0.36 ? Math.sin(a * 6 + z * 100) * 0.03 : 0) });
-  lgBox(B, 0.0, sg * 0.072, -0.2, 0.046, 0.014, 0.056, 0.01);
-  lgBox(B, 0.0, sg * 0.075, -0.142, 0.048, 0.016, 0.013, 0.006);
+  // 1.9.996: a thigh, not a tube: the quadriceps fuller in front above the knee, the hamstrings behind, the outer thigh;
+  // combat trousers a little loose over it, folding at the knee
+  const tb = (z, a, b) => z < a && z > b ? Math.sin((z - a) / (b - a) * Math.PI) : 0;
+  lgLimb(B, 0.43, [[0, 0.094], [0.15, 0.092], [0.5, 0.08], [0.86, 0.064], [1, 0.059]], { segs: 18, rings: 12, sx: 1.08, wr: (a, z) => {
+    const c = Math.cos(a), sd = Math.sin(a) * sg;
+    // (the trousers loose: long folds down the thigh, creases behind the knee and crushed above the pad in front)
+    const drape = 0.028 * Math.sin(a * 4 + 2.0 * Math.sin(z * 11 + a * 0.7)), back = 0.075 * lgFold(z * 105 + a * 1.4) * Math.max(0, -c) ** 1.5 * lgRamp(z, -0.33, -0.4), front = 0.05 * lgFold(z * 95 - a) * Math.max(0, c) ** 2 * lgRamp(z, -0.3, -0.36);
+    return drape + back + front + Math.max(0, c) ** 2 * 0.09 * tb(z, -0.06, -0.38) + Math.max(0, -c) ** 2 * 0.07 * tb(z, -0.02, -0.33) + Math.max(0, sd) ** 2 * 0.05 * tb(z, -0.03, -0.3);
+  } });
+  // the thigh's cargo pocket: a bellows pocket on the outside front, its flap and the two snaps; the slash pocket's edge
+  lgPush(B, lgTR(0.012, sg * 0.074, -0.205, 0, 0, sg * 0.35));
+  lgBox(B, 0.0, 0.0, 0.0, 0.054, 0.016, 0.068, 0.012); lgBox(B, 0.0, sg * 0.004, 0.0, 0.05, 0.015, 0.064, 0.012);
+  lgBox(B, 0.0, sg * 0.006, 0.062, 0.057, 0.014, 0.018, 0.006);
+  if (hi) { lgMat(B, M.poly); for (const x of [-0.03, 0.03]) lgSphere(B, x, sg * 0.0205, 0.058, 0.005, 0.003, 0.005, { segs: 6, rings: 4 }); lgMat(B, M.camo); }
+  lgPop(B);
+  lgBox(B, 0.06, sg * 0.05, -0.03, 0.005, 0.03, 0.04, 0.004);
   if (hi) { lgMat(B, M.poly); lgSphere(B, 0.0, sg * 0.0915, -0.15, 0.005, 0.003, 0.005, { segs: 6, rings: 4 }); }
   lgBone(B, 'shin' + s);
   // knee pad: rubber cap on a padded base, two straps
-  lgMat(B, M.cord); lgSphere(B, 0.04, 0, -0.02, 0.034, 0.064, 0.072, { segs: 14, rings: 9, t0: -Math.PI / 2, t1: Math.PI / 2 });
-  lgMat(B, M.rubber); lgSphere(B, 0.056, 0, -0.018, 0.026, 0.05, 0.056, { segs: 14, rings: 9, t0: -Math.PI / 2, t1: Math.PI / 2 });
+  lgMat(B, M.cord); lgSphere(B, 0.048, 0, -0.02, 0.026, 0.066, 0.074, { segs: 16, rings: 9, t0: -Math.PI / 2, t1: Math.PI / 2 });
+  lgMat(B, M.rubber); lgSphere(B, 0.062, 0, -0.018, 0.017, 0.051, 0.058, { segs: 16, rings: 9, t0: -Math.PI / 2, t1: Math.PI / 2 });   // (1.9.996: a flatter cap)
   if (hi) { lgMat(B, M.web); for (const z of [-0.065, 0.03]) lgLathe(B, [[0.064, z - 0.008], [0.066, z - 0.006], [0.066, z + 0.006], [0.064, z + 0.008]], { segs: 14, sx: 1.05 }); }
   lgMat(B, M.camo);
-  lgLimb(B, 0.42, [[0, 0.062], [0.22, 0.063], [0.6, 0.051], [0.78, 0.054], [0.9, 0.06], [1, 0.057]], { segs: 16, rings: 10, wr: (a, z) => z < -0.27 ? Math.sin(a * 7 + z * 140) * 0.06 : Math.sin(a * 3 + z * 30) * 0.01 });
+  // 1.9.996: the calf's muscle swelling behind the upper shin, the shin flatter in front, the trousers stacking over the boot
+  const cb = (z, a, b) => z < a && z > b ? Math.sin((z - a) / (b - a) * Math.PI) : 0;
+  lgLimb(B, 0.42, [[0, 0.062], [0.22, 0.063], [0.6, 0.051], [0.78, 0.054], [0.9, 0.06], [1, 0.057]], { segs: 16, rings: 12, wr: (a, z) => {
+    const c = Math.cos(a); return 0.09 * lgFold(z * 140 + a * 2.3) * lgRamp(z, -0.25, -0.29) + 0.016 * Math.sin(a * 3 + 1.5 * Math.sin(z * 14)) + Math.max(0, -c) ** 2 * 0.17 * cb(z, -0.04, -0.26) - Math.max(0, c) ** 4 * 0.06 * cb(z, -0.05, -0.3);
+  } });
   // boot shaft, laces and hooks
   lgMat(B, M.boot); lgLathe(B, [[0.051, -0.425], [0.055, -0.405], [0.057, -0.33], [0.055, -0.305], [0.05, -0.3]], { segs: 16, sx: 1.06 });
   if (hi) { lgMat(B, M.web); for (let i = 0; i < 5; i++) { const z = -0.315 - i * 0.02; lgBox(B, 0.057, 0, z, 0.003, 0.02, 0.002, 0.001); } }
   if (top) { lgMat(B, M.metal); for (let i = 0; i < 4; i++) for (const y of [0.022, -0.022]) lgSphere(B, 0.054, y, -0.315 - i * 0.025, 0.003, 0.003, 0.003, { segs: 5, rings: 3 }); }
   lgBone(B, 'foot' + s);
-  lgMat(B, M.boot); lgBox(B, 0.028, 0, -0.038, 0.094, 0.047, 0.042, 0.03);
-  lgMat(B, M.bootNy); lgBox(B, 0.0, 0, -0.012, 0.06, 0.05, 0.025, 0.02);
-  lgMat(B, M.sole); lgBox(B, -0.048, 0, -0.072, 0.042, 0.046, 0.013, 0.006); lgBox(B, 0.035, 0, -0.078, 0.1, 0.05, 0.007, 0.004);
+  // 1.9.996: a boot's shape (the upper sloping down from the ankle to the toes, the heel rounded, narrower than the forefoot),
+  // not a box; the nylon side panel; the lugged sole below
+  lgMat(B, M.boot); lgSide(B, [[-0.07, -0.073], [0.136, -0.073], [0.142, -0.058], [0.126, -0.036], [0.084, -0.014], [0.036, 0.012], [-0.022, 0.026], [-0.064, 0.012], [-0.079, -0.024], [-0.079, -0.056]], 0.092, { bev: 0.016, smooth: 0.7, round: true });
+  lgMat(B, M.bootNy); lgSide(B, [[-0.04, -0.06], [0.07, -0.06], [0.06, -0.025], [0.02, 0.002], [-0.035, 0.012], [-0.058, -0.02]], 0.096, { bev: 0.006, smooth: 0.6 });
+  lgMat(B, M.sole); lgBox(B, -0.05, 0, -0.074, 0.03, 0.043, 0.012, 0.01); lgBox(B, 0.035, 0, -0.079, 0.1, 0.047, 0.006, 0.005);
   lgMat(B, M.boot); lgLathe(B, [[0.049, -0.01], [0.052, 0.0], [0.051, 0.03], [0.048, 0.04]], { segs: 14, sx: 1.08, ox: -0.01 });
   if (hi) { lgMat(B, M.web); for (let i = 0; i < 3; i++) lgBox(B, 0.065 + i * 0.02, 0, -0.002 + i * -0.006, 0.003, 0.02, 0.002, 0.001); }
   lgBone(B, 'toe' + s);
-  lgMat(B, M.boot); lgBox(B, 0.042, 0, 0.0, 0.05, 0.046, 0.028, 0.026);
-  lgMat(B, M.sole); lgBox(B, 0.044, 0, -0.022, 0.054, 0.049, 0.007, 0.006); lgBox(B, 0.068, 0, -0.012, 0.032, 0.05, 0.012, 0.011);
+  // 1.9.996: the toe box rounded over the toes, the rubber rand round it, the sole turning up at the tip
+  lgMat(B, M.boot); lgSphere(B, 0.004, 0, -0.012, 0.066, 0.046, 0.026, { segs: 16, rings: 8, t0: -Math.PI / 2, t1: Math.PI / 2, p0: -0.25 });
+  lgBox(B, -0.01, 0, -0.012, 0.016, 0.046, 0.019, 0.012);
+  lgMat(B, M.sole); lgBox(B, 0.03, 0, -0.025, 0.05, 0.048, 0.006, 0.005); lgSphere(B, 0.054, 0, -0.019, 0.022, 0.047, 0.013, { segs: 12, rings: 6, t0: -Math.PI / 2, t1: Math.PI / 2 });
 }
 // the pistol: polymer frame, steel slide, optic, threaded barrel, weapon light, magazine
 function lgOpPistol(B, K) {
@@ -27166,6 +27332,9 @@ LG_MAKERS.zombie = function (B, key) {
   };
   const torn = (a, z, base) => (Math.abs(Math.sin(a * 7.3 + base) * Math.sin(a * 3.1)) > 0.55 ? -0.25 : 0);
   lgBone(B, 'pelvis'); lgMat(B, M.bot); lgLathe(B, [[0.03, -0.17], [0.09, -0.155], [0.14, -0.11], [0.155, -0.05], [0.152, 0.03], [0.146, 0.08]], { segs: 18, sx: 0.72 });
+  // 1.9.996: the dead get bodies too: the seat over the glutes, joints that stay whole when they bend, muscle under the
+  // cloth, creased and torn clothes
+  for (const s2 of [1, -1]) lgSphere(B, -0.05, s2 * 0.064, -0.08, 0.062, 0.072, 0.08, { segs: 12, rings: 8, t0: Math.PI * 0.5, t1: Math.PI * 1.5 });
   lgMat(B, M.shoe); lgLathe(B, [[0.15, 0.04], [0.153, 0.045], [0.153, 0.068], [0.149, 0.072]], { segs: 18, sx: 0.73 });
   lgBone(B, 'spine'); lgMat(B, d.top === 'chef' ? M.white : M.top); lgLathe(B, [[0.15, -0.05], [0.142, 0.05], [0.146, 0.13], [0.152, 0.21]], { segs: 18, sx: 0.72, wr: (a, z) => z < 0 ? torn(a, z, 1) * 0.1 : 0 });
   lgBone(B, 'chest'); lgMat(B, d.top === 'chef' ? M.white : M.top);
@@ -27176,26 +27345,31 @@ LG_MAKERS.zombie = function (B, key) {
   if (hi) { lgMat(B, M.blood); lgSphere(B, 0.105, -0.05, 0.12, 0.012, 0.045, 0.06, { segs: 10, rings: 6 }); lgSphere(B, 0.1, 0.06, 0.02, 0.012, 0.03, 0.035, { segs: 8, rings: 5 }); }
   lgBone(B, 'neck'); lgMat(B, M.skin); lgLathe(B, [[0.05, -0.03], [0.048, 0.03], [0.047, 0.08], [0.05, 0.12]], { segs: 12 });
   lgBone(B, 'head'); lgMat(B, M.skin);
-  lgSphere(B, 0.012, 0, 0.09, 0.098, 0.078, 0.115, { segs: 18, rings: 12 });
-  lgSphere(B, 0.052, 0, 0.0, 0.06, 0.058, 0.048, { segs: 14, rings: 9 });
-  lgSphere(B, 0.103, 0, 0.074, 0.02, 0.013, 0.022, { segs: 8, rings: 6 });
+  // (1.9.996: a sculpted skull, slack: the same face as the living under the paint, the jaw hanging a little)
+  const ZE = [0.012, 0, 0.09, 0.098, 0.078, 0.115];
+  B.def = lgSculpt(ZE, 0, { amt: 0.9 }); lgSphere(B, ZE[0], ZE[1], ZE[2], ZE[3], ZE[4], ZE[5], { segs: hi ? 32 : 18, rings: hi ? 22 : 12 }); B.def = null;
   for (const s of [1, -1]) lgSphere(B, -0.005, s * 0.078, 0.085, 0.014, 0.008, 0.024, { segs: 8, rings: 6 });
-  lgMat(B, M.face); { const E = [0.012, 0, 0.09, 0.098, 0.078, 0.115]; B.def = lgOnEll(E, 0.002); lgDecal(B, [0.1, 0, 0.05], [0, -0.07, 0], [0, 0, 0.075], [0.505, 0.005, 0.995, 0.495], { sub: 8, lift: 0 }); B.def = null; }
-  lgMat(B, M.eye); for (const s of [1, -1]) lgSphere(B, 0.098, s * 0.03, 0.098, 0.006, 0.008, 0.005, { segs: 6, rings: 4 });
+  lgMat(B, M.face); B.def = lgSculpt(ZE, 0.002, { amt: 0.9 }); lgDecal(B, [0.1, 0, 0.08], [0, -0.089, 0], [0, 0, 0.085], [0.505, 0.005, 0.995, 0.495], { sub: 12, lift: 0 }); B.def = null;
+  lgMat(B, M.eye); for (const s of [1, -1]) lgSphere(B, 0.094, s * 0.032, 0.1, 0.006, 0.0085, 0.0055, { segs: 8, rings: 5 });
   lgMat(B, M.hair);
   if (d.hair !== 'none' && d.hair !== 'shaved') lgSphere(B, 0.0, 0, 0.12, 0.102, 0.083, 0.09, { segs: 18, rings: 8, p0: d.hair === 'balding' ? -0.2 : 0.1, wr: (th, ph) => Math.sin(th * 13 + ph * 9) * 0.03 + (d.hair === 'balding' && ph > 0.9 ? -0.2 : 0) });
   if (d.top === 'chef') { lgMat(B, M.white); lgLathe(B, [[0.09, 0.17], [0.095, 0.2], [0.11, 0.26], [0.1, 0.29], [0.0, 0.3]], { segs: 16, sx: 1.05, ox: 0.005 }); }
   for (const s of ['L', 'R']) {
     const sg = s === 'L' ? 1 : -1;
-    lgBone(B, 'arm' + s); lgMat(B, d.top === 'chef' ? M.white : M.top); lgLimb(B, 0.28, [[0, 0.055], [0.3, 0.05], [1, 0.042]], { segs: 12, rings: 7, wr: (a, z) => z < -0.22 ? torn(a, z, sg * 2) * 0.12 : 0 });
-    lgBone(B, 'fore' + s); lgMat(B, M.skin); lgLimb(B, 0.27, [[0, 0.04], [0.3, 0.04], [1, 0.03]], { segs: 10, rings: 7 });
+    const zb = (z, a2, b2) => z < a2 && z > b2 ? Math.sin((z - a2) / (b2 - a2) * Math.PI) : 0;
+    lgBone(B, 'arm' + s); lgMat(B, d.top === 'chef' ? M.white : M.top); lgSphere(B, -0.004, sg * 0.004, -0.018, 0.056, 0.056, 0.06, { segs: 12, rings: 8 });
+    // (1.9.996: the sleeve hangs in folds and crushes at the inside of the elbow, as the living's do)
+    lgLimb(B, 0.28, [[0, 0.056], [0.3, 0.053], [1, 0.043]], { segs: hi ? 18 : 14, rings: hi ? 14 : 9, sx: 1.06, wr: (a, z) => (z < -0.22 ? torn(a, z, sg * 2) * 0.12 : Math.sin(a * 3 + z * 40) * 0.015 + 0.03 * Math.sin(a * 5 + 1.4 * Math.sin(z * 17 + a)) + 0.07 * lgFold(z * 120 + a * 1.5) * Math.max(0, Math.cos(a)) ** 1.5 * lgRamp(z, -0.17, -0.215)) + Math.max(0, Math.cos(a)) ** 2 * 0.09 * zb(z, -0.06, -0.21) + Math.max(0, -Math.cos(a)) ** 2 * 0.07 * zb(z, -0.03, -0.2) });
+    lgBone(B, 'fore' + s); lgMat(B, M.skin); lgSphere(B, 0, 0, 0, 0.041, 0.041, 0.042, { segs: 10, rings: 7 });
+    lgLimb(B, 0.27, [[0, 0.041], [0.22, 0.043], [0.6, 0.034], [1, 0.027]], { segs: 12, rings: 8, sx: 1.12 });
     if (hi && s === 'L') { lgMat(B, M.blood); lgSphere(B, 0.03, 0.02, -0.12, 0.012, 0.02, 0.03, { segs: 8, rings: 5 }); }
-    lgBone(B, 'hand' + s); lgMat(B, M.skin); lgBox(B, 0, 0, -0.048, 0.038, 0.014, 0.048, 0.012);
+    lgBone(B, 'hand' + s); lgMat(B, M.skin); lgLimb(B, 0.084, [[0, 0.028], [0.5, 0.036], [1, 0.037]], { z0: -0.006, sx: 1.05, sy: 0.4, segs: 12, rings: 5, capA: false, capK: 0.3 });
     for (const f of ['idx', 'fin', 'thb']) { lgBone(B, f + s); const xo = f === 'fin' ? [0.002, -0.016, -0.031] : [0]; for (const x of xo) lgLimb(B, f === 'thb' ? 0.04 : 0.042, [[0, 0.0095], [1, 0.0085]], { ox: x, segs: 6, rings: 3 }); lgBone(B, f + '2' + s); for (const x of xo) lgLimb(B, 0.036, [[0, 0.0085], [1, 0.006]], { ox: x, segs: 6, rings: 3 }); }
-    lgBone(B, 'thigh' + s); lgMat(B, M.bot); lgLimb(B, 0.43, [[0, 0.085], [0.5, 0.07], [1, 0.054]], { segs: 14, rings: 8, wr: (a, z) => Math.sin(a * 4 + z * 30) * 0.015 });
-    lgBone(B, 'shin' + s); lgLimb(B, 0.42, [[0, 0.057], [0.6, 0.048], [1, 0.05]], { segs: 12, rings: 8, wr: (a, z) => z < -0.36 ? torn(a, z, sg) * 0.15 : 0 });
-    lgBone(B, 'foot' + s); lgMat(B, M.shoe); lgBox(B, 0.03, 0, -0.045, 0.09, 0.043, 0.035, 0.026);
-    lgBone(B, 'toe' + s); lgBox(B, 0.04, 0, -0.008, 0.048, 0.042, 0.022, 0.02);
+    lgBone(B, 'thigh' + s); lgMat(B, M.bot); lgLimb(B, 0.43, [[0, 0.088], [0.15, 0.086], [0.5, 0.074], [1, 0.056]], { segs: hi ? 18 : 16, rings: hi ? 14 : 10, sx: 1.07, wr: (a, z) => Math.sin(a * 4 + z * 30) * 0.012 + 0.026 * Math.sin(a * 4 + 2.0 * Math.sin(z * 11 + a * 0.7)) + 0.07 * lgFold(z * 105 + a * 1.4) * Math.max(0, -Math.cos(a)) ** 1.5 * lgRamp(z, -0.33, -0.4) + Math.max(0, Math.cos(a)) ** 2 * 0.08 * zb(z, -0.06, -0.37) + Math.max(0, -Math.cos(a)) ** 2 * 0.06 * zb(z, -0.02, -0.32) });
+    lgBone(B, 'shin' + s); lgSphere(B, 0.004, 0, 0, 0.056, 0.056, 0.058, { segs: 12, rings: 7 });
+    lgLimb(B, 0.42, [[0, 0.057], [0.22, 0.058], [0.6, 0.048], [1, 0.05]], { segs: 14, rings: 10, wr: (a, z) => (z < -0.36 ? torn(a, z, sg) * 0.15 : Math.sin(a * 3 + z * 30) * 0.012) + Math.max(0, -Math.cos(a)) ** 2 * 0.15 * zb(z, -0.04, -0.25) });
+    lgBone(B, 'foot' + s); lgMat(B, M.shoe); lgSide(B, [[-0.068, -0.073], [0.132, -0.073], [0.138, -0.058], [0.12, -0.038], [0.08, -0.018], [0.03, 0.006], [-0.02, 0.016], [-0.06, 0.006], [-0.074, -0.026], [-0.074, -0.058]], 0.086, { bev: 0.014, smooth: 0.7, round: true });
+    lgBone(B, 'toe' + s); lgSphere(B, 0.004, 0, -0.012, 0.062, 0.043, 0.024, { segs: 12, rings: 7, t0: -Math.PI / 2, t1: Math.PI / 2, p0: -0.3 }); lgBox(B, -0.008, 0, -0.012, 0.014, 0.043, 0.017, 0.01);
   }
 };
 
@@ -27294,6 +27468,25 @@ function lgTrigger(B, M, xg, xf, z, zt, o) {
   lgMat(B, M.metal); const tx = o.tx == null ? xg + 0.026 : o.tx;
   lgTube(B, [[tx, 0, zt], [tx + 0.004, 0, zt - 0.009], [tx + 0.001, 0, zt - 0.017], [tx - 0.005, 0, zt - 0.021]], 0.0017, { segs: 4, flat: 2.2, up: [0, 1, 0] });
 }
+// 1.9.996: a weapon light (a Surefire M600-style scout light, 14.1 cm long with a 2.9 cm bezel; a compact pistol light
+// under a dust cover is 9 cm): mounted as far forward as the rail allows, nearly flush with the muzzle so the barrel throws
+// little shadow, at the side the support hand's thumb works it (Primary Arms, "Where to mount a light on an AR-15").
+// f: the bezel's front (gun space), y and z: its axis; side: which side of the rail the clamp is on (-1 right, +1 left,
+// 0 under). Its front is where the beam starts in a run.
+function lgWeaponLight(B, M, f, y, z, len, side) {
+  const hi = B.lod < 2, top = B.lod === 0, r = len > 0.12 ? 0.0105 : 0.0095, rb = len > 0.12 ? 0.0145 : 0.0125;
+  lgMat(B, M.gunBlk);
+  lgBore(B, f - len, len - 0.03, [[0, r * 0.82], [0.06, r], [1, r]], y, z);                        // the body, the tailcap end narrower
+  lgBore(B, f - 0.03, 0.03, [[0, r], [0.35, rb * 0.92], [0.8, rb], [1, rb]], y, z);                 // the head flaring to the bezel
+  if (hi) { lgMat(B, M.metal); lgBore(B, f - 0.004, 0.004, rb + 0.0006, y, z); }                   // the bezel ring
+  lgMat(B, M.lens); lgPush(B, lgTR(f + 0.0005, y, z, 0, Math.PI / 2, 0)); lgLimb(B, 0.0012, [[0, rb * 0.82], [1, rb * 0.82]], { up: true, segs: 12 }); lgPop(B);
+  if (hi) { lgMat(B, M.rubber); lgBore(B, f - len - 0.006, 0.008, r * 0.7, y, z); }                // the tailcap switch
+  // the clamp to the rail
+  lgMat(B, M.gunBlk);
+  if (side) lgBox(B, f - len * 0.55, y - side * (r + 0.004), z, 0.016, 0.006, 0.008, 0.002);
+  else lgBox(B, f - len * 0.55, y, z + r + 0.004, 0.016, 0.008, 0.006, 0.002);
+  if (top) { lgMat(B, M.metal); lgKnob(B, f - len * 0.55, y - (side || 0) * (r + 0.011), z, 0.0035, 0.006, side ? -side : -1); }
+}
 // a holographic sight (EXPS style): its mount, the body with the battery cap forward, the hood, the window, the buttons
 function lgHolo(B, M, x, z, hi) {
   const top = B.lod === 0;
@@ -27359,6 +27552,7 @@ function lgGunM4(B, K) {
   lgPush(B, lgTR(0.31, 0, 0.032, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.008, 0], [0.003, 0.018], [-0.003, 0.018]], 0.009, { bev: 0.001 }); lgPop(B);   // its A-frame
   if (hi) { lgBox(B, 0.31, 0, 0.049, 0.0014, 0.0014, 0.004, 0); lgBox(B, 0.326, 0, -0.012, 0.004, 0.004, 0.006, 0.0015); lgBox(B, 0.302, 0, -0.008, 0.0035, 0.008, 0.004, 0.0012); }   // the post, the bayonet lug, the sling swivel's boss
   lgBirdcage(B, 0.427, 0.042, 0.0108, top);
+  lgWeaponLight(B, M, LG_GUN_DEF.m4a1.light[0], LG_GUN_DEF.m4a1.light[1], LG_GUN_DEF.m4a1.light[2], 0.141, -1);
   // the buffer tube and its castle nut, the stock: a narrow body with the latch, the sling slot and the butt
   lgMat(B, M.gunBlk); lgBore(B, -0.088, 0.17, 0.0145, 0, 0.002, { up: false }); lgBore(B, -0.096, 0.008, 0.0175, 0, 0.002, { up: false });
   if (top) { lgMat(B, M.metal); for (let i = 0; i < 6; i++) lgBox(B, -0.17 - i * 0.012, 0, -0.0125, 0.0022, 0.004, 0.0015, 0.0006); }   // the adjustment holes
@@ -27416,6 +27610,7 @@ function lgGunAK(B, K) {
   lgMat(B, M.rubber); lgBox(B, -0.341, 0, -0.058, 0.005, 0.0155, 0.06, 0.003);
   if (hi) lgHolo(B, M, 0.06, 0.03, hi);
   // the 30-round magazine in plum polymer: deep and strongly curved, the lug at its back, the reinforced lips
+  lgWeaponLight(B, M, LG_GUN_DEF.ak74m.light[0], LG_GUN_DEF.ak74m.light[1], LG_GUN_DEF.ak74m.light[2], 0.141, -1);
   lgBone(B, 'cmag'); lgMat(B, M.plum); lgCurvedMag(B, 0.085, -0.046, 0.188, 0.4, 0.054, 0.024, { flare: 0.08, ribs: [[0.1, 0.9]], ribF: 0.32 });
   if (hi) { lgMat(B, M.plum); lgBox(B, 0.087, 0, -0.052, 0.03, 0.0135, 0.006, 0.002); lgBox(B, 0.055, 0, -0.05, 0.004, 0.01, 0.006, 0.0015); lgMagTop(B, M, 0.084, -0.046, 0.046, 0.022); }
 }
@@ -27452,6 +27647,7 @@ function lgGunMk17(B, K) {
   lgMat(B, M.rubber); lgBox(B, -0.377, 0, -0.024, 0.006, 0.019, 0.052, 0.004);
   if (hi) lgHolo(B, M, 0.04, 0.028, hi); else { lgMat(B, M.gunBlk); lgBox(B, 0.04, 0, 0.045, 0.032, 0.016, 0.016, 0.004); }
   // the 20-round 7.62 magazine: deep, nearly straight, its ribbed sides and the witness holes
+  lgWeaponLight(B, M, LG_GUN_DEF.mk17.light[0], LG_GUN_DEF.mk17.light[1], LG_GUN_DEF.mk17.light[2], 0.141, -1);
   lgBone(B, 'cmag'); lgMat(B, M.gunBlk); lgCurvedMag(B, 0.063, -0.058, 0.136, 0.06, 0.07, 0.0265, { ribs: [[0.2, 0.85]], ribF: 0.36 });
   if (hi) { if (top) { lgMat(B, M.visor); for (let i = 0; i < 4; i++) for (const s of [1, -1]) lgBox(B, 0.044, s * 0.0137, -0.085 - i * 0.022, 0.0035, 0.0005, 0.0035, 0.001); } lgMagTop(B, M, 0.06, -0.058, 0.06, 0.026); }
 }
@@ -27481,6 +27677,7 @@ function lgGunM1014(B, K) {
   if (hi) { lgMat(B, M.gunPoly.dk); lgSide(B, [[-0.31, -0.05], [-0.23, -0.026], [-0.23, 0.006], [-0.31, 0.01]], 0.0375, { bev: 0.0012 }); }   // the stock's open frame
   lgMat(B, M.rubber); lgBox(B, -0.352, 0, -0.022, 0.007, 0.02, 0.05, 0.004);
   // the "magazine" bone carries a shell (the one going in, and the port load)
+  lgWeaponLight(B, M, LG_GUN_DEF.m1014.light[0], LG_GUN_DEF.m1014.light[1], LG_GUN_DEF.m1014.light[2], 0.141, -1);
   lgBone(B, 'cmag'); lgMat(B, M.shellRed); lgBore(B, 0.05, 0.05, 0.0105, 0, -0.06); lgMat(B, M.brass); lgBore(B, 0.04, 0.012, 0.0112, 0, -0.06);
 }
 function lgGunPP19(B, K) {
@@ -27502,6 +27699,7 @@ function lgGunPP19(B, K) {
   lgMat(B, M.rubber); lgBox(B, -0.336, 0, -0.045, 0.005, 0.016, 0.05, 0.003);
   if (hi) lgHolo(B, M, 0.06, 0.03, hi);
   // the 64-round helical magazine under the barrel: a ribbed cylinder, its feed at the back, a hook at the front
+  lgWeaponLight(B, M, LG_GUN_DEF.pp19.light[0], LG_GUN_DEF.pp19.light[1], LG_GUN_DEF.pp19.light[2], 0.141, 0);
   lgBone(B, 'cmag'); lgMat(B, M.gunPoly);
   lgBore(B, 0.05, 0.28, [[0, 0.026], [0.04, 0.028], [0.96, 0.028], [1, 0.024]], 0, -0.054, { segs: 14, wr: hi ? (a, z) => Math.sin(z * 180) * 0.04 : null });
   lgBox(B, 0.045, 0, -0.032, 0.018, 0.014, 0.014, 0.004);
@@ -27553,6 +27751,7 @@ function lgPistolFrame(B, M, o) {
   lgMat(B, fm); lgSide(B, [[0.048, -0.026], [L - 0.004, -0.026], [L - 0.001, -0.016], [L - 0.003, -0.012], [0.048, -0.012]], sw - 0.0008, { bev: 0.002, round: true });
   lgSide(B, [[-0.002, -0.012], [0.05, -0.012], [0.05, -0.02], [0.0, -0.02]], sw - 0.002, { bev: 0.0015 });
   if (hi && !o.light && !o.nor) { lgMat(B, fm); for (let i = 0; i < 3; i++) lgBox(B, L - 0.06 + i * 0.016, 0, -0.0275, 0.004, sw / 2 - 0.002, 0.0015, 0.0005); }
+  if (o.light) lgWeaponLight(B, M, LG_GUN_DEF.m17.light[0], LG_GUN_DEF.m17.light[1], LG_GUN_DEF.m17.light[2], 0.09, 0);   // 1.9.996: its light under the dust cover
   // the trigger guard (squared, the front of it hooked), the trigger with its safety blade, the slide stop and the takedown
   lgMat(B, fm); const tg = o.round ? [[0.05, -0.026], [0.074, -0.028], [0.088, -0.036], [0.088, -0.048], [0.078, -0.055], [0.056, -0.054], [0.044, -0.046]]
     : [[0.05, -0.026], [0.086, -0.028], [0.092, -0.034], [0.09, -0.05], [0.084, -0.055], [0.056, -0.054], [0.044, -0.046]];
@@ -27620,12 +27819,12 @@ function lgGunM1917(B, K) {
 // each gun: its builder, the bone family, its muzzle, the support hand, where its magazine's top is, a hand-off for the
 // magazine in the hand; held relative to the original carbine and pistol sockets
 const LG_GUN_DEF = {
-  m4a1: { mk: lgGunM4, fam: 'c', muz: [0.469, 0, 0], sup: 0.205, mag: [0.07, -0.058], gx: -0.02, gz: -0.044 },
-  ak74m: { mk: lgGunAK, fam: 'c', muz: [0.585, 0, 0], sup: 0.29, mag: [0.085, -0.048], gx: 0.006, gz: -0.048 },
-  mk17: { mk: lgGunMk17, fam: 'c', muz: [0.58, 0, 0], sup: 0.24, mag: [0.06, -0.06], gx: -0.026, gz: -0.05 },
-  m1014: { mk: lgGunM1014, fam: 'c', muz: [0.62, 0, 0.006], sup: 0.29, mag: [0.06, -0.06], gx: -0.016, gz: -0.036 },
-  pp19: { mk: lgGunPP19, fam: 'c', muz: [0.365, 0, 0], sup: 0.17, mag: [0.06, -0.032], helix: true, gx: 0.0, gz: -0.038 },
-  m17: { mk: lgGunM17, fam: 'p', muz: [0.202, 0, 0], mag: [0.027, -0.03] },
+  m4a1: { mk: lgGunM4, fam: 'c', muz: [0.469, 0, 0], light: [0.272, -0.039, 0.006], sup: 0.205, mag: [0.07, -0.058], gx: -0.02, gz: -0.044 },
+  ak74m: { mk: lgGunAK, fam: 'c', muz: [0.585, 0, 0], light: [0.396, -0.037, -0.004], sup: 0.29, mag: [0.085, -0.048], gx: 0.006, gz: -0.048 },
+  mk17: { mk: lgGunMk17, fam: 'c', muz: [0.58, 0, 0], light: [0.356, -0.034, 0.002], sup: 0.24, mag: [0.06, -0.06], gx: -0.026, gz: -0.05 },
+  m1014: { mk: lgGunM1014, fam: 'c', muz: [0.62, 0, 0.006], light: [0.382, -0.034, -0.012], sup: 0.29, mag: [0.06, -0.06], gx: -0.016, gz: -0.036 },
+  pp19: { mk: lgGunPP19, fam: 'c', muz: [0.365, 0, 0], light: [0.32, 0, -0.024], sup: 0.17, mag: [0.06, -0.032], helix: true, gx: 0.0, gz: -0.038 },
+  m17: { mk: lgGunM17, fam: 'p', muz: [0.202, 0, 0], light: [0.186, 0, -0.031], mag: [0.027, -0.03] },
   m9: { mk: lgGunM9, fam: 'p', muz: [0.217, 0, 0], mag: [0.027, -0.03] },
   m1911: { mk: lgGunM1911, fam: 'p', muz: [0.202, 0, 0], mag: [0.027, -0.03] },
   m1917: { mk: lgGunM1917, fam: 'p', muz: [0.214, 0, 0.004], mag: [0.0, -0.002], moon: true },
@@ -28121,7 +28320,10 @@ lgClip('mask_tap', 'Mask on', 'Standing', 2.5, false, LG_SRC.merc, 'Two fingers 
   lgBase(P, { crouch: 0.035, lean: 0.07, stance: false }); lgStance(P, 0.13, 0.06, 0.13); lgBreath(P, t, 0.6, 3);
   const k = lgK(t, [[0, 0], [0.45, 1, 'o3'], [0.85, 1], [1.4, 0, 'io']]);
   lgPistolAt(P, LG_POST.sul, { one: true, poleR: LG_POLE.Rt });
-  lgHandTo(P, 'L', 'head', [lgLerp(-0.15, 0.01, k), lgLerp(0.25, 0.16, k), lgLerp(-0.7, -0.03, k)], [lgLerp(0, 0.25, k), lgLerp(0, 2.75, k), 0], [-0.3, 1, -0.6]); P.grip.L = k > 0.5 ? 'point' : 'relax';
+  // (1.9.996: the wrist comes up beside the ear cup and the two fingers go up onto the helmet's rail, the hand carried
+  // on from the forearm; the elbow forward and out at shoulder height, as a man reaches for his night-vision mount, not
+  // winged out level with his head. Placed by its elbow (a pole), so the comfort search does not swing it out.)
+  lgHandTo(P, 'L', 'head', [lgLerp(-0.12, 0.05, k), lgLerp(0.26, 0.165, k), lgLerp(-0.68, 0.02, k)], null, [1, 0.6, -0.6]); lgJm(P, 'L', 'hand', 0, -0.35 * k, 0); P.grip.L = k > 0.5 ? 'point' : 'relax';
   P.mask = lgK(t, [[0, 0], [0.55, 0], [1.6, 1, 'l']]); P.glow = lgK(t, [[0, 0], [1.4, 0], [1.7, 1.6, 'o'], [2.2, 1]]);
   lgLookAt(P, 0.08 * k, lgPulse(t, 1.5, 1.85) * 0.12, -0.12 * k);
 }, [[0.5, 'tap'], [0.6, 'mask'], [1.62, 'maskLock']]);
@@ -28395,6 +28597,432 @@ lgClip('death_crumple', 'Crumples', 'Down', 1.6, false, LG_SRC.merc, 'Straight d
   lgArm(P, 'L', -0.2 * k1 - 0.6 * k2, 0.1 + 0.3 * k2, 0, 0.4 + 0.5 * k2, 0.2); lgArm(P, 'R', -0.2 * k1 - 0.9 * k2, 0.1 + 0.2 * k2, 0, 0.3 + 0.6 * k2, 0.2); P.grip.L = 'relax';
 }, [[0.12, 'grunt'], [0.45, 'thud'], [1.22, 'body']]);
 
+/* ================= LOCO: LEGEND's gait engine, from measured human gait (1.9.996) =================
+   The legs no longer swing on sine waves. Every walk, run and sprint is built from how people really move, as gait labs
+   measure it (joint angles over the gait cycle, by speed), and then fitted to the ground:
+   - The hip, knee and ankle follow measured curves, in two parts: the stance (the foot on the ground, from the heel's
+     strike to the toe's push-off) and the swing (the foot in the air). Walking: Perry and the AAPMR / Kaiser gait tables
+     (the knee 15 to 18 degrees as the weight comes on, straight at midstance, 35 to 40 at toe-off, 60 at the peak of the
+     swing; the hip 25 to 30 flexed at the strike, 10 to 20 extended at push-off). Running and sprinting: Fukuchi et al.
+     2017 (PeerJ) at 2.5, 3.5 and 4.5 m/s (the hip's peak flexion 44, 53 and 61 degrees, the knee's swing peak 94, 109
+     and 119), and sprinters at 9.9 m/s (Frontiers 2019: the thigh lifted 70 degrees, the knee folded to about 148).
+   - Speed sets everything else the way it does in people: the cadence (110 steps a minute walking at 1.33 m/s, 162 /
+     171 / 183 running at 2.5 / 3.5 / 4.5 m/s), the stride (the speed over the cadence), and the share of the cycle a foot
+     is down (60 percent walking, 36 running at 3.5 m/s, 26 sprinting). Walking turns into running between 1.9 and 2.6
+     m/s, as it does in people, and the curves blend event by event (strike with strike, push-off with push-off).
+   - The feet are planted: a foot on the ground does not slide. It lands on the heel and rolls over it, lies flat, then
+     peels up over the ball of the foot with the toes staying flat on the ground (the three rockers of the foot); in the
+     air the knee folds and the foot swings through on the curves' path, from wherever it left the ground to where the
+     next step lands.
+   - The body's height comes from the legs: the hips ride as high as the standing leg, bent as the curves bend it, holds
+     them, so walking rises over each step and dips at each strike (about 5 cm, twice a stride) and running sinks into
+     each landing and flies between steps, with nothing to tune by hand.
+   - Around it: the pelvis turns with the swinging leg and drops on its side, the trunk turns against it and leans with
+     the speed (and with the kit's weight: Harman 2000, about 11 degrees under 20 to 40 percent of the body's weight), the
+     head stays level, the arms swing against the legs (28 degrees walking, the elbows bent near 90 running).
+   - Any direction: the hips turn up to 45 degrees toward the way he moves while the chest stays on the aim (orientation
+     warping, as Unreal and most shooters do it), the steps go the rest of the way, and moving away from the aim he walks
+     or runs backwards (backward gait is close to forward gait run in reverse: shorter, slower, the toe first).
+   locoPose(P, ph, o) poses a body; locoAgent() drives one over time (speed, turning, starts and stops). */
+
+const LOCO = { Lt: 0.43, Ls: 0.42, ankZ: LG_FOOT_Z, heel: [-0.06, 0.085], ball: [0.135, 0.085], cache: new Map(), made: 0, armSign: -1 };
+const LOCO_D = Math.PI / 180;
+// a smooth curve through [x, y] keys (x rising from 0 to 1): Catmull-Rom with the ends held flat
+function locoK(keys, x) {
+  const n = keys.length; if (x <= keys[0][0]) return keys[0][1]; if (x >= keys[n - 1][0]) return keys[n - 1][1];
+  let i = 0; while (i < n - 2 && keys[i + 1][0] < x) i++;
+  const p0 = keys[Math.max(0, i - 1)], p1 = keys[i], p2 = keys[i + 1], p3 = keys[Math.min(n - 1, i + 2)];
+  const t = (x - p1[0]) / ((p2[0] - p1[0]) || 1), t2 = t * t, t3 = t2 * t;
+  // tangents scaled to the segment so uneven keys do not overshoot
+  const m1 = i === 0 ? 0 : (p2[1] - p0[1]) / ((p2[0] - p0[0]) || 1) * (p2[0] - p1[0]), m2 = i + 2 >= n ? 0 : (p3[1] - p1[1]) / ((p3[0] - p1[0]) || 1) * (p2[0] - p1[0]);
+  return (2 * t3 - 3 * t2 + 1) * p1[1] + (t3 - 2 * t2 + t) * m1 + (-2 * t3 + 3 * t2) * p2[1] + (t3 - t2) * m2;
+}
+// the measured curves, in degrees, split at push-off: s (stance, strike to push-off) and w (swing, push-off to strike)
+const LOCO_CURVES = {
+  walk: {   // ~1.35 m/s
+    hip: { s: [[0, 28], [0.17, 26], [0.5, 8], [0.83, -10], [1, -2]], w: [[0, -2], [0.33, 19], [0.67, 29], [0.86, 29], [1, 28]] },
+    knee: { s: [[0, 4], [0.17, 17], [0.5, 5], [0.75, 4], [0.88, 12], [1, 38]], w: [[0, 38], [0.3, 61], [0.55, 44], [0.8, 12], [0.95, 4], [1, 4]] },
+    ank: { s: [[0, 0], [0.12, -8], [0.3, 0], [0.75, 10], [0.88, 4], [1, -18]], w: [[0, -18], [0.25, -10], [0.55, -1], [0.8, 1], [1, 0]] }
+  },
+  run: {   // ~3.5 m/s
+    hip: { s: [[0, 38], [0.5, 14], [1, -8]], w: [[0, -8], [0.2, -3], [0.5, 30], [0.8, 52], [0.92, 50], [1, 38]] },
+    knee: { s: [[0, 14], [0.4, 45], [0.8, 26], [1, 18]], w: [[0, 18], [0.25, 60], [0.5, 105], [0.6, 108], [0.8, 55], [0.93, 18], [1, 20]] },
+    ank: { s: [[0, 6], [0.4, 26], [0.75, 12], [1, -20]], w: [[0, -20], [0.2, -18], [0.55, 0], [0.8, 10], [1, 6]] }
+  }
+};
+const locoL = (a, b, k) => a + (b - a) * k;
+const locoTab = (tab, v) => { if (v <= tab[0][0]) return tab[0][1]; for (let i = 1; i < tab.length; i++) if (v <= tab[i][0]) { const a = tab[i - 1], b = tab[i]; return locoL(a[1], b[1], (v - a[0]) / (b[0] - a[0])); } return tab[tab.length - 1][1]; };
+const locoSS = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+// everything a gait needs at a speed (m/s): cadence (cycles a second), stride, stance share, the run blend, the curves'
+// scales, the pelvis, trunk and arms. o.back: backwards; o.load: the kit's weight as a share of the body's (0..0.5)
+function locoParams(v, o) {
+  o = o || {}; const back = !!o.back, load = o.load == null ? 0.3 : o.load;
+  const va = Math.max(0, v);
+  const wr = back ? locoSS(1.6, 2.4, va) : locoSS(1.9, 2.6, va), sp = locoSS(5.2, 7.5, va);
+  const cadW = 0.55 + 0.27 * va, cadR = locoTab([[2.5, 1.35], [3.5, 1.43], [4.5, 1.52], [5.5, 1.6], [6.5, 1.7], [7.5, 1.8], [9.9, 2.3]], va);
+  let cad = locoL(cadW, cadR, wr); if (back) cad *= 1.06;
+  const stW = clamp(0.66 - 0.045 * va, 0.55, 0.68), stR = locoTab([[2.5, 0.4], [3.5, 0.36], [4.5, 0.32], [5.5, 0.28], [7, 0.25], [9.9, 0.24]], va);
+  const st = locoL(stW, stR, wr) + load * 0.03;
+  // the curves' ranges by speed: walking grows with speed; running per Fukuchi (2.5 / 3.5 / 4.5 m/s) on to sprinting
+  const fW = clamp(0.5 + 0.37 * va, 0.45, 1.2), fKW = clamp(0.82 + 0.14 * va, 0.8, 1.05);
+  const fH = locoTab([[2.5, 43.8 / 52.8], [3.5, 1], [4.5, 60.5 / 52.8], [7, 70 / 52.8], [9.9, 72 / 52.8]], va), fE = locoTab([[2.5, 3.6 / 8], [3.5, 1], [4.5, 11.8 / 8], [7, 16 / 8]], va), fK = locoTab([[2.5, 93.5 / 108.7], [3.5, 1], [4.5, 119.1 / 108.7], [7, 1.26], [9.9, 1.36]], va);
+  const walkK = back ? 0.85 : 1;
+  return {
+    v: va, back: back, wr: wr, sp: sp, cad: cad, stride: va > 0.02 ? va / cad : 0, st: st, load: load,
+    fW: fW * walkK, fKW: fKW, fH: fH, fE: fE, fK: fK,
+    tilt: locoL(8, 13, wr) + sp * 3,   // the pelvis's forward tilt (thigh angles are the hip's minus it)
+    width: locoL(0.105, 0.05, wr) - sp * 0.02, toeOut: locoL(0.1, 0.05, wr),
+    pRot: locoL(4.5, 8, wr) * LOCO_D * clamp(va / 1.3, 0.3, 1.2), pObl: locoL(4, 6.5, wr) * LOCO_D * clamp(va / 1.3, 0.3, 1), pSway: locoL(0.028, 0.012, wr) * clamp(va / 1.2, 0.2, 1),
+    tRot: locoL(6, 11, wr) * LOCO_D, lean: (locoL(2.5, 8, wr) + sp * 6 + load * 18 + (back ? -4 : 0)) * LOCO_D,
+    armA: locoL(14, 38, wr) + sp * 16, armO: locoL(-3, -12, wr), elbB: locoL(24, 88, wr) + sp * 4, elbA: locoL(9, 16, wr) + sp * 6
+  };
+}
+// a curve at a point of the cycle: f (0..1 from this foot's strike), st (stance share)
+function locoCurve(c, f, st) { return f < st ? locoK(c.s, f / st) : locoK(c.w, (f - st) / (1 - st)); }
+// the hip, knee and ankle angles (degrees) of one leg at f, blended walk to run by the gait's parameters
+function locoAngles(G, f) {
+  const W = LOCO_CURVES.walk, R = LOCO_CURVES.run, st = G.st, stance = f < st;
+  let hw = locoCurve(W.hip, f, st), kw = locoCurve(W.knee, f, st), aw = locoCurve(W.ank, f, st);
+  let hr = locoCurve(R.hip, f, st), kr = locoCurve(R.knee, f, st), ar = locoCurve(R.ank, f, st);
+  // walking ranges scale about a mid-hip of 9 degrees; the knee's swing peak a little with speed
+  hw = 9 + (hw - 9) * G.fW; if (!stance) kw = 4 + (kw - 4) * G.fKW;
+  // running: flexion by fH, extension by fE, the knee's swing above its push-off by fK
+  hr = hr >= 0 ? hr * G.fH : hr * G.fE; if (!stance) { const kTO = 18; kr = kr > kTO ? kTO + (kr - kTO) * G.fK : kr; }
+  const k = G.wr;
+  return [locoL(hw, hr, k), locoL(kw, kr, k) + G.load * (stance ? 6 : 0), locoL(aw, ar, k)];
+}
+// forward kinematics in the leg's sagittal plane (x forward, z up) from the hip: knee, ankle, and the sole's angle
+function locoFK(G, f) {
+  const a = locoAngles(G, f), th = (a[0] - G.tilt) * LOCO_D * (G.hk || 1), ph = th - a[1] * LOCO_D;
+  const kx = LOCO.Lt * Math.sin(th), kz = -LOCO.Lt * Math.cos(th), ax = kx + LOCO.Ls * Math.sin(ph), az = kz - LOCO.Ls * Math.cos(ph);
+  return { ax: ax, az: az, sole: a[2] * LOCO_D + ph, knee: a[1], hip: a[0], ank: a[2] };
+}
+// the ankle from a contact point on the ground and the sole's angle: over the heel (toe up), over the ball (heel up)
+function locoAnkleAt(cx, sole) {
+  const c = Math.cos(sole), s = Math.sin(sole);
+  if (sole >= 0) { const hx = -LOCO.heel[0], hz = LOCO.heel[1]; return [cx + hx * c - hz * s, hx * s + hz * c]; }
+  const bx = -LOCO.ball[0], bz = LOCO.ball[1]; return [cx + bx * c - bz * s, bx * s + bz * c];
+}
+// one gait, solved once over the cycle and kept: each foot's ankle (x, z), sole angle and toe bend in the gait's frame,
+// and the hips' height, at n points. The stance foot is planted; the swing foot travels the curves' path between where it
+// left the ground and where it next lands; the hips ride on the standing leg.
+function locoCycle(G) {
+  const key = [G.v.toFixed(2), G.back ? 1 : 0, G.load.toFixed(2)].join('|');
+  let C = LOCO.cache.get(key); if (C) return C;
+  const n = 96, st = G.st, T = G.stride;
+  // stride warping: the thigh's swing scaled so the leg's own reach over a stance matches the ground it covers at this
+  // speed (people with these legs at this speed reach this far), solved in a few passes
+  G.hk = 1;
+  for (let it = 0; it < 4 && T > 0.05; it++) {
+    const a = locoFK(G, 0), b = locoFK(G, st - 1e-4), hx = a.ax + LOCO.heel[0] * Math.cos(a.sole) + LOCO.heel[1] * Math.sin(a.sole);
+    const A2 = locoAnkleAt(hx - T * st + (LOCO.ball[0] - LOCO.heel[0]), b.sole), want = a.ax - A2[0], have = a.ax - b.ax;
+    if (have > 0.05) G.hk = clamp(G.hk * want / have, 0.7, 1.45);
+  }
+  // (running keeps the measured thigh angles: the planted foot and the hips' height take up the difference)
+  G.hk = locoL(G.hk, 1, G.wr);
+  // the foot's contact on the ground over the stance: at the strike, the heel lands where the curves put it (relative to
+  // the hip, which moves forward at the speed); then the planted contact moves back past the hip, a stride's stance long
+  const fk0 = locoFK(G, 0), fkTO = locoFK(G, st - 1e-4);
+  // in the gait's frame the hip is fixed and the ground moves back at the speed: contact x(f) = x0 - T * f (for f < st)
+  // the heel's point on the ground at the strike: under the ankle, turned by the sole's angle
+  const heelX0 = fk0.ax + LOCO.heel[0] * Math.cos(fk0.sole) + LOCO.heel[1] * Math.sin(fk0.sole);
+  const S = [];
+  for (let i = 0; i < n; i++) {
+    const f = i / n, fk = locoFK(G, f);
+    let ax, az, sole = fk.sole, toe = 0, contact = f < st;
+    if (contact) {
+      const cx0 = heelX0 - T * f;   // the heel's ground point if the foot were flat
+      // the sole's angle in stance: as the curves give it, but never toe-down past what the ball allows
+      const c = sole >= 0 ? cx0 : cx0 + (LOCO.ball[0] - LOCO.heel[0]);
+      const A = locoAnkleAt(c, sole); ax = A[0]; az = A[1]; if (sole < 0) toe = Math.min(-sole, 55 * LOCO_D);
+    } else { ax = fk.ax; az = fk.az; }   // relative to the hip; fixed up below
+    S.push({ f: f, ax: ax, az: az, sole: sole, toe: toe, contact: contact, fk: fk });
+  }
+  // the hips' height: for each sample, the height the standing leg(s) hold the hip joint at with the curves' knee bend
+  // (law of cosines on the actual reach), the lower of two when both are down; in the air, a ballistic flight between
+  const legLen = k => Math.sqrt(LOCO.Lt * LOCO.Lt + LOCO.Ls * LOCO.Ls + 2 * LOCO.Lt * LOCO.Ls * Math.cos(k * LOCO_D));
+  const hz = new Float32Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    // with both feet down the leg taking the weight (the newer stance) holds the hips; the other is unloading, its heel
+    // up and its knee folding into the swing, and only keeps its toes on the ground
+    let best = Infinity, bu = 2;
+    for (const off of [0, 0.5]) {
+      const j = Math.round(((i / n + off) % 1) * n) % n, s = S[j]; if (!s.contact) continue;
+      const u = s.f / st; if (u > bu) continue;
+      const l = legLen(s.fk.knee), dx = s.ax, h = Math.sqrt(Math.max(0.01, l * l - dx * dx)) + s.az; best = h; bu = u;
+    }
+    if (best < Infinity) hz[i] = best;
+  }
+  // flight (or a gap): a parabola under gravity joining the takeoff and the landing, matching their heights
+  for (let i = 0; i < n; i++) {
+    if (!isNaN(hz[i])) continue;
+    let a = i; while (isNaN(hz[(a - 1 + n) % n])) a = (a - 1 + n) % n; let b = i; while (isNaN(hz[(b + 1) % n])) b = (b + 1) % n;
+    const ia = (a - 1 + n) % n, ib = (b + 1) % n, len = ((ib - ia + n) % n) || 1, dtc = 1 / (n * G.cad), Tf = len * dtc, za = hz[ia], zb = hz[ib];
+    const vz0 = (zb - za) / Tf + 0.5 * 9.81 * Tf; let k = (i - ia + n) % n; const t = k * dtc;
+    hz[i] = za + vz0 * t - 0.5 * 9.81 * t * t;
+  }
+  // running: the body is a mass bouncing on springy legs; it sinks to its lowest at midstance (the knee near 43 degrees)
+  // and rises to its highest in the middle of the flight, about 7 cm between (less as the speed climbs), and no higher
+  // than the standing leg can reach
+  if (G.wr > 0) {
+    const A = locoTab([[2.5, 0.075], [3.5, 0.07], [4.5, 0.06], [7, 0.05], [9.9, 0.045]], G.v), lo = legLen(43) + LOCO.ankZ, half = 0.5;
+    const fMin = 0.45 * st, fMax = (st + half) / 2;
+    for (let i = 0; i < n; i++) {
+      // u: 0 at the lowest (midstance), 0.5 at the highest (mid-flight), round through the strike back to the next lowest
+      const f = (i / n) % half, down = half - fMax + fMin, u = f < fMin ? 0.5 + 0.5 * (f + half - fMax) / down : f < fMax ? (f - fMin) / (fMax - fMin) * 0.5 : 0.5 + 0.5 * (f - fMax) / down;
+      const z = lo + A * (0.5 - 0.5 * Math.cos(TAU * u));
+      // the reach of every foot that is down
+      let reach = Infinity;
+      for (const off of [0, 0.5]) { const j = Math.round(((i / n + off) % 1) * n) % n, sj = S[j]; if (!sj.contact) continue; const l = legLen(5), dx = sj.ax; reach = Math.min(reach, Math.sqrt(Math.max(0.01, l * l - dx * dx)) + sj.az - 0.004); }
+      hz[i] = locoL(hz[i], Math.min(z, reach), G.wr);
+    }
+  }
+  // smooth it round the cycle (the body is a mass on springy legs: no corners)
+  const hs = new Float32Array(n); for (let pass = 0; pass < 2; pass++) { for (let i = 0; i < n; i++) { let s = 0, w = 0; for (let d = -3; d <= 3; d++) { const k = 1 - Math.abs(d) / 4; s += hz[(i + d + n) % n] * k; w += k; } hs[i] = s / w; } hz.set(hs); }
+  // the swing foot: the curves' path relative to the hip, shifted at its ends to meet where the foot left the ground and
+  // where it lands (so nothing jumps), and never through the ground
+  const iTO = Math.ceil(st * n) % n, iIC = 0, toS = S[(iTO - 1 + n) % n], icS = S[0];
+  const leftX = toS.ax, leftZ = toS.az - hz[(iTO - 1 + n) % n], landX = icS.ax, landZ = icS.az - hz[0];
+  const fkA = locoFK(G, st + 1e-4), fkB = locoFK(G, 1 - 1e-4);
+  for (let i = 0; i < n; i++) {
+    const s = S[i]; if (s.contact) { s.z = s.az; s.x = s.ax; continue; }
+    const w = (s.f - st) / (1 - st), e = w * w * (3 - 2 * w);
+    const dx = locoL(leftX - fkA.ax, landX - fkB.ax, e), dz = locoL(leftZ - fkA.az, landZ - fkB.az, e);
+    s.x = s.fk.ax + dx; s.z = s.fk.az + dz + hz[i];
+    // the sole: from the push-off angle easing to the strike's
+    s.sole = s.fk.sole; s.toe = toS.toe * Math.max(0, 1 - w * 6);
+    const lowest = s.z - LOCO.ankZ + Math.min(0, Math.sin(s.sole) * 0.135, -Math.sin(s.sole) * 0.06);
+    if (lowest < 0.008) s.z += 0.008 - lowest;
+  }
+  for (let i = 0; i < n; i++) { const s = S[i]; if (s.contact) { s.x = s.ax; s.z = s.az; } }
+  C = { n: n, S: S, hz: hz, G: G, key: key }; LOCO.cache.set(key, C); LOCO.made++;
+  if (LOCO.cache.size > 64) LOCO.cache.delete(LOCO.cache.keys().next().value);
+  return C;
+}
+// a sample of a cycle at f, interpolated
+function locoAt(C, f) {
+  const n = C.n, x = ((f % 1) + 1) % 1 * n, i = Math.floor(x) % n, j = (i + 1) % n, k = x - Math.floor(x), a = C.S[i], b = C.S[j];
+  const ang = (p, q) => p + (q - p) * k;
+  return { x: ang(a.x, b.x), z: ang(a.z, b.z), sole: ang(a.sole, b.sole), toe: ang(a.toe, b.toe), contact: k < 0.5 ? a.contact : b.contact, hz: ang(C.hz[i], C.hz[j]), knee: ang(a.fk.knee, b.fk.knee) };
+}
+/* ---------- the pose ---------- */
+// o: v (m/s), dir (the steps' direction relative to the hips, radians), back, load, arms ('free' | 'hold' | 'none'),
+// yaw (the hips turned from the root's forward, radians: warping), chest (the chest's turn back toward the aim),
+// lean (extra forward lean, radians: acceleration), crouch (m), idle (0..1 back toward standing)
+function locoPose(P, ph, o) {
+  o = o || {}; const G = locoParams(o.v || 0, o), C = locoCycle(G), mv = locoSS(0.04, 0.45, G.v) * (1 - (o.idle || 0));
+  const dir = o.dir || 0, cd = Math.cos(dir), sd = Math.sin(dir), back = G.back, yaw = o.yaw || 0;
+  const hip0 = 0.935, standH = LOCO.Lt + LOCO.Ls + LOCO.ankZ;
+  const out = { contactL: false, contactR: false, hz: 0 };
+  // where the hips ride: the cycle's height (the hip joints over the ground) minus a standing height, blended in by speed;
+  // backwards is the same gait run in reverse (each foot's cycle read from the end)
+  const fL = ((ph % 1) + 1) % 1, fR = (fL + 0.5) % 1, eL = back ? 1 - fL : fL, eR = back ? (1 - fR + 1) % 1 : fR;
+  const sL = locoAt(C, eL), sR = locoAt(C, eR);
+  const hz = locoAt(C, eL).hz, drop = (hz - standH - 0.006) * mv - (o.crouch || 0) - 0.03 * (1 - mv);
+  out.hz = hz;
+  // the pelvis: the forward leg's side forward (turned toward the other side), the swing side dropped as the weight
+  // comes onto the standing leg, a sway over the standing foot; tilted forward with the lean
+  const c2 = Math.cos(TAU * eL);
+  const pRot = -G.pRot * c2 * mv, pObl = G.pObl * Math.sin(TAU * (eL + 0.1)) * mv;
+  const sway = G.pSway * Math.sin(TAU * (eL - 0.12)) * mv;
+  const lean = G.lean * (0.35 + 0.65 * mv) + (o.lean || 0), px = -lean * 0.06;
+  lgPelvis(P, px, sway, drop, pObl, lean * 0.35, yaw + pRot);
+  // the legs: each foot's ankle in the gait's frame, turned to the steps' direction; lateral spacing kept square to the hips
+  const width = G.width, legs = [['L', 1, sL], ['R', -1, sR]];
+  for (const [side, sg, s] of legs) {
+    // standing still the feet come back under the hips, a hand's width apart
+    const idleX = side === 'L' ? 0.04 : -0.04, ax = locoL(idleX, s.x, mv), lat = sg * locoL(0.125, (o.width != null ? o.width : width) / 2 + 0.01, mv);
+    let x = ax * cd + px, y = lat + ax * sd;
+    // diagonal steps must not cross: keep each foot on its own side
+    const minY = 0.035; if (sg > 0 && y < minY) y = minY + (y - minY) * 0.25; if (sg < 0 && y > -minY) y = -minY + (y + minY) * 0.25;
+    // the root's frame: the hips' yaw turns the steps
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), X = x * cy - y * sy, Y = x * sy + y * cy;
+    // (o.drag: one foot that barely leaves the ground, scuffing: the dead's limp)
+    const lift = (s.z - LOCO.ankZ) * mv * (side === 'R' && o.drag ? 1 - o.drag : 1), sole = s.sole * mv * (side === 'R' && o.drag ? 1 - o.drag * 0.7 : 1), toe = s.toe * mv;
+    // the foot points along the hips (turned out a little), partly toward diagonal steps
+    const fy = yaw + sg * G.toeOut + clamp(dir, -0.8, 0.8) * 0.3 * mv;
+    lgFoot(P, side, X, Y, lift, -sole, fy, -toe * 0.9);
+    P.ik['foot' + side].pole = [Math.cos(fy + dir * 0.25), Math.sin(fy + dir * 0.25), 0.12];
+    if (side === 'L') out.contactL = s.contact; else out.contactR = s.contact;
+  }
+  // the kit swinging with the steps: the antenna whips with each footfall, the dump pouch and the strap tails swing with the
+  // stride and trail when he leans into speed
+  const gv = mv * clamp(G.v / 3.5, 0.15, 1.4), e2 = TAU * 2 * eL, ln = (o.lean || 0);
+  lgJ(P, 'antenna', 0.05 * gv * Math.sin(TAU * eL + 0.6), 0.11 * gv * Math.sin(e2 - 1.1) - 0.05 * gv - ln * 0.6, 0);
+  lgJ(P, 'dump', 0.12 * gv * Math.sin(TAU * eL + 0.4), 0.15 * gv * Math.sin(e2 - 0.9) + ln * 0.5, 0);
+  lgJ(P, 'tailL', 0.22 * gv * Math.sin(TAU * eL + 0.3), 0.2 * gv * Math.sin(e2 - 0.8) + 0.12 * gv + ln * 0.8, 0);
+  lgJ(P, 'tailR', 0.22 * gv * Math.sin(TAU * eL + 2.1), 0.2 * gv * Math.sin(e2 - 0.5) + 0.12 * gv + ln * 0.8, 0);
+  // the trunk: free arms turn the chest against the pelvis; holding a gun the chest stays on the aim (o.chest, the chest's
+  // world turn from the root's forward), the lumbar spine taking the hips' turn; leaning with speed, bent sideways against
+  // the pelvis's drop
+  const free = o.arms === 'free', cW = (o.chest || 0) + (free ? G.tRot * c2 * mv : G.tRot * 0.12 * c2 * mv), rel = cW - (yaw + pRot);
+  lgJ(P, 'spine', -pObl * 0.6, lean * 0.3, rel * 0.5);
+  lgJ(P, 'chest', -pObl * 0.3, lean * 0.3, rel * 0.5);
+  // the head level and steady (the eyes ride a gimbal): it takes back most of the lean
+  lgJ(P, 'neck', -pObl * 0.05, -lean * 0.55, 0); lgJ(P, 'head', -pObl * 0.05, -lean * 0.3, 0);
+  // free arms swing against the legs: forward with the other side's leg; the elbow bends more as the arm comes forward
+  if (free) {
+    for (const [side, e] of [['L', eL], ['R', eR]]) {
+      const sw = -Math.cos(TAU * (e - 0.04));
+      const sh = (G.armO + G.armA * sw * mv) * LOCO_D, el = (G.elbB + G.elbA * Math.max(0, sw) * mv) * LOCO_D * (0.4 + 0.6 * mv) + 0.18 * (1 - mv);
+      lgArm(P, side, LOCO.armSign * sh, 0.1 + G.wr * 0.06, 0, el, 0.05, 0.0);
+    }
+  }
+  out.lean = lean; out.G = G;
+  return out;
+}
+/* ---------- driving a body over time ---------- */
+// a walker: give it a velocity (root space, m/s) and a facing (the aim) each step; it keeps the phase, turns the hips
+// toward the motion (with a switch to walking backwards past 100 degrees), leans into speeding up, eases into stops
+function locoAgent(o) { o = o || {}; return { ph: 0, v: 0, dir: 0, yaw: 0, vy: 0, back: false, lean: 0, lv: 0, accel: 0, load: o.load == null ? 0.3 : o.load, t: 0 }; }
+function locoStep(A, dt, vx, vy, face) {
+  const sp = Math.hypot(vx, vy), prev = A.v;
+  A.v += (sp - A.v) * Math.min(1, dt * 7); A.accel += (((A.v - prev) / Math.max(dt, 1e-3)) - A.accel) * Math.min(1, dt * 6);
+  if (A.v > 0.05) {
+    const md = Math.atan2(vy, vx), rel = locoAng(md - face);
+    // forward or backward, with a margin so it does not flip back and forth at the edge
+    if (A.back && Math.abs(rel) < 1.6) A.back = false; else if (!A.back && Math.abs(rel) > 1.85) A.back = true;
+    const tgtYaw = A.back ? clamp(locoAng(rel - Math.PI), -0.78, 0.78) : clamp(rel, -0.78, 0.78);
+    // the hips turn as a mass on a spring (a little quicker than the chest)
+    const w = 12, x = locoAng(A.yaw - tgtYaw); A.vy += (-w * w * x - 2 * w * A.vy) * dt; A.yaw += A.vy * dt;
+    A.dir = A.back ? locoAng(rel - Math.PI - A.yaw) : locoAng(rel - A.yaw);
+  } else { const w = 6, x = A.yaw; A.vy += (-w * w * x - 2 * w * A.vy) * dt; A.yaw += A.vy * dt; }
+  const G = locoParams(A.v, { back: A.back, load: A.load });
+  A.ph = (A.ph + (G.stride > 0 ? A.v / G.stride : 0) * dt) % 1;
+  if (A.v < 0.05) { const near = Math.round(A.ph * 2) / 2; A.ph += (near - A.ph) * Math.min(1, dt * 3); }   // stopping: settle on a double stance
+  // leaning into acceleration (and back on a stop), on a spring
+  const lt = clamp(A.accel * 0.035, -0.12, 0.2), w2 = 9; A.lv += (-w2 * w2 * (A.lean - lt) - 2 * 0.7 * w2 * A.lv) * dt; A.lean += A.lv * dt;
+  A.t += dt; return A;
+}
+function locoApply(A, P, o) { return locoPose(P, A.ph, Object.assign({ v: A.v, dir: A.dir, back: A.back, yaw: A.yaw, lean: A.lean, load: A.load }, o || {})); }
+const locoAng = a => { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; };
+/* ---------- the moving clips, rebuilt on the gait engine ---------- */
+// each keeps its name, its place in the fifty and what his hands do; the legs, hips, trunk and timing now come from the
+// engine at that clip's speed, and a cycle lasts exactly one stride at that speed (so it loops without a seam)
+(function locoClips() {
+  const def = (id, v, o, upper, desc) => {
+    const a = LG_ANIM_BY[id]; if (!a) return;
+    const G = locoParams(v, o), st = G.st; a.dur = +(1 / G.cad).toFixed(4); a.loco = Object.assign({ v: v }, o); if (desc) a.desc = desc;
+    a.fn = (P, t, ctx, A) => {
+      const free = upper === 'free' && !ctx.run, r = locoPose(P, t / A.dur, Object.assign({ v: v, arms: free ? 'free' : 'hold' }, o));
+      if (ctx.run) { lgRunAim(P, ctx, t, v > 3 ? 1.6 : 1); return; }
+      if (typeof upper === 'function') upper(P, t, ctx, A, r);
+    };
+    // the footfalls (for the sounds): each foot's strike; backwards the toe lands where the push-off was
+    const fL = o.back ? (1 - st) % 1 : 0, fR = (fL + 0.5) % 1;
+    a.ev = [[+(fL * a.dur).toFixed(4), 'stepL'], [+(fR * a.dur).toFixed(4), 'stepR']].sort((x, y) => x[0] - y[0]);
+  };
+  const low = (P, t, ctx, A) => { const v = LG_POST.low.slice(); v[4] -= 0.05; lgPistolAt(P, v, { poleR: LG_POLE.Rt, poleL: LG_POLE.Lt }); lgLookAt(P, Math.sin(t / A.dur * Math.PI) * 0.3 - 0.15, 0.04); };
+  const high = (P) => lgPistolAt(P, LG_POST.high, { poleR: LG_POLE.Rt, poleL: LG_POLE.Lt });
+  const iso = (P) => lgPistolAt(P, LG_POST.iso);
+  def('walk_tac', 1.1, { load: 0.3, crouch: 0.03 }, low, 'Heel first, rolling to the toe at a careful 1.1 m/s (about 100 steps a minute), knees soft and the weight a little forward under the kit, so the pistol stays level at low ready. The eyes keep working the alley.');
+  def('patrol', 1.45, { load: 0.3 }, (P, t, ctx, A) => {
+    P.pistol.at = 'handR'; P.grip.R = 'pistol'; const sw = Math.sin(TAU * t / A.dur); lgArm(P, 'R', 0.12 + sw * 0.1, 0.12, -0.25, 0.28, -0.35);
+    lgSpine(P, -0.04, 0, 0); lgLookAt(P, Math.sin(t * 0.9) * 0.2, -0.06);
+  }, 'The mercenary in him at 1.45 m/s: pistol hanging easy in one hand, the other arm swinging against the legs, shoulders loose and chin up. Confident, not careless.');
+  // (the patrol's free left arm swings with the gait; the right holds the pistol)
+  { const a = LG_ANIM_BY.patrol; if (a) { const f0 = a.fn; a.fn = (P, t, ctx, A) => { if (ctx.run) return f0(P, t, ctx, A); locoPose(P, t / A.dur, { v: 1.45, load: 0.3, arms: 'free' }); P.pistol.at = 'handR'; P.grip.R = 'pistol'; const sw = Math.sin(TAU * t / A.dur); lgArm(P, 'R', 0.12 + sw * 0.1, 0.12, -0.25, 0.28, -0.35); lgLookAt(P, Math.sin(t * 0.9) * 0.2, -0.06); }; } }
+  def('jog', 2.8, { load: 0.3 }, high, 'A measured jog at 2.8 m/s and compressed high ready: the gun tucked to the chest, muzzle level; both feet leave the ground between steps.');
+  def('run', 4.0, { load: 0.3 }, (P) => { lgPistolAt(P, LG_POST.sul, { one: true, poleR: LG_POLE.Rt }); lgHandTo(P, 'L', 'chest', [0.13, 0.015, 0.02], [0, 0.0, 0.2], LG_POLE.Lt); P.grip.L = 'open'; }, 'Running at 4 m/s at Sul: support palm flat on the chest, the pistol above it pointing down, so nothing in front of him is ever covered by the muzzle. The heel kicks up behind and the knee drives through, as measured runners do.');
+  def('sprint', 6.5, { load: 0.3 }, 'free', 'Gun holstered to run: a 6.5 m/s sprint (about 200 steps a minute), elbows near 90 degrees driving from the hip to the chest, the thigh lifted high, the body pitched into it.');
+  def('crouch_walk', 0.9, { load: 0.3, crouch: 0.26 }, (P, t) => { high(P); lgLookAt(P, Math.sin(t * 1.1) * 0.18, -0.12); }, 'Low and smooth under a window line: knees deep, short heel-to-toe steps at 0.9 m/s, the pistol at compressed high ready.');
+  def('strafe_l', 1.4, { load: 0.3, dir: 0.785, yaw: 0.785 }, iso, 'Moving left with the sights on the target: the hips turn 45 degrees toward the way he goes while the chest stays square to the target, and the steps carry him the rest of the way, the feet kept on their own sides.');
+  def('strafe_r', 1.4, { load: 0.3, dir: -0.785, yaw: -0.785 }, iso, 'The same to the right: the hips turn toward the step, the chest and the isosceles stay on the target.');
+  def('backpedal', 1.0, { load: 0.3, back: true }, iso, 'Retreat only with a reason, and slowly (1 m/s): backward walking is forward walking run in reverse, so the toe touches first and feels for what is behind him, the heel follows; eyes and muzzle on the threat.');
+})();
+
+/* ================= LGP: the performance layer, so a keyframed body moves like a captured one (1.9.996) =================
+   Keyframed motion arrives everywhere at once and stops dead; a person's body does not. Captured motion carries three
+   things a hand-set pose lacks, and this layer adds them to every LEGEND performance (the studio's clips, the cinematics'
+   actors) without touching the clips themselves:
+   - Overlap and follow-through. Each part of the body answers its parent a little late and settles past the mark: the
+     spine after the pelvis, the head after the chest (and bobbing back), a free arm after the shoulder. Every joint's
+     angle is the clip's angle filtered through a damped spring (its own stiffness: the trunk stiff, the head and free
+     arms looser), computed from the clip's own past rather than from state, so a cinematic can still be scrubbed to any
+     time and gives the same frame.
+   - Micro-motion. A standing person is never still: the body sways slowly over the feet (0 to 0.5 Hz, the centre of
+     pressure wandering about 9 mm a second), the head and trunk make small corrections, the breath lifts the chest
+     12 to 15 times a minute (posturography and respiratory norms). Small, slow, layered noise does that.
+   - Weight. Hands on a gun, feet on the ground and anything else held by reach stay exactly where the clip put them;
+     only the free parts trail.
+   lgpEval(clip, t, P, ctx, o) poses P like lgEvalClip, with the layer on. */
+const LGP = { on: true, n: 0 };
+// the spring per part: [frequency Hz, damping ratio]; parts not listed are left as the clip has them
+const LGP_SPRING = {
+  pelvis: [8, 0.85], spine: [7, 0.8], chest: [6, 0.72], neck: [4.6, 0.62], head: [3.8, 0.58],
+  clavL: [5, 0.62], clavR: [5, 0.62], armL: [3.8, 0.55], armR: [3.8, 0.55], foreL: [4.2, 0.55], foreR: [4.2, 0.55], handL: [5, 0.6], handR: [5, 0.6]
+};
+const LGP_TAUS = [0, 0.012, 0.025, 0.04, 0.058, 0.08, 0.105, 0.135, 0.17, 0.21, 0.26, 0.32];
+// the filter weights for a spring: the impulse response of a damped second-order system sampled at the taus (trapezoid
+// rule), normalized so a held pose stays put; underdamped springs have a negative lobe (the overshoot)
+const LGP_W = (() => {
+  const out = {}, cache = {};
+  for (const k in LGP_SPRING) {
+    const [f, z] = LGP_SPRING[k], key = f + '|' + z; if (cache[key]) { out[k] = cache[key]; continue; }
+    const w = 2 * Math.PI * f, wd = w * Math.sqrt(Math.max(1e-4, 1 - z * z)), h = LGP_TAUS.map(t => Math.exp(-z * w * t) * Math.sin(wd * t) * w / Math.sqrt(Math.max(1e-4, 1 - z * z)));
+    const ws = LGP_TAUS.map((t, i) => { const a = i > 0 ? (t - LGP_TAUS[i - 1]) / 2 : 0, b = i < LGP_TAUS.length - 1 ? (LGP_TAUS[i + 1] - t) / 2 : 0; return h[i] * (a + b); });
+    const sum = ws.reduce((s, x) => s + x, 0) || 1; out[k] = cache[key] = ws.map(x => x / sum);
+  }
+  return out;
+})();
+const LGP_TMP = LGP_TAUS.map(() => lgPose()), LGP_RAW = lgPose();
+// the gear's springs (slow and lightly damped: a whippy antenna, a heavy pouch, light strap tails)
+const LGP_GW = (() => { const mk = (f, z) => { const w = 2 * Math.PI * f, wd = w * Math.sqrt(1 - z * z), h = LGP_TAUS.map(t => Math.exp(-z * w * t) * Math.sin(wd * t)), ws = LGP_TAUS.map((t, i) => { const a = i > 0 ? (t - LGP_TAUS[i - 1]) / 2 : 0, b = i < LGP_TAUS.length - 1 ? (LGP_TAUS[i + 1] - t) / 2 : 0; return h[i] * (a + b); }), sm = ws.reduce((s2, x) => s2 + x, 0) || 1; return ws.map(x => x / sm); }; return { antenna: mk(2.4, 0.18), dump: mk(3.2, 0.3), tail: mk(2.6, 0.22) }; })();
+const LGP_IDX = Object.keys(LGP_SPRING).map(n => [LGB[n], LGP_W[n], n]);
+// o: { noise (0..1, the micro-motion), springs (0..1, the overlap), free: [bone names left alone] }
+function lgpEval(a, t, P, ctx, o) {
+  o = o || {};
+  lgEvalClip(a, t, P, ctx);
+  if (!LGP.on) return P;
+  // (springs 0: the micro-motion alone, for the weakest devices; the past samples are most of the layer's cost)
+  if (o.springs !== 0) lgpSprings(a, t, P, ctx, o);
+  lgpNoise(P, t, o);
+  LGP.n++;
+  return P;
+}
+function lgpSprings(a, t, P, ctx, o) {
+  const tc = lgClipT(a, t);
+  // the clip's own past, a sample per tau (a looped clip wraps; a one-shot holds its first frame before it starts)
+  for (let k = 1; k < LGP_TAUS.length; k++) lgEvalClip(a, a.loop ? tc - LGP_TAUS[k] : Math.max(0, tc - LGP_TAUS[k]), LGP_TMP[k], ctx);
+  LGP_RAW.r.set(P.r); LGP_RAW.t.set(P.t);
+  const sk = o.springs == null ? 1 : o.springs;
+  for (const [bi, w, name] of LGP_IDX) {
+    if (bi == null) continue;
+    // an arm held by reach is placed by its target, not its angles: leave it
+    if ((name === 'armL' || name === 'foreL' || name === 'handL') && P.ik.handL) continue;
+    if ((name === 'armR' || name === 'foreR' || name === 'handR') && P.ik.handR) continue;
+    for (let c = 0; c < 3; c++) {
+      const i = bi * 3 + c; let y = P.r[i] * w[0];
+      for (let k = 1; k < LGP_TAUS.length; k++) y += LGP_TMP[k].r[i] * w[k];
+      P.r[i] += (y - P.r[i]) * sk;
+    }
+    if (name === 'pelvis') for (let c = 0; c < 3; c++) { const i = bi * 3 + c; let y = P.t[i] * w[0]; for (let k = 1; k < LGP_TAUS.length; k++) y += LGP_TMP[k].t[i] * w[k]; P.t[i] += (y - P.t[i]) * sk; }
+  }
+  // the kit on its hinges: each piece is a mass on a soft spring hung from the body, so it trails the body's motion and
+  // swings past: its deflection is how far the body moved from where the gear's spring (slower than the body's) has got to
+  if (LGB.antenna != null) {
+    const pi = LGB.pelvis * 3, ci = LGB.chest * 3, X = k => { const Q = k ? LGP_TMP[k] : LGP_RAW; return [Q.t[pi], Q.t[pi + 1], Q.t[pi + 2], Q.r[ci + 1] + Q.r[LGB.spine * 3 + 1], Q.r[ci] + Q.r[LGB.spine * 3]]; };
+    const xs = LGP_TAUS.map((_, k) => X(k)), defl = (w) => { const f = [0, 0, 0, 0, 0]; for (let k = 0; k < xs.length; k++) for (let c = 0; c < 5; c++) f[c] += xs[k][c] * w[k]; return f.map((v, c) => v - xs[0][c]); };
+    const dA = defl(LGP_GW.antenna), dD = defl(LGP_GW.dump), dT = defl(LGP_GW.tail), cl = (v, m) => clamp(v, -m, m);
+    lgJadd(P, 'antenna', cl(dA[1] * 5 + dA[4] * 1.2, 0.5), cl(-dA[2] * 7 + dA[0] * 4 + dA[3] * 1.4, 0.6), 0);
+    lgJadd(P, 'dump', cl(dD[1] * 6, 0.6), cl(dD[2] * 8 - dD[0] * 5, 0.7), 0);
+    lgJadd(P, 'tailL', cl(dT[1] * 9, 0.9), cl(dT[2] * 12 - dT[0] * 8 + dT[3] * 2, 1.0), 0);
+    lgJadd(P, 'tailR', cl(dT[1] * 9, 0.9), cl(dT[2] * 12 - dT[0] * 8 + dT[3] * 2, 1.0), 0);
+  }
+}
+// micro-motion: slow sway over the feet, small corrections of the trunk and head, a breath
+function lgpNoise(P, t, o) {
+  const nz = (o.noise == null ? 1 : o.noise), s = o.seed || 0;
+  if (nz > 0) {
+    const pi = LGB.pelvis * 3;
+    P.t[pi + 1] += lgN1(t * 0.22, 11 + s) * 0.006 * nz; P.t[pi] += lgN1(t * 0.18, 13 + s) * 0.004 * nz;
+    lgJadd(P, 'spine', lgN1(t * 0.35, 17 + s) * 0.006 * nz, lgN1(t * 0.3, 19 + s) * 0.006 * nz, lgN1(t * 0.25, 23 + s) * 0.008 * nz);
+    lgJadd(P, 'neck', lgN1(t * 0.6, 29 + s) * 0.008 * nz, lgN1(t * 0.5, 31 + s) * 0.01 * nz, lgN1(t * 0.45, 37 + s) * 0.012 * nz);
+    lgJadd(P, 'head', lgN1(t * 0.9, 41 + s) * 0.006 * nz, lgN1(t * 0.8, 43 + s) * 0.008 * nz, lgN1(t * 0.7, 47 + s) * 0.01 * nz);
+    const br = Math.sin(t * TAU / 4.4 + s) * nz; lgJadd(P, 'chest', 0, -0.008 * br, 0); lgJadd(P, 'clavL', 0.006 * br, 0, 0); lgJadd(P, 'clavR', -0.006 * br, 0, 0);
+  }
+}
+
 /* ================= LEGEND v2 in a run: a body with weight, hands that hold each gun, the head that leads =================
    1.9.993. The survivor seen from above is three frames now, not one: the legs, the upper body with the arms and the
    gun, and the head. Each turns on its own, the way a person turns, from the references (README > what was studied):
@@ -28424,7 +29052,7 @@ lgClip('death_crumple', 'Crumples', 'Down', 1.6, false, LG_SRC.merc, 'Straight d
      a planted foot really travels in a cycle, and the steps are paced by that, so the feet do not slide. */
 const LGV = { on: true, made: 0, ms: 0, miss: {}, fix: {}, tries: {}, first: {}, stuck: {}, stride: {}, learnt: 0, bodies: new WeakMap() };
 // which bones each layer shows
-const LGV_LEGS = ['root', 'pelvis', 'thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'];
+const LGV_LEGS = ['root', 'pelvis', 'thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR', 'dump'];
 const LGV_HEAD = ['head', 'mBrow', 'mCheekL', 'mCheekR', 'mJawL', 'mJawR', 'mChin', 'mVisor'];
 const LGV_PIST = ['pistol', 'slide', 'mag'];
 function lgvMask(show) { const h = new Uint8Array(LG_NB_MAX).fill(1); for (const n of show) if (LGB[n] != null) h[LGB[n]] = 0; return h; }
@@ -28742,29 +29370,49 @@ function lgvStep(p, B) {
   if (sprint || dodge) hT = head;
   lgvTurn(B, 'head', 'vH', hT, 24, dt);
   // the shoulders follow the head (and carry the gun to the aim); a long gun swings heavier than a pistol
-  const heavy = p.weapon && p.weapon.slot === 'primary' ? 1 : 0.7, cT = sprint || dodge ? head : aim + angD(B.head, aim) * 0.25;
+  // (1.9.996: the gun stays on the aim; the eyes scanning no longer drag the chest, the gun and its light round with them)
+  const heavy = p.weapon && p.weapon.slot === 'primary' ? 1 : 0.7, cT = sprint || dodge ? head : aim + angD(B.head, aim) * 0.05;
   lgvTurn(B, 'chest', 'vC', cT, (focus > 0.5 ? 15 : 10) / Math.sqrt(heavy), dt);
-  // the legs: toward the walk, sidestepping across the aim, backing away from it; standing, they step round when the
-  // torso has twisted too far over them
-  let lT = B.leg, clip = 'idle_ready';
-  if (dodge) { lT = Math.atan2(p.dashDy || 0, p.dashDx || 1); clip = 'dodge'; }
+  // 1.9.996: the legs on LOCO, the gait engine. The hips turn toward the way he moves (at most 45 degrees off the chest,
+  // which stays on the aim), the steps go the rest of the way; past 100 degrees from the aim he moves backwards. The
+  // speed picks the gait (a walk, a run, a sprint) at the real cadence, and the phase advances by the ground covered, so a
+  // planted foot does not slide. Standing, the feet stay put until the chest has turned too far over them, then step round.
+  let clip = 'idle_ready';
+  const L = B.loco || (B.loco = { hip: 0, vh: 0, back: false, dir: 0, v: 0, turn: 0 });
+  if (dodge) { B.leg = Math.atan2(p.dashDy || 0, p.dashDx || 1); L.hip = angD(B.leg, B.chest); L.vh = 0; clip = 'dodge'; }
   else if (p.down) clip = 'down';
-  else if (mv) {
-    const rel = angD(head, B.chest);
-    if (sprint) { lT = head; clip = 'sprint'; }
-    else if (Math.abs(rel) < 1.0) { lT = head; clip = sp > 4 ? 'run' : 'walk_tac'; }
-    else if (Math.abs(rel) > 2.25) { lT = head + Math.PI; clip = 'backpedal'; }
-    else { lT = B.chest; clip = rel > 0 ? 'strafe_l' : 'strafe_r'; }
-  } else {
-    const tw = angD(B.chest, B.leg);
-    if (Math.abs(tw) > 0.75 || B.turning) { B.turning = Math.abs(tw) > 0.12; lT = B.chest; if (B.turning) { clip = tw > 0 ? 'strafe_l' : 'strafe_r'; B.turnPh += dt * 1.6; } }
+  else {
+    L.v += (sp - L.v) * Math.min(1, dt * 8);
+    let tgt = L.hip;
+    if (mv) {
+      const rel = angD(head, B.chest);
+      if (L.back && Math.abs(rel) < 1.6) L.back = false; else if (!L.back && Math.abs(rel) > 1.85) L.back = true;
+      const r2 = L.back ? angD(rel, Math.PI) : rel; tgt = clamp(r2, -0.78, 0.78);
+      L.dir = angD(r2, tgt); L.turn = 0; clip = 'loco';
+    } else if (B.stopPh != null || (B.clip === 'loco' && !L.turn)) {
+      // 1.9.996: a stop: the step under way is finished, quickly, and the foot planted (the next heel strike) before he
+      // settles into his stance, instead of the legs melting from mid-stride into the stand
+      if (B.stopPh == null) B.stopPh = B.ph < 0.5 ? 0.5 : 1;
+      clip = 'loco'; L.dir = L.dir || 0;
+    } else {
+      // standing: the hips hold until the chest is more than about 45 degrees round, then the feet step round under it
+      if (Math.abs(L.hip) > 0.8 || L.turn) { L.turn = Math.abs(L.hip) > 0.1 ? 1 : 0; tgt = 0; if (L.turn) { clip = 'turn'; B.turnPh += dt * 1.7; } }
+      L.dir = L.turn ? (L.hip > 0 ? -0.78 : 0.78) : 0;
+    }
+    // the hips as a mass on a spring (relative to the chest); the chest's own turn drags them while the feet are planted
+    const w = mv || L.turn ? 11 : 6, x = L.hip - tgt; L.vh += (-w * w * x - 2 * w * L.vh) * dt; L.hip += L.vh * dt;
+    if (!mv && !L.turn) L.hip -= angD(B.chest, B.chestWas == null ? B.chest : B.chestWas);
+    L.hip = clamp(L.hip, -0.95, 0.95); B.leg = B.chest + L.hip;
+    // (the painted gait changes bucket only once the new speed has held for a moment: a start or a stop passes through
+    // the slow buckets in a fifth of a second, and painting whole series for that cost the frame rate, most in co-op;
+    // the phase still advances by the real speed over the shown gait's stride, so the feet keep the ground)
+    if (mv) { B.stopPh = null; const vt = lgvVB(L.v); if (B.vb == null || vt === B.vb) { B.vbC = vt; B.vbT = 0; } else { if (B.vbC !== vt) { B.vbC = vt; B.vbT = 0; } B.vbT += dt; if (B.vbT > 0.22) B.vb = vt; } if (B.vb == null) B.vb = vt;
+      const G = locoParams(B.vb, { back: L.back, load: 0.3 }); B.ph = (B.ph + (G.stride > 0 ? sp / G.stride : 0) * dt) % 1; }
+    else if (B.stopPh != null) { const rem = B.stopPh - B.ph; if (rem <= 0.004 || rem > 0.6) { B.ph = B.stopPh % 1; B.stopPh = null; B.clip = clip = 'idle_ready'; } else B.ph += Math.min(rem, dt * Math.max(2.2, rem / 0.13)); }
+    else if (L.turn) { B.ph = B.turnPh % 1; }
+    else { const near = Math.round(B.ph * 2) / 2; B.ph += (near - B.ph) * Math.min(1, dt * 3); }
   }
-  lgvTurn(B, 'leg', 'vL', lT, mv || B.turning ? 11 : 6, dt);
-  // the twist never goes past what a spine can do: the hips are dragged round
-  const tw = angD(B.chest, B.leg); if (Math.abs(tw) > 1.3) B.leg = B.chest - Math.sign(tw) * 1.3;
-  // the feet keep pace with the ground (each walk's real stride, measured)
-  const stride = LGV.stride[clip] || { walk_tac: 1.25, run: 2.6, sprint: 3.3, backpedal: 0.82, strafe_l: 0.72, strafe_r: 0.72 }[clip] || 1.3;
-  if (mv) B.ph = (B.ph + sp * dt / stride) % 1; else if (B.turning) B.ph = B.turnPh % 1;
+  B.chestWas = B.chest;
   B.clip = clip;
   // the upper body on its spring: it leans into the walk and swings on a stop; recoil pushes it back
   const lx = clamp(B.vx / u * 0.018, -0.07, 0.07), ly = clamp(B.vy / u * 0.018, -0.07, 0.07);
@@ -28788,9 +29436,14 @@ function lgvStep(p, B) {
 }
 
 /* ---------- frames: legs, upper body, head ---------- */
-const LGV_LEGCLIP = { idle_ready: 'idle_ready', walk_tac: 'walk_tac', run: 'run', sprint: 'sprint', backpedal: 'backpedal', strafe_l: 'strafe_l', strafe_r: 'strafe_r' };
+// 1.9.996: the speeds the legs are painted at (m/s): a walk, a fast walk, a jog, a run, a fast run, a sprint; the game's own
+// speeds fall into a few of them (the run's 4.6 to 5.4 into 4.8, the sprint into 7.8), so few frames are needed
+// leg frames painted per gait cycle (12: about 18 a second at a run's cadence, plenty for legs seen from above)
+const LGV_LEGN = 12;
+const LGV_VB = [1.3, 2.4, 3.6, 4.8, 6.2, 7.8];
+function lgvVB(v) { let b = LGV_VB[0], d = Infinity; for (const x of LGV_VB) { const e = Math.abs(x - v); if (e < d) { d = e; b = x; } } return b; }
 // each layer's frame: [left, right, top, bottom] in sprite units around its centre (forward is right; the gun reaches far)
-const LGV_BOX = { legs: [-36, 36, -24, 24], up: [-30, 62, -34, 38], head: [-11, 14, -11, 11], full: [-52, 52, -52, 52] };   // (1.9.994: the head's frame has room for the mask's front)
+const LGV_BOX = { legs: [-38, 38, -30, 30], up: [-30, 62, -34, 38], head: [-11, 14, -11, 11], full: [-52, 52, -52, 52] };   // (1.9.994: the head's frame has room for the mask's front)
 function lgvModelKey(p) {
   const cls = p === G.p ? (SET.legendClass || 'attack') : (p.lc || 'attack'), a = p.arm;
   let gp = 'm4a1', gs = 'm17';
@@ -28821,14 +29474,15 @@ function lgvPaint(lgId, mk, f, hide, box, px, centre) {
   const dt = performance.now() - t0; LGV.made++; LGV.ms += dt; LG.spriteMade++; LG.spriteMs += dt; coreCost('LEGEND', dt);
   return { o: o, W: W, P: P, gp: mk.gp, gs: mk.gs };
 }
-// one frame, any layer, cached; the key says everything it depends on
+// one frame, any layer, cached; the key says everything it depends on (1.9.996: room for each teammate's frames too, so
+// three legends in co-op do not push each other's frames out and repaint them every few seconds)
 function lgvGet(key, make) {
   let s = LG.sprites.get(key);
   if (s) { LG.sprites.delete(key); LG.sprites.set(key, s); return s; }
   if (LG.spriteBudget <= 0) return undefined;
   LG.spriteBudget--;
   try { s = make(); } catch (e) { lgHurt(e); s = null; }
-  if (s) { LG.sprites.set(key, s); const cap = [200, 260, 360, 480][LG.lvl | 0] || 360; while (LG.sprites.size > cap) LG.sprites.delete(LG.sprites.keys().next().value); }
+  if (s) { LG.sprites.set(key, s); const mates = typeof NET !== 'undefined' && NET.started ? (NET.role === 'host' ? NET.peers.size : NET.others.size) : 0, cap = Math.min(640, Math.round(([200, 260, 360, 480][LG.lvl | 0] || 360) * (1 + 0.3 * Math.min(3, mates)))); while (LG.sprites.size > cap) LG.sprites.delete(LG.sprites.keys().next().value); }
   return s;
 }
 // the nearest frame already painted of a series (while a new one waits its turn)
@@ -28870,6 +29524,12 @@ function lgvMeasure1(r, fam, gun) {
   const mi = fam === 'p' ? LGB.pistol : LGB.carbine, mo = lgSockFor(fam === 'p' ? 'pistol' : 'carbine', 'muz'), MW = W.subarray(mi * 16, mi * 16 + 16), mz = lgPt(MW, mo[0], mo[1], mo[2]);
   o.mx = mz[0] / LG_UNIT; o.my = -mz[1] / LG_UNIT;
   const h = LGB.head * 16; o.hx = W[h + 12] / LG_UNIT; o.hy = -W[h + 13] / LG_UNIT;
+  // 1.9.996: the weapon light: where its lens is and which way the barrel really points, seen from above (the beam starts
+  // at the light and goes along the bore, whatever the head is doing); a gun without a light throws it from the muzzle
+  { const gk = fam === 'p' ? r.gs : r.gp, D = gk && LG_GUN_DEF[gk], lp = D && D.light ? D.light : null, lz = lp ? lgPt(MW, lp[0], lp[1], lp[2]) : mz;
+    o.lx = lz[0] / LG_UNIT; o.ly = -lz[1] / LG_UNIT;
+    const x0 = (lp ? lp[0] : mo[0]), f = lgPt(MW, x0, 0, 0), b = lgPt(MW, x0 - 0.3, 0, 0), dx = f[0] - b[0], dy = f[1] - b[1];
+    o.ba = Math.hypot(dx, dy) > 0.02 ? Math.atan2(-dy, dx) : 0; o.bd = clamp(Math.hypot(dx, dy) / 0.3, 0, 1); }
   // learning: the support hand on the gun -- did it get there? (gun is 'm4a1:ready': each gun in each posture)
   if (gun && P.ik.handL && P.ik.handL.on) {
     const PM = W.subarray(LGB[P.ik.handL.on] * 16, LGB[P.ik.handL.on] * 16 + 16), S = lgSockFor(P.ik.handL.on, 'gripL'), Gm = lgMul(lgM4(), PM, S), hl = LGB.handL * 16;
@@ -28938,11 +29598,28 @@ function lgvDraw(p, ctx2) {
     ctx2.save(); ctx2.rotate(d); img(s, s.box); ctx2.restore();
     const cr = Math.cos(d), sr = Math.sin(d); p.lgAim = aim + d; return { mx: s.mx * cr - s.my * sr, my: s.mx * sr + s.my * cr };
   }
-  // legs (the holstered pistol on the hip goes with them while the long gun is out)
-  const lc = LGV_LEGCLIP[B.clip] || 'idle_ready', la = LG_ANIM_BY[lc] || LG_ANIM_BY.idle_ready, nL = lc === 'idle_ready' ? 1 : 16, iL = lc === 'idle_ready' ? 0 : Math.floor(B.ph * nL) % nL;
-  const holP = fam === 'c' ? 1 : 0;
-  if (!LGV.stride[lc] && lc !== 'idle_ready') lgvLearnStride(lc);
-  const legs = lgvLayer('legs' + holP, lgId, mk, lc, iL, nL, px, () => { const r = lgvPaint(lgId, mk, P => { lgEvalClip(la, lc === 'idle_ready' ? 0 : iL / nL * la.dur, P, { run: true, wc: 'r' }); P.pistol.at = 'holster'; }, holP ? LGV_M.legsH : LGV_M.legs, LGV_BOX.legs, px, null); return r ? r.o : null; });
+  // legs (the holstered pistol on the hip goes with them while the long gun is out): 1.9.996, LOCO's gait at the speed's
+  // bucket, the steps' direction (straight, or 45 degrees to either side of the hips) and forward or back; a change of
+  // gait cross-fades over a few frames instead of jumping
+  const holP = fam === 'c' ? 1 : 0, Lo = B.loco || {};
+  if (!B.legs) B.legs = { key: '', prev: '', fade: 0, t: G.time || 0 };
+  // (the steps' direction with a little hysteresis, so sweeping the aim while moving does not flicker between series)
+  const moving = B.clip === 'loco' || B.clip === 'turn', vb = moving ? (B.clip === 'turn' ? 1.3 : (B.vb || 1.3)) : 0, ad = Math.abs(Lo.dir || 0);
+  if (!moving) B.dirB = 0; else if (ad > 0.45) B.dirB = Lo.dir > 0 ? 1 : -1; else if (ad < 0.33) B.dirB = 0;
+  const dirB = moving ? (B.dirB || 0) : 0, bk = moving && Lo.back ? 1 : 0;
+  const nL = moving ? LGV_LEGN : 1, iL = moving ? Math.floor(B.ph * nL) % nL : 0, lkey = moving ? 'loco|' + vb + '|' + dirB + '|' + bk : 'stand';
+  const LS = B.legs, now = G.time || 0, ldt = clamp(now - LS.t, 0, 0.1); LS.t = now;
+  if (lkey !== LS.key) { LS.prev = LS.key; LS.fade = LS.key ? 1 : 0; LS.key = lkey; }
+  LS.fade = Math.max(0, LS.fade - ldt / 0.16);
+  const legLayer = (key, i, n) => lgvLayer('legs' + holP, lgId, mk, key, i, n, px, () => {
+    const parts = key.split('|'), r = lgvPaint(lgId, mk, P => {
+      if (parts[0] === 'loco') locoPose(P, i / n, { v: +parts[1], dir: +parts[2] * 0.785, back: parts[3] === '1', load: 0.3, arms: 'hold' });
+      else { lgEvalClip(LG_ANIM_BY.idle_ready, 0, P, { run: true, wc: 'r' }); }
+      P.pistol.at = 'holster';
+    }, holP ? LGV_M.legsH : LGV_M.legs, LGV_BOX.legs, px, null);
+    return r ? r.o : null;
+  });
+  const legs = legLayer(lkey, iL, nL), legsPrev = LS.fade > 0 && LS.prev ? legLayer(LS.prev, LS.prev === 'stand' ? 0 : Math.floor(B.ph * LGV_LEGN) % LGV_LEGN, LS.prev === 'stand' ? 1 : LGV_LEGN) : null;
   // the upper body: its ARMS series
   const up = lgvLayer('up', lgId, mk, U.st + fam + (U.ctx.gun || '') + (U.sub || ''), U.i, U.n, px, () => lgvMakeUp(lgId, mk, U.st, U.i, U.n, U.ctx, px));
   // the head: the mask on, level or looking down at the hands
@@ -28953,7 +29630,7 @@ function lgvDraw(p, ctx2) {
   const kick = B.kick.x / LG_UNIT, cant = B.cant.x, dC = angD(B.chest, aim), dH = angD(B.head, aim), dL = angD(B.leg, aim);
   const ca = Math.cos(-aim), sa = Math.sin(-aim), lx = (B.lean.x * ca - B.lean.y * sa) / LG_UNIT, ly = (B.lean.x * sa + B.lean.y * ca) / LG_UNIT;
   const cdx = Math.cos(dC), cdy = Math.sin(dC), sideX = cdy * cant * 7, sideY = -cdx * cant * 7;
-  ctx2.save(); ctx2.rotate(dL); img(legs, legs.box); ctx2.restore();
+  ctx2.save(); ctx2.rotate(dL); if (legsPrev) { img(legsPrev, legsPrev.box); ctx2.globalAlpha = 1 - LS.fade; } img(legs, legs.box); ctx2.globalAlpha = 1; ctx2.restore();
   const ox = lx + sideX + cdx * kick, oy = ly + sideY + cdy * kick, rot = dC - cant * 0.1 + B.kick.x * 0.5;
   ctx2.save(); ctx2.translate(ox, oy); ctx2.rotate(rot); img(up, up.box); ctx2.restore();
   const cr = Math.cos(rot), sr = Math.sin(rot);
@@ -28964,6 +29641,7 @@ function lgvDraw(p, ctx2) {
   // where the muzzle is (the flash and the smoke) and where the gun really points (the flashlight)
   const mxr = ox + up.mx * cr - up.my * sr, myr = oy + up.mx * sr + up.my * cr;
   p.lgAim = aim + rot; p.lgMx = mxr; p.lgMy = myr; p.lgFocus = p.arm ? p.arm.focus : 1;
+  if (up.lx != null) { p.lgLx = ox + up.lx * cr - up.ly * sr; p.lgLy = oy + up.lx * sr + up.ly * cr; p.lgBeam = aim + rot + (up.ba || 0); p.lgBeamD = up.bd == null ? 1 : up.bd; }
   return { mx: mxr, my: myr };
 }
 // the run's frames painted ahead, a few at a time (the main menu, the loader): the loadout's relaxed, ready and walk
@@ -28971,14 +29649,14 @@ function lgvWarm(n) {
   if (!LGV.on || SET.legend === 'none' || !LG.atlas || !LG.atlas.done || typeof armsLoad !== 'function') return 0;
   const W0 = armsPrimary(), W1 = armsSecondary(), fake = { arm: { w: [W0, W1] }, weapon: W0, lc: SET.legendClass || 'attack' }, lgId = SET.legend || 'operator', mk = lgvModelKey(fake), px = SPR * PK;
   const ctx = { run: true, fam: 'c', gun: W0.arms.key, kind: W0.arms.reload.kind, rk: 'tac', keep: false, t: 0 };
-  const jobs = [['up', 'relaxed', 6], ['up', 'ready', 6], ['up', 'raise', 4], ['legs1', 'idle_ready', 1], ['legs1', 'walk_tac', 16], ['head', 'h', 2]];
+  const jobs = [['up', 'relaxed', 6], ['up', 'ready', 6], ['up', 'raise', 4], ['legs1', 'stand', 1], ['legs1', 'loco|4.8|0|0', LGV_LEGN], ['head', 'h', 2]];
   let made = 0;
   for (const [kind, st, cnt] of jobs) for (let i = 0; i < cnt && made < n; i++) {
     const sk = kind === 'up' ? st + 'c' + W0.arms.key : st, base = lgvBase(kind, lgId, mk, sk, px); if (LG.sprites.has(base + i)) continue;
     LG.spriteBudget = 1;
     if (kind === 'up') lgvLayer('up', lgId, mk, sk, i, cnt, px, () => lgvMakeUp(lgId, mk, st, i, cnt, ctx, px));
     else if (kind === 'head') lgvLayer('head', lgId, mk, 'h', i, 2, px, () => { const r = lgvPaint(lgId, mk, P => { lgBase(P, { crouch: 0.04, lean: 0.12 }); P.mask = 1; if (i) lgJadd(P, 'head', 0, 0.5, 0); }, LGV_M.head, LGV_BOX.head, px, LGB.head); return r ? r.o : null; });
-    else { const la = LG_ANIM_BY[st]; lgvLayer(kind, lgId, mk, st, i, cnt, px, () => { const r = lgvPaint(lgId, mk, P => { lgEvalClip(la, st === 'idle_ready' ? 0 : i / cnt * la.dur, P, { run: true, wc: 'r' }); P.pistol.at = 'holster'; }, LGV_M.legsH, LGV_BOX.legs, px, null); return r ? r.o : null; }); }
+    else { const parts = st.split('|'); lgvLayer(kind, lgId, mk, st, i, cnt, px, () => { const r = lgvPaint(lgId, mk, P => { if (parts[0] === 'loco') locoPose(P, i / cnt, { v: +parts[1], dir: +parts[2] * 0.785, back: parts[3] === '1', load: 0.3, arms: 'hold' }); else lgEvalClip(LG_ANIM_BY.idle_ready, 0, P, { run: true, wc: 'r' }); P.pistol.at = 'holster'; }, LGV_M.legsH, LGV_BOX.legs, px, null); return r ? r.o : null; }); }
     made++;
   }
   // 1.9.994: the knife's first moves with the sidearm (stick, two-step, the point-blank shot), so the first chain is not
@@ -29480,13 +30158,18 @@ function mimZArms(P, t, k, o) {
   lgArm(P, 'L', -1.25 * k + w, 0.18 + 0.1 * k, 0.2, 0.3 + 0.25 * Math.abs(w), -0.2); lgArm(P, 'R', -1.15 * k + w2, 0.2 + 0.1 * k, -0.2, 0.35 + 0.25 * Math.abs(w2), -0.2);
   P.grip.L = P.grip.R = 'claw';
 }
-lgClip('z_rush', 'Rush (the dead)', 'Actors', 0.62, true, '', 'A lurching sprint, arms out ahead, head forward.', (P, t, ctx, a) => {
-  lgGait(P, t / a.dur, { stride: 1.9, st: 0.42, lift: 0.14, crouch: 0.08, bob: 0.05, lean: 0.38, yaw: 0.16, sway: 0.04, heel: 1, run: true, w: 0.13 });
-  mimZArms(P, t, 1); lgLookAt(P, Math.sin(t * 5) * 0.15, -0.35, Math.sin(t * 4) * 0.25);
-}, [[0, 'zstep'], [0.31, 'zstep']]);
-lgClip('z_shamble', 'Shamble (the dead)', 'Actors', 1.5, true, '', 'A dragging walk, one foot scuffing.', (P, t, ctx, a) => {
-  lgGait(P, t / a.dur, { stride: 0.9, st: 0.68, lift: 0.04, crouch: 0.06, bob: 0.03, lean: 0.25, yaw: 0.1, sway: 0.06, heel: 1, w: 0.14 });
-  mimZArms(P, t, 0.7); lgLookAt(P, Math.sin(t * 1.3) * 0.3, -0.2, 0.35);
+// 1.9.996: the dead move on LOCO too (their speeds matched to their paths in the alley, so the feet hold the ground): a
+// lurching run pitched far forward on a wide base, a fast stagger, a shamble with one foot dragging
+const MIM_ZG = { rush: { v: 3.5, lean: 0.42, crouch: 0.05, width: 0.16, load: 0 }, lunge: { v: 1.7, lean: 0.35, crouch: 0.05, width: 0.17, load: 0, drag: 0.35 }, shamble: { v: 0.45, lean: 0.28, crouch: 0.06, width: 0.18, load: 0, drag: 0.7 } };
+function mimZGait(P, t, g) { locoPose(P, t * locoParams(g.v, g).cad, Object.assign({ arms: 'hold' }, g)); }
+lgClip('z_rush', 'Rush (the dead)', 'Actors', +(1 / locoParams(MIM_ZG.rush.v, MIM_ZG.rush).cad).toFixed(4), true, '', 'A lurching run, pitched far forward on a wide base, arms out ahead, head forward.', (P, t, ctx, a) => {
+  mimZGait(P, t, MIM_ZG.rush); mimZArms(P, t, 1); lgLookAt(P, Math.sin(t * 5) * 0.15, -0.35, Math.sin(t * 4) * 0.25);
+}, [[0, 'zstep'], [+(0.5 / locoParams(MIM_ZG.rush.v, MIM_ZG.rush).cad).toFixed(4), 'zstep']]);
+lgClip('z_lunge', 'Stagger (the dead)', 'Actors', +(1 / locoParams(MIM_ZG.lunge.v, MIM_ZG.lunge).cad).toFixed(4), true, '', 'A fast stagger, one foot scuffing, arms out ahead.', (P, t, ctx, a) => {
+  mimZGait(P, t, MIM_ZG.lunge); mimZArms(P, t, 0.9); lgLookAt(P, Math.sin(t * 3) * 0.2, -0.3, Math.sin(t * 2.5) * 0.3);
+}, [[0, 'zstep'], [+(0.5 / locoParams(MIM_ZG.lunge.v, MIM_ZG.lunge).cad).toFixed(4), 'zstep']]);
+lgClip('z_shamble', 'Shamble (the dead)', 'Actors', +(1 / locoParams(MIM_ZG.shamble.v, MIM_ZG.shamble).cad).toFixed(4), true, '', 'A dragging walk, one foot scuffing.', (P, t, ctx, a) => {
+  mimZGait(P, t, MIM_ZG.shamble); mimZArms(P, t, 0.7); lgLookAt(P, Math.sin(t * 1.3) * 0.3, -0.2, 0.35);
 });
 lgClip('z_burst', 'Burst out (the dead)', 'Actors', 0.45, false, '', 'Through the door, shoulder first.', (P, t) => {
   lgBase(P, { crouch: 0.12, lean: 0.4, stance: false }); lgFoot(P, 'L', lgK(t, [[0, -0.1], [0.3, 0.35]]), 0.13, lgPulse(t, 0, 0.3) * 0.12, 0, 0, 0); lgFoot(P, 'R', -0.15, -0.13, 0, 0.3, 0, -0.3);
@@ -29496,22 +30179,33 @@ lgClip('z_rise', 'Rise (the dead)', 'Actors', 0.6, false, '', 'Up from behind co
   const k = lgK(t, [[0, 0], [0.6, 1, 'o']]); lgBase(P, { crouch: lgLerp(0.5, 0.08, k), lean: lgLerp(0.7, 0.35, k), stance: false }); lgStance(P, 0.14, 0.1, 0.2);
   mimZArms(P, t, k * 0.8); lgLookAt(P, 0, lgLerp(0.4, -0.3, k), 0.3);
 });
-lgClip('z_hs', 'Head shot (the dead)', 'Actors', 1.2, false, '', 'The head snaps back and the legs go; it slides on its back in the water.', (P, t) => {
-  const k = lgK(t, [[0, 0], [0.08, 0.2, 'o'], [0.75, 1, 'i3'], [0.82, 0.97], [1.2, 1]]), snap = lgK(t, [[0, 0], [0.06, 1, 'o3'], [0.4, 0.6], [1.2, 0.4]]);
+// the head shot: the head snaps back and the legs go. The arms start where the clip before left them (out ahead in a
+// lunge, or clawing at a knife in the collar) and then fall away loose; a0 = [pitch, out, twist, elbow, wrist] per side
+function mimHS(P, t, a0L, a0R) {
+  // (1.9.996: the body goes the instant the head is hit: the knees fold and it drops as a dead weight, faster as it falls,
+  // and lands with a small rebound; it does not stand there first)
+  const k = lgK(t, [[0, 0], [0.05, 0.1, 'o'], [0.5, 1, 'i'], [0.58, 0.95, 'o'], [0.7, 1, 'io'], [1.2, 1]]), snap = lgK(t, [[0, 0], [0.06, 1, 'o3'], [0.4, 0.6], [1.2, 0.4]]);
   lgPelvis(P, -0.55 * k, 0, -0.84 * k, 0, -1.45 * k, 0.1 * k);
   lgFoot(P, 'L', lgLerp(0.1, 0.25, k), 0.15, 0.1 * k, -0.6 * k, 0.3 * k, 0); lgFoot(P, 'R', lgLerp(-0.1, 0.3, k), -0.17, 0.15 * k, -0.5 * k, -0.4 * k, 0);
   lgSpine(P, -0.2 * k, 0.1, 0); lgLookAt(P, 0.3 * snap, -1.1 * snap, 0.4 * snap);
-  lgArm(P, 'L', lgLerp(-1.2, -1.9, k), 0.3 + 0.6 * k, 0, 0.3, 0.2); lgArm(P, 'R', lgLerp(-1.1, -1.4, k), 0.3 + 0.9 * k, 0, 0.5, 0.2); P.grip.L = P.grip.R = 'relax';
-});
+  // (1.9.996: raised overhead they read as hands up; they fly out a little and drop)
+  const fl = lgK(t, [[0, 0], [0.1, 0.05], [0.45, 0.7, 'i'], [0.6, 1, 'o'], [1.2, 1]]), L1 = [-0.25, 0.95, -0.2, 0.2, 0.2], R1 = [-0.2, 1.05, 0.2, 0.25, 0.2];
+  lgArm(P, 'L', ...a0L.map((v, i) => lgLerp(v, L1[i], fl))); lgArm(P, 'R', ...a0R.map((v, i) => lgLerp(v, R1[i], fl))); P.grip.L = P.grip.R = fl > 0.6 ? 'relax' : 'claw';
+}
+lgClip('z_hs', 'Head shot (the dead)', 'Actors', 1.2, false, '', 'The head snaps back and the legs go; it slides on its back in the water.', (P, t) => mimHS(P, t, [-1.12, 0.27, 0.2, 0.35, -0.2], [-1.03, 0.29, -0.2, 0.4, -0.2]));
+lgClip('z_hs_collar', 'Head shot, knifed (the dead)', 'Actors', 1.2, false, '', 'Shot with its hands at the knife in its collar: the head snaps back and the hands fall away.', (P, t) => mimHS(P, t, [-0.55, 0.5, -0.6, 2.35, -0.3], [-0.4, 0.05, -0.6, 2.35, -0.3]));
 lgClip('z_grab', 'Grab (the dead)', 'Actors', 0.3, false, '', 'Hands on the target.', (P, t) => {
   lgBase(P, { crouch: 0.1, lean: 0.35, stance: false }); lgFoot(P, 'L', 0.2, 0.12, 0, 0, 0.1, 0); lgFoot(P, 'R', -0.15, -0.14, 0, 0.3, -0.1, -0.3);
   lgArm(P, 'L', -1.5, 0.15, 0.3, 0.6, -0.3); lgArm(P, 'R', -1.45, 0.2, -0.3, 0.7, -0.3); P.grip.L = P.grip.R = 'fist'; lgLookAt(P, 0, -0.1, 0.2);
 });
 lgClip('z_thrown', 'Thrown (the dead)', 'Actors', 0.6, false, '', 'Over the hip and down on its back.', (P, t, ctx) => {
-  const k = lgK(t, [[0, 0], [0.5, 1, 'l']]);
-  lgPelvis(P, 0, 0, 0, 0, 0, 0); lgSpine(P, 0.3 * Math.sin(k * Math.PI), 0, 0);
-  for (const s of ['L', 'R']) { lgJ(P, 'thigh' + s, 0, lgLerp(0, -0.8, Math.sin(k * Math.PI)), 0); lgJ(P, 'shin' + s, 0, lgLerp(0.2, 0.7, Math.sin(k * Math.PI)), 0); }
-  lgArm(P, 'L', -1.2 - 0.8 * k, 0.4 + 0.6 * k, 0, 0.5, 0); lgArm(P, 'R', -1.3 - 0.6 * k, 0.5 + 0.7 * k, 0, 0.5, 0); P.grip.L = P.grip.R = 'open';
+  // (1.9.996: a thrown body is not a plank: the legs fold and scissor apart as it goes over, the arms flail for
+  // something to hold, the back curls)
+  const k = lgK(t, [[0, 0], [0.5, 1, 'l']]), f = Math.sin(Math.min(1, k) * Math.PI);
+  lgPelvis(P, 0, 0, 0, 0, 0, 0); lgSpine(P, 0.35 * f, 0.08 * Math.sin(t * 7), 0.1 * f);
+  lgJ(P, 'thighL', 0.28 * f, -0.2 - 0.95 * f, 0); lgJ(P, 'shinL', 0, 0.35 + 1.0 * f, 0);
+  lgJ(P, 'thighR', -0.2 * f, -0.1 - 0.35 * f + 0.3 * f * Math.sin(t * 9), 0); lgJ(P, 'shinR', 0, 0.25 + 0.55 * f + 0.2 * Math.sin(t * 11), 0);
+  lgArm(P, 'L', -1.2 - 0.9 * k + 0.35 * Math.sin(t * 11), 0.45 + 0.6 * k, 0.2, 0.55 + 0.4 * Math.sin(t * 9 + 1), 0); lgArm(P, 'R', -1.3 - 0.6 * k + 0.35 * Math.sin(t * 10 + 2), 0.55 + 0.7 * k, -0.2, 0.5 + 0.45 * Math.sin(t * 8), 0); P.grip.L = P.grip.R = 'open';
   lgLookAt(P, 0, 0.4 * k, 0);
 });
 lgClip('z_pinned', 'Pinned (the dead)', 'Actors', 1.0, true, '', 'On its back, thrashing and reaching up.', (P, t) => {
@@ -29537,8 +30231,10 @@ lgClip('c_fire', 'Snap and fire', 'Cinematic', 0.7, false, LG_SRC.iso, 'Low read
 }, [[0.25, 'shot']]);
 lgClip('c_throw', 'Grabbed, then the throw', 'Cinematic', 1.5, false, LG_SRC.ogoshi, 'Hands on him; he turns his back into it, hips under its hips, lifts and throws it over.', (P, t) => {
   // 0-0.25 grabbed; 0.25-0.6 turn in (the root turns half round, outside this clip); 0.6-1.05 lift and throw; then follow down
-  const g = lgPulse(t, 0, 0.35), lift = lgPulse(t, 0.55, 1.05), bend = lgK(t, [[0, 0.1], [0.5, 0.2], [0.85, 0.85, 'i'], [1.1, 0.6], [1.5, 0.35]]);
-  lgPelvis(P, 0, 0, -lgK(t, [[0, 0.08], [0.5, 0.24], [0.8, 0.1], [1.0, 0.12], [1.5, 0.2]]), 0, bend * 0.3, 0);
+  // (1.9.996: he drops his hips low under it as he turns in, then bends hard forward as its weight comes onto his back
+  // and drives up with his legs, so it turns over his shoulder instead of floating behind him)
+  const g = lgPulse(t, 0, 0.35), lift = lgPulse(t, 0.55, 1.05), bend = lgK(t, [[0, 0.1], [0.45, 0.25], [0.75, 0.95, 'io'], [0.95, 0.9], [1.15, 0.55], [1.5, 0.35]]);
+  lgPelvis(P, 0, 0, -lgK(t, [[0, 0.08], [0.45, 0.26], [0.62, 0.3, 'io'], [0.85, 0.12, 'o'], [1.0, 0.14], [1.5, 0.2]]), 0, bend * 0.3, 0);
   lgStance(P, 0.17, lgK(t, [[0, 0.1], [0.5, -0.05]]), 0.3);
   lgSpine(P, bend - g * 0.2, -lift * 0.25, 0); lgLookAt(P, 0.2 * lift, -bend * 0.4 + 0.15);
   P.pistol.at = 'handR'; P.grip.R = 'pistol';
@@ -29598,7 +30294,10 @@ lgClip('z_neckstab', 'Knifed at the collar (the dead)', 'Actors', 0.9, false, ''
   const k = lgK(t, [[0, 0], [0.08, 1, 'o3'], [0.9, 0.85]]), sag = lgK(t, [[0, 0], [0.3, 0.4], [0.9, 0.7]]);
   lgBase(P, { crouch: 0.08 + 0.12 * sag, lean: 0.3 - 0.35 * k, stance: false }); lgStance(P, 0.13, -0.08, 0.2);
   lgSpine(P, -0.25 * k, 0.15 * k, 0.1 * k); lgLookAt(P, 0.35 * k, -0.5 * k + 0.1, 0.3 * k);
-  lgArm(P, 'L', lgLerp(-1.2, -1.75, k), 0.5, 0.4 * k, lgLerp(0.4, 1.7, k), -0.3); lgArm(P, 'R', lgLerp(-1.1, -1.5, k), 0.35, -0.3 * k, lgLerp(0.5, 1.5, k), -0.3); P.grip.L = P.grip.R = 'claw';
+  // (1.9.996: the hands come up to the knife at its collar, elbows out, not over its head)
+  // (the hands fly to the wound: wrists at the collar, elbows out and down; the angles were solved on the posed body)
+  const h = lgK(t, [[0, 0], [0.16, 1, 'o3'], [0.9, 1]]);
+  lgArm(P, 'L', lgLerp(-1.2, -0.55, h), lgLerp(0.3, 0.5, h), -0.6 * h, lgLerp(0.4, 2.35, h), -0.3); lgArm(P, 'R', lgLerp(-1.1, -0.4, h), lgLerp(0.3, 0.05, h), -0.6 * h, lgLerp(0.5, 2.35, h), -0.3); P.grip.L = P.grip.R = 'claw';
 });
 lgClip('z_stabdown', 'Knifed, pinned (the dead)', 'Actors', 1.2, false, '', 'On its back: the blade lands, the arms jerk up once, and everything goes slack.', (P, t) => {
   lgPelvis(P, 0, 0, 0, 0, 0, 0);
@@ -29635,19 +30334,24 @@ function mimShake(t, k, out) { const s = k * 0.012; out[0] += (Math.sin(t * 2.1)
 function mimActor(o) {
   return Object.assign({ model: 'operator', cls: 'attack', lod: 1, track: [], root: [[0, 0, 0, 0, 0]], hide: null, show: [0, 1e9], P: lgPose(), P2: lgPose(), L: lgLocalNew(), L2: lgLocalNew(), W: lgWorldNew(), W2: lgWorldNew(), ctx: {}, lastEvT: -1, root4: [0, 0, 0, 0], acc: null, glow: 1 }, o);
 }
+// 1.9.996: every actor's clip goes through the performance layer (legperf.js): overlap, follow-through and micro-motion,
+// scrubbable (a.perf = false turns it off for an actor, a.perfO tunes it)
+// (1.9.996: every actor through LEGEND's performance layer; on the weakest step only its micro-motion, the springs cost twelve
+// evaluations of the clip a frame)
+function mimEval(clip, t, P, ctx, a) { return typeof lgpEval === 'function' && (!a || a.perf !== false) ? lgpEval(clip, t, P, ctx, Object.assign({ seed: a && a.seed || 0, springs: MIM.lvl === 0 ? 0 : 1 }, a && a.perfO)) : lgEvalClip(clip, t, P, ctx); }
 function mimRootAt(a, st) { const r = lgK(st, a.root.map(k => [k[0], [k[1], k[2], k[3], k[4]], k[5] || 'l'])); return r; }
 function mimActorEval(a, st) {
   const tr = a.track; let i = 0; while (i < tr.length - 1 && tr[i + 1][0] <= st) i++;
   const seg = tr[i], clip = LG_ANIM_BY[seg[1]]; if (!clip) return a.W;
   const r = mimRootAt(a, st), rootM = lgM4(); lgRot(rootM, 0, 0, r[3]); rootM[12] = r[0]; rootM[13] = r[1]; rootM[14] = r[2]; a.root4 = r;
-  lgEvalClip(clip, st - seg[0] + (seg[2] || 0), a.P, a.ctx);
+  mimEval(clip, st - seg[0] + (seg[2] || 0), a.P, a.ctx, a);
   // clip-driven root turns ride on the path's
   if (a.P.root[3] || a.P.root[0]) { const m2 = lgM4(); lgRot(m2, 0, 0, a.P.root[3]); m2[12] = a.P.root[0]; lgMul(rootM, rootM, m2); }
   lgSolve(a.P, a.L, a.W, rootM);
   const fade = seg[3] == null ? 0.2 : seg[3];
   if (i > 0 && fade > 0 && st - seg[0] < fade) {
     const pv = tr[i - 1], pc = LG_ANIM_BY[pv[1]];
-    if (pc) { lgEvalClip(pc, st - pv[0] + (pv[2] || 0), a.P2, a.ctx); lgSolve(a.P2, a.L2, a.W2, rootM); const k = (st - seg[0]) / fade; lgBlendL(a.L2, a.L, k * k * (3 - 2 * k), a.L); lgWorldAll(a.W, a.L, rootM); }
+    if (pc) { mimEval(pc, st - pv[0] + (pv[2] || 0), a.P2, a.ctx, a); lgSolve(a.P2, a.L2, a.W2, rootM); const k = (st - seg[0]) / fade; lgBlendL(a.L2, a.L, k * k * (3 - 2 * k), a.L); lgWorldAll(a.W, a.L, rootM); }
   }
   return a.W;
 }
@@ -29716,23 +30420,34 @@ function mimAlley(cls, S) {
     root: [[0, 0.1, 0.12, 0, 0], [2.45, 2.75, 0.12, 0, 0, 'l'], [3.05, 3.05, 0.1, 0, 0, 'o'], [6.3, 3.05, 0.1, 0, 0], [6.55, 3.05, 0.1, 0, -0.08], [7.3, 3.05, 0.08, 0, 0.0], [7.55, 3.2, 0.05, 0, Math.PI, 'io'], [8.75, 3.2, 0.05, 0, Math.PI], [9.3, 2.95, 0.1, 0, Math.PI, 'io'],
       [9.98, 2.95, 0.1, 0, Math.PI], [10.36, 3.02, 0.06, 0, 2 * Math.PI - 0.1, 'io'], [11.2, 3.05, 0.06, 0, 2 * Math.PI - 0.1]] });
   const z1 = mimActor({ model: 'zombie', cls: 'cook', lod: Math.max(1, q.lod), show: [4.55, 1e9],
-    track: [[0, 'z_burst', 0, 0], [4.95, 'z_rush', 0, 0.15], [6.55, 'z_hs', 0, 0.04]],
+    track: [[0, 'z_burst', 0, 0], [4.95, 'z_lunge', 0, 0.15], [6.55, 'z_hs', 0, 0.04]],
     root: [[0, 7.5, -2.55, 0, Math.PI / 2], [4.55, 7.5, -2.55, 0, Math.PI / 2], [4.95, 7.2, -1.8, 0, 2.3, 'o'], [6.55, 5.05, -0.5, 0, 2.9, 'l'], [7.5, 5.75, -0.62, 0, 2.9, 'o']] });
   const z2 = mimActor({ model: 'zombie', cls: 'exec', lod: Math.max(1, q.lod), show: [4.85, 1e9],
     track: [[0, 'z_rise', 0, 0], [5.3, 'z_rush', 0.2, 0.15], [7.18, 'z_grab', 0, 0.08], [7.85, 'z_thrown', 0, 0.06], [8.42, 'z_pinned', 0, 0.12], [9.64, 'z_stabdown', 0, 0.05]],
     root: [[0, 10.2, 1.85, 0, Math.PI], [4.85, 10.2, 1.85, -0.25, Math.PI], [5.3, 9.6, 1.5, 0, Math.PI + 0.15, 'o'], [7.18, 3.62, 0.18, 0, Math.PI, 'l'], [7.55, 3.5, 0.12, 0, Math.PI], [7.85, 3.55, 0.08, 0.15, Math.PI], [8.35, 2.3, 0.0, 0.0, Math.PI]] });
   // 1.9.994: the third, out of the dark at the far end: it shambles, then rushes him from behind while he is down
   const z3 = mimActor({ model: 'zombie', cls: 'butcher', lod: Math.max(1, q.lod), show: [5.9, 1e9],
-    track: [[0, 'z_shamble', 0, 0], [8.25, 'z_rush', 0.1, 0.25], [10.38, 'z_neckstab', 0, 0.05], [10.88, 'z_hs', 0, 0.04]],
-    root: [[0, 12.2, 0.9, 0, Math.PI], [5.9, 12.2, 0.9, 0, Math.PI], [8.25, 10.9, 0.75, 0, Math.PI + 0.05, 'l'], [10.38, 3.86, 0.06, 0, Math.PI, 'l'], [10.88, 3.92, 0.06, 0, Math.PI], [11.7, 4.75, 0.2, 0, Math.PI + 0.25, 'o']] });
-  // the throw: the body arcs over his hip and rotates three-quarters of a turn forward onto its back
+    track: [[0, 'z_shamble', 0, 0], [8.25, 'z_rush', 0.1, 0.25], [10.38, 'z_neckstab', 0, 0.05], [10.88, 'z_hs_collar', 0, 0.04]],
+    root: [[0, 12.9, 0.95, 0, Math.PI], [5.9, 12.9, 0.95, 0, Math.PI], [8.25, 11.85, 0.8, 0, Math.PI + 0.05, 'l'], [8.27, 11.85, 0.8, 0, Math.PI + 0.05], [10.38, 3.86, 0.06, 0, Math.PI, 'l'], [10.88, 3.92, 0.06, 0, Math.PI], [10.935, 3.95, 0.065, 0, Math.PI + 0.02, 'o']] });
+  // the throw (1.9.996, a shoulder throw done properly): he has turned his back into it and bends; its chest stays on
+  // his upper back and it turns over him as one body round that contact, its hips going up behind him, over his
+  // shoulder and down in front, then it leaves him and is slammed flat on its back (gravity: faster as it falls)
   const tThrow = S(7.85), tPin = S(8.42);
   z2.custom = (st, a) => {
     if (st < tThrow) return;
-    const k = clamp((st - tThrow) / 0.5, 0, 1), s = k * k * (3 - 2 * k);
-    const x = lgLerp(3.55, 2.3, s), z = Math.sin(Math.min(k, 1) * Math.PI) * 1.05 + lgLerp(0.98, 0.16, s) - 0.98, pitch = 1.5 * Math.PI * Math.min(1, k * 1.05);
-    a.P.t[LGB.pelvis * 3] = 0; a.P.t[LGB.pelvis * 3 + 2] = z; lgJ(a.P, 'pelvis', 0, pitch, 0);
-    a.rootX = x; a.P.ik.footL = a.P.ik.footR = null;
+    const k = clamp((st - tThrow) / 0.5, 0, 1), r = mimRootAt(a, st), W = op.W, ci = LGB.chest * 16, ni = LGB.neck * 16;
+    // the contact: on top of his back behind the neck (it rides his bend)
+    const C = [W[ni + 12] - W[ci] * 0.12 + W[ci + 8] * 0.07, W[ni + 13] - W[ci + 1] * 0.12 + W[ci + 9] * 0.07, W[ni + 14] - W[ci + 2] * 0.12 + W[ci + 10] * 0.07];
+    // its turn: over the top by 60% of the throw, then on round to flat on its back as it is driven down
+    const th = k < 0.6 ? Math.PI * lgE.io(k / 0.6) : Math.PI + 0.5 * Math.PI * lgE.i(clamp((k - 0.6) / 0.28, 0, 1));
+    const arc = [C[0] + 0.14 * Math.cos(th) + 0.38 * Math.sin(th), C[2] + 0.14 * Math.sin(th) - 0.38 * Math.cos(th)];
+    // where it lands: flat on its back in front of him (the pin's place); before the throw, where it stood
+    const land = [2.3, 0.16], stood = [3.55, 0.98 + r[2]], off = lgE.i(clamp((k - 0.6) / 0.28, 0, 1)), on = lgE.o(clamp(k / 0.14, 0, 1));
+    let px = lgLerp(arc[0], land[0], off), pz = lgLerp(arc[1], land[1], off); px = lgLerp(stood[0], px, on); pz = lgLerp(stood[1], pz, on);
+    // a small bounce off the wet ground as it lands
+    pz += k > 0.88 ? Math.sin(clamp((k - 0.88) / 0.12, 0, 1) * Math.PI) * 0.035 : 0;
+    a.P.t[LGB.pelvis * 3] = 0; a.P.t[LGB.pelvis * 3 + 2] = pz - 0.98 - r[2]; lgJ(a.P, 'pelvis', 0, lgLerp(0, th, on), 0);
+    a.rootX = px; a.P.ik.footL = a.P.ik.footR = null;
   };
   z2.customPost = (st, a) => { if (st >= tPin) { a.P.t[LGB.pelvis * 3 + 2] = -0.82; lgJ(a.P, 'pelvis', 0, 1.5 * Math.PI, 0); a.P.ik.footL = a.P.ik.footR = null; } };
   // everything above was blocked in real time; the time curve turns it into scene time. The knife reaches the top of
@@ -29763,7 +30478,9 @@ function mimDirectOperator() {
   shots.push({ t0: 0, t1: 1.6, tech: ['hero'], cam: (rt) => { const r = opAt(); return { eye: [r[0] + lgLerp(3.0, 2.3, rt / 1.6), r[1] - 0.45, 0.3], tgt: [r[0], r[1], 1.3], fov: 0.64, shake: 0.25 }; } });
   shots.push({ t0: 1.6, t1: 2.9, tech: ['track'], cam: (rt) => { const r = opAt(); return { eye: [r[0] + 0.6, -2.2, 1.3], tgt: [r[0] + 0.3, r[1], 1.25], fov: 0.76, shake: 0.3 }; } });
   // insert: the mask, close, creeping in
-  shots.push({ t0: 2.9, t1: 4.4, tech: ['insert'], cam: (rt) => { const H = mimBone(op(), 'head'), k = lgE.io(lgW(rt, 2.9, 4.4)), d = lgLerp(1.05, 0.74, k), az = -0.5; return { eye: [H[0] + 0.05 + Math.cos(az) * d, H[1] + Math.sin(az) * d, H[2] + 0.1], tgt: [H[0] + 0.05, H[1], H[2] + 0.07], fov: 0.5, shake: 0.06, flare: rt > 4.05 ? 1.5 : 0.4 }; } });
+  // (1.9.996: from his left, the side his hand goes to, on a longer lens: the fingers at the helmet and the plates closing
+  // in three-quarter profile, the arm no longer a wall across the lens)
+  shots.push({ t0: 2.9, t1: 4.4, tech: ['insert'], cam: (rt) => { const H = mimBone(op(), 'head'), k = lgE.io(lgW(rt, 2.9, 4.4)), d = lgLerp(1.38, 1.12, k), az = lgLerp(0.84, 0.95, k); return { eye: [H[0] + 0.04 + Math.cos(az) * d, H[1] + Math.sin(az) * d, H[2] - 0.07], tgt: [H[0] + 0.04, H[1] + 0.035, H[2] + 0.02], fov: 0.38, shake: 0.05, flare: rt > 4.05 ? 1.5 : 0.4 }; } });
   // threat: over his shoulder toward the door, the horizon tipped; a whip to the second one; then low behind him
   const ots = () => { const H = mimBone(op(), 'head'); return [H[0] - 0.72, H[1] - 0.4, H[2] + 0.08]; };
   shots.push({ t0: 4.4, t1: 5.25, tech: ['ots', 'dutch'], cam: (rt) => { const zz = zAt(z1()) || [7.4, -2.3], k = lgW(rt, 4.6, 5.2); return { eye: ots(), tgt: [lgLerp(7.4, zz[0], k), lgLerp(-2.3, zz[1], k), 1.3], fov: 0.7, roll: R ? 0 : 0.17, shake: 0.5 }; } });
@@ -29881,7 +30598,7 @@ function mimActorEvalFull(a, st) {
   const tr = a.track; let i = 0; while (i < tr.length - 1 && tr[i + 1][0] <= st) i++;
   const seg = tr[i], clip = LG_ANIM_BY[seg[1]]; if (!clip) return;
   const r = mimRootAt(a, st); a.rootX = null; a.root4 = r;
-  lgEvalClip(clip, st - seg[0] + (seg[2] || 0), a.P, a.ctx);
+  mimEval(clip, st - seg[0] + (seg[2] || 0), a.P, a.ctx, a);
   if (a.custom) a.custom(st, a); if (a.customPost) a.customPost(st, a);
   mimWeight(a, r, st);
   const rootM = lgM4(); lgRot(rootM, 0, 0, r[3]); rootM[12] = a.rootX != null ? a.rootX : r[0]; rootM[13] = r[1]; rootM[14] = r[2];
@@ -29890,10 +30607,10 @@ function mimActorEvalFull(a, st) {
   const fade = seg[3] == null ? 0.2 : seg[3];
   if (i > 0 && fade > 0 && st - seg[0] < fade && !a.custom) {
     const pv = tr[i - 1], pc = LG_ANIM_BY[pv[1]];
-    if (pc) { lgEvalClip(pc, st - pv[0] + (pv[2] || 0), a.P2, a.ctx); lgSolve(a.P2, a.L2, a.W2, rootM); const k = (st - seg[0]) / fade; lgBlendL(a.L2, a.L, k * k * (3 - 2 * k), a.L); lgWorldAll(a.W, a.L, rootM); }
+    if (pc) { mimEval(pc, st - pv[0] + (pv[2] || 0), a.P2, a.ctx, a); lgSolve(a.P2, a.L2, a.W2, rootM); const k = (st - seg[0]) / fade; lgBlendL(a.L2, a.L, k * k * (3 - 2 * k), a.L); lgWorldAll(a.W, a.L, rootM); }
   } else if (i > 0 && fade > 0 && st - seg[0] < fade && a.custom && st < 7.85) {
     const pv = tr[i - 1], pc = LG_ANIM_BY[pv[1]];
-    if (pc) { lgEvalClip(pc, st - pv[0] + (pv[2] || 0), a.P2, a.ctx); lgSolve(a.P2, a.L2, a.W2, rootM); const k = (st - seg[0]) / fade; lgBlendL(a.L2, a.L, k * k * (3 - 2 * k), a.L); lgWorldAll(a.W, a.L, rootM); }
+    if (pc) { mimEval(pc, st - pv[0] + (pv[2] || 0), a.P2, a.ctx, a); lgSolve(a.P2, a.L2, a.W2, rootM); const k = (st - seg[0]) / fade; lgBlendL(a.L2, a.L, k * k * (3 - 2 * k), a.L); lgWorldAll(a.W, a.L, rootM); }
   }
 }
 // 1.9.993: weight. A body is not a point sliding on a path: when the hips speed up the upper body lags, when they stop
@@ -30014,6 +30731,7 @@ function mimRender(w, h, rt, st) {
   else if (scene === 'lineup' || scene === 'hub') { const k = Math.sin(rt * 0.07), far = scene === 'hub'; look = { eye: [far ? -3.2 : -1.2 + k * 0.4, k * 0.9, far ? 2.3 : 1.55 + Math.sin(rt * 0.11) * 0.1], tgt: [6.2, k * 0.25, far ? 1.3 : 1.2], fov: far ? 0.62 : 0.74, roll: 0, shake: 0.12, mb: 0, flare: 0.5 }; if (MIM.focus != null) { const y = (2 - MIM.focus) * 1.18; look.tgt[1] = lgLerp(look.tgt[1], y, 0.3); } }
   else if (scene === 'studio') look = mimStudioCam(rt);
   else if (scene === 'stoop') look = lgiCam(rt);
+  if (MIM.camOverride) look = Object.assign(look, MIM.camOverride(rt, st));   // (the audits' witness camera: a fixed view on the action)
   if (!MIM.reduce && look.shake) mimShake(rt, look.shake, look.eye);
   if (!MIM.reduce && look.punch) { const p = look.punch; look.fov *= 1 - 0.06 * p; look.eye[2] += Math.sin(rt * 70) * 0.01 * p; }
   cam.eye = look.eye; cam.tgt = look.tgt; cam.fov = look.fov; cam.roll = look.roll || 0; cam.near = 0.05; cam.far = 150; cam.up = look.up || [0, 0, 1]; cam.shift = look.shift || null;
@@ -30029,7 +30747,11 @@ function mimRender(w, h, rt, st) {
   if (fl > 0) { S.flash = { dir: [0.35, 0.25, 1], col: [3.2 * fl, 3.4 * fl, 4.2 * fl] }; S.sky = S.sky.map((v, i) => v + [0.35, 0.4, 0.55][i] * fl); }
   if (S.pts && neon < 1) { S.pts = S.pts.slice(); S.pts[1] = Object.assign({}, S.pts[1], { col: [0.08, 0.02, 0.06] }); }
   if (S.pts && scene !== 'studio' && scene !== 'stoop') { const cy = scene === 'alley' ? (rt < 0.3 || rt > 3.2 ? null : lgLerp(-10, 10, (rt - 0.3) / 2.9)) : (((rt + 4) % 17) < 3 ? lgLerp(-10, 10, ((rt + 4) % 17) / 3) : null); if (cy != null) { S.pts = S.pts.slice(); S.pts[2] = { p: [-13, cy, 0.8], r: 6.5, col: [1.3, 1.2, 1.0].map(v => v * clamp(1.6 - Math.abs(cy) / 8, 0, 1)) }; } }
-  if (S.pts && scene !== 'studio' && scene !== 'stoop' && MIM.actors[0] && MIM.actors[0].W) { const P0 = mimBone(MIM.actors[0], 'chest'); S.pts = S.pts.slice(); S.pts[3] = { p: [P0[0] - 1.2, P0[1] - 1.5, P0[2] + 1.4], r: 4.2, col: [0.55, 0.85, 1.2] }; }
+  if (S.pts && scene !== 'studio' && scene !== 'stoop' && MIM.actors[0] && MIM.actors[0].W) { const P0 = mimBone(MIM.actors[0], 'chest'); S.pts = S.pts.slice(); S.pts[3] = { p: [P0[0] - 1.2, P0[1] - 1.5, P0[2] + 1.4], r: 4.2, col: [0.55, 0.85, 1.2] };
+    // (1.9.996: the mask insert has a motivated key: the sodium lamp ahead of him, warm, low and to his left, so the
+    // close-up models his face and the plates against the cold rim instead of lying flat blue)
+    // (four lights is the renderer's limit, so the key takes the cool fill's place for the length of the shot)
+    if (scene === 'alley') { const ins = Math.min(lgW(rt, 2.75, 3.0), 1 - lgW(rt, 4.3, 4.45)); if (ins > 0) { const H0 = mimBone(MIM.actors[0], 'head'), F = S.pts[3], K = { p: [H0[0] + 0.95, H0[1] + 0.8, H0[2] + 0.3], r: 3.2, col: [1.5, 0.95, 0.55] }; S.pts[3] = { p: F.p.map((v, i) => lgLerp(v, K.p[i], ins)), r: lgLerp(F.r, K.r, ins), col: F.col.map((v, i) => lgLerp(v, K.col[i], ins)) }; } } }
   if (MIM.flashUntil && rt < MIM.flashUntil && S.pts) { S.pts = S.pts.slice(); S.pts[3] = { p: MIM.flashP, r: 6.5, col: [2.6, 1.7, 0.75] }; }
   S.desat = freeze * 0.7; S.sat = 1 - freeze * 0.15;
   const accS = lgHex(LG_CLASS_BY[MIM.cls].col);
@@ -30517,13 +31239,32 @@ function lgiFrameY(D) {
   if (asp < 1.1) return 0;   // (a phone held upright: the frame is too narrow for thirds, he stays in the middle and the card sits below him)
   return -(f - 0.5) * 2 * 1.42 * asp;   // (screen right is +y here; 1.42 m is half the frame's height at his distance)
 }
+// 1.9.996: the stoop is cut like a film's quiet scene, four shots on a loop of 26 s, each held long (6 to 9 s, the pace
+// of a calm scene): the low wide pushing in on him; a side medium on the knife and stone; an insert on his hands and
+// the blade; his face, close. Every shot keeps him on the third away from the card (or centred on a phone held upright,
+// raised clear of the card below); the can in the dark always cuts back to the wide.
+const LGI_SHOTS = [{ t: 9, id: 'wide' }, { t: 6, id: 'side' }, { t: 5, id: 'hands' }, { t: 6, id: 'face' }];
+function lgiShotAt(rt) { const T = LGI_SHOTS.reduce((a, b) => a + b.t, 0); let u = ((rt % T) + T) % T; for (let i = 0; i < LGI_SHOTS.length; i++) { if (u < LGI_SHOTS[i].t) return { i: i, id: LGI_SHOTS[i].id, u: u, k: u / LGI_SHOTS[i].t }; u -= LGI_SHOTS[i].t; } return { i: 0, id: 'wide', u: 0, k: 0 }; }
 function lgiCam(rt) {
   const D = LGI.scene, A = MIM.actors[0], c = A && A.W ? mimBone(A, 'chest') : [0, 0, 0.9];
   if (D && D.fy) physSpring(D.fy, lgiFrameY(D), 1.6, Math.min(0.05, Math.max(0, rt - (D.camRt || rt)))); if (D) D.camRt = rt;
-  const fy = D && D.fy ? D.fy.x : 0;
+  const fy = D && D.fy ? D.fy.x : 0, tall = (MIM.asp || 2) < 1.1;
   const al = D && A.player && A.player.a && A.player.a.id === 'sit_alert', alert = al ? lgPulse(A.player.t, 1.1, 5.2) : 0, look = al ? lgPulse(A.player.t, 0.0, 1.6) : 0, side = (D && D.canSide) || 1;
-  const dr = Math.sin(rt * 0.09) * 0.35, push = alert * 0.9;
-  return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert) - ((MIM.asp || 2) < 1.1 ? 0.5 : 0)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
+  const sh = al ? { id: 'wide', k: 0, u: 0 } : lgiShotAt(rt);
+  if (sh.id === 'wide' || !A || !A.W) {
+    const dr = Math.sin(rt * 0.09) * 0.35, push = alert * 0.9 + (al ? 0 : sh.k * 0.55);
+    return { eye: [5.0 - push + Math.sin(rt * 0.05) * 0.15, -0.3 + dr, 0.16 + Math.sin(rt * 0.13) * 0.02], tgt: [c[0] * 0.6, c[1] * 0.6 + fy * (1 - alert * 0.5) + side * (alert * 0.4 + look * 0.6), lgLerp(0.86, 1.05, alert) - (tall ? 0.5 : 0)], fov: lgLerp(0.56, 0.5, alert), roll: Math.sin(rt * 0.07) * 0.01, shake: 0.06 + alert * 0.25, flare: 0.8 };
+  }
+  const H = mimBone(A, 'head'), hL = mimBone(A, 'handL'), hR = mimBone(A, 'handR'), hm = mimMid(hL, hR), k = sh.k;
+  let eye, tgt, fov;
+  if (sh.id === 'side') { const m = mimMid(c, hm); eye = [m[0] + 1.75 - 0.25 * k, m[1] - 1.45 + 0.2 * k, m[2] + 0.12]; tgt = [m[0], m[1], m[2] + 0.02]; fov = 0.5; }
+  else if (sh.id === 'hands') { eye = [hm[0] + 0.8 - 0.12 * k, hm[1] - 0.42, hm[2] + 0.34]; tgt = [hm[0], hm[1], hm[2] - 0.01]; fov = 0.42; }
+  else { eye = [H[0] + 0.92 - 0.12 * k, H[1] + 0.52, H[2] - 0.24]; tgt = [H[0] + 0.03, H[1] + 0.01, H[2] + 0.0]; fov = 0.4; }   // (from under the helmet's brim: he is looking down at the blade)
+  // the subject on the third away from the card: the wide's offset scaled to this frame's size, the camera moved across
+  const d = Math.hypot(tgt[0] - eye[0], tgt[1] - eye[1], tgt[2] - eye[2]), hh = d * Math.tan(fov / 2), f = fy * hh / 1.42;
+  const fx = tgt[0] - eye[0], fyv = tgt[1] - eye[1], rl = Math.hypot(fx, fyv) || 1, rx = fyv / rl, ry = -fx / rl;   // (screen right: the view's direction crossed with up)
+  eye = [eye[0] + rx * f, eye[1] + ry * f, eye[2]]; tgt = [tgt[0] + rx * f, tgt[1] + ry * f, tgt[2] - (tall ? hh * 0.35 : 0)];
+  return { eye: eye, tgt: tgt, fov: fov, roll: Math.sin(rt * 0.07) * 0.008, shake: 0.05, flare: 0.6 };
 }
 
 /* ================= CURRICULUM: how the cinematic engines study, practise and earn their versions (1.9.995) =================
@@ -34830,10 +35571,25 @@ function lgSelfTest() {
     { lgPoseReset(P); lgBase(P, {}); P.knife.at = 'handL'; P.grip.L = 'knife'; lgHandTo(P, 'L', 'chest', [0.5, 0.3, 0.05], [0, 0, 0], [-0.3, 0.8, -0.4]); lgSolve(P, L, W, lgM4());
       const Hi = lgInv(lgM4(), W.subarray(LGB.handL * 16, LGB.handL * 16 + 16)), K = W.subarray(LGB.knife * 16, LGB.knife * 16 + 16), tip = lgPt(Hi, ...lgPt(K, 0.152, 0, 0));
       n++; if (tip[0] < -0.05) pass++; else why = why || 'the knife is held backwards'; }
+    // 1.9.996 (LOCO): walking at 1.33 m/s keeps a measured cadence (about 110 steps a minute) and a planted foot holds the
+    // ground (the root carried forward at the speed, the ankle of the stance foot moves under 2.5 cm while it is down)
+    if (typeof locoParams === 'function') {
+      const G = locoParams(1.33, {}); n++; const spm = G.cad * 120; if (spm > 100 && spm < 122) pass++; else why = why || 'the walk\'s cadence is off (' + spm.toFixed(0) + ' steps a minute)';
+      // (while the foot is flat: the heel and toe rockers turn the ankle about the heel and the ball, which is rolling, not sliding)
+      const Tc = 1 / G.cad, pts = []; for (let i = 0; i <= 96; i++) { const t = i / 96 * Tc; lgPoseReset(P); const r = locoPose(P, t / Tc, { v: 1.33, arms: 'free' }); P.root[0] = 1.33 * t; lgSolve(P, L, W, lgRootM(P)); if (r.contactL) pts.push(lgaP(W, 'footL')); }
+      const zmin = Math.min(...pts.map(q => q[2])), flat = pts.filter(q => q[2] < zmin + 0.008); let slide = 0; for (const q of flat) for (const q2 of flat) slide = Math.max(slide, Math.hypot(q[0] - q2[0], q[1] - q2[1]));
+      n++; if (slide < 0.025) pass++; else why = why || 'a planted foot slides ' + (slide * 100).toFixed(1) + ' cm';
+    }
+    // 1.9.996 (LGP): the performance layer leaves a held pose where the clip put it (its springs settle, they do not drift;
+    // only the clip's own breathing, under a hundredth of a radian, separates the two)
+    if (typeof lgpEval === 'function' && LG_ANIM_BY.mask_tap) {
+      const a = LG_ANIM_BY.mask_tap, P2 = lgPose(); lgEvalClip(a, a.dur + 1, P, {}); lgpEval(a, a.dur + 1, P2, {}, { noise: 0 }); let d = 0; for (let i = 0; i < LG_NB * 3; i++) d = Math.max(d, Math.abs(P.r[i] - P2.r[i]));
+      n++; if (d < 0.01) pass++; else why = why || 'the performance layer moved a held pose by ' + d.toFixed(3) + ' rad';
+    }
   } catch (e) { why = String(e && e.message || e); }
   return { ok: pass === n, n: n, pass: pass, why: why };
 }
-coreDefine({ name: 'LEGEND', kind: 'render', ver: 5, does: 'The legends: real 3D characters built from shapes on a rig, with procedural textures, reach (IK), a hundred and seven animations and two renderers; in a run the survivor is three frames that turn on their own with weight, its hands fitted to each gun. Since v5: human joint ranges, balance, thirteen everyday grasps, reaching, lifting, handing over and throwing, and a check of its own movement.',
+coreDefine({ name: 'LEGEND', kind: 'render', ver: 5, does: 'The legends: real 3D characters built from shapes on a rig, with procedural textures, reach (IK), a hundred and seven animations and two renderers; in a run the survivor is three frames that turn on their own with weight, its hands fitted to each gun. Since v5: human joint ranges, balance, thirteen everyday grasps, reaching, lifting, handing over and throwing, and a check of its own movement. Since 1.9.996: LOCO, a gait built from measured walking and running (cadence, stride, joint curves; planted feet that do not slide, hips that turn toward the way he moves, finished steps on a stop), and LGP, a performance layer that gives every body overlap, settle, micro-motion and swinging gear, as if motion-captured; sculpted faces.',
   provides: ['characters', 'rig', 'animation', 'playerSprite'], needs: ['CORE'], covers: [], feats: { want: ['webgl'], without: 'characters are painted on the processor: the same meshes and animation, simpler shading' }, climb: true,
   state: () => (LGS.open ? 'on screen' : LG.sprites.size ? 'in the run' : 'ready'), level: () => (LGR.ok ? 'GPU' : 'processor') + ' · ' + LG.models.size + ' models · ' + LG.sprites.size + ' run frames',
   lv: () => lgLevel(), adaptGet: () => LG.adapt, loadNow: () => LG.sprites.size, loadName: 'frames kept',
@@ -34847,10 +35603,11 @@ coreDefine({ name: 'LEGEND', kind: 'render', ver: 5, does: 'The legends: real 3D
   learned: () => { const o = learnOwn('LEGEND'), out = []; if (LG.spriteMade) out.push('A run frame of a legend takes about ' + (LG.spriteMs / LG.spriteMade).toFixed(1) + ' ms to paint here (' + LG.spriteMade + ' painted, kept for reuse).');
     const fx = Object.keys(LGV.fix || {}); if (fx.length) out.push('It moved ' + fx.length + ' gun posture' + (fx.length > 1 ? 's' : '') + ' in after the support hand missed its grip, and checked again (' + fx.slice(0, 4).map(k => k.replace(':', ' ') + ' ' + Math.round(-LGV.fix[k][0] * 1000) + ' mm, now ' + Math.round((LGV.miss[k] || 0) * 1000) + ' mm off').join('; ') + (fx.length > 4 ? '; …' : '') + ').');
     const st = Object.keys(LGV.stuck || {}); if (st.length) out.push('In ' + st.length + ' posture' + (st.length > 1 ? 's' : '') + ' moving the gun did not bring the hand closer, so it put them back and left them.');
-    const sk = Object.keys(LGV.stride || {}).filter(k => LGV.stride[k] > 0); if (sk.length) out.push('It measured how far a planted foot really travels in ' + sk.length + ' walk' + (sk.length > 1 ? 's' : '') + ' and paces the steps by that (' + sk.slice(0, 3).map(k => (LG_ANIM_BY[k] ? LG_ANIM_BY[k].name.toLowerCase() : k) + ' ' + LGV.stride[k].toFixed(2) + ' m').join(', ') + ' a cycle).');
+    const lk = Array.from(LG.sprites.keys()).filter(k => String(k).indexOf('loco|') >= 0); if (lk.length) out.push('Its legs in the run are painted from the gait itself: ' + lk.length + ' leg frames so far, at the speeds the survivor has actually moved.');
+    if (typeof LGP !== 'undefined' && LGP.n) out.push('The performance layer has shaped ' + LGP.n + ' poses here (overlap, settle and micro-motion on every body in a film).');
     return out; },
   on: { run: () => { LG.spriteBudget = 0; }, lowMemory: () => { LG.sprites.clear(); } },
-  spec: { files: ['legend', 'legmodel', 'leggun', 'leghand', 'leganim', 'legrun', 'leganat', 'legobj', 'legmove', 'legqual', 'cur_legend'], parts: ['joint ranges and balance (v3)', 'thirteen grasps that settle (v4)', 'reach, lift, handover, throw (v4)', 'the quality of movement and Laban efforts (v5)', 'shape builder', 'procedural atlas (20 textures)', '47-bone rig', 'two-bone reach (legs first)', 'poses and blends', 'fifty animations', 'thirty-two seated idles', 'thirteen arms moves', 'the Operator, his kit and his face', 'the exotech mask', 'ten gun models with their own grips', 'layered run frames', 'head-led turning', 'weight and recoil springs', 'corner lean', 'self-corrected grips and strides', 'GPU renderer', 'processor painter'], procs: ['gpu', 'cpu'],
+  spec: { files: ['legend', 'legmodel', 'leggun', 'leghand', 'leganim', 'legloco', 'legperf', 'legrun', 'leganat', 'legobj', 'legmove', 'legqual', 'cur_legend'], parts: ['LOCO: measured walk and run, planted feet, warped strides and hips (1.9.996)', 'LGP: overlap, micro-motion and gear on springs (1.9.996)', 'sculpted faces and cloth folds (1.9.996)', 'weapon light on the rail (1.9.996)', 'joint ranges and balance (v3)', 'thirteen grasps that settle (v4)', 'reach, lift, handover, throw (v4)', 'the quality of movement and Laban efforts (v5)', 'shape builder', 'procedural atlas (20 textures)', '47-bone rig', 'two-bone reach (legs first)', 'poses and blends', 'fifty animations', 'thirty-two seated idles', 'thirteen arms moves', 'the Operator, his kit and his face', 'the exotech mask', 'ten gun models with their own grips', 'layered run frames', 'head-led turning', 'weight and recoil springs', 'corner lean', 'self-corrected grips and strides', 'GPU renderer', 'processor painter'], procs: ['gpu', 'cpu'],
     hard: 'keeps more run frames and paints them sharper', eco: 'keeps fewer run frames and paints them at a lower detail',
     apply: (k, proc) => { engFloor(LG, 'adapt', k); lgsProc(LG, proc); },
     stats: () => [['Renderer', LGR.ok ? 'GPU' : 'processor'], ['Models', LG.models.size], ['Run frames', LG.sprites.size], ['Textures', LG.atlas ? LG.atlas.T + ' px tiles' : 'not yet'], ['Animations', LG_ANIMS.filter(a => a.cat !== 'Actors' && a.cat !== 'Cinematic').length]] }
@@ -34899,7 +35656,7 @@ for (const n of ['LEGEND', 'MIMATIC', 'VFXRAY']) { const e = CORE.by[n]; if (e &
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[388,0,4,65360],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[742,37,136,68505],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[649,66,110,55819],"roster":[149,8,36,36227],"anima":[1173,58,123,107174],"anilook":[445,31,64,61057],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31089],"physics":[265,23,49,25142],"arms":[378,36,51,38972],"knife":[236,19,39,22446],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1241,120,195,140659],"legmodel":[443,23,108,53997],"leggun":[383,29,101,50244],"leghand":[166,17,31,13268],"leganim":[447,21,54,56312],"legrun":[537,40,103,57988],"vfxray":[269,26,38,31905],"mimatic":[628,47,123,79779],"legidle":[339,19,67,44465],"curric":[47,14,21,6603],"leganat":[353,30,99,39033],"legobj":[365,25,71,40189],"legmove":[277,36,107,41501],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[484,46,68,55520],"engroom":[371,18,36,44891],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83479],"intro":[660,32,55,48828],"sfx2":[447,76,53,43659],"cinesfx":[185,14,33,26793],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[78,7,5,5383]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[388,0,4,68017],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[607,34,82,51431],"lux":[744,37,139,69252],"prism":[352,21,59,39820],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[209,12,34,19503],"tracer":[213,22,46,20540],"aura":[124,12,20,11472],"swarm":[649,66,110,55819],"roster":[149,8,36,36227],"anima":[1173,58,123,107174],"anilook":[445,31,64,61057],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65039],"dashes":[249,36,13,31089],"physics":[265,23,49,25142],"arms":[378,36,51,38972],"knife":[236,19,39,22446],"gamecam":[30,3,15,3693],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1262,120,205,144402],"legmodel":[535,26,154,68851],"leggun":[402,30,107,52901],"leghand":[166,17,31,13268],"leganim":[447,21,57,56666],"legloco":[235,12,97,28914],"legperf":[65,3,26,7283],"legrun":[570,41,120,63153],"vfxray":[269,26,38,31905],"mimatic":[644,50,151,85777],"legidle":[353,20,72,46757],"curric":[47,14,21,6603],"leganat":[353,30,99,39033],"legobj":[365,25,71,40189],"legmove":[277,36,107,41501],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,57993],"engroom":[371,18,36,44891],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83479],"intro":[660,32,55,48828],"sfx2":[447,76,53,43659],"cinesfx":[185,14,33,26793],"armsfx":[63,13,10,7085],"audio":[939,213,78,83670],"radio":[429,73,33,39322],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[78,7,5,5383]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };
