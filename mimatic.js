@@ -743,7 +743,7 @@ function mimRender(w, h, rt, st) {
     // shot's subject (a wide aperture on the inserts, a stop or two down on the wides), the 180-degree shutter's motion blur
     // from the camera's own move (none across a cut), a low mist that thickens with distance, rays off the lamp when it is
     // in frame, and a teal-and-orange look; the studio and the line-up keep the plain pass
-    const lensOn = q.lens && vq.mb && (scene === 'alley' || scene === 'stoop') && !MIM.reduce && typeof vxlRender === 'function' && !MIM.camOverride;
+    const lensOn = q.lens && vq.mb && (scene === 'alley' || scene === 'stoop') && !MIM.reduce && typeof vxlRender === 'function' && !MIM.camOverride && !MIM.noLens;   // (noLens: the audits' A/B switch)
     let lensed = false;
     if (lensOn) {
       const fd = look.focus || Math.hypot(cam.tgt[0] - cam.eye[0], cam.tgt[1] - cam.eye[1], cam.tgt[2] - cam.eye[2]) || 2;
