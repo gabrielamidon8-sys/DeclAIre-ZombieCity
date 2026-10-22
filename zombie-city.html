@@ -10962,7 +10962,7 @@ const ENG_DOCS = {
     title: 'The Governor',
     character: 'The pragmatist. It cares about one number, the frame rate, and will trade sharpness for it without blinking, but it remembers what each device can really do and starts there next time.',
     does: 'Profiles the device at start (processor cores, memory, graphics chip, screen, browser features, a short benchmark), picks a quality tier and a resolution, caps the frame rate, watches battery and heat, and keeps the caches the game builds up (sprites, city blocks, menu pictures) inside a budget.',
-    adapts: 'One ladder of eleven rungs from Ultra at full resolution down to Low at half. Once a second it compares real frame times with the target and moves a rung at a time; before dropping a rung it trims the weather or the plants if they are eating the frame, and asks CORE to step down the engine that would save the most. A rung that had to be left soon after climbing to it waits longer before it is tried again. Battery saver and heat cap the ladder.',
+    adapts: 'One ladder of eleven rungs from Ultra at full resolution down to Low at half. Once a second it compares real frame times with the target and moves a rung at a time; before dropping a rung it trims the weather or the plants if they are eating the frame, and asks CORE to step down the engine that would save the most. A rung that had to be left soon after climbing to it waits longer before it is tried again. Battery saver and heat cap the ladder. Since 1.9.997 a fast budget runs under the ladder: four times a second the running average of the frame scales the particle budgets between the tier\'s ceiling and a floor, down a tenth at a time when the frame is over or the script has most of it, back up a twentieth at a time when there is room, so heavier effects hold 60 fps and the resolution only drops once the budget has nothing left to give.',
     repairs: 'Restarts a game loop that stopped, resumes or rebuilds frozen audio, frees memory when the device runs short or the app goes to the background, resets the short-lived effect lists after a storm of errors (and drops to a safe level if storms keep coming). CORE\'s check catches a sprite cache far over budget or a rung out of range.',
     learns: 'The rung that held for at least 20 seconds on this exact device (the next launch starts there), and when the device starts to run hot: if it had to step down after minutes of a steady level at about the same point in two sessions, it eases off one step just before that point instead of stuttering into it.',
     works: 'Tells every engine when the quality tier changes, frees memory for the nine engines that keep picture caches, and reports the weather\'s and the plants\' cost to CORE.',
@@ -11016,7 +11016,7 @@ const ENG_DOCS = {
   WX: {
     title: 'The Weatherman',
     character: 'Moody on purpose. Rain, ash, blizzards and sandstorms roll through by season and district, and the street feels them.',
-    does: 'Rain, thunderstorms with lightning, fog, snow and blizzards, sandstorms, ashfall, wind and gusts, seasons (leaves in the gutters in fall, blossom in spring), fireflies, breath in the cold, puddle rings and cloud shadows.',
+    does: 'Rain, thunderstorms with lightning, fog (since 1.9.997 drawn energy-conserving: lit by the light map, dark where the street is dark, so it never brightens the night), snow and blizzards, sandstorms, ashfall, wind and gusts, seasons (leaves in the gutters in fall, blossom in spring), fireflies, breath in the cold, puddle rings and cloud shadows.',
     adapts: 'A density ladder from a quarter to full, shared with the governor; weather that fills the whole screen (fog, storm darkness, blowing sand) is trimmed before the resolution drops.',
     repairs: 'Checks that its drifting debris never piles up or loses its place and that the street\'s wetness stays in range; a fresh start clears the debris and the storms.',
     learns: 'What each kind of weather costs at full density on this device; when the next weather is chosen and it will not fit, it starts thinner instead of building up and being cut back.',
@@ -11038,7 +11038,7 @@ const ENG_DOCS = {
   SFX: {
     title: 'The Foley Artist',
     character: 'Never plays a recording: every gunshot, impact and scream is synthesized the moment it happens.',
-    does: 'Live synthesized sound for every gun, impact, kill chain, zombie and ambience, with echoes that change by district, and the wave clock\'s ticks.',
+    does: 'Live synthesized sound for every gun, impact, kill chain, zombie and ambience, with echoes that change by district, and the wave clock\'s ticks. Since 1.9.997 each of the twenty guns has a voice of its own (GUNSFX), layered the way sound designers do: the striker a few milliseconds before the report (the belt gun\'s open bolt slamming home first), the supersonic crack by calibre (loud on 5.56 and 5.7, gone on .45 and buckshot), the body at the round\'s own centre with a knock under it, a tight sub for the heavy rounds, the action cycling after (an AR\'s buffer spring, an AK\'s carrier, the MP5\'s rollers, the Mk 14\'s op-rod, steel or polymer slides, a revolver\'s frame ringing), the magnums\' cylinder-gap blast, and a tail that decays like a room; the stream guns are trimmed per shot and play one long tail when the burst ends. Each voice is rendered in three takes the first time the gun is carried. The shaper curves no longer leak a DC offset into every rendered sound.',
     adapts: 'Quality low, medium or high, from the device\'s tier.',
     repairs: 'Its audio clock is checked every 2 seconds: resumed when the device suspends it (a call, a Bluetooth switch, the app going to the background), rebuilt when it freezes or closes.',
     learns: 'How often it falls behind at each quality on this device; if it keeps falling behind it settles one quality lower for good, and steps back up after a long calm.',
@@ -11049,7 +11049,7 @@ const ENG_DOCS = {
   RADIO: {
     title: 'The DJ',
     character: 'FM 66.6 never stops for anything. It writes its own songs and keeps the next minute ready.',
-    does: 'Writes and renders its own songs ahead of time on a separate audio thread: 7 channels (synthwave, heavy metal, industrial, orchestral, lo-fi, drum and bass, chiptune) of 35 songs each, or your own music.',
+    does: 'Writes and renders its own songs ahead of time on a separate audio thread: 7 channels (synthwave, heavy metal, industrial, orchestral, lo-fi, drum and bass, chiptune) of 35 songs each, or your own music. Since 1.9.997 its players play a little off the grid and a little louder or softer from note to note (more on the slow stations, never the kick), the pads are three detuned saws a note under a slow chorus, and the whole song dips under every gunshot like a sidechain (4 ms down, back over about 150 ms, deeper for the heavier guns).',
     adapts: 'The first chunk of a song is short so it starts quickly; chunks stay short while little is buffered.',
     repairs: 'Its own audio clock is checked every 2 seconds and rebuilt if it freezes; a render that never finishes is dropped and tried again.',
     learns: 'How fast this device renders music; on a slow device it keeps more ready ahead (up to 48 seconds instead of 24) so the music never skips.',
@@ -11115,7 +11115,7 @@ const ENG_DOCS = {
   PRISM: {
     title: 'The Lens',
     character: 'The finisher. Every frame passes through it last, and it decides how the whole picture feels.',
-    does: 'GPU shaders (WebGL 2 or 1) with a processor fallback: path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, colour temperature and grading, vignette and film grain, and relief and highlights from the nearest lamps on every surface.',
+    does: 'GPU shaders (WebGL 2 or 1) with a processor fallback: path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, colour temperature and grading (since 1.9.997 the ACES curve with vibrance), vignette and film grain, relief and highlights from the nearest lamps on every surface, and (1.9.997) TEXEL\'s detail normal map in world space: pebbles, grain and hairline cracks (weighed by district: asphalt and concrete crack, snow and sand do not) carved by the sun, the lamps and the flashlight.',
     adapts: 'Four levels; steps down when the graphics chip is the bottleneck and back up when there is room; runs on the processor on devices without a usable graphics chip.',
     repairs: 'Rebuilds its shaders after errors, rebuilds everything when the graphics chip comes back after losing its context, runs on the processor for a minute after repeated GPU errors; a heartbeat on the GPU path and a check for a lost context.',
     learns: 'How reliable this device\'s graphics chip is: after 3 lost contexts in recent sessions, Auto keeps the shaders on the processor for a while instead of stuttering through rebuilds, and calm sessions win the GPU back. Also what each level costs by screen size.',
@@ -11126,7 +11126,7 @@ const ENG_DOCS = {
   TEXEL: {
     title: 'The Painter',
     character: 'Never satisfied with flat colour: grime, cloth, skin and asphalt, all painted by hand, by code.',
-    does: 'Procedural textures for the zombies, the player and the city; blended ground materials with soft edges and districts that bleed into each other; sprites supersampled to the screen\'s exact sharpness.',
+    does: 'Procedural textures for the zombies, the player and the city; blended ground materials with soft edges and districts that bleed into each other; sprites supersampled to the screen\'s exact sharpness; and (1.9.997) the detail normal map the shader engine lights every surface with (three octaves of height with pebbles, pixel grain, cracks in their own channel).',
     adapts: 'Four levels; steps down when making sprites costs more than a frame each second, and back up after a long calm if CORE agrees.',
     repairs: 'Repairs its own memory, checks its sprite cache never overflows (and trims it), a fresh start clears every cache.',
     learns: 'What each level costs by how many new sprites it has to make each second.',
@@ -11159,7 +11159,7 @@ const ENG_DOCS = {
   MUZZLE: {
     title: 'The Pyrotechnician',
     character: 'Every gun gets its own fire, and it leaves the brass where it falls.',
-    does: 'A different flash for every gun (star, fireball, flash-hider fan, shotgun bloom, sniper brake jets, launcher back-blast), tinted by the modification, with sparks, drifting smoke, ejected brass and shells, and a light that casts shadows.',
+    does: 'A different flash for every gun, since 1.9.997 built from its real components: the primary ball at the muzzle (its size from the bore and the charge), the intermediate disc, and the secondary fireball shaped by the device (bare crown, birdcage, brake, tines, prongs, the shotgun\'s bloom, the magnum\'s side blast, the launcher\'s back-blast), in two layers over the flash\'s own life, tinted by the modification, with sparks, drifting smoke, the shotgun\'s wad, ejected brass and shells, and a light that casts shadows.',
     adapts: 'Since 1.9.991 a ladder of its own (full, about two thirds, under half the smoke and brass) that CORE steps when the frame runs late and climbs back when there is room.',
     repairs: 'Checks its smoke and brass never pile up or lose their place; a fresh start clears them.',
     learns: 'What it costs by how much smoke and brass is on the street.',
@@ -11192,7 +11192,7 @@ const ENG_DOCS = {
   TRACER: {
     title: 'The Streak',
     character: 'Fast and flashy, but it knows when to calm down.',
-    does: 'Every round drawn in its gun\'s style: a white-hot head, a motion-blurred streak and a glow (machine gun tracers, the sniper\'s vapour trail and heat shimmer, shotgun pellets, smoking grenades, living flames), tinted by its modification, with sparks where it hits.',
+    does: 'Every round drawn in its gun\'s style and (1.9.997) at its real diameter: ball rounds as copper smears with a glint, the belt\'s every fifth round a tracer, the battle rifle\'s wake, the 5.7\'s blue flash, a white-hot head, a motion-blurred streak and a glow (the sniper\'s vapour trail and heat shimmer, shotgun pellets and their wad, smoking grenades, living flames), tinted by its modification, with sparks where it hits.',
     adapts: 'Its detail steps down when it takes too much of the frame and back up when there is room, if CORE agrees.',
     repairs: 'A part that keeps failing rests on its own while the rest keeps drawing; a fresh start clears its trails; CORE covers for it with plain tracers.',
     learns: 'What it costs by how many rounds are in flight.',
@@ -11258,7 +11258,7 @@ const ENG_DOCS = {
   ARMS: {
     title: 'The Armorer',
     character: 'New in 1.9.993. A range instructor with opinions: the gun comes up before it fires, a sprinting man does not shoot, and you keep your partial magazine when nobody is close. It studied how operators and soldiers actually handle guns and will not let the Operator cut a corner.',
-    does: 'The 250 frame-and-mod guns rest while they are rebuilt on real ones ten at a time; the first ten are five primaries (M4A1, AK-74M, Mk 17, M1014, PP-19) and five secondaries (M17, M9, M1911A1, M1917 revolver, APS), each with its real calibre, capacity, rate of fire and muzzle velocity. You carry one of each and swap. Ready up and ready down: relaxed, the gun rides at low ready; engaged, it comes up to the eyes in the gun\'s own ready time, with a focused posture (shoulders forward, knees soft, shorter steps), and after a few quiet seconds it comes back down. Sprinting carries the gun off target and nothing fires until it is back up. Each gun reloads its own way: the AR\'s speed reload with the bolt catch slapped on empty, the AK\'s hook-and-rock with the handle racked from under, the Mk 17\'s left-side handle, the shotgun\'s tube loaded shell by shell (a round through the port on empty), the PP-19\'s helical magazine hooked on its front pins and rotated up, a pistol\'s slide lock, the 1911\'s slide stop, the revolver\'s half-moon clips; a round stays in the chamber on a tactical reload, a partial magazine is kept when nobody is close, and pressing reload on a full gun is a press check. The dash button is a dodge roll (the 25 dashes rest): untouchable for its first part, then committed. Every shot kicks the gun, the shoulders and the camera by its calibre. Since 1.9.994 the knife is one of its states (BLADE runs it): the sidearm comes out for the chain and the long gun comes back after it, and teammates see which knife move you are making.',
+    does: 'The 250 frame-and-mod guns rest while they are rebuilt on real ones ten at a time; twenty are in (1.9.997): the primaries M4A1, AK-74M, Mk 17, M1014, PP-19, MP5A3, M249, Mk 14, 590A1 and AUG A3, the secondaries M17, M9, M1911A1, M1917 revolver, APS, G17, Desert Eagle, Model 29, Five-seveN and a sawed-off coach gun, each with its real calibre, capacity, rate of fire and muzzle velocity, and each worked for real: the belt laid in the feed tray under the cover, the pump after every shot, the speedloader, the break-action, the bullpup\'s paddle; the recoil of each round into the shoulder or the wrist by its calibre\'s impulse (LEGFIRE), the body answering through the chest, spine and neck; and (GUNSFX) a voice of its own. You carry one of each and swap. Ready up and ready down: relaxed, the gun rides at low ready; engaged, it comes up to the eyes in the gun\'s own ready time, with a focused posture (shoulders forward, knees soft, shorter steps), and after a few quiet seconds it comes back down. Sprinting carries the gun off target and nothing fires until it is back up. Each gun reloads its own way: the AR\'s speed reload with the bolt catch slapped on empty, the AK\'s hook-and-rock with the handle racked from under, the Mk 17\'s left-side handle, the shotgun\'s tube loaded shell by shell (a round through the port on empty), the PP-19\'s helical magazine hooked on its front pins and rotated up, a pistol\'s slide lock, the 1911\'s slide stop, the revolver\'s half-moon clips; a round stays in the chamber on a tactical reload, a partial magazine is kept when nobody is close, and pressing reload on a full gun is a press check. The dash button is a dodge roll (the 25 dashes rest): untouchable for its first part, then committed. Every shot kicks the gun, the shoulders and the camera by its calibre. Since 1.9.994 the knife is one of its states (BLADE runs it): the sidearm comes out for the chain and the long gun comes back after it, and teammates see which knife move you are making.',
     adapts: 'Never, on purpose: how the guns handle has to be the same for everyone and in co-op. What it draws scales through LEGEND and PHYSICS instead.',
     repairs: 'A state that goes bad, a magazine count that goes wrong or a move stuck past its time is put back to the relaxed carry with full magazines; a heartbeat while you play. Its self-test at start checks that there are five and five and every gun is in the shared tables, that a tactical reload leaves thirty plus one and an empty one thirty, that nothing fires while sprinting or before the gun is up, and each round\'s muzzle energy against the published figure for its calibre (within a quarter).',
     learns: 'Which gun you reload most, so its frames are warmed before a run.',
@@ -11280,7 +11280,7 @@ const ENG_DOCS = {
   LEGEND: {
     title: 'The Rigger',
     character: 'Builds a person out of shapes, then teaches him to stand like a soldier. Patient and exacting: after a pose it measures every bone, and a hand that misses its grip by two millimetres fails its test. Its first legend is the Operator, the beginner every player starts with.',
-    does: 'The legends: real 3D characters made entirely in code, with no model files. A shape builder (lathes, limbs, bevelled boxes, extrusions, tubes, decals) skins every vertex to a 47-bone rig: the spine, each finger and thumb, the props (a pistol with its own slide and magazine, a knife, a carbine) and the seven plates of the Operator\'s exotech mask, which fold out from the helmet and click shut over his face one plate at a time. A procedural atlas paints 20 materials with height, roughness and cavity: camo with ripstop, Cordura plate carrier, leather, polymer, Cerakote, brushed steel, and carbon with etched circuits that glow in the class colour. Two-bone reach (IK) puts hands on grips and keeps feet planted, and a hand that cannot quite reach brings its shoulder forward, as a real arm does for a handguard. There are fifty animations in seven groups (moving, standing, pistol, long gun, close quarters, special, hits and down), with cross-fades and events (footsteps, shots, the mask locking). Three levels of detail: about 65,000 triangles up close, 26,000, and 6,000. Two renderers: WebGL with shadows, puddle reflections, relief normals, rim light and the class glow; and a processor painter that draws the same meshes when there is no GPU. Since v2 (1.9.993) the survivor in a run is built in three layers painted from straight above: the legs (walking, strafing, backing up, sprinting, each paced by what it measured), the upper body with the gun in his hands, and the head; they turn on their own the way a body does: the head turns first, the chest follows it and the legs follow the movement, with a limit on the twist, so he looks around a corner before he turns into it. Springs give him weight: he leans into a start and settles after a stop, each shot kicks his shoulders by the gun\'s calibre, and near a wall he cants the gun and leans to slice the corner. Each of the ten rebuilt guns is modelled with its own grips, rails, optic and magazine, so the hands land on that gun\'s grip and handguard, and the magazine hand goes to that gun\'s magazine well; the knife sits in a reverse grip, the blade out of the little-finger side of the fist. A hundred and seven animations now: the fifty, thirty-two seated idles for the stoop (the knife sharpened on a whetstone, the can, a lamp flicker, a coin across the knuckles, a doze, a radio check and more, cross-faded into one another) and thirteen arms moves you can watch in the Legends studio. The Operator also has a face now (stubble, brows, the balaclava rolled down) for when his mask is down. Since 1.9.994 the hands are real hands: an anatomical glove over three bones a finger (the thumb too), and every grip is fitted to the actual gun: the palm slides onto the grip until it touches, then each finger and the thumb close joint by joint until they meet the surface (the model of that gun, sampled point by point), so the fingers wrap the grip, the handguard, the slide and the knife\'s handle instead of floating; the fits are kept on the device and warmed in the background for the guns you carry. The ten guns were rebuilt to their real proportions: a 5.56 magazine as deep as its round is long, the AK\'s deep curve, the Mk 17\'s straight 20-rounder, slimmer raked grips with texture panels, stocks with their slots and cut-outs, and the pistols on real slides (serrations front and back, the port with the barrel hood in it, sights with their dots, the M17\'s red dot), real grip angles with beavertails and wooden panels, and a revolver with its top strap and fluted cylinder; edges are rounded in two facets. The legend\'s page has an armory on its left: each gun drawn from its own model through a depth buffer (smooth light, clean edges, lit by the class), the one in view big with its numbers and its special reload, and picking one puts it in his hands in the studio at once. Ten knife moves (the combos) join the arms moves in the studio. Since 1.9.995 (v3 to v5, its course) it has studied anatomy and handling things. Every joint keeps the range a human joint has (shoulder, elbow, forearm, wrist, fingers, hip, knee, ankle, neck and spine, from the AAOS and Soucie tables): the arm swivels to keep the wrist in range, poses the clips made by hand are brought back inside the ranges (1,495 joint angles out of range across the game\'s clips before, none after), the arms are kept out of the body, and the centre of mass and the base of support are tracked frame by frame. It holds thirteen everyday things in the grasp people choose for each (Feix\'s taxonomy: a hook for a mug, wraps, a power sphere for a ball, a tripod for a pen, pinches for a coin and a key, two hands for a crate), the hand settling until the pads touch without sinking in and the contacts can hold the thing against gravity (friction cones). It reaches to grasp with the bell of speed and the opening of real prehension (widest at about 70% of the reach, 55 mm plus 0.75 of the thing\'s width), follows Fitts\'s law, lifts a 12 kg crate with the legs, hands a bottle to another person with the weight passing in 0.3 s, and throws a ball with the kinetic chain (hips, then trunk, elbow and arm), learning when to let go so it lands on its target. It checks its own movement like an animation supervisor (feet that slide, limbs into the body, smoothness by SPARC, arcs, the eyes leading the hand, breathing at rest) and performs one action in different Laban efforts (a punch, a float, a glide, a slash). Since 1.9.996 (slice 13): LOCO, a gait built from measured human walking and running: the cadence, stride and share of stance for each speed (treadmill studies, Fukuchi 2017 for running), the hip, knee and ankle through the step as measured curves, the planted foot pivoting on its heel and then its ball and never sliding, the stride warped to the speed, the hips turned toward the way he moves (up to 45 degrees off the chest, which stays on the aim) and swung round past 100 degrees so he backs up properly, the hips riding the stance leg in a walk and bouncing in a run; the walk, patrol, jog, run, sprint, crouch walk, strafes and backpedal are rebuilt on it, and in a run his legs are painted from it at the speeds he really moves, with a step finished, not melted, when he stops. LGP, the performance layer: every joint answers its parent a little late and settles past the mark (a damped spring per part, computed from the clip\'s own past so a film can still be scrubbed), a standing body sways and breathes, and the kit hangs on four new bones that swing (the radio\'s antenna, the dump pouch, the cummerbund\'s strap tails). The weapon light is on the gun\'s rail (an M600-style light on each long gun, a compact light on the pistol) and the beam goes along the barrel. The heads are sculpted as one surface (brow, eye sockets, nose, cheekbones, lips, chin), with ballistic glasses resting on the nose, brows, stubble and hair when his face shows; the sleeves and trousers fold, the cargo pockets are full-size and the pads sit low.',
+    does: 'The legends: real 3D characters made entirely in code, with no model files. A shape builder (lathes, limbs, bevelled boxes, extrusions, tubes, decals) skins every vertex to a 74-bone rig: the spine, each finger and thumb, the props (a pistol with its own slide, hammer, cylinder and magazine, a carbine with its bolt carrier, charging handle, pump or feed cover and magazine, a knife; since 1.9.997 every moving part of a gun is a bone, so the action runs with each shot and reload) and the seven plates of the Operator\'s exotech mask, which fold out from the helmet and click shut over his face one plate at a time. A procedural atlas paints 20 materials with height, roughness and cavity: camo with ripstop, Cordura plate carrier, leather, polymer, Cerakote, brushed steel, and carbon with etched circuits that glow in the class colour. Two-bone reach (IK) puts hands on grips and keeps feet planted, and a hand that cannot quite reach brings its shoulder forward, as a real arm does for a handguard. There are fifty animations in seven groups (moving, standing, pistol, long gun, close quarters, special, hits and down), with cross-fades and events (footsteps, shots, the mask locking). Three levels of detail: about 65,000 triangles up close, 26,000, and 6,000. Two renderers: WebGL with shadows, puddle reflections, relief normals, rim light and the class glow; and a processor painter that draws the same meshes when there is no GPU. Since v2 (1.9.993) the survivor in a run is built in three layers painted from straight above: the legs (walking, strafing, backing up, sprinting, each paced by what it measured), the upper body with the gun in his hands, and the head; they turn on their own the way a body does: the head turns first, the chest follows it and the legs follow the movement, with a limit on the twist, so he looks around a corner before he turns into it. Springs give him weight: he leans into a start and settles after a stop, each shot kicks his shoulders by the gun\'s calibre, and near a wall he cants the gun and leans to slice the corner. Each of the ten rebuilt guns is modelled with its own grips, rails, optic and magazine, so the hands land on that gun\'s grip and handguard, and the magazine hand goes to that gun\'s magazine well; the knife sits in a reverse grip, the blade out of the little-finger side of the fist. A hundred and seven animations now: the fifty, thirty-two seated idles for the stoop (the knife sharpened on a whetstone, the can, a lamp flicker, a coin across the knuckles, a doze, a radio check and more, cross-faded into one another) and thirteen arms moves you can watch in the Legends studio. The Operator also has a face now (stubble, brows, the balaclava rolled down) for when his mask is down. Since 1.9.994 the hands are real hands: an anatomical glove over three bones a finger (the thumb too), and every grip is fitted to the actual gun: the palm slides onto the grip until it touches, then each finger and the thumb close joint by joint until they meet the surface (the model of that gun, sampled point by point), so the fingers wrap the grip, the handguard, the slide and the knife\'s handle instead of floating; the fits are kept on the device and warmed in the background for the guns you carry. The ten guns were rebuilt to their real proportions: a 5.56 magazine as deep as its round is long, the AK\'s deep curve, the Mk 17\'s straight 20-rounder, slimmer raked grips with texture panels, stocks with their slots and cut-outs, and the pistols on real slides (serrations front and back, the port with the barrel hood in it, sights with their dots, the M17\'s red dot), real grip angles with beavertails and wooden panels, and a revolver with its top strap and fluted cylinder; edges are rounded in two facets. The legend\'s page has an armory on its left: each gun drawn from its own model through a depth buffer (smooth light, clean edges, lit by the class), the one in view big with its numbers and its special reload, and picking one puts it in his hands in the studio at once. Ten knife moves (the combos) join the arms moves in the studio. Since 1.9.995 (v3 to v5, its course) it has studied anatomy and handling things. Every joint keeps the range a human joint has (shoulder, elbow, forearm, wrist, fingers, hip, knee, ankle, neck and spine, from the AAOS and Soucie tables): the arm swivels to keep the wrist in range, poses the clips made by hand are brought back inside the ranges (1,495 joint angles out of range across the game\'s clips before, none after), the arms are kept out of the body, and the centre of mass and the base of support are tracked frame by frame. It holds thirteen everyday things in the grasp people choose for each (Feix\'s taxonomy: a hook for a mug, wraps, a power sphere for a ball, a tripod for a pen, pinches for a coin and a key, two hands for a crate), the hand settling until the pads touch without sinking in and the contacts can hold the thing against gravity (friction cones). It reaches to grasp with the bell of speed and the opening of real prehension (widest at about 70% of the reach, 55 mm plus 0.75 of the thing\'s width), follows Fitts\'s law, lifts a 12 kg crate with the legs, hands a bottle to another person with the weight passing in 0.3 s, and throws a ball with the kinetic chain (hips, then trunk, elbow and arm), learning when to let go so it lands on its target. It checks its own movement like an animation supervisor (feet that slide, limbs into the body, smoothness by SPARC, arcs, the eyes leading the hand, breathing at rest) and performs one action in different Laban efforts (a punch, a float, a glide, a slash). Since 1.9.996 (slice 13): LOCO, a gait built from measured human walking and running: the cadence, stride and share of stance for each speed (treadmill studies, Fukuchi 2017 for running), the hip, knee and ankle through the step as measured curves, the planted foot pivoting on its heel and then its ball and never sliding, the stride warped to the speed, the hips turned toward the way he moves (up to 45 degrees off the chest, which stays on the aim) and swung round past 100 degrees so he backs up properly, the hips riding the stance leg in a walk and bouncing in a run; the walk, patrol, jog, run, sprint, crouch walk, strafes and backpedal are rebuilt on it, and in a run his legs are painted from it at the speeds he really moves, with a step finished, not melted, when he stops. LGP, the performance layer: every joint answers its parent a little late and settles past the mark (a damped spring per part, computed from the clip\'s own past so a film can still be scrubbed), a standing body sways and breathes, and the kit hangs on four new bones that swing (the radio\'s antenna, the dump pouch, the cummerbund\'s strap tails). The weapon light is on the gun\'s rail (an M600-style light on each long gun, a compact light on the pistol) and the beam goes along the barrel. The heads are sculpted as one surface (brow, eye sockets, nose, cheekbones, lips, chin), with ballistic glasses resting on the nose, brows, stubble and hair when his face shows; the sleeves and trousers fold, the cargo pockets are full-size and the pads sit low.',
     adapts: 'Its level comes from the device\'s tier and the ecosystem. It decides the texture size on the Legends screen (128 to 512 px tiles), whether run frames are supersampled, and how many frames are kept (120 to 320). In a run it paints at most two new frames a frame, or one when stepped down. Until a new frame is ready it borrows the nearest phase already painted, so a new pose never stalls the game. The Legends screen has its own governor: when the cinematic runs slow, the effects step down first, then the director, then the characters, and they climb back in the other order.',
     repairs: 'Six errors in ten seconds and it rests for a minute while the old survivor stands in for the legend. Its check catches frames piling up. Its repair clears the frames and the error count. Its fresh start frees every model from the GPU and rebuilds them. Its self-test at start runs random poses (every bone must keep its exact length), puts both hands on the pistol and on the carbine (each must land within 2 mm of its grip; since 1.9.995 the support hand may roll round the handguard to keep its wrist in range, and must stay on it), checks that all fifty animations are there with the seated idles and the arms moves, checks that the knife is held the right way round, and (since 1.9.996) that the walk keeps a measured cadence (100 to 122 steps a minute at 1.33 m/s), that a flat foot slides less than 2.5 cm while it is down, and that the performance layer leaves a held pose where the clip put it.',
     learns: 'What a run frame costs to paint on this device. It also teaches itself as it plays: every time it paints the upper body it measures where the support hand landed against that gun\'s grip in that posture; if it is off by more than 6 mm it moves that gun\'s posture in toward the shoulder by most of the miss, paints it again and checks again (most land within 2 mm after a try or two), and if moving the gun does not bring the hand closer it puts the posture back and leaves it. What it learned is kept on the device. Its steps are paced by the gait itself (the phase advances by the ground covered over the stride for that speed), so a planted foot holds the ground; it keeps the leg frames it has painted at the speeds the survivor has actually moved. Its course: five versions, each with an exam measured on its own output (proportions against de Leva, 120 reaches, the grips on ten guns, joint ranges, balance, the grasps, reach, lift, handover, throw, the quality of movement); a version is held only while every exam before it passes, and the results are kept on the device. It also learns by practice: the support-hand grip\'s cost falls from 415 to under 5 over its tries, the balance gain is found in a few practice reaches, and the throw\'s release in a few practice throws (the miss goes from a metre to a centimetre).',
@@ -11292,7 +11292,7 @@ const ENG_DOCS = {
     title: 'The Director',
     character: 'Mimatic means cinematic mimicry. It studies how films are shot, keeps the techniques rather than the images, and blends them the way a director would: it chooses where the camera stands, when time slows, and where the music hits. It references; it never copies.',
     does: 'Turns a beat sheet into a film. A library of 13 film techniques, each with a note on why it works and where it comes from: low-angle hero, tracking shot, macro insert and push-in, over the shoulder, Dutch angle, whip pan, punch-in and impact shake, handheld energy, speed ramp, freeze frame and bullet time, lightning as light, title card, and hit points. From the beats it builds the shots (framed on the actors\' bones, so the camera follows a real head or a real hand), a time curve for speed ramps and freezes, and cues for the score and effects. The Operator\'s cinematic (14.5 seconds, 15 shots, rebuilt in 1.9.994): he walks a rain-soaked alley carrying your sidearm, the mask closes, a door bangs, two of the dead rush him; a whip pan, a muzzle-lit headshot, a grab, a tactical throw; down on a knee and the knife goes in; a third one out of the dark behind him; he comes up turning, the knife at its collar in slow motion, the pistol past the knife arm, point blank (knife, knife, shot, the in-game combo\'s rhythm), and time stops on the muzzle flash while lightning freezes the frame on his name; the score is rewritten to the new cut. It also stages the line-up (the five classes standing in the rain behind the selection), the hub, and the studio, where the model turns front-on and then the camera tilts up and over to look straight down, the way the game sees him (a seated clip plays there on his chair). Since v2 (1.9.993): the stoop, the idle scene behind each face on the selection screen: the Operator sits on a wooden chair under a dim bulb swinging on its cable over a shop shutter, mask down, sharpening his knife, the camera on the street at floor level looking up at him; a director picks from thirty seated idles and cross-fades them so he is never still the same way twice, and somewhere in the first quarter-minute a can is kicked in the dark: he is up off the chair with the knife out, and there is nothing there. Every actor carries weight now (springs that lag the head and the chest behind the hips), the knife is held the right way, the alley has neon that buzzes and flickers, bottles and cans the fight knocks over, papers in the wind, a passing car\'s lights sweeping the walls and a siren far off. And it directs the run\'s camera: lead room ahead of where you look when engaged and where you move when not, a slight push in when you focus, a pull out when you sprint, and a kick by each gun\'s calibre that springs back. In the studio the Operator carries the guns from the armory, his hands fitted to them, and a pick turns the camera three-quarters from his gun side to watch him take it. Since 1.9.995 (v3 to v5, its course): a camera body and lens (Super 35 and full frame, focal length and angle of view, aperture, focus, depth of field by the thin-lens formula, shutter angle, exposure value, the judder limit on pans) and its rigs (locked, pan, tilt, whip, dolly, crane, arc, steadicam, handheld, dolly zoom, rack focus) with minimum-jerk starts and stops; the shot sizes from extreme close-up to extreme wide, framed on the face as LEGEND models it, composition and clear sightlines; light designed for the subject (key, fill and back at the look\'s ratio, 2:1 to 16:1, colour temperatures through Planck\'s law) and metered by two renders until the ratio is right; and directing: coverage of a scene (master, two-shot, singles, overs, inserts), continuity (the 180-degree and 30-degree rules, match on action) and the cut chosen over all the possibilities by Murch\'s rule of six. With BOARD and VFXRAY it shoots a written scene: the set and its practical lights from the heading (a night avenue of sodium lamps and neon, a warehouse under bulbs), the light per shot, the director\'s camera following its subject, focus pulled to the eyes, a kick on the camera when a blow lands. Since 1.9.996: every actor plays through LEGEND\'s performance layer, so the films move as if motion-captured; the alley was watched frame by frame from a fixed witness camera and fixed: the mask-on reach (elbow forward, his hand to the helmet\'s rail) shot from his left with a warm key light, the shoulder throw turned round the contact on his back (he drops and bends, it rolls over and is slammed down), the head shots that drop as dead weight, the last of the dead clawing at the knife in its collar on the freeze, and no jump before it. The stoop is cut like a film\'s quiet scene: four held shots on a 26-second loop (a wide pushing in, a side medium on the knife, an insert on his hands and the blade, his face from under the helmet\'s brim), each keeping him clear of the class card.',
-    adapts: 'Its level sets the resolution the cinematic renders at (55% to 100%) and the detail of the characters it casts (the hero and the line-up separately). The screen\'s governor steps it down after the effects when frames run slow.',
+    adapts: 'Its level sets the resolution the cinematic renders at (55% to 100%), the detail of the characters it casts (the hero and the line-up separately) and, since 1.9.997, whether the alley and the stoop go through the real lens (the thin lens\'s depth of field focused on the shot\'s subject, a stop wider on the inserts; the 180-degree shutter\'s motion blur from the camera\'s own move, none across a cut; a low mist; rays off the lamp when it is in frame; a teal-and-orange look). The screen\'s governor steps it down after the effects when frames run slow.',
     repairs: 'A clock gone bad is reset to the start of the shot. Repeated errors rest it while the screen holds a still. Its self-test at start directs the Operator\'s cinematic and checks that no two shots leave a gap, that time never runs backwards through the speed ramps and the freeze, and that every shot uses a technique from its library.',
     learns: 'What a cinematic frame costs on this device at its current resolution. It also checks its own framing as it plays: where the subject\'s head lands in each shot (off the edge, or with no headroom over the eyes) and corrects that shot next time, a little wider or the target moved, keeping the corrections on the device. Its course: five versions with exams on its own output (the cinematic\'s time curve, framing learned from its own frames, lens arithmetic and a dolly zoom measured on renders, framing within 1%, colour temperatures against Planck, lighting ratios metered within 2%, an edit with no crossings and no jump cuts that beats a careless one by the rule of six); a version is held only while every earlier exam passes.',
     works: 'Needs LEGEND for the actors, VFXRAY for the rain, the flashes and the post, and PHYSICS for the props and the weight springs; ARMS and LUX follow the run camera\'s focus. It cues the cinematic score and sound effects in the sound engine, and holds the radio down while it plays.',
@@ -11302,7 +11302,7 @@ const ENG_DOCS = {
   VFXRAY: {
     title: 'The Finisher',
     character: 'The last pair of hands on every frame. Rain, sparks and light are its whole world. It keeps a promise to your eyes: lightning never flashes more than three times a second, and with reduced flashing it becomes one soft swell.',
-    does: 'The last pass of every Legends frame. Rain in scene time: the streaks shorten in slow motion and the drops hang in the air when the frame freezes. Splashes and ripples where the drops land. A sprite batch for muzzle flashes, gun smoke, ejected brass, blood mist and steam. Lightning: bolts and their branches, with an uneven flash pattern that lights the scene from the sky. The post chain: bloom, an anamorphic streak, colour fringing, film grain, vignette, letterbox bars, fades and flashes, motion blur from the frame before, and a colour grade that the director can drain to a cold blue-white on the freeze. Since v2 (1.9.993) the post is more filmic: halation (the red-orange glow film gives off round bright lights), a soft shoulder so highlights roll off instead of clipping, and a split tone (cool shadows, warm highlights) set per scene; the stoop has its own grade, teal and sodium-orange, with heavier grain and vignette. Since 1.9.995 (v3 to v5, its course): what a camera really records: depth of field gathered from the lens in linear light and measured against the thin-lens formula, motion blur from the camera\'s own movement through a 180-degree shutter, natural cos-fourth vignetting; the filmic tone curve, colour looks as 32-cube lookup tables (teal and orange, bleach bypass, day for night, sodium), light shafts, and height fog by the Beer-Lambert law; and effects from physics: rain at each drop size\'s terminal speed, sparks that fly, bounce and cool through a black body\'s colours, smoke carried by curl noise, debris, a ring of dust where a body lands, and the muzzle flash in its phases, all cued by CHOREO\'s fights (on a wet street, water off the body and a splash ring where it lands).',
+    does: 'The last pass of every Legends frame. Rain in scene time: the streaks shorten in slow motion and the drops hang in the air when the frame freezes. Splashes and ripples where the drops land. A sprite batch for muzzle flashes, gun smoke, ejected brass, blood mist and steam, and (1.9.997) the motes of dust and ash drifting in the box ahead of the camera, each lit by the lamps near it so they show in the light and vanish in the dark; shadows from eight Poisson taps turned per pixel, a soft penumbra instead of a stair-stepped edge. Lightning: bolts and their branches, with an uneven flash pattern that lights the scene from the sky. The post chain: bloom, an anamorphic streak, colour fringing, film grain, vignette, letterbox bars, fades and flashes, motion blur from the frame before, and a colour grade that the director can drain to a cold blue-white on the freeze. Since v2 (1.9.993) the post is more filmic: halation (the red-orange glow film gives off round bright lights), a soft shoulder so highlights roll off instead of clipping, and a split tone (cool shadows, warm highlights) set per scene; the stoop has its own grade, teal and sodium-orange, with heavier grain and vignette. Since 1.9.995 (v3 to v5, its course): what a camera really records: depth of field gathered from the lens in linear light and measured against the thin-lens formula, motion blur from the camera\'s own movement through a 180-degree shutter, natural cos-fourth vignetting; the filmic tone curve, colour looks as 32-cube lookup tables (teal and orange, bleach bypass, day for night, sodium), light shafts, and height fog by the Beer-Lambert law; and effects from physics: rain at each drop size\'s terminal speed, sparks that fly, bounce and cool through a black body\'s colours, smoke carried by curl noise, debris, a ring of dust where a body lands, and the muzzle flash in its phases, all cued by CHOREO\'s fights (on a wet street, water off the body and a splash ring where it lands).',
     adapts: 'Its level sets how many drops fall (900 to 6,500), the splashes (60 to 320), the bloom steps, and whether the streak, the motion blur, the fringing, the puddle reflections and the shadows are on. It is the first thing the screen\'s governor steps down when frames run slow, and the last to climb back.',
     repairs: 'Clears its sprites if they pile up, and rests after repeated errors. Its self-test at start fires a bolt and checks the flash pattern stays at three flashes a second or fewer, and that every quality step still has rain.',
     learns: 'What its effects cost on this device at each level, and its rain: if the drops cost more than the frame has room for it thins them a step at a time (never below 40%) and brings them back when there is room, keeping that on the device. Its course: five versions with exams on its own output (the bloom, the film look, blur measured in pixels against the lens, fog measured against exp(-ρL), rain against Atlas\'s drop speeds, sparks cooling, smoke\'s spread, the flash\'s phases, a cue for every moment of a fight); a version is held only while every earlier exam passes.',
@@ -16315,6 +16315,7 @@ const PR_FS = {
     ' gl_FragColor = mix(prev, cur, uBlend); }',
   // the final pass: everything together, then the grade
   final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir; uniform vec4 uTr; uniform vec4 uHot[8]; uniform vec4 uPL[6]; uniform vec3 uPC[6]; uniform float uNPL, uLamp, uSpec;\n' +
+    '#ifdef DET\nuniform sampler2D uDet; uniform float uDetK, uDetTile, uCrack;\nfloat dth(vec2 p) { vec4 s = texture2D(uDet, p); return s.r - (1.0 - s.b) * uCrack * 0.45; }\n#endif\n' +
     'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub, uRefK, uRbK, uSunK, uRain, uWind, uRelief, uClar, uGlare, uPurk, uVib, uTone; uniform vec3 uWB, uTS, uTH, uSky, uSun;\n' +
     'const vec3 W3 = vec3(0.2126, 0.7152, 0.0722);\n' +
     'vec3 tap(vec2 p) { return texture2D(uS, p).rgb; }\n' +
@@ -16332,13 +16333,21 @@ const PR_FS = {
     '  vec3 mn = min(c, min(min(n, s), min(e, w))), mx = max(c, max(max(n, s), max(e, w))); vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, vec3(0.001)), 0.0, 1.0));\n' +
     '  vec3 wg = -amp * uSharp * 0.2; c = max((c + (n + s + e + w) * wg) / (1.0 + 4.0 * wg), vec3(0.0)); }\n' +
     ' if (uCA > 0.0) { vec2 dc = uv - 0.5; float e2 = dot(dc, dc); c.r = mix(c.r, tap(uv - dc * uCA * e2).r, 0.85); c.b = mix(c.b, tap(uv + dc * uCA * e2).b, 0.85); }\n' +
+    // 1.9.997: the detail normal map (TEXEL's tile, in world space): micro-relief for the sun and the lamps, pebbles and
+    // cracks on every surface, with a touch of its own shading so the grain shows even in flat light
+    ' vec3 nd = vec3(0.0, 0.0, 1.0);\n' +
+    '#ifdef DET\n' +
+    ' if (uDetK > 0.0) { vec2 dpx = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 dw = vec2((dpx.x - uTr.y) / uTr.x, (dpx.y - uTr.w) / uTr.z) / uDetTile; float de = 1.0 / 256.0;\n' +
+    '  float dh = dth(dw), dhn = dth(dw + vec2(0.0, -de)), dhs = dth(dw + vec2(0.0, de)), dhe = dth(dw + vec2(de, 0.0)), dhw = dth(dw - vec2(de, 0.0));\n' +
+    '  nd = normalize(vec3((dhw - dhe) * 2.4 * uDetK, (dhs - dhn) * 2.4 * uDetK, 1.0)); c *= 1.0 + (dh - 0.5) * 0.08 * uDetK + (texture2D(uDet, dw * 3.0).g - 0.5) * 0.04 * uDetK; }\n' +
+    '#endif\n' +
     // relief: the picture's own detail (asphalt grain, roof gravel, cracks, skin) lit from the sun's side
     ' if (uRelief > 0.0) { float ln = dot(tap(uv + vec2(0.0, uIn.y)), W3), ls = dot(tap(uv - vec2(0.0, uIn.y)), W3), le = dot(tap(uv + vec2(uIn.x, 0.0)), W3), lw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
-    '  c *= 1.0 - clamp(dot(vec2(le - lw, ln - ls), uSunDir) * uRelief * 6.0, -0.22, 0.22); }\n' +
+    '  c *= 1.0 - clamp(dot(vec2(le - lw, ln - ls), uSunDir) * uRelief * 6.0, -0.22, 0.22); c *= 1.0 - clamp(dot(-nd.xy, uSunDir) * uRelief * 1.4, -0.14, 0.14); }\n' +
     // lamplight on every surface: the picture's own detail read as height, lit by each lamp, fire and flashlight near
     // it (the side facing the light brighter, the far side darker), with a glint where the street is wet
     ' if (uNPL > 0.0) { float hn = dot(tap(uv + vec2(0.0, uIn.y)), W3), hs = dot(tap(uv - vec2(0.0, uIn.y)), W3), he = dot(tap(uv + vec2(uIn.x, 0.0)), W3), hw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
-    '  vec3 nr = normalize(vec3((hw - he) * 7.0, (hs - hn) * 7.0, 1.0)); vec3 lsum = vec3(0.0);\n' +
+    '  vec3 nr = normalize(vec3((hw - he) * 7.0 + nd.x, (hs - hn) * 7.0 + nd.y, 1.0)); vec3 lsum = vec3(0.0);\n' +
     '  for (int i = 0; i < 6; i++) { if (float(i) >= uNPL) break; vec2 d = (uPL[i].xy - uv) * vec2(uAsp, 1.0); float dist = length(d); float fall = clamp(1.0 - dist / uPL[i].z, 0.0, 1.0); if (fall <= 0.0) continue;\n' +
     '   vec3 L = normalize(vec3(d, 0.06 + 0.22 * uPL[i].z)); float rel = dot(nr, L) - L.z; vec3 H = normalize(L + vec3(0.0, 0.0, 1.0)); float sp = pow(max(dot(nr, H), 0.0), 48.0) * uSpec;\n' +
     '   lsum += uPC[i] * (fall * fall) * uPL[i].w * (rel * 2.2 + sp); }\n' +
@@ -16409,10 +16418,10 @@ function prismProgram(name, fs, defs) {
     return { p: p, u: u };
   } catch (e) { coreHurt('PRISM', name + ': ' + e.message); try { console.error(e); } catch (x) { } return null; }
 }
-function prismTex(filter) {
+function prismTex(filter, repeat) {
   const gl = PRISM.gl, t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter || gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter || gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
   return t;
 }
@@ -16432,11 +16441,17 @@ function prismBuild() {
   const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0); PRISM.quad = b;
   gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  for (const k of ['bright', 'down', 'up', 'shafts', 'final']) PRISM.P[k] = prismProgram(k, PR_FS[k]);
+  for (const k of ['bright', 'down', 'up', 'shafts']) PRISM.P[k] = prismProgram(k, PR_FS[k]);
+  // the detail map needs a ninth sampler: only where the chip has the units for it (the spec's floor is eight)
+  let units = 8; try { units = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) | 0; } catch (e) { }
+  PRISM.det = units >= 9 && typeof texelDetail === 'function';
+  PRISM.P.final = prismProgram('final', PR_FS.final, PRISM.det ? '#define DET 1\n' : '');
+  if (!PRISM.P.final && PRISM.det) { PRISM.det = false; PRISM.P.final = prismProgram('final', PR_FS.final); }
+  PRISM.detUp = false;
   PRISM.P.gi1 = prismProgram('gi', PR_FS.gi, '#define RAYS 6\n#define STEPS 12\n');
   PRISM.P.gi2 = prismProgram('gi', PR_FS.gi, '#define RAYS 12\n#define STEPS 16\n');
   for (const k of ['scene', 'light', 'amb', 'occ', 'rfa', 'rfw']) PRISM.T[k] = prismTex();
-  PRISM.T.black = prismTex();
+  PRISM.T.black = prismTex(); PRISM.T.det = prismTex(null, true);
   PRISM.ok = !!PRISM.P.final;
   if (!PRISM.ok) PRISM.reason = 'the final shader did not compile';
 }
@@ -16567,6 +16582,13 @@ function prismGpu() {
     for (let i = 0; i < n; i++) { const l = Ls[i]; pl[i * 4] = l.sx / cw; pl[i * 4 + 1] = 1 - l.sy / ch; pl[i * 4 + 2] = Math.min(1.4, l.r / ch * 1.4); pl[i * 4 + 3] = Math.min(1.5, l.i); pc[i * 3] = l.c0 / 255; pc[i * 3 + 1] = l.c1 / 255; pc[i * 3 + 2] = l.c2 / 255; }
     gl.uniform4fv(u.uPL, pl); gl.uniform3fv(u.uPC, pc); gl.uniform1f(u.uNPL, n); gl.uniform1f(u.uLamp, n ? (0.18 + 0.5 * night) : 0); gl.uniform1f(u.uSpec, n ? clamp(0.15 + (F.wet || 0) * 0.9, 0, 1) * (0.3 + 0.7 * night) : 0); }
   gl.uniform1f(u.uGlare, PRISM.bloomGpu && prismLevel() >= 2 ? 0.05 * night : 0); gl.uniform1f(u.uPurk, LUX.live ? 0.42 * night : 0);
+  // the detail normal map: uploaded once, stronger in the dark (the lamps carve it) and at the higher levels
+  if (PRISM.det && u.uDet != null) {
+    if (!PRISM.detUp) { try { prismUpload(T.det, texelDetail()); PRISM.detUp = true; } catch (e) { PRISM.det = false; } }
+    const bio = WORLD.cur ? WORLD.cur.bio : 'city', soft = bio === 'snow' || bio === 'desert' || bio === 'ash';
+    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.6 : 0.35) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (soft ? 0.6 : 1);
+    gl.uniform1f(u.uDetK, dk); gl.uniform1f(u.uDetTile, 150 * (typeof PK === 'number' && PK > 0 ? PK : 1)); gl.uniform1f(u.uCrack, soft ? 0 : bio === 'suburb' ? 0.5 : 1); if (dk > 0) prismBind(fp, 'uDet', 8, T.det);
+  }
   prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
   prismBind(fp, 'uRf', 5, refl ? T.rfa : T.black); prismBind(fp, 'uRw', 6, refl ? T.rfw : T.black); prismBind(fp, 'uRb', 7, PRISM.bloomGpu ? PRISM.F.b0.t : T.black);
   prismDraw(fp, null, ow, oh);
@@ -16871,6 +16893,26 @@ function texelCanvas(kind) {
     for (let i = 0; i < n * n; i++) { const v = R() * 255, k = i * 4; d[k] = d[k + 1] = d[k + 2] = v; d[k + 3] = 255; }
   }
   g.putImageData(im, 0, 0); TEXEL.lib.set(kind, c); return c;
+}
+// 1.9.997: the detail map the shader engine lights every surface with (a normal map, as AAA games lay a tiling detail
+// normal over every ground material): R is height from three octaves of noise with pebbles and hairline cracks, G is
+// pixel grain, sampled by PRISM in world space so it stays put under the camera and reads under lamps and the flashlight
+function texelDetail() {
+  let c = TEXEL.lib.get('detail'); if (c) return c;
+  const n = 256; c = texelMk(n, n); const g = c.getContext('2d'), im = g.createImageData(n, n), d = im.data, R = Z.mulberry32(0x5bd1e995);
+  const a = texelNoise(n, 40, 101), b = texelNoise(n, 11, 103), e = texelNoise(n, 4, 107);
+  for (let i = 0; i < n * n; i++) {
+    const k = i * 4, h = 0.5 + (a[i] - 0.5) * 0.22 + (b[i] - 0.5) * 0.36 + (e[i] - 0.5) * 0.34 + (R() - 0.5) * 0.14 + (R() < 0.015 ? 0.22 : 0);   // (pebbles stand proud)
+    d[k] = clamp(h * 255, 0, 255); d[k + 1] = clamp(128 + (R() - 0.5) * 150, 0, 255); d[k + 2] = 255; d[k + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  // hairline cracks in the blue channel (the shader weighs them by district: asphalt and concrete crack, snow and sand do
+  // not): a few wandering lines, drawn across the tile's edges so they still tile
+  const cm = texelMk(n, n), cg = cm.getContext('2d'); cg.fillStyle = '#fff'; cg.fillRect(0, 0, n, n); cg.strokeStyle = 'rgba(0,0,0,0.75)'; cg.lineWidth = 1.2; cg.lineCap = 'round';
+  for (let i = 0; i < 7; i++) { let x = R() * n, y = R() * n, an = R() * Math.PI * 2; cg.beginPath(); cg.moveTo(x, y); for (let s = 0; s < 18; s++) { an += (R() - 0.5) * 1.1; x += Math.cos(an) * 7; y += Math.sin(an) * 7; cg.lineTo(x, y); } cg.stroke(); cg.save(); cg.translate(-n, 0); cg.stroke(); cg.translate(2 * n, 0); cg.stroke(); cg.translate(-n, -n); cg.stroke(); cg.translate(0, 2 * n); cg.stroke(); cg.restore(); }
+  const cd = cg.getImageData(0, 0, n, n).data; for (let i = 0; i < n * n; i++) d[i * 4 + 2] = cd[i * 4];
+  g.putImageData(im, 0, 0);
+  TEXEL.lib.set('detail', c); return c;
 }
 /* ---------- the city's ground ----------
    Bigger tiles (256 pixels) for the street: grey maps around middle grey, laid over the painted blocks with an 'overlay'
@@ -24893,7 +24935,11 @@ const PERF = {
   fps: 0, workMs: 0, changes: [], repairs: 0, log: [], errs: [], errT: [], storms: 0,
   lastFrame: 0, lastNow: -1, lastRaf: 0, lastDraw: 0, visibleAt: 0, freed: 0, lodN: [0, 0, 0, 0], frames: 0,
   // settings that scale the tier, and the parts the governor trims on its own before dropping a whole tier
-  partMul: 1, resLock: null, wxScale: 1, vegCut: false, sec: { wx: 0, life: 0, lux: 0 }, secWin: { wx: 0, life: 0, lux: 0 }, deco: 1
+  partMul: 1, resLock: null, wxScale: 1, vegCut: false, sec: { wx: 0, life: 0, lux: 0 }, secWin: { wx: 0, life: 0, lux: 0 }, deco: 1,
+  // 1.9.997: the fast budget: a running average of the frame (its interval and the script's share), read four times a
+  // second, scales the particle budgets between the tier's ceiling and a floor long before the one-second governor
+  // would drop a whole rung, so heavier settings hold 60 and the picture keeps its resolution
+  scale: 1, ema: { iv: 16.7, work: 5 }, budT: 0, budBase: null, budDowns: 0
 };
 
 /* ---------- device profile ---------- */
@@ -25043,6 +25089,9 @@ function perfFrame(now, rawIv, work) {
   const w = PERF.win;
   if (G.mode !== PERF.lastMode) { PERF.lastMode = G.mode; PERF.holdT = Math.max(PERF.holdT, now + 1200); }
   if (!live || now < PERF.holdT) { w.n = w.sum = w.work = 0; w.iv.length = 0; return; }
+  // the fast budget (particles first, four times a second)
+  const em = PERF.ema; em.iv += (Math.min(rawIv, 100) - em.iv) * 0.12; em.work += (Math.min(work, 100) - em.work) * 0.12;
+  if (now > PERF.budT) { PERF.budT = now + 250; perfBudget(); }
   w.n++; w.sum += rawIv; w.work += work; w.iv.push(rawIv);
   const sw = PERF.secWin; sw.wx += PERF.sec.wx; sw.life += PERF.sec.life; sw.lux += PERF.sec.lux || 0; PERF.sec.wx = PERF.sec.life = PERF.sec.lux = 0;
   if (w.sum < 1000) return;
@@ -25068,6 +25117,8 @@ function perfFrame(now, rawIv, work) {
     // the lighting engine taking a big slice steps itself down a level before the whole picture loses resolution
     if (PERF.bad >= 1 && luxShare > 0.22 && coreTrim(T)) { PERF.bad = 0; PERF.holdT = now + 1200; return; }
     if (PERF.bad >= 1 && lifeShare > 0.18 && !PERF.vegCut && SET.veg === 'auto') { PERF.vegCut = true; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('still trees'); return; }
+    // the fast budget still has particles to give up and the frame is the script's (not the fill's): let it work first
+    if (PERF.bad >= 1 && PERF.scale > 0.36 && !fillBound && G.mode === 'play') { PERF.bad = 1; return; }
     if (++PERF.bad >= 2 && PERF.rung < LADDER.length - 1) {
       const from = PERF.rung, step = avg > T * 2 ? 2 : 1;
       // stepping down soon after stepping up means that rung is too much: wait longer before trying it again
@@ -25086,6 +25137,19 @@ function perfFrame(now, rawIv, work) {
   if (now - PERF.stableT > 20000 && (!PS.learned || PS.learned.rung !== PERF.rung || PS.learned.key !== PERF.key)) {
     PS.learned = { key: PERF.key, rung: PERF.rung }; savePerf();
   }
+}
+// the fast budget: step the particle budgets down a tenth when the running frame is over the target or the script has
+// most of it, and back up a twentieth at a time when there is room; the one-second governor only drops a rung when this
+// has nothing left to give. Manual tiers (Low..Ultra) are left alone: the player asked for that level.
+function perfBudget() {
+  if (PERF.mode !== 'auto') { if (PERF.scale !== 1) { PERF.scale = 1; applyRung(PERF.rung, 'budget'); } return; }
+  const T = 1000 / targetFps(), e = PERF.ema; let s = PERF.scale;
+  if (e.iv > T * 1.12 || e.work > T * 0.8) { s -= 0.1; PERF.budDowns++; } else if (e.iv < T * 1.03 && e.work < T * 0.55) s += 0.04;
+  s = Math.round(clamp(s, 0.35, 1) * 100) / 100;
+  if (s === PERF.scale) return;
+  PERF.scale = s; const b = PERF.budBase; if (!b) return;
+  Q.parts = Math.round(b.parts * (0.3 + 0.7 * s)); Q.burst = b.burst * (0.4 + 0.6 * s);
+  if (typeof coreEmit === 'function' && (s === 1 || s <= 0.36 || Math.abs(s - (PERF.budTold || 1)) >= 0.2)) { PERF.budTold = s; coreEmit('budget', { scale: s }); }
 }
 function logTrim(what) { PERF.changes.push({ at: Math.round(performance.now() / 1000), to: TIER_NAMES[PERF.tier] + ' ' + Math.round(RES_STEPS[PERF.res] * 100) + '%', why: what }); if (PERF.changes.length > 12) PERF.changes.shift(); }
 // the display's refresh rate, from the first couple of seconds of frames
@@ -25303,6 +25367,8 @@ function applyLook() {
 function applyOverrides() {
   const pm = PERF.partMul || 1;
   Q.parts = Math.round(Q.parts * pm); Q.burst = Q.burst * pm;
+  PERF.budBase = { parts: Q.parts, burst: Q.burst };   // (1.9.997: the ceiling the fast budget scales from)
+  if (PERF.scale < 1) { Q.parts = Math.round(Q.parts * (0.3 + 0.7 * PERF.scale)); Q.burst = Q.burst * (0.4 + 0.6 * PERF.scale); }
   const dk = SET.decals === 'low' ? 0.4 : SET.decals === 'high' ? 1.6 : 1;
   Q.splats = Math.round(Q.splats * dk);
   if (SET.aq !== 'auto') Q.audio = SET.aq === 'low' ? 0 : 2;
@@ -25603,6 +25669,7 @@ function deviceInfo() {
   const add = (k, v) => { const d = el('div'); d.append(el('dt', '', k), el('dd', '', v)); dl.appendChild(d); };
   add('Running', TIER_NAMES[PERF.tier] + ' · ' + Math.round(RES_STEPS[PERF.res] * 100 * (PERF.resLock ? PERF.resLock / RES_STEPS[PERF.res] : 1)) + '%');
   add('Frame rate', PERF.fps ? Math.round(PERF.fps) + ' fps' : '…');
+  if (PERF.scale != null && PERF.scale < 1) add('Particle budget', Math.round(PERF.scale * 100) + '% (holding the frame rate)');
   add('Screen', Math.round(PERF.hz) + ' Hz · ' + (Math.round((p.dpr || 1) * 100) / 100) + 'x');
   add('CPU', p.cores ? p.cores + ' cores' : 'Unknown');
   add('Memory', p.mem ? p.mem + ' GB' : 'Unknown');
@@ -26698,9 +26765,12 @@ const LG_FS = function (deriv) {
   // twill (tile 15, the clothes of the dead) or knit (5) fragment into the next tile's edge, printing dashes like text)
   'vec2 tuv(float t, vec2 u) { vec2 f = clamp(fract(u), uTx, 1.0 - uTx); float r = floor(t / uGrid.x + 0.001); return (vec2(t - r * uGrid.x, r) + f) / uGrid; }\n' +
   'float unpackD(vec4 c) { return dot(c, vec4(1.0, 1.0 / 255.0, 1.0 / 65025.0, 1.0 / 16581375.0)); }\n' +
+  // (1.9.997: eight Poisson taps over a 1.6-texel disc, the disc turned by a per-pixel hash, so the shadow's edge is a soft
+  // penumbra with no stair-steps rather than the four-tap block it was)
   'float shadowAt(vec4 L, float bias) { vec3 p = L.xyz / L.w * 0.5 + 0.5; if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0) return 1.0; float s = 0.0;\n' +
-  ' s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(-uShTx, -uShTx)))); s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(uShTx, -uShTx))));\n' +
-  ' s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(-uShTx, uShTx)))); s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + vec2(uShTx, uShTx)))); return s * 0.25; }\n' +
+  ' float an = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832; float ca = cos(an), sa = sin(an); float rd = uShTx * 1.6;\n' +
+  ' vec2 T[8]; T[0] = vec2(-0.94, 0.34); T[1] = vec2(0.94, -0.40); T[2] = vec2(-0.09, -0.93); T[3] = vec2(0.34, 0.29); T[4] = vec2(-0.91, -0.19); T[5] = vec2(0.47, 0.84); T[6] = vec2(-0.37, 0.69); T[7] = vec2(0.17, -0.47);\n' +
+  ' for (int i = 0; i < 8; i++) { vec2 o = vec2(T[i].x * ca - T[i].y * sa, T[i].x * sa + T[i].y * ca) * rd; s += step(p.z - bias, unpackD(texture2D(uSh, p.xy + o))); } return s * 0.125; }\n' +
   'vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }\n' +
   'float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n' +
   // rain rings on the puddles: a few drops per cell, each an expanding ring
@@ -28271,32 +28341,45 @@ function lgGunM1917(B, K) {
   const M = lgGunMats(K), hi = B.lod < 2, top = B.lod === 0;
   // 1.9.997: the hammer on its bone (it cocks and falls); the frame, the barrel and the grip on the pistol bone; the
   // cylinder on its own (it turns a chamber a shot and swings out on the crane)
+  // (the detail pass: the cylinder is the real 40 mm, not 66, and the frame window, the ejector rod and the barrel are
+  // proportioned to it (a 5.5-inch barrel); the extractor star and the gas ring at the cylinder's ends, the forcing cone,
+  // the side plate seam and its screws, the hammer nose, the rebound hump, the grip screw and escutcheons, the lanyard ring)
   lgBone(B, 'hammer'); lgMat(B, M.blued); lgSide(B, [[-0.006, 0.004], [0.004, 0.008], [0.002, 0.022], [-0.008, 0.03], [-0.02, 0.031], [-0.022, 0.026], [-0.012, 0.018]], 0.007, { bev: 0.0012, round: true });
   if (top) for (let i = 0; i < 4; i++) lgBox(B, -0.014 + i * 0.003, 0, 0.0305, 0.0006, 0.0034, 0.0008, 0);
+  if (hi) { lgMat(B, M.steel); lgBox(B, 0.006, 0, 0.0075, 0.004, 0.0012, 0.0012, 0.0004); }   // the hammer nose (the firing pin)
   lgBone(B, 'pistol'); lgMat(B, M.blued);
   // the frame: the window round the cylinder (bottom bar, top strap, the standing breech with the recoil shield), the
   // barrel's shoulder; the cylinder sits in the window
-  lgSide(B, [[-0.012, -0.004], [0.004, -0.026], [0.074, -0.026], [0.078, -0.018], [0.078, 0.02], [0.07, 0.026], [0.0, 0.024], [-0.012, 0.016]], 0.012, { bev: 0.002, round: true });
-  lgSide(B, [[-0.002, 0.016], [0.078, 0.018], [0.078, 0.026], [0.0, 0.026], [-0.008, 0.022]], 0.022, { bev: 0.003, round: true });   // the top strap, full width over the cylinder
-  lgSide(B, [[-0.002, -0.026], [0.074, -0.026], [0.074, -0.02], [-0.002, -0.022]], 0.022, { bev: 0.003, round: true });                // the bottom bar
+  lgSide(B, [[-0.012, -0.004], [0.004, -0.026], [0.05, -0.026], [0.056, -0.018], [0.056, 0.02], [0.048, 0.026], [0.0, 0.024], [-0.012, 0.016]], 0.012, { bev: 0.002, round: true });
+  lgSide(B, [[-0.002, 0.016], [0.056, 0.018], [0.056, 0.026], [0.0, 0.026], [-0.008, 0.022]], 0.022, { bev: 0.003, round: true });   // the top strap, full width over the cylinder
+  lgSide(B, [[-0.002, -0.026], [0.052, -0.026], [0.052, -0.02], [-0.002, -0.022]], 0.022, { bev: 0.003, round: true });                // the bottom bar
   lgSide(B, [[-0.012, -0.024], [0.002, -0.024], [0.002, 0.024], [-0.012, 0.018]], 0.044, { bev: 0.004, round: true });                 // the recoil shield
-  if (hi) { lgMat(B, M.blued); lgBox(B, 0.03, 0, 0.0262, 0.034, 0.0022, 0.0008, 0); }   // the sighting groove in the strap
-  lgBore(B, 0.072, 0.142, [[0, 0.0098], [0.08, 0.0092], [0.1, 0.0085], [1, 0.0082]], 0, 0.004);
-  lgPush(B, lgTR(0.206, 0, 0.012, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.004, 0], [0.002, 0.008], [-0.004, 0.009]], 0.004, { bev: 0.0008 }); lgPop(B);   // the half-moon front sight
-  // the ejector rod and its shroud under the barrel, the crane, the latch on the left
-  lgBore(B, 0.076, 0.07, 0.0042, 0, -0.012); lgBore(B, 0.146, 0.006, 0.0055, 0, -0.012);
-  if (hi) { lgBox(B, 0.074, 0, -0.016, 0.004, 0.009, 0.006, 0.0015); lgBox(B, 0.004, 0.012, 0.008, 0.006, 0.0016, 0.004, 0.0012); if (top) for (let i = 0; i < 4; i++) lgBox(B, 0.0, 0.0135, 0.006 + i * 0.0014, 0.0042, 0.0006, 0.0004, 0); }
-  // the cylinder: six chambers, fluted, the bolt notches; the chamber mouths at its front
-  lgBone(B, 'cyl'); lgMat(B, M.blued); lgBore(B, 0.006, 0.066, [[0, 0.0195], [0.06, 0.0212], [0.94, 0.0212], [1, 0.0198]], 0, -0.001, { segs: 18, wr: hi ? (a, z) => (Math.cos(a * 6) > 0.72 && z > 0.01 && z < 0.056 ? -0.13 : 0) : null });
-  if (hi) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + TAU / 12; lgBore(B, 0.0715, 0.0016, 0.0049, Math.cos(a) * 0.0128, -0.001 + Math.sin(a) * 0.0128, { segs: 8 }); } }
-  if (top) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; lgBox(B, 0.03, Math.cos(a) * 0.0215, -0.001 + Math.sin(a) * 0.0215, 0.004, 0.0012, 0.0012, 0.0004); } }   // the bolt notches
+  lgSide(B, [[-0.022, -0.006], [-0.012, -0.004], [-0.012, 0.016], [-0.02, 0.018], [-0.026, 0.01]], 0.03, { bev: 0.003, round: true });   // the rebound hump behind the hammer
+  if (hi) { lgMat(B, M.blued); lgBox(B, 0.026, 0, 0.0262, 0.024, 0.0022, 0.0008, 0); }   // the sighting groove in the strap
+  // the barrel: 5.5 inches from the frame, a shoulder at the frame, the forcing cone inside the window
+  lgBore(B, 0.05, 0.146, [[0, 0.0102], [0.05, 0.0098], [0.1, 0.009], [1, 0.0085]], 0, 0.004);
+  if (hi) { lgMat(B, M.gunBlk); lgBore(B, 0.044, 0.008, [[0, 0.0068], [1, 0.0078]], 0, 0.004, { segs: 10 }); lgMat(B, M.blued); }   // the forcing cone
+  lgPush(B, lgTR(0.19, 0, 0.012, 0, 0, 0)); lgSide(B, [[-0.008, 0], [0.004, 0], [0.002, 0.008], [-0.004, 0.009]], 0.004, { bev: 0.0008 }); lgPop(B);   // the half-moon front sight
+  // the ejector rod under the barrel, its knurled head and the lug that holds its tip; the crane; the thumbpiece on the left
+  lgMat(B, M.steel); lgBore(B, 0.052, 0.05, 0.0038, 0, -0.012); if (hi) lgBore(B, 0.094, 0.009, 0.0052, 0, -0.012, { segs: 12, wr: top ? (a) => (Math.cos(a * 12) > 0.3 ? -0.08 : 0) : null });
+  lgMat(B, M.blued); if (hi) { lgBox(B, 0.102, 0, -0.008, 0.005, 0.007, 0.0065, 0.0015); lgBox(B, 0.004, 0.012, 0.008, 0.006, 0.0016, 0.004, 0.0012); if (top) for (let i = 0; i < 4; i++) lgBox(B, 0.0, 0.0135, 0.006 + i * 0.0014, 0.0042, 0.0006, 0.0004, 0); }
+  // the side plate on the right: its seam and three screws; the fourth screw at the front of the trigger guard
+  if (top) { lgMat(B, M.gunBlk); lgBox(B, -0.012, -0.0105, -0.03, 0.0004, 0.0004, 0.028, 0); lgBox(B, 0.006, -0.0105, -0.058, 0.018, 0.0004, 0.0004, 0); lgMat(B, M.steel); for (const [x, z] of [[-0.03, -0.012], [0.018, -0.05], [-0.034, -0.064]]) lgBore(B, x - 0.0006, 0.0012, 0.0022, -0.0108, z, { segs: 8 }); }
+  // the cylinder: six chambers, fluted, the bolt notches; the chamber mouths at its front, the extractor star and the
+  // ratchet at its back, the gas ring at its front hub
+  lgBone(B, 'cyl'); lgMat(B, M.blued); lgBore(B, 0.006, 0.04, [[0, 0.0195], [0.08, 0.0212], [0.92, 0.0212], [1, 0.0198]], 0, -0.001, { segs: 18, wr: hi ? (a, z) => (Math.cos(a * 6) > 0.72 && z > 0.008 && z < 0.034 ? -0.13 : 0) : null });
+  if (hi) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + TAU / 12; lgBore(B, 0.0455, 0.0016, 0.0049, Math.cos(a) * 0.0128, -0.001 + Math.sin(a) * 0.0128, { segs: 8 }); } }
+  if (hi) { lgMat(B, M.steel); lgBore(B, 0.0045, 0.0018, 0.0135, 0, -0.001, { segs: 12, wr: (a) => (Math.cos(a * 6 + TAU / 12) > 0.2 ? 0 : -0.45) }); lgBore(B, 0.0458, 0.0025, 0.0068, 0, -0.001, { segs: 10 }); }   // the star, the gas ring
+  if (top) { lgMat(B, M.gunBlk); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; lgBox(B, 0.022, Math.cos(a) * 0.0215, -0.001 + Math.sin(a) * 0.0215, 0.003, 0.0012, 0.0012, 0.0004); } }   // the bolt notches
   lgBone(B, 'pistol');
   // the trigger guard, the trigger, and the round-butt walnut grip with its lanyard ring
-  lgMat(B, M.blued); lgTube(B, [[0.04, 0, -0.026], [0.056, 0, -0.034], [0.058, 0, -0.048], [0.044, 0, -0.056], [0.024, 0, -0.05], [0.016, 0, -0.036]], 0.0028, { segs: 6, flat: 2.2, up: [0, 1, 0] });
+  lgMat(B, M.blued); lgTube(B, [[0.044, 0, -0.024], [0.056, 0, -0.034], [0.058, 0, -0.048], [0.044, 0, -0.056], [0.024, 0, -0.05], [0.014, 0, -0.038], [0.01, 0, -0.027]], 0.0028, { segs: 6, flat: 2.2, up: [0, 1, 0] });
   lgMat(B, M.steel); lgTube(B, [[0.036, 0, -0.026], [0.042, 0, -0.035], [0.04, 0, -0.044], [0.034, 0, -0.048]], 0.0024, { segs: 5, flat: 1.6, up: [0, 1, 0] });
+  if (top) { lgMat(B, M.gunBlk); for (let i = 0; i < 3; i++) lgBox(B, 0.039 - i * 0.001, 0, -0.038 - i * 0.004, 0.0024, 0.0028, 0.0004, 0); }   // the trigger's serrations
   lgMat(B, M.blued); lgSide(B, [[0.012, -0.026], [-0.002, -0.06], [-0.01, -0.094], [-0.022, -0.11], [-0.044, -0.108], [-0.05, -0.084], [-0.04, -0.034], [-0.022, -0.006], [-0.012, -0.004]], 0.02, { bev: 0.003, round: true });   // the grip frame
   lgMat(B, M.walnut); lgSide(B, [[0.008, -0.03], [-0.004, -0.06], [-0.011, -0.092], [-0.022, -0.104], [-0.04, -0.102], [-0.045, -0.082], [-0.036, -0.036], [-0.02, -0.012], [-0.006, -0.012]], 0.031, { bev: 0.0065, smooth: 0.7, round: true });
-  if (hi) { lgMat(B, M.steel); lgPush(B, lgTR(-0.034, 0, -0.118, Math.PI / 2, 0, 0)); lgLathe(B, [[0.0055, -0.0012], [0.0075, 0], [0.0075, 0.0012], [0.0055, 0.0024]], { segs: 10 }); lgPop(B); lgBox(B, -0.034, 0, -0.111, 0.0016, 0.0016, 0.003, 0.0006); if (top) { lgBox(B, -0.022, 0, -0.06, 0.0028, 0.0165, 0.0028, 0.0012); } }   // (1.9.997: the lanyard ring hangs from the butt, where it belongs)
+  if (hi) { lgMat(B, M.steel); for (const y of [0.0158, -0.0158]) lgBore(B, -0.024, 0.0012, 0.0036, y, -0.07, { segs: 10 }); lgMat(B, M.gunBlk); lgBox(B, -0.024, 0.0164, -0.07, 0.0022, 0.0004, 0.0004, 0); }   // the grip screw and its escutcheons
+  if (hi) { lgMat(B, M.steel); lgPush(B, lgTR(-0.034, 0, -0.118, Math.PI / 2, 0, 0)); lgLathe(B, [[0.0055, -0.0012], [0.0075, 0], [0.0075, 0.0012], [0.0055, 0.0024]], { segs: 10 }); lgPop(B); lgBox(B, -0.034, 0, -0.111, 0.0016, 0.0016, 0.003, 0.0006); if (top) { lgMat(B, M.walnut); } }
   // two half-moon clips with their three rounds each (on the magazine bone: they come out together)
   lgBone(B, 'mag'); lgMat(B, M.steel); lgBore(B, 0.0, 0.002, 0.017, 0, -0.002, { segs: 12 });
   if (hi) { lgMat(B, M.brass); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + TAU / 12; lgBore(B, 0.002, 0.03, 0.0058, Math.cos(a) * 0.0128, -0.001 + Math.sin(a) * 0.0128, { segs: 6 }); } }
@@ -28323,7 +28406,7 @@ const LG_GUN_DEF = {
   m17: { mk: lgGunM17, fam: 'p', muz: [0.202, 0, 0], light: [0.186, 0, -0.031], mag: [0.027, -0.03], act: { lock: true,  slide: 0.032, cyc: 0.05, imp: 3.7, rise: 7.5, rec: 0.2 } },
   m9: { mk: lgGunM9, fam: 'p', muz: [0.217, 0, 0], mag: [0.027, -0.03], act: { lock: true,  slide: 0.032, cyc: 0.05, hammer: true, hp: [0, 0.006], hrot: 0.6, hrest: 1, da: 0.14, imp: 3.7, rise: 7.5, rec: 0.2 } },
   m1911: { mk: lgGunM1911, fam: 'p', muz: [0.202, 0, 0], mag: [0.027, -0.03], act: { lock: true,  slide: 0.035, cyc: 0.055, hammer: true, hp: [0, 0.006], hrot: 0.6, hrest: 1, imp: 4.7, rise: 10, rec: 0.25 } },
-  m1917: { mk: lgGunM1917, fam: 'p', muz: [0.214, 0, 0.004], mag: [0.0, -0.002], moon: true,
+  m1917: { mk: lgGunM1917, fam: 'p', muz: [0.198, 0, 0.004], mag: [0.0, -0.002], moon: true,
     act: { cyl: true, cc: [0, -0.001], crane: [0.013, -0.019], crot: 1.5, chambers: 6, hammer: true, hp: [-0.001, 0.006], hrot: 0.75, hrest: 0, da: 0.16, imp: 4.5, rise: 10, rec: 0.3 } },
   aps: { mk: lgGunAPS, fam: 'p', muz: [0.222, 0, 0], mag: [0.027, -0.03], act: { lock: true,  slide: 0.034, cyc: 0.08, hammer: true, hp: [0, 0.006], hrot: 0.6, hrest: 1, da: 0.14, imp: 2.4, rise: 5, rec: 0.12 } }
 };
@@ -30931,9 +31014,9 @@ function vfxTick(dt) {
     if (p.ground != null && p.p[2] < p.ground) { p.p[2] = p.ground; p.v[2] *= -0.3; p.v[0] *= 0.5; p.v[1] *= 0.5; }
   }
 }
-function vfxSprites(S, add) {
+function vfxSprites(S, add, lst) {
   const gl = LGR.gl; if (!VX.ok) return 0;
-  const list = VX.sp.filter(p => p.add === add); if (!list.length) return 0;
+  const list = (lst || VX.sp).filter(p => p.add === add); if (!list.length) return 0;
   const n = list.length, F = 14; if (!VX.spData || VX.spCap < n) { VX.spCap = Math.max(64, n * 2); VX.spData = new Float32Array(VX.spCap * 4 * F); const I = new Uint16Array(VX.spCap * 6); for (let i = 0; i < VX.spCap; i++) { const b = i * 4; I.set([b, b + 1, b + 3, b, b + 3, b + 2], i * 6); } gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, VX.spIdx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, I, gl.STATIC_DRAW); }
   const D = VX.spData;
   list.forEach((p, i) => {
@@ -30949,6 +31032,32 @@ function vfxSprites(S, add) {
   gl.drawElements(gl.TRIANGLES, n * 6, gl.UNSIGNED_SHORT, 0);
   gl.depthMask(true); gl.disable(gl.BLEND);
   return n;
+}
+// 1.9.997: the air of a cinematic: motes of dust and ash drifting through the frame, each lit by the lamps near it (and
+// by the flash), so they show in the light pools and vanish in the dark, as dust does. A pool that lives in the box ahead
+// of the camera: a mote that drifts out, or ages out, is born again somewhere else in the box.
+const VXA = { pool: [], box: [2.8, 2.8, 1.7], ahead: 2.4 };
+function vfxAmbient(S, o) {
+  if (!VX.ok || vfxLevel() < 1) return 0; o = o || {};
+  const cam = S.cam, n = o.n || (vfxLevel() >= 3 ? 120 : vfxLevel() >= 2 ? 80 : 40), dt = Math.min(0.1, o.dt == null ? 0.016 : o.dt), B = VXA.box, P = VXA.pool;
+  let f = [cam.tgt[0] - cam.eye[0], cam.tgt[1] - cam.eye[1], cam.tgt[2] - cam.eye[2]]; const L = Math.hypot(f[0], f[1], f[2]) || 1; f = [f[0] / L, f[1] / L, f[2] / L];
+  const c = [cam.eye[0] + f[0] * VXA.ahead, cam.eye[1] + f[1] * VXA.ahead, Math.max(0.6, cam.eye[2] + f[2] * VXA.ahead)];
+  const born = (p) => { p.p = [c[0] + (Math.random() - 0.5) * 2 * B[0], c[1] + (Math.random() - 0.5) * 2 * B[1], Math.max(0.02, c[2] + (Math.random() - 0.5) * 2 * B[2])]; p.v = [(Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.08, -0.02 - Math.random() * 0.05]; p.t = 0; p.life = 4 + Math.random() * 6; p.w = p.w1 = 0.004 + Math.random() * 0.009; p.ph = Math.random() * 6.28; p.k = 0; p.add = true; p.rot = 0; p.b = null; p.a1 = 1; p.col = [0, 0, 0]; return p; };
+  while (P.length < n) P.push(born({}));
+  if (P.length > n) P.length = n;
+  const wind = o.wind || [0.05, 0.02], pts = S.pts || [], fl = o.flash || 0, amb = S.sky || [0.05, 0.06, 0.09];
+  for (const p of P) {
+    p.t += dt; p.ph += dt;
+    p.p[0] += (p.v[0] + wind[0] + Math.sin(p.ph * 0.9) * 0.03) * dt; p.p[1] += (p.v[1] + wind[1] + Math.cos(p.ph * 0.7) * 0.03) * dt; p.p[2] += (p.v[2] + Math.sin(p.ph * 1.3) * 0.015) * dt;
+    if (p.t > p.life || Math.abs(p.p[0] - c[0]) > B[0] * 1.2 || Math.abs(p.p[1] - c[1]) > B[1] * 1.2 || p.p[2] < 0 || Math.abs(p.p[2] - c[2]) > B[2] * 1.3) { born(p); p.t = p.life * Math.random() * 0.3; }
+    // its light: the lamps' falloff squared, the sky's ambient, the flash; a fade at birth and death
+    let r = amb[0] * 0.25, g = amb[1] * 0.25, b = amb[2] * 0.25;
+    for (let i = 0; i < pts.length && i < 4; i++) { const q = pts[i]; if (!q || q.r < 0.1) continue; const d = Math.hypot(p.p[0] - q.p[0], p.p[1] - q.p[1], p.p[2] - q.p[2]), k = Math.max(0, 1 - d / q.r); if (k <= 0) continue; const kk = k * k * 0.55; r += q.col[0] * kk; g += q.col[1] * kk; b += q.col[2] * kk; }
+    if (fl > 0) { r += 1.2 * fl; g += 1.3 * fl; b += 1.6 * fl; }
+    const env = Math.min(1, p.t / 0.8, (p.life - p.t) / 1.0) * (o.k == null ? 1 : o.k), tw = 0.75 + 0.25 * Math.sin(p.ph * 2.1);
+    p.col[0] = r * env * tw; p.col[1] = g * env * tw; p.col[2] = b * env * tw; p.a = 1;
+  }
+  return vfxSprites(S, true, P);
 }
 // effects the director calls for
 function vfxMuzzle(p, dir, col) {
@@ -31058,7 +31167,7 @@ function vfx2DPost(g, w, h, o, tm) {
   if (o.bars) { const b = o.bars * h; g.fillStyle = '#000'; g.fillRect(0, 0, w, b); g.fillRect(0, h - b, w, b); }
   g.restore();
 }
-function vfxReset() { VX.sp.length = 0; VX.bolts = []; VX.flashPat = null; VX.prev = null; }
+function vfxReset() { VX.sp.length = 0; VX.bolts = []; VX.flashPat = null; VX.prev = null; VXA.pool.length = 0; }
 function vfxHurt(e) {
   const now = performance.now(); coreHurt('VFXRAY', e); try { console.error(e); } catch (x) { }
   VX.errT.push(now); while (VX.errT.length && now - VX.errT[0] > 10000) VX.errT.shift();
@@ -31425,13 +31534,14 @@ function mimWarp(curve, dur) {
 const MIM = { ver: 1, scene: null, rt: 0, st: 0, lastSt: 0, playing: false, actors: [], set: null, setW: null, cam: lgCam(), S: null, shots: [], shot: -1, warp: null, cues: [], cueI: 0, onEnd: null, onCue: null,
   cls: 'attack', w: 0, h: 0, scale: 1, adapt: 0, lvl: 2, ms: 0, msAvg: 0, frames: 0, mode: 'none', cv2: null, g2: null, mount: null, studio: { view: 'front', yaw: 0, pitch: 0.12, dist: 3.1, auto: true, tTilt: 0, from: null }, errT: [], offUntil: 0, look: {} };
 function mimLevel() { return MIM.lvl = clamp(([1, 1, 2, 3][clamp(PERF.tier | 0, 0, 3)]) + MIM.adapt + (TUNE.MIMATIC || 0), 0, 3); }
-const MIMQ = [{ scale: 0.55, lod: 1, lineLod: 2 }, { scale: 0.7, lod: 1, lineLod: 2 }, { scale: 0.85, lod: 0, lineLod: 1 }, { scale: 1, lod: 0, lineLod: 1 }];
+// lens: the real lens chain (depth of field, the shutter's motion blur, mist, light rays, a look) on the alley and the stoop
+const MIMQ = [{ scale: 0.55, lod: 1, lineLod: 2, lens: 0 }, { scale: 0.7, lod: 1, lineLod: 2, lens: 0 }, { scale: 0.85, lod: 0, lineLod: 1, lens: 1 }, { scale: 1, lod: 0, lineLod: 1, lens: 1 }];
 function mimSetW() { const W = new Float32Array(LG_NB_MAX * 16); for (let i = 0; i < LG_NB_MAX; i++) W.set(lgM4(), i * 16); return W; }
 
 /* ---------- lighting per scene ---------- */
 function mimAlleyLights(acc) {
   return {
-    key: { dir: [-0.3, 0.4, 1], col: [0.3, 0.38, 0.52] }, rim: { dir: [1, 0.1, 0.25], col: [0.5, 0.74, 1.1] }, sky: [0.055, 0.065, 0.095], gnd: [0.03, 0.027, 0.03],
+    key: { dir: [-0.3, 0.4, 1], col: [0.3, 0.38, 0.52] }, rim: { dir: [1, 0.1, 0.25], col: [0.5, 0.74, 1.1] }, sky: [0.055, 0.065, 0.095], gnd: [0.07, 0.056, 0.042],   // (1.9.997: the wet street bounces the sodium light up under him, so he is not a flat cut-out against the bricks)
     pts: [{ p: [-6.7, -1.5, 5.1], r: 19, col: [2.1, 1.2, 0.48] }, { p: [11.0, -2.3, 3.6], r: 7.5, col: [1.6, 0.45, 1.2] }, { p: [7.5, -2.35, 2.4], r: 5, col: [1.5, 1.0, 0.55] }, { p: [5.5, 2.5, 4.0], r: 0.01, col: [0, 0, 0] }],
     fog: { col: [0.03, 0.04, 0.062], d: 0.04, h: 0.12, s: 1.5 }, wet: 1, expo: 1.3, clear: [0.012, 0.016, 0.026]
   };
@@ -31523,7 +31633,7 @@ function mimDirectOperator() {
   // insert: the mask, close, creeping in
   // (1.9.996: from his left, the side his hand goes to, on a longer lens: the fingers at the helmet and the plates closing
   // in three-quarter profile, the arm no longer a wall across the lens)
-  shots.push({ t0: 2.9, t1: 4.4, tech: ['insert'], cam: (rt) => { const H = mimBone(op(), 'head'), k = lgE.io(lgW(rt, 2.9, 4.4)), d = lgLerp(1.38, 1.12, k), az = lgLerp(0.84, 0.95, k); return { eye: [H[0] + 0.04 + Math.cos(az) * d, H[1] + Math.sin(az) * d, H[2] - 0.07], tgt: [H[0] + 0.04, H[1] + 0.035, H[2] + 0.02], fov: 0.38, shake: 0.05, flare: rt > 4.05 ? 1.5 : 0.4 }; } });
+  shots.push({ t0: 2.9, t1: 4.4, tech: ['insert'], cam: (rt) => { const H = mimBone(op(), 'head'), k = lgE.io(lgW(rt, 2.9, 4.4)), d = lgLerp(1.38, 1.12, k), az = lgLerp(0.84, 0.95, k); return { eye: [H[0] + 0.04 + Math.cos(az) * d, H[1] + Math.sin(az) * d, H[2] - 0.07], tgt: [H[0] + 0.04, H[1] + 0.035, H[2] + 0.02], fov: 0.38, N: 1.8, shake: 0.05, flare: rt > 4.05 ? 1.5 : 0.4 }; } });
   // threat: over his shoulder toward the door, the horizon tipped; a whip to the second one; then low behind him
   const ots = () => { const H = mimBone(op(), 'head'); return [H[0] - 0.72, H[1] - 0.4, H[2] + 0.08]; };
   shots.push({ t0: 4.4, t1: 5.25, tech: ['ots', 'dutch'], cam: (rt) => { const zz = zAt(z1()) || [7.4, -2.3], k = lgW(rt, 4.6, 5.2); return { eye: ots(), tgt: [lgLerp(7.4, zz[0], k), lgLerp(-2.3, zz[1], k), 1.3], fov: 0.7, roll: R ? 0 : 0.17, shake: 0.5 }; } });
@@ -31537,7 +31647,7 @@ function mimDirectOperator() {
   // slow: high and down on the pin as he drops onto it and the knife goes in (a jolt on the strike)
   shots.push({ t0: 8.48, t1: 9.38, tech: ['hero', 'punch'], cam: (rt) => ({ eye: [2.2, -1.25, 2.45], tgt: [2.72, 0.05, 0.48], fov: 0.72, shake: 0.3 + lgPulse(rt, 9.6, 9.8) * 1.2, punch: lgPulse(rt, 9.62, 9.8) * 0.5 }) });
   // insert: low by the blade in the chest, his eyes over it, the strike
-  shots.push({ t0: 9.38, t1: 9.78, tech: ['insert', 'punch'], cam: (rt) => { const K = mimBone(op(), 'handL'), k = lgW(rt, 9.38, 9.78), kz = Math.max(0.45, K[2]); return { eye: [K[0] - 0.3, K[1] - lgLerp(1.25, 1.1, k), kz + 0.4], tgt: [K[0] + 0.12, K[1], kz - 0.04], fov: 0.6, shake: 0.25 + lgPulse(rt, 9.62, 9.75) * 1.4, punch: lgPulse(rt, 9.63, 9.78) * 0.7 }; } });
+  shots.push({ t0: 9.38, t1: 9.78, tech: ['insert', 'punch'], cam: (rt) => { const K = mimBone(op(), 'handL'), k = lgW(rt, 9.38, 9.78), kz = Math.max(0.45, K[2]); return { eye: [K[0] - 0.3, K[1] - lgLerp(1.25, 1.1, k), kz + 0.4], tgt: [K[0] + 0.12, K[1], kz - 0.04], fov: 0.6, N: 2.0, shake: 0.25 + lgPulse(rt, 9.62, 9.75) * 1.4, punch: lgPulse(rt, 9.63, 9.78) * 0.7 }; } });
   // threat: the third one, running at us out of the dark, him small and down in the foreground
   shots.push({ t0: 9.78, t1: 10.1, tech: ['track', 'ots'], cam: (rt) => { const r = opAt(), z = zAt(z3()) || [8, 0.6]; return { eye: [r[0] - 1.1, r[1] - 0.55, 0.62], tgt: [lgLerp(r[0], z[0], 0.55), lgLerp(r[1], z[1], 0.55), 1.05], fov: 0.66, roll: R ? 0 : -0.1, shake: 0.6 }; } });
   // action: side on and low as he comes up turning and the knife goes in, the frame slowed at the strike
@@ -31545,7 +31655,7 @@ function mimDirectOperator() {
   // the shot: low over the dead one's shoulder, pushing in on the pistol coming past the knife arm
   shots.push({ t0: 10.56, t1: 10.93, tech: ['hero', 'ots'], cam: (rt) => { const H = mimBone(op(), 'head'), G = mimBone(op(), 'handR'), z = zAt(z3()) || [H[0] + 0.9, H[1]], c = mimMid(H, G), k = lgE.io(lgW(rt, 10.56, 10.93)); return { eye: [z[0] + lgLerp(1.25, 1.0, k), z[1] + lgLerp(1.15, 0.95, k), 1.22], tgt: [c[0], c[1], c[2] - 0.02], fov: lgLerp(0.66, 0.56, k), shake: 0.3 }; } });
   // freeze: bullet time round the frozen moment (the knife, the flash, the mist), lightning, the title
-  shots.push({ t0: 10.93, t1: 14.5, tech: ['freeze', 'lightning', 'title'], cam: (rt) => { const H = mimBone(op(), 'head'), G = mimBone(op(), 'handR'), Z = z3() ? mimBone(z3(), 'head') : G, c = mimMid(mimMid(H, G), Z), k = lgE.s(lgW(rt, 10.93, 13.5)), a = lgLerp(-1.35, -2.25, k), d = lgLerp(1.25, 1.7, k); return { eye: [c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d, lgLerp(0.75, 1.3, k)], tgt: [c[0], c[1], c[2] - 0.06], fov: lgLerp(0.74, 0.64, k), shake: 0 }; } });
+  shots.push({ t0: 10.93, t1: 14.5, tech: ['freeze', 'lightning', 'title'], cam: (rt) => { const H = mimBone(op(), 'head'), G = mimBone(op(), 'handR'), Z = z3() ? mimBone(z3(), 'head') : G, c = mimMid(mimMid(H, G), Z), k = lgE.s(lgW(rt, 10.93, 13.5)), a = lgLerp(-1.35, -2.25, k), d = lgLerp(1.25, 1.7, k); return { eye: [c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d, lgLerp(0.75, 1.3, k)], tgt: [c[0], c[1], c[2] - 0.06], fov: lgLerp(0.74, 0.64, k), N: 2.0, shake: 0 }; } });
   // time: normal, a little slow at the top of the throw, slow on the collar strike, ramping down to a stop on the shot
   const warp = mimWarp([[0, 1], [7.88, 1], [8.0, 0.62], [8.22, 0.62], [8.34, 1], [10.3, 1], [10.38, 0.42], [10.5, 0.42], [10.62, 1], [10.78, 1], [10.88, 0.14], [10.935, 0.0], [20, 0]], 14.5);
   // cues (real time): score sections, hits, effects
@@ -31770,7 +31880,7 @@ function mimRender(w, h, rt, st) {
   const scene = MIM.scene, q = MIMQ[mimLevel()], vq = vfxQ();
   // the camera of this moment
   const cam = MIM.cam; let look = { eye: [0, -3, 1.5], tgt: [0, 0, 1], fov: 0.7, roll: 0, shake: 0, mb: 0, punch: 0, flare: 0.4 };
-  if (scene === 'alley') { let i = 0; while (i < MIM.shots.length - 1 && MIM.shots[i + 1].t0 <= rt) i++; if (i !== MIM.shot) { MIM.shot = i; } look = Object.assign(look, MIM.shots[i].cam(rt, st)); mimLearnApply(i, look); }
+  if (scene === 'alley') { let i = 0; while (i < MIM.shots.length - 1 && MIM.shots[i + 1].t0 <= rt) i++; if (i !== MIM.shot) { MIM.shot = i; MIM.prevVP = null; } look = Object.assign(look, MIM.shots[i].cam(rt, st)); mimLearnApply(i, look); }
   else if (scene === 'lineup' || scene === 'hub') { const k = Math.sin(rt * 0.07), far = scene === 'hub'; look = { eye: [far ? -3.2 : -1.2 + k * 0.4, k * 0.9, far ? 2.3 : 1.55 + Math.sin(rt * 0.11) * 0.1], tgt: [6.2, k * 0.25, far ? 1.3 : 1.2], fov: far ? 0.62 : 0.74, roll: 0, shake: 0.12, mb: 0, flare: 0.5 }; if (MIM.focus != null) { const y = (2 - MIM.focus) * 1.18; look.tgt[1] = lgLerp(look.tgt[1], y, 0.3); } }
   else if (scene === 'studio') look = mimStudioCam(rt);
   else if (scene === 'stoop') look = lgiCam(rt);
@@ -31810,21 +31920,40 @@ function mimRender(w, h, rt, st) {
   if (MIM.mode === 'gl') {
     const k = q.scale * (MIM.scale || 1), rw = Math.max(64, Math.round(w * k)), rh = Math.max(64, Math.round(h * k)), gl = LGR.gl;
     const f = lgFBO('mimScene', rw, rh, true);
-    mimSceneGL(S, rw, rh, f);
-    // rain, splashes and sprites into the scene, depth-tested
-    gl.bindFramebuffer(gl.FRAMEBUFFER, f.fb); gl.viewport(0, 0, rw, rh);
     const rain = scene === 'studio' ? null : scene === 'stoop' ? { on: true, center: [2.5, 0, 3], box: [10, 12, 7], fall: 7.5, wind: [0.3, 0.6], speed: 1, dim: 0.7, splash: { center: [3.2, 0, 0], area: [6, 9], z: 0 }, density: 0.3 } : { on: true, center: [cam.tgt[0] * 0.5 + cam.eye[0] * 0.5, cam.tgt[1] * 0.5 + cam.eye[1] * 0.5, 4], box: [13, 9, 9], fall: 9, wind: [0.5, 0.25], speed: MIM.warp ? MIM.warp.sp(rt) : 1, dim: 1, splash: { center: [cam.eye[0] * 0.3 + cam.tgt[0] * 0.7, cam.eye[1] * 0.3 + cam.tgt[1] * 0.7, 0], area: [9, 5.4], z: 0 }, density: scene === 'hub' ? 0.6 : 1 };
-    let vx0 = performance.now();
-    if (rain) vfxRain(S, rain, st);
-    vfxBoltSprites(fl); vfxSprites(S, true); vfxSprites(S, false);
-    VX.msF += performance.now() - vx0;
+    const dst = Math.max(0, st - MIM.lastSt), sp = MIM.warp ? MIM.warp.sp(rt) : 1;
+    // rain, splashes, the motes in the air and the sprites into the scene, depth-tested (and, with the lens, inside its focus)
+    const inScene = () => { let vx0 = performance.now(); if (rain) vfxRain(S, rain, st); if (scene !== 'studio') vfxAmbient(S, { dt: dst, flash: fl, k: scene === 'hub' ? 0.6 : 1, wind: scene === 'stoop' ? [0.04, 0.08] : [0.07, 0.03] }); vfxBoltSprites(fl); vfxSprites(S, true); vfxSprites(S, false); VX.msF += performance.now() - vx0; };
+    // 1.9.997: the lens. A real camera's chain on the alley and the stoop: the thin lens's depth of field focused on the
+    // shot's subject (a wide aperture on the inserts, a stop or two down on the wides), the 180-degree shutter's motion blur
+    // from the camera's own move (none across a cut), a low mist that thickens with distance, rays off the lamp when it is
+    // in frame, and a teal-and-orange look; the studio and the line-up keep the plain pass
+    const lensOn = q.lens && vq.mb && (scene === 'alley' || scene === 'stoop') && !MIM.reduce && typeof vxlRender === 'function' && !MIM.camOverride;
+    let lensed = false;
+    if (lensOn) {
+      const fd = look.focus || Math.hypot(cam.tgt[0] - cam.eye[0], cam.tgt[1] - cam.eye[1], cam.tgt[2] - cam.eye[2]) || 2;
+      const N = look.N || (cam.fov < 0.45 ? 2.0 : cam.fov < 0.65 ? 2.8 : 4.0), lens = mimcBody({ f: mimcFocal(cam.fov, 's35', rw / rh), N: N, focus: fd, shutter: 180 });
+      let rays = null; const Ls = S.pts || [];
+      for (let i = 0; i < Ls.length && i < 3 && !rays; i++) { const L = Ls[i]; if (!L || L.r < 1) continue; const pr = mimcProject(cam, L.p, rw / rh); if (pr.front && Math.abs(pr.x) < 1.25 && Math.abs(pr.y) < 1.25) rays = { p: L.p, col: L.col.map(v => Math.min(1.2, v * 0.45)), r: Math.max(10, rh * 0.03), exposure: 0.16 + 0.12 * (fl || 0) }; }
+      const mist = scene === 'stoop' ? { rho: 0.018, H: 1.4, zb: 0, col: [0.05, 0.055, 0.07] } : { rho: 0.03, H: 1.1, zb: 0, col: [0.04, 0.05, 0.075] };
+      const prevVP = MIM.prevVP && MIM.prevScene === scene && sp > 0.02 ? MIM.prevVP : null;
+      try {
+        lensed = !!vxlRender(S, rw, rh, { lens: lens, dof: true, dofMax: Math.max(8, Math.round(rh / 42)), mb: true, prevVP: prevVP, fog: mist, vig: 0, rays: rays, look: 'tealOrange', lookK: scene === 'stoop' ? 0.3 : 0.42, out: f, extra: inScene });
+      } catch (e) { lensed = false; MIM.lensErr = (MIM.lensErr || 0) + 1; }
+      if (lensed && S.cam.VP) { MIM.prevVP = Float32Array.from(S.cam.VP); MIM.prevScene = scene; }
+    }
+    if (!lensed) {
+      mimSceneGL(S, rw, rh, f);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, f.fb); gl.viewport(0, 0, rw, rh);
+      inScene(); MIM.prevVP = null;
+    }
     // the post chain to the screen
     if (LGR.cv.width !== w || LGR.cv.height !== h) { LGR.cv.width = w; LGR.cv.height = h; }
     const bars = scene === 'alley' ? Math.min(lgW(rt, 0, 0.8), 1 - lgW(rt, 13.9, 14.5)) * 0.12 + freeze * 0.03 : scene === 'stoop' ? 0.085 * lgW(rt, 0, 1.2) : 0.0;
     const fade = scene === 'alley' ? Math.max(1 - lgW(rt, 0, 0.9), lgW(rt, 13.43, 14.3)) : (scene === 'studio' ? 1 - lgW(rt, 0, 0.5) : 1 - lgW(rt, 0, 1.2));
     const stp = scene === 'stoop';
     const post = { bloom: 3, bloomK: scene === 'studio' ? 0.4 : stp ? 0.8 : 0.62, th: stp ? 0.5 : 0.58, streak: (look.flare || 0.4) * (scene === 'studio' ? 0.4 : 1), ca: scene === 'alley' ? 0.55 + (look.ca || 0) : stp ? 0.5 : 0.3, grain: scene === 'studio' ? 0.025 : stp ? 0.06 : 0.045, vig: scene === 'studio' ? 0.45 : stp ? 0.78 : 0.62, bars: bars, fade: fade, flash: Math.max(fl * 0.3 * (SET.flash ? 0.35 : 1), scene === 'alley' ? lgPulse(rt, 10.92, 11.06) * 0.6 * (SET.flash ? 0.3 : 1) : 0), mb: look.mb || 0, hal: stp ? 0.32 : scene === 'alley' ? 0.2 : scene === 'studio' ? 0.06 : 0.14, tone: scene === 'studio' ? 0.35 : 0.65, shd: scene === 'studio' ? [0, 0, 0] : [-0.004, 0.006, 0.018], hil: scene === 'studio' ? [0, 0, 0] : [0.02, 0.008, -0.012], sat: stp ? 0.92 : 1.05 - freeze * 0.1, expo: 1.0 + fl * 0.25, lift: stp ? [0.004, 0.014, 0.022] : [0.008, 0.012, 0.02], gain: stp ? [1.08, 0.99, 0.9] : [1.03, 1.0, 0.97] };
-    vx0 = performance.now(); vfxPost(f, w, h, post, rt); VX.msF += performance.now() - vx0;
+    const vx0 = performance.now(); vfxPost(f, w, h, post, rt); VX.msF += performance.now() - vx0;
   } else {
     const c = MIM.cv2; if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     const g = MIM.g2; lg2DScene(g, Object.assign({}, S, { items: S.items.filter(it => !it.ground) }), w, h);
@@ -36738,7 +36867,7 @@ for (const n of ['LEGEND', 'MIMATIC', 'VFXRAY']) { const e = CORE.by[n]; if (e &
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[388,0,4,68017],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[620,35,88,53126],"lux":[744,37,139,69252],"prism":[354,21,63,41036],"mirror":[117,9,26,12376],"texel":[324,17,78,33216],"gore":[692,49,106,65891],"muzzle":[264,13,67,30527],"tracer":[237,22,53,24052],"aura":[124,12,20,11472],"swarm":[649,66,110,55819],"roster":[149,8,36,36227],"anima":[1173,58,123,107174],"anilook":[445,31,64,61057],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65058],"dashes":[249,36,13,31089],"physics":[269,23,50,26017],"arms":[391,37,62,42535],"knife":[236,19,39,22446],"gamecam":[45,4,28,6655],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[333,29,42,27319],"settings":[363,23,23,38454],"legend":[1282,122,221,148583],"legmodel":[535,26,157,69205],"leggun":[413,30,113,56727],"leggun2":[237,11,82,37741],"legfire":[39,5,32,6190],"leghand":[166,17,31,13241],"leganim":[444,22,68,57821],"legloco":[235,12,99,29241],"legperf":[67,3,33,8332],"legrun":[681,43,143,76972],"vfxray":[269,26,38,31905],"mimatic":[644,50,151,85824],"legidle":[353,20,72,46740],"curric":[47,14,21,6603],"leganat":[376,31,115,42149],"legobj":[365,25,71,40189],"legmove":[277,36,107,41490],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,58099],"engroom":[371,18,36,44968],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83479],"intro":[660,32,55,48828],"sfx2":[458,79,57,45498],"gunsfx":[91,9,32,14291],"cinesfx":[185,14,33,26793],"armsfx":[79,13,11,9185],"audio":[946,216,87,85598],"radio":[434,74,35,40166],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[78,7,5,5383]};
+const ENG_SRC = {"core":[244,26,72,28112],"learn":[363,44,83,33966],"engdocs":[388,0,4,71797],"world":[1705,86,192,153698],"garage":[448,30,58,45509],"skyway":[249,19,49,23953],"life":[510,32,46,39620],"weather":[620,35,88,53126],"lux":[744,37,139,69252],"prism":[372,21,67,43499],"mirror":[117,9,26,12376],"texel":[339,18,83,35224],"gore":[692,49,106,65891],"muzzle":[264,13,67,30527],"tracer":[237,22,53,24052],"aura":[124,12,20,11472],"swarm":[649,66,110,55819],"roster":[149,8,36,36227],"anima":[1173,58,123,107174],"anilook":[445,31,64,61057],"ballistics":[224,12,41,20676],"arsenal":[861,70,32,65058],"dashes":[249,36,13,31089],"physics":[269,23,50,26017],"arms":[391,37,62,42535],"knife":[236,19,39,22446],"gamecam":[45,4,28,6655],"keeper":[160,17,11,13103],"bossai":[536,40,25,46466],"perf":[347,30,50,29270],"settings":[366,23,23,38822],"legend":[1283,122,223,149018],"legmodel":[535,26,157,69205],"leggun":[420,30,119,58894],"leggun2":[237,11,82,37741],"legfire":[39,5,32,6190],"leghand":[166,17,31,13241],"leganim":[444,22,68,57821],"legloco":[235,12,99,29241],"legperf":[67,3,33,8332],"legrun":[681,43,143,76972],"vfxray":[291,27,42,34778],"mimatic":[659,50,156,88559],"legidle":[353,20,72,46740],"curric":[47,14,21,6603],"leganat":[376,31,115,42149],"legobj":[365,25,71,40189],"legmove":[277,36,107,41490],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,58099],"engroom":[371,18,36,45077],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83479],"intro":[660,32,55,48828],"sfx2":[458,79,57,45498],"gunsfx":[91,9,32,14291],"cinesfx":[185,14,33,26793],"armsfx":[79,13,11,9185],"audio":[946,216,87,85598],"radio":[434,74,35,40166],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[78,7,5,5383]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };
@@ -36763,7 +36892,7 @@ const ENG_SPEC = {
     stats: () => [['Engines', CORE.list.length], ['Resting', CORE.list.filter(e => e.down).length], ['Locked', CORE.list.filter(e => e.lockUntil > performance.now()).length], ['Listeners', Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0)], ['Capabilities', Object.keys(coreCaps()).length], ['Sessions learned', LEARN.data ? LEARN.data.ses : 0]] },
   PERF: { files: ['perf'], parts: ['hardware check', 'quality tiers', 'resolution steps', 'frame cap', 'battery and heat care', 'cache trimming', 'loop watchdog'], effort: false,
     effortWhy: 'PERF is the governor that does the adapting for every other engine; how hard the game runs as a whole is Settings > Graphics > Graphics quality.',
-    stats: () => [['Frame rate', PERF.fps ? Math.round(PERF.fps) + ' fps' : '…'], ['Target', Math.round(targetFps()) + ' fps'], ['Quality', TIER_NAMES[PERF.tier]], ['Resolution', Math.round((PERF.resLock || RES_STEPS[PERF.res]) * 100) + '%'], ['Battery saver', PERF.saver ? 'on' : 'off'], ['Self-repairs', PERF.repairs || 0]] },
+    stats: () => [['Frame rate', PERF.fps ? Math.round(PERF.fps) + ' fps' : '…'], ['Target', Math.round(targetFps()) + ' fps'], ['Quality', TIER_NAMES[PERF.tier]], ['Resolution', Math.round((PERF.resLock || RES_STEPS[PERF.res]) * 100) + '%'], ['Particle budget', Math.round((PERF.scale == null ? 1 : PERF.scale) * 100) + '%'], ['Battery saver', PERF.saver ? 'on' : 'off'], ['Self-repairs', PERF.repairs || 0]] },
   WORLD: { files: ['world'], parts: ['seeded city', 'districts and biomes', 'rivers and bridges', 'props', 'seasons', 'real-world scale'], effort: false,
     effortWhy: 'The city is built the same way on every device (and for everyone in a co-op run), block by block as you walk, so there is nothing to run harder or lighter without changing the city itself.',
     stats: () => [['Blocks built', chunks.size], ['Seed', WORLD.lastSeed || WORLD.seed || 0], ['District', WORLD.cur ? WORLD.cur.name : '—'], ['Season', ['Spring', 'Summer', 'Fall', 'Winter'][WORLD.season] || '—'], ['Scale', SCL > 1.2 ? 'real-world' : 'classic']] },
@@ -36811,7 +36940,7 @@ const ENG_SPEC = {
     gpuNo: prismGpuNo, procWhat: 'every shader pass (the same as Settings > Graphics > Shader engine)',
     apply: (k, proc) => { engFloor(PRISM, 'adapt', k); PRISM.procOverride = proc; },
     stats: () => [['Path', PRISM.mode === 'gpu' ? 'GPU, WebGL ' + (PRISM.v2 ? 2 : 1) : PRISM.mode === 'cpu' ? 'CPU' : PRISM.mode], ['Level', ['color', 'bloom + sharpen', 'bounce + shafts', 'full'][PRISM.lvl] || '—'], ['Renderer', PRISM.renderer ? friendlyGpu(PRISM.renderer) : '—'], ['Temperature', (PRISM.temp || 0) + ' K']] },
-  TEXEL: { files: ['texel'], parts: ['procedural textures', 'supersampled sprites', 'ground blending', 'cloth, skin and grime', 'memory repair'],
+  TEXEL: { files: ['texel'], parts: ['procedural textures', 'supersampled sprites', 'ground blending', 'cloth, skin and grime', 'the detail normal map', 'memory repair'],
     hard: 'draws textures one level sharper and keeps them there', eco: 'draws textures one level softer',
     apply: k => engFloor(TEXEL, 'adapt', k),
     stats: () => [['Level', ['off', 'low', 'high', 'ultra'][TEXEL.lvl] || '—'], ['Sprites cached', typeof sprites !== 'undefined' ? sprites.size : 0], ['Players cached', TEXEL.players ? TEXEL.players.size : 0]] },

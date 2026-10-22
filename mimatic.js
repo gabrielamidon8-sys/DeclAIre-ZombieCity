@@ -448,7 +448,7 @@ function mimDirectOperator() {
   // insert: the mask, close, creeping in
   // (1.9.996: from his left, the side his hand goes to, on a longer lens: the fingers at the helmet and the plates closing
   // in three-quarter profile, the arm no longer a wall across the lens)
-  shots.push({ t0: 2.9, t1: 4.4, tech: ['insert'], cam: (rt) => { const H = mimBone(op(), 'head'), k = lgE.io(lgW(rt, 2.9, 4.4)), d = lgLerp(1.38, 1.12, k), az = lgLerp(0.84, 0.95, k); return { eye: [H[0] + 0.04 + Math.cos(az) * d, H[1] + Math.sin(az) * d, H[2] - 0.07], tgt: [H[0] + 0.04, H[1] + 0.035, H[2] + 0.02], fov: 0.38, shake: 0.05, flare: rt > 4.05 ? 1.5 : 0.4 }; } });
+  shots.push({ t0: 2.9, t1: 4.4, tech: ['insert'], cam: (rt) => { const H = mimBone(op(), 'head'), k = lgE.io(lgW(rt, 2.9, 4.4)), d = lgLerp(1.38, 1.12, k), az = lgLerp(0.84, 0.95, k); return { eye: [H[0] + 0.04 + Math.cos(az) * d, H[1] + Math.sin(az) * d, H[2] - 0.07], tgt: [H[0] + 0.04, H[1] + 0.035, H[2] + 0.02], fov: 0.38, N: 1.8, shake: 0.05, flare: rt > 4.05 ? 1.5 : 0.4 }; } });
   // threat: over his shoulder toward the door, the horizon tipped; a whip to the second one; then low behind him
   const ots = () => { const H = mimBone(op(), 'head'); return [H[0] - 0.72, H[1] - 0.4, H[2] + 0.08]; };
   shots.push({ t0: 4.4, t1: 5.25, tech: ['ots', 'dutch'], cam: (rt) => { const zz = zAt(z1()) || [7.4, -2.3], k = lgW(rt, 4.6, 5.2); return { eye: ots(), tgt: [lgLerp(7.4, zz[0], k), lgLerp(-2.3, zz[1], k), 1.3], fov: 0.7, roll: R ? 0 : 0.17, shake: 0.5 }; } });
@@ -462,7 +462,7 @@ function mimDirectOperator() {
   // slow: high and down on the pin as he drops onto it and the knife goes in (a jolt on the strike)
   shots.push({ t0: 8.48, t1: 9.38, tech: ['hero', 'punch'], cam: (rt) => ({ eye: [2.2, -1.25, 2.45], tgt: [2.72, 0.05, 0.48], fov: 0.72, shake: 0.3 + lgPulse(rt, 9.6, 9.8) * 1.2, punch: lgPulse(rt, 9.62, 9.8) * 0.5 }) });
   // insert: low by the blade in the chest, his eyes over it, the strike
-  shots.push({ t0: 9.38, t1: 9.78, tech: ['insert', 'punch'], cam: (rt) => { const K = mimBone(op(), 'handL'), k = lgW(rt, 9.38, 9.78), kz = Math.max(0.45, K[2]); return { eye: [K[0] - 0.3, K[1] - lgLerp(1.25, 1.1, k), kz + 0.4], tgt: [K[0] + 0.12, K[1], kz - 0.04], fov: 0.6, shake: 0.25 + lgPulse(rt, 9.62, 9.75) * 1.4, punch: lgPulse(rt, 9.63, 9.78) * 0.7 }; } });
+  shots.push({ t0: 9.38, t1: 9.78, tech: ['insert', 'punch'], cam: (rt) => { const K = mimBone(op(), 'handL'), k = lgW(rt, 9.38, 9.78), kz = Math.max(0.45, K[2]); return { eye: [K[0] - 0.3, K[1] - lgLerp(1.25, 1.1, k), kz + 0.4], tgt: [K[0] + 0.12, K[1], kz - 0.04], fov: 0.6, N: 2.0, shake: 0.25 + lgPulse(rt, 9.62, 9.75) * 1.4, punch: lgPulse(rt, 9.63, 9.78) * 0.7 }; } });
   // threat: the third one, running at us out of the dark, him small and down in the foreground
   shots.push({ t0: 9.78, t1: 10.1, tech: ['track', 'ots'], cam: (rt) => { const r = opAt(), z = zAt(z3()) || [8, 0.6]; return { eye: [r[0] - 1.1, r[1] - 0.55, 0.62], tgt: [lgLerp(r[0], z[0], 0.55), lgLerp(r[1], z[1], 0.55), 1.05], fov: 0.66, roll: R ? 0 : -0.1, shake: 0.6 }; } });
   // action: side on and low as he comes up turning and the knife goes in, the frame slowed at the strike
@@ -470,7 +470,7 @@ function mimDirectOperator() {
   // the shot: low over the dead one's shoulder, pushing in on the pistol coming past the knife arm
   shots.push({ t0: 10.56, t1: 10.93, tech: ['hero', 'ots'], cam: (rt) => { const H = mimBone(op(), 'head'), G = mimBone(op(), 'handR'), z = zAt(z3()) || [H[0] + 0.9, H[1]], c = mimMid(H, G), k = lgE.io(lgW(rt, 10.56, 10.93)); return { eye: [z[0] + lgLerp(1.25, 1.0, k), z[1] + lgLerp(1.15, 0.95, k), 1.22], tgt: [c[0], c[1], c[2] - 0.02], fov: lgLerp(0.66, 0.56, k), shake: 0.3 }; } });
   // freeze: bullet time round the frozen moment (the knife, the flash, the mist), lightning, the title
-  shots.push({ t0: 10.93, t1: 14.5, tech: ['freeze', 'lightning', 'title'], cam: (rt) => { const H = mimBone(op(), 'head'), G = mimBone(op(), 'handR'), Z = z3() ? mimBone(z3(), 'head') : G, c = mimMid(mimMid(H, G), Z), k = lgE.s(lgW(rt, 10.93, 13.5)), a = lgLerp(-1.35, -2.25, k), d = lgLerp(1.25, 1.7, k); return { eye: [c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d, lgLerp(0.75, 1.3, k)], tgt: [c[0], c[1], c[2] - 0.06], fov: lgLerp(0.74, 0.64, k), shake: 0 }; } });
+  shots.push({ t0: 10.93, t1: 14.5, tech: ['freeze', 'lightning', 'title'], cam: (rt) => { const H = mimBone(op(), 'head'), G = mimBone(op(), 'handR'), Z = z3() ? mimBone(z3(), 'head') : G, c = mimMid(mimMid(H, G), Z), k = lgE.s(lgW(rt, 10.93, 13.5)), a = lgLerp(-1.35, -2.25, k), d = lgLerp(1.25, 1.7, k); return { eye: [c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d, lgLerp(0.75, 1.3, k)], tgt: [c[0], c[1], c[2] - 0.06], fov: lgLerp(0.74, 0.64, k), N: 2.0, shake: 0 }; } });
   // time: normal, a little slow at the top of the throw, slow on the collar strike, ramping down to a stop on the shot
   const warp = mimWarp([[0, 1], [7.88, 1], [8.0, 0.62], [8.22, 0.62], [8.34, 1], [10.3, 1], [10.38, 0.42], [10.5, 0.42], [10.62, 1], [10.78, 1], [10.88, 0.14], [10.935, 0.0], [20, 0]], 14.5);
   // cues (real time): score sections, hits, effects
