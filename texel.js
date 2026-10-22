@@ -77,6 +77,26 @@ function texelCanvas(kind) {
   }
   g.putImageData(im, 0, 0); TEXEL.lib.set(kind, c); return c;
 }
+// 1.9.997: the detail map the shader engine lights every surface with (a normal map, as AAA games lay a tiling detail
+// normal over every ground material): R is height from three octaves of noise with pebbles and hairline cracks, G is
+// pixel grain, sampled by PRISM in world space so it stays put under the camera and reads under lamps and the flashlight
+function texelDetail() {
+  let c = TEXEL.lib.get('detail'); if (c) return c;
+  const n = 256; c = texelMk(n, n); const g = c.getContext('2d'), im = g.createImageData(n, n), d = im.data, R = Z.mulberry32(0x5bd1e995);
+  const a = texelNoise(n, 40, 101), b = texelNoise(n, 11, 103), e = texelNoise(n, 4, 107);
+  for (let i = 0; i < n * n; i++) {
+    const k = i * 4, h = 0.5 + (a[i] - 0.5) * 0.22 + (b[i] - 0.5) * 0.36 + (e[i] - 0.5) * 0.34 + (R() - 0.5) * 0.14 + (R() < 0.015 ? 0.22 : 0);   // (pebbles stand proud)
+    d[k] = clamp(h * 255, 0, 255); d[k + 1] = clamp(128 + (R() - 0.5) * 150, 0, 255); d[k + 2] = 255; d[k + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  // hairline cracks in the blue channel (the shader weighs them by district: asphalt and concrete crack, snow and sand do
+  // not): a few wandering lines, drawn across the tile's edges so they still tile
+  const cm = texelMk(n, n), cg = cm.getContext('2d'); cg.fillStyle = '#fff'; cg.fillRect(0, 0, n, n); cg.strokeStyle = 'rgba(0,0,0,0.75)'; cg.lineWidth = 1.2; cg.lineCap = 'round';
+  for (let i = 0; i < 7; i++) { let x = R() * n, y = R() * n, an = R() * Math.PI * 2; cg.beginPath(); cg.moveTo(x, y); for (let s = 0; s < 18; s++) { an += (R() - 0.5) * 1.1; x += Math.cos(an) * 7; y += Math.sin(an) * 7; cg.lineTo(x, y); } cg.stroke(); cg.save(); cg.translate(-n, 0); cg.stroke(); cg.translate(2 * n, 0); cg.stroke(); cg.translate(-n, -n); cg.stroke(); cg.translate(0, 2 * n); cg.stroke(); cg.restore(); }
+  const cd = cg.getImageData(0, 0, n, n).data; for (let i = 0; i < n * n; i++) d[i * 4 + 2] = cd[i * 4];
+  g.putImageData(im, 0, 0);
+  TEXEL.lib.set('detail', c); return c;
+}
 /* ---------- the city's ground ----------
    Bigger tiles (256 pixels) for the street: grey maps around middle grey, laid over the painted blocks with an 'overlay'
    blend, so they add surface without changing the colours the city generator chose (lighter than grey lightens, darker

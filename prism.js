@@ -86,6 +86,7 @@ const PR_FS = {
     ' gl_FragColor = mix(prev, cur, uBlend); }',
   // the final pass: everything together, then the grade
   final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir; uniform vec4 uTr; uniform vec4 uHot[8]; uniform vec4 uPL[6]; uniform vec3 uPC[6]; uniform float uNPL, uLamp, uSpec;\n' +
+    '#ifdef DET\nuniform sampler2D uDet; uniform float uDetK, uDetTile, uCrack;\nfloat dth(vec2 p) { vec4 s = texture2D(uDet, p); return s.r - (1.0 - s.b) * uCrack * 0.45; }\n#endif\n' +
     'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub, uRefK, uRbK, uSunK, uRain, uWind, uRelief, uClar, uGlare, uPurk, uVib, uTone; uniform vec3 uWB, uTS, uTH, uSky, uSun;\n' +
     'const vec3 W3 = vec3(0.2126, 0.7152, 0.0722);\n' +
     'vec3 tap(vec2 p) { return texture2D(uS, p).rgb; }\n' +
@@ -103,13 +104,21 @@ const PR_FS = {
     '  vec3 mn = min(c, min(min(n, s), min(e, w))), mx = max(c, max(max(n, s), max(e, w))); vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, vec3(0.001)), 0.0, 1.0));\n' +
     '  vec3 wg = -amp * uSharp * 0.2; c = max((c + (n + s + e + w) * wg) / (1.0 + 4.0 * wg), vec3(0.0)); }\n' +
     ' if (uCA > 0.0) { vec2 dc = uv - 0.5; float e2 = dot(dc, dc); c.r = mix(c.r, tap(uv - dc * uCA * e2).r, 0.85); c.b = mix(c.b, tap(uv + dc * uCA * e2).b, 0.85); }\n' +
+    // 1.9.997: the detail normal map (TEXEL's tile, in world space): micro-relief for the sun and the lamps, pebbles and
+    // cracks on every surface, with a touch of its own shading so the grain shows even in flat light
+    ' vec3 nd = vec3(0.0, 0.0, 1.0);\n' +
+    '#ifdef DET\n' +
+    ' if (uDetK > 0.0) { vec2 dpx = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 dw = vec2((dpx.x - uTr.y) / uTr.x, (dpx.y - uTr.w) / uTr.z) / uDetTile; float de = 1.0 / 256.0;\n' +
+    '  float dh = dth(dw), dhn = dth(dw + vec2(0.0, -de)), dhs = dth(dw + vec2(0.0, de)), dhe = dth(dw + vec2(de, 0.0)), dhw = dth(dw - vec2(de, 0.0));\n' +
+    '  nd = normalize(vec3((dhw - dhe) * 2.4 * uDetK, (dhs - dhn) * 2.4 * uDetK, 1.0)); c *= 1.0 + (dh - 0.5) * 0.08 * uDetK + (texture2D(uDet, dw * 3.0).g - 0.5) * 0.04 * uDetK; }\n' +
+    '#endif\n' +
     // relief: the picture's own detail (asphalt grain, roof gravel, cracks, skin) lit from the sun's side
     ' if (uRelief > 0.0) { float ln = dot(tap(uv + vec2(0.0, uIn.y)), W3), ls = dot(tap(uv - vec2(0.0, uIn.y)), W3), le = dot(tap(uv + vec2(uIn.x, 0.0)), W3), lw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
-    '  c *= 1.0 - clamp(dot(vec2(le - lw, ln - ls), uSunDir) * uRelief * 6.0, -0.22, 0.22); }\n' +
+    '  c *= 1.0 - clamp(dot(vec2(le - lw, ln - ls), uSunDir) * uRelief * 6.0, -0.22, 0.22); c *= 1.0 - clamp(dot(-nd.xy, uSunDir) * uRelief * 1.4, -0.14, 0.14); }\n' +
     // lamplight on every surface: the picture's own detail read as height, lit by each lamp, fire and flashlight near
     // it (the side facing the light brighter, the far side darker), with a glint where the street is wet
     ' if (uNPL > 0.0) { float hn = dot(tap(uv + vec2(0.0, uIn.y)), W3), hs = dot(tap(uv - vec2(0.0, uIn.y)), W3), he = dot(tap(uv + vec2(uIn.x, 0.0)), W3), hw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
-    '  vec3 nr = normalize(vec3((hw - he) * 7.0, (hs - hn) * 7.0, 1.0)); vec3 lsum = vec3(0.0);\n' +
+    '  vec3 nr = normalize(vec3((hw - he) * 7.0 + nd.x, (hs - hn) * 7.0 + nd.y, 1.0)); vec3 lsum = vec3(0.0);\n' +
     '  for (int i = 0; i < 6; i++) { if (float(i) >= uNPL) break; vec2 d = (uPL[i].xy - uv) * vec2(uAsp, 1.0); float dist = length(d); float fall = clamp(1.0 - dist / uPL[i].z, 0.0, 1.0); if (fall <= 0.0) continue;\n' +
     '   vec3 L = normalize(vec3(d, 0.06 + 0.22 * uPL[i].z)); float rel = dot(nr, L) - L.z; vec3 H = normalize(L + vec3(0.0, 0.0, 1.0)); float sp = pow(max(dot(nr, H), 0.0), 48.0) * uSpec;\n' +
     '   lsum += uPC[i] * (fall * fall) * uPL[i].w * (rel * 2.2 + sp); }\n' +
@@ -180,10 +189,10 @@ function prismProgram(name, fs, defs) {
     return { p: p, u: u };
   } catch (e) { coreHurt('PRISM', name + ': ' + e.message); try { console.error(e); } catch (x) { } return null; }
 }
-function prismTex(filter) {
+function prismTex(filter, repeat) {
   const gl = PRISM.gl, t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter || gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter || gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
   return t;
 }
@@ -203,11 +212,17 @@ function prismBuild() {
   const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0); PRISM.quad = b;
   gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  for (const k of ['bright', 'down', 'up', 'shafts', 'final']) PRISM.P[k] = prismProgram(k, PR_FS[k]);
+  for (const k of ['bright', 'down', 'up', 'shafts']) PRISM.P[k] = prismProgram(k, PR_FS[k]);
+  // the detail map needs a ninth sampler: only where the chip has the units for it (the spec's floor is eight)
+  let units = 8; try { units = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) | 0; } catch (e) { }
+  PRISM.det = units >= 9 && typeof texelDetail === 'function';
+  PRISM.P.final = prismProgram('final', PR_FS.final, PRISM.det ? '#define DET 1\n' : '');
+  if (!PRISM.P.final && PRISM.det) { PRISM.det = false; PRISM.P.final = prismProgram('final', PR_FS.final); }
+  PRISM.detUp = false;
   PRISM.P.gi1 = prismProgram('gi', PR_FS.gi, '#define RAYS 6\n#define STEPS 12\n');
   PRISM.P.gi2 = prismProgram('gi', PR_FS.gi, '#define RAYS 12\n#define STEPS 16\n');
   for (const k of ['scene', 'light', 'amb', 'occ', 'rfa', 'rfw']) PRISM.T[k] = prismTex();
-  PRISM.T.black = prismTex();
+  PRISM.T.black = prismTex(); PRISM.T.det = prismTex(null, true);
   PRISM.ok = !!PRISM.P.final;
   if (!PRISM.ok) PRISM.reason = 'the final shader did not compile';
 }
@@ -338,6 +353,13 @@ function prismGpu() {
     for (let i = 0; i < n; i++) { const l = Ls[i]; pl[i * 4] = l.sx / cw; pl[i * 4 + 1] = 1 - l.sy / ch; pl[i * 4 + 2] = Math.min(1.4, l.r / ch * 1.4); pl[i * 4 + 3] = Math.min(1.5, l.i); pc[i * 3] = l.c0 / 255; pc[i * 3 + 1] = l.c1 / 255; pc[i * 3 + 2] = l.c2 / 255; }
     gl.uniform4fv(u.uPL, pl); gl.uniform3fv(u.uPC, pc); gl.uniform1f(u.uNPL, n); gl.uniform1f(u.uLamp, n ? (0.18 + 0.5 * night) : 0); gl.uniform1f(u.uSpec, n ? clamp(0.15 + (F.wet || 0) * 0.9, 0, 1) * (0.3 + 0.7 * night) : 0); }
   gl.uniform1f(u.uGlare, PRISM.bloomGpu && prismLevel() >= 2 ? 0.05 * night : 0); gl.uniform1f(u.uPurk, LUX.live ? 0.42 * night : 0);
+  // the detail normal map: uploaded once, stronger in the dark (the lamps carve it) and at the higher levels
+  if (PRISM.det && u.uDet != null) {
+    if (!PRISM.detUp) { try { prismUpload(T.det, texelDetail()); PRISM.detUp = true; } catch (e) { PRISM.det = false; } }
+    const bio = WORLD.cur ? WORLD.cur.bio : 'city', soft = bio === 'snow' || bio === 'desert' || bio === 'ash';
+    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.6 : 0.35) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (soft ? 0.6 : 1);
+    gl.uniform1f(u.uDetK, dk); gl.uniform1f(u.uDetTile, 150 * (typeof PK === 'number' && PK > 0 ? PK : 1)); gl.uniform1f(u.uCrack, soft ? 0 : bio === 'suburb' ? 0.5 : 1); if (dk > 0) prismBind(fp, 'uDet', 8, T.det);
+  }
   prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
   prismBind(fp, 'uRf', 5, refl ? T.rfa : T.black); prismBind(fp, 'uRw', 6, refl ? T.rfw : T.black); prismBind(fp, 'uRb', 7, PRISM.bloomGpu ? PRISM.F.b0.t : T.black);
   prismDraw(fp, null, ow, oh);

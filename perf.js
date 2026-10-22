@@ -29,7 +29,11 @@ const PERF = {
   fps: 0, workMs: 0, changes: [], repairs: 0, log: [], errs: [], errT: [], storms: 0,
   lastFrame: 0, lastNow: -1, lastRaf: 0, lastDraw: 0, visibleAt: 0, freed: 0, lodN: [0, 0, 0, 0], frames: 0,
   // settings that scale the tier, and the parts the governor trims on its own before dropping a whole tier
-  partMul: 1, resLock: null, wxScale: 1, vegCut: false, sec: { wx: 0, life: 0, lux: 0 }, secWin: { wx: 0, life: 0, lux: 0 }, deco: 1
+  partMul: 1, resLock: null, wxScale: 1, vegCut: false, sec: { wx: 0, life: 0, lux: 0 }, secWin: { wx: 0, life: 0, lux: 0 }, deco: 1,
+  // 1.9.997: the fast budget: a running average of the frame (its interval and the script's share), read four times a
+  // second, scales the particle budgets between the tier's ceiling and a floor long before the one-second governor
+  // would drop a whole rung, so heavier settings hold 60 and the picture keeps its resolution
+  scale: 1, ema: { iv: 16.7, work: 5 }, budT: 0, budBase: null, budDowns: 0
 };
 
 /* ---------- device profile ---------- */
@@ -179,6 +183,9 @@ function perfFrame(now, rawIv, work) {
   const w = PERF.win;
   if (G.mode !== PERF.lastMode) { PERF.lastMode = G.mode; PERF.holdT = Math.max(PERF.holdT, now + 1200); }
   if (!live || now < PERF.holdT) { w.n = w.sum = w.work = 0; w.iv.length = 0; return; }
+  // the fast budget (particles first, four times a second)
+  const em = PERF.ema; em.iv += (Math.min(rawIv, 100) - em.iv) * 0.12; em.work += (Math.min(work, 100) - em.work) * 0.12;
+  if (now > PERF.budT) { PERF.budT = now + 250; perfBudget(); }
   w.n++; w.sum += rawIv; w.work += work; w.iv.push(rawIv);
   const sw = PERF.secWin; sw.wx += PERF.sec.wx; sw.life += PERF.sec.life; sw.lux += PERF.sec.lux || 0; PERF.sec.wx = PERF.sec.life = PERF.sec.lux = 0;
   if (w.sum < 1000) return;
@@ -204,6 +211,8 @@ function perfFrame(now, rawIv, work) {
     // the lighting engine taking a big slice steps itself down a level before the whole picture loses resolution
     if (PERF.bad >= 1 && luxShare > 0.22 && coreTrim(T)) { PERF.bad = 0; PERF.holdT = now + 1200; return; }
     if (PERF.bad >= 1 && lifeShare > 0.18 && !PERF.vegCut && SET.veg === 'auto') { PERF.vegCut = true; PERF.bad = 0; PERF.holdT = now + 1200; logTrim('still trees'); return; }
+    // the fast budget still has particles to give up and the frame is the script's (not the fill's): let it work first
+    if (PERF.bad >= 1 && PERF.scale > 0.36 && !fillBound && G.mode === 'play') { PERF.bad = 1; return; }
     if (++PERF.bad >= 2 && PERF.rung < LADDER.length - 1) {
       const from = PERF.rung, step = avg > T * 2 ? 2 : 1;
       // stepping down soon after stepping up means that rung is too much: wait longer before trying it again
@@ -222,6 +231,19 @@ function perfFrame(now, rawIv, work) {
   if (now - PERF.stableT > 20000 && (!PS.learned || PS.learned.rung !== PERF.rung || PS.learned.key !== PERF.key)) {
     PS.learned = { key: PERF.key, rung: PERF.rung }; savePerf();
   }
+}
+// the fast budget: step the particle budgets down a tenth when the running frame is over the target or the script has
+// most of it, and back up a twentieth at a time when there is room; the one-second governor only drops a rung when this
+// has nothing left to give. Manual tiers (Low..Ultra) are left alone: the player asked for that level.
+function perfBudget() {
+  if (PERF.mode !== 'auto') { if (PERF.scale !== 1) { PERF.scale = 1; applyRung(PERF.rung, 'budget'); } return; }
+  const T = 1000 / targetFps(), e = PERF.ema; let s = PERF.scale;
+  if (e.iv > T * 1.12 || e.work > T * 0.8) { s -= 0.1; PERF.budDowns++; } else if (e.iv < T * 1.03 && e.work < T * 0.55) s += 0.04;
+  s = Math.round(clamp(s, 0.35, 1) * 100) / 100;
+  if (s === PERF.scale) return;
+  PERF.scale = s; const b = PERF.budBase; if (!b) return;
+  Q.parts = Math.round(b.parts * (0.3 + 0.7 * s)); Q.burst = b.burst * (0.4 + 0.6 * s);
+  if (typeof coreEmit === 'function' && (s === 1 || s <= 0.36 || Math.abs(s - (PERF.budTold || 1)) >= 0.2)) { PERF.budTold = s; coreEmit('budget', { scale: s }); }
 }
 function logTrim(what) { PERF.changes.push({ at: Math.round(performance.now() / 1000), to: TIER_NAMES[PERF.tier] + ' ' + Math.round(RES_STEPS[PERF.res] * 100) + '%', why: what }); if (PERF.changes.length > 12) PERF.changes.shift(); }
 // the display's refresh rate, from the first couple of seconds of frames

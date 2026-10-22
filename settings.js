@@ -56,6 +56,8 @@ function applyLook() {
 function applyOverrides() {
   const pm = PERF.partMul || 1;
   Q.parts = Math.round(Q.parts * pm); Q.burst = Q.burst * pm;
+  PERF.budBase = { parts: Q.parts, burst: Q.burst };   // (1.9.997: the ceiling the fast budget scales from)
+  if (PERF.scale < 1) { Q.parts = Math.round(Q.parts * (0.3 + 0.7 * PERF.scale)); Q.burst = Q.burst * (0.4 + 0.6 * PERF.scale); }
   const dk = SET.decals === 'low' ? 0.4 : SET.decals === 'high' ? 1.6 : 1;
   Q.splats = Math.round(Q.splats * dk);
   if (SET.aq !== 'auto') Q.audio = SET.aq === 'low' ? 0 : 2;
@@ -356,6 +358,7 @@ function deviceInfo() {
   const add = (k, v) => { const d = el('div'); d.append(el('dt', '', k), el('dd', '', v)); dl.appendChild(d); };
   add('Running', TIER_NAMES[PERF.tier] + ' · ' + Math.round(RES_STEPS[PERF.res] * 100 * (PERF.resLock ? PERF.resLock / RES_STEPS[PERF.res] : 1)) + '%');
   add('Frame rate', PERF.fps ? Math.round(PERF.fps) + ' fps' : '…');
+  if (PERF.scale != null && PERF.scale < 1) add('Particle budget', Math.round(PERF.scale * 100) + '% (holding the frame rate)');
   add('Screen', Math.round(PERF.hz) + ' Hz · ' + (Math.round((p.dpr || 1) * 100) / 100) + 'x');
   add('CPU', p.cores ? p.cores + ' cores' : 'Unknown');
   add('Memory', p.mem ? p.mem + ' GB' : 'Unknown');
