@@ -91,14 +91,15 @@ function lgSculpt(E, off, o) {
     const h = front > 0 ? lgFaceH(y, z) * amt * clamp((ux - 0.25) / 0.35, 0, 1) : 0;
     out[0] = x + nx * h; out[1] = y + ny * h; out[2] = z + nz * h;
   };
-  const A = [0, 0, 0], Bp = [0, 0, 0], C = [0, 0, 0], D = [0, 0, 0], F = [0, 0, 0];
+  const A = [0, 0, 0], C = [0, 0, 0], F = [0, 0, 0];
   return (P, N) => {
     let ux = (P[0] - E[0]) / E[3], uy = (P[1] - E[1]) / E[4], uz = (P[2] - E[2]) / E[5]; const l = Math.hypot(ux, uy, uz) || 1; ux /= l; uy /= l; uz /= l;
     // two tangents on the unit sphere, and the sculpted surface's normal from differences along them
     let t1x = -uy, t1y = ux, t1z = 0; const t1l = Math.hypot(t1x, t1y); if (t1l < 1e-4) { t1x = 1; t1y = 0; } else { t1x /= t1l; t1y /= t1l; }
-    const t2x = uy * t1z - uz * t1y, t2y = uz * t1x - ux * t1z, t2z = ux * t1y - uy * t1x, e = 0.004;
-    at(ux, uy, uz, F); at(ux + t1x * e, uy + t1y * e, uz + t1z * e, A); at(ux - t1x * e, uy - t1y * e, uz - t1z * e, Bp); at(ux + t2x * e, uy + t2y * e, uz + t2z * e, C); at(ux - t2x * e, uy - t2y * e, uz - t2z * e, D);
-    const ax = A[0] - Bp[0], ay = A[1] - Bp[1], az = A[2] - Bp[2], cx = C[0] - D[0], cy = C[1] - D[1], cz = C[2] - D[2];
+    const t2x = uy * t1z - uz * t1y, t2y = uz * t1x - ux * t1z, t2z = ux * t1y - uy * t1x, e = 0.0025;
+    // (forward differences: three evaluations a vertex instead of five; the step is a quarter of a millimetre on the skull)
+    at(ux, uy, uz, F); at(ux + t1x * e, uy + t1y * e, uz + t1z * e, A); at(ux + t2x * e, uy + t2y * e, uz + t2z * e, C);
+    const ax = A[0] - F[0], ay = A[1] - F[1], az = A[2] - F[2], cx = C[0] - F[0], cy = C[1] - F[1], cz = C[2] - F[2];
     let nx = ay * cz - az * cy, ny = az * cx - ax * cz, nz = ax * cy - ay * cx; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
     if (nx * ux + ny * uy + nz * uz < 0) { nx = -nx; ny = -ny; nz = -nz; }
     P[0] = F[0] + nx * off; P[1] = F[1] + ny * off; P[2] = F[2] + nz * off; N[0] = nx; N[1] = ny; N[2] = nz;
