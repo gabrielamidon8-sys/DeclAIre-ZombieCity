@@ -26,7 +26,7 @@
   const num = n => Number(n || 0).toLocaleString();
   // the game opens this page with ?join=1#email=...&name=... ; read it once, then tidy the address (the email shouldn't linger in it)
   const HINT = (() => { const q = new URLSearchParams(location.hash.replace(/^#/, '')); return { email: q.get('email') || '', name: q.get('name') || '', join: /[?&]join=1/.test(location.search) }; })();
-  if (location.search || (location.hash && !/^#(privacy|board)$/.test(location.hash))) history.replaceState(null, '', location.pathname + (/^#(privacy|board)$/.test(location.hash) ? location.hash : ''));
+  if (location.search || (location.hash && !/^#(privacy|board|progress|log|shots)$/.test(location.hash))) history.replaceState(null, '', location.pathname + (/^#(privacy|board|progress|log|shots)$/.test(location.hash) ? location.hash : ''));
 
   /* ---------- the name filter's word list (the public list, pinned to one version) ---------- */
   const LIST = 'https://cdn.jsdelivr.net/gh/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words@5faf2ba42d7b1c0977169ec3611df25a3c08eb13/en';
