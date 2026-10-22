@@ -1357,7 +1357,7 @@ function newRun(o) {
   $('qte').hidden = true; $('hud').classList.remove('grabbed');
   DEV.useT = { touch: 0, kbm: 0, pad: 0 }; DEV.fireOn = false; G.recorded = false;
   G.p = newPlayer(); G.p.x = WORLD.start.x; G.p.y = WORLD.start.y; cam.x = G.p.x; cam.y = G.p.y; updWeaponChip(); updDashBtn(); updAirBtn();
-  GCAM.z.x = 1; GCAM.z.v = 0; GCAM.ox.x = GCAM.oy.x = GCAM.ox.v = GCAM.oy.v = 0; GCAM.k = GCAM.kv = 0; GCAM.lastK = 0;
+  GCAM.z.x = 1; GCAM.z.v = 0; GCAM.ox.x = GCAM.oy.x = GCAM.ox.v = GCAM.oy.v = 0; GCAM.k = GCAM.kv = 0; GCAM.lastK = 0; GCAM.trauma = 0; GCAM.roll = 0; GCAM.rollT.x = GCAM.rollT.v = 0; GCAM.crowd.x = 1; GCAM.crowd.v = 0; GCAM.punch = 0; GCAM.kills = G.kills || 0; GCAM.lastShake = 0;
   worldReset();
   $('toasts').textContent = '';
   wxReset();
@@ -1850,8 +1850,10 @@ const LODQ = [];
 function render() {
   const SH = gcamShake(LODQ.sh || (LODQ.sh = [0, 0])), shx = SH[0], shy = SH[1];   // (smooth, layered: no random jitter)
   const zm = gcamZoom(), s = DPR * zm, kcx = cam.x + GCAM.kx, kcy = cam.y + GCAM.ky;
-  ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - kcx * s, DPR * (H / 2 + shy) - kcy * s);
-  const hw = W / 2 / zm, hh = H / 2 / zm, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake;
+  // (1.9.997: the frame can roll a fraction of a degree, about the centre of the screen: the camera's trauma and the dodge)
+  const rl = GCAM.roll || 0, rc = Math.cos(rl) * s, rs = Math.sin(rl) * s, ccx = DPR * (W / 2 + shx), ccy = DPR * (H / 2 + shy);
+  ctx.setTransform(rc, rs, -rs, rc, ccx - rc * kcx + rs * kcy, ccy - rs * kcx - rc * kcy);
+  const hw = W / 2 / zm, hh = H / 2 / zm, x0 = cam.x - hw, y0 = cam.y - hh, x1 = cam.x + hw, y1 = cam.y + hh, pad = 24 + G.shake + Math.abs(rl) * Math.max(hw, hh) * 2;   // (the roll uncovers a little more at the corners)
   coreFrame(x0, y0, x1, y1, G.rdt || 0.016);   // the shared frame every engine reads from
   // the city tiles cover every pixel, so the frame is never cleared first (one less full-screen fill per frame)
   let rebuild = 1; WORLD.rf = 0; const twb = performance.now();

@@ -86,7 +86,7 @@ const PR_FS = {
     ' gl_FragColor = mix(prev, cur, uBlend); }',
   // the final pass: everything together, then the grade
   final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir; uniform vec4 uTr; uniform vec4 uHot[8]; uniform vec4 uPL[6]; uniform vec3 uPC[6]; uniform float uNPL, uLamp, uSpec;\n' +
-    'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub, uRefK, uRbK, uSunK, uRain, uWind, uRelief, uClar, uGlare, uPurk; uniform vec3 uWB, uTS, uTH, uSky, uSun;\n' +
+    'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub, uRefK, uRbK, uSunK, uRain, uWind, uRelief, uClar, uGlare, uPurk, uVib, uTone; uniform vec3 uWB, uTS, uTH, uSky, uSun;\n' +
     'const vec3 W3 = vec3(0.2126, 0.7152, 0.0722);\n' +
     'vec3 tap(vec2 p) { return texture2D(uS, p).rgb; }\n' +
     'vec3 cubic(vec2 uv) { vec2 sz = 1.0 / uIn; vec2 sp = uv * sz; vec2 tp = floor(sp - 0.5) + 0.5; vec2 f = sp - tp;\n' +
@@ -131,8 +131,11 @@ const PR_FS = {
     ' c += texture2D(uBl, uv).rgb * uBlK + texture2D(uSh, uv).rgb * uShK;\n' +
     // glare: bright lights at night streak sideways a little, as they do through a lens and through the eye
     ' if (uGlare > 0.0) { vec3 gs = vec3(0.0); for (int i = 1; i <= 6; i++) { float o = float(i) * 0.011, w = 1.0 - float(i) / 7.0; gs += (texture2D(uBl, uv + vec2(o, 0.0)).rgb + texture2D(uBl, uv - vec2(o, 0.0)).rgb) * w; } c += gs * uGlare * vec3(0.7, 0.85, 1.2); }\n' +
-    ' c *= uExp; c = c / (1.0 + max(c - 0.85, 0.0));\n' +
-    ' c *= uWB; float l = dot(c, W3); c = mix(vec3(l), c, uSat); c = (c - 0.5) * uCon + 0.5; c += uTS * (1.0 - l) * (1.0 - l) + uTH * l * l;\n' +
+    // 1.9.997: the tone curve is the ACES fit (Narkowicz) with its white at 1.25, so the bloom's highlights roll off like
+    // film instead of clipping, and the colour keeps its saturation into the brights; vibrance lifts the quiet colours
+    // more than the loud ones (the research notes, part on grading)
+    ' c *= uExp; if (uTone > 0.5) { vec3 x = c; vec3 a = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14); c = mix(c / (1.0 + max(c - 0.85, 0.0)), a / 0.9826, uTone - 1.0); } else c = c / (1.0 + max(c - 0.85, 0.0));\n' +
+    ' c *= uWB; float l = dot(c, W3); float sc = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b)); c = mix(vec3(l), c, uSat * (1.0 + uVib * (1.0 - sc))); c = (c - 0.5) * uCon + 0.5; c += uTS * (1.0 - l) * (1.0 - l) + uTH * l * l;\n' +
     // the night shift: in the dark the eye sees in blue-grey, not in colour
     ' if (uPurk > 0.0) { float pl = dot(max(c, vec3(0.0)), W3); c = mix(c, vec3(pl) * vec3(0.62, 0.82, 1.18), uPurk * (1.0 - smoothstep(0.02, 0.32, pl))); }\n' +
     ' vec2 q = v - 0.5; c *= 1.0 - uVig * smoothstep(0.18, 0.75, dot(q, q) * 2.0);\n' +
@@ -240,7 +243,9 @@ function prismGrade() {
   prismKelvin(clamp(K, 2500, 12000), PRISM.wb);
   for (let i = 0; i < 3; i++) PRISM.wb[i] = 1 - (1 - PRISM.wb[i]) * 0.45;
   PRISM.temp = Math.round(K);
-  return { sat: 1.06 - night * 0.24 - (WX.fog || 0) * 0.1, con: 1.04 + (sun && sun.on ? 0.04 * sun.k : 0), exp: 1 + night * 0.1 };
+  // (1.9.997: a more vibrant base, the night still drains it; vibrance for the quiet colours; the ACES curve blended in)
+  const vivid = SET.vivid == null ? 1 : SET.vivid;
+  return { sat: 1.06 + 0.1 * vivid - night * 0.24 - (WX.fog || 0) * 0.08, con: 1.04 + 0.02 * vivid + (sun && sun.on ? 0.04 * sun.k : 0), exp: 1 + night * 0.1, vib: 0.45 * vivid * (1 - night * 0.5), tone: 1 + 0.85 * vivid };
 }
 
 /* ---------- one frame ---------- */
@@ -310,7 +315,7 @@ function prismGpu() {
   const gig = PRISM.giGpu && F.gi;
   gl.uniform1f(u.uGIK, gig ? 0.9 : 0); gl.uniform1f(u.uAOK, gig ? 0.12 + 0.18 * (F.day || 0) : 0);
   if (gig) { gl.uniform2f(u.uOrg, F.gi.gx * F.gi.cell, F.gi.gy * F.gi.cell); gl.uniform2f(u.uG, F.gi.gw, F.gi.gh); gl.uniform1f(u.uCell, F.gi.cell); }
-  gl.uniform1f(u.uExp, gr.exp); gl.uniform1f(u.uSat, gr.sat); gl.uniform1f(u.uCon, gr.con);
+  gl.uniform1f(u.uExp, gr.exp); gl.uniform1f(u.uSat, gr.sat); gl.uniform1f(u.uCon, gr.con); gl.uniform1f(u.uVib, gr.vib || 0); gl.uniform1f(u.uTone, gr.tone || 0);
   gl.uniform3f(u.uWB, PRISM.wb[0], PRISM.wb[1], PRISM.wb[2]);
   gl.uniform3f(u.uTS, -0.012 * (1 - night), 0.004, 0.02 + 0.015 * night); gl.uniform3f(u.uTH, 0.018 * (1 - night * 0.6), 0.008, -0.012);
   gl.uniform1f(u.uVig, SET.grade === false ? 0 : (SET.vig == null ? 50 : SET.vig) / 100 * (0.42 + 0.12 * night));
@@ -345,6 +350,7 @@ function prismCpu() {
   const dev = Math.abs(1 - wb[0]) + Math.abs(1 - wb[1]) + Math.abs(1 - wb[2]);
   if (dev > 0.03) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(' + Math.round(wb[0] * 255) + ',' + Math.round(wb[1] * 255) + ',' + Math.round(wb[2] * 255) + ')'; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (lvl >= 1 && gr.sat < 0.98) { ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = clamp((1 - gr.sat) * 1.4, 0, 0.6); ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }
+  else if (lvl >= 1 && gr.sat > 1.02) { ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = clamp((gr.sat - 1) * 0.9, 0, 0.14); ctx.fillStyle = '#8a8a8a'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }   // (1.9.997: a little more punch by day on the processor path)
   if (lvl >= 2 && SET.grain !== false && !PERF.saver) {
     const pat = texelPattern(ctx, 'noise', Math.max(1, DPR)); if (pat) { ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = 0.035 + 0.025 * night; ctx.translate(Math.random() * 128, Math.random() * 128); ctx.fillStyle = pat; ctx.fillRect(-128, -128, cv.width + 256, cv.height + 256); }
   }

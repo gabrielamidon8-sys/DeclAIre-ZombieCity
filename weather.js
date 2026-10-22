@@ -497,12 +497,24 @@ function drawWeatherScreen(rdt) {
     // fog: two layers of soft cloud drifting with the wind
     const fogOn = SET.fog === 'auto' ? Q.fog : SET.fog === 'on';
     if (WX.fog > 0.03 && fogOn) {
-      const T = fogTex(), ts = 520 * sc;
+      // 1.9.997: fog conserves energy: it can only be as bright as the light falling on it. The cloud layers are laid into
+      // a half-size scratch picture, multiplied by the lighting engine's light map (ambient, sun, every lamp and fire,
+      // so the fog over a lamp glows and the fog in the dark is dark), and only then blended over the street:
+      // out = scene * (1 - a) + fog * light * a. Before, the cloud was drawn bright grey straight over everything.
+      const T = fogTex(), ts = 520 * sc, F = fogScratch(), fg = F.g, fw = F.c.width, fh = F.c.height, fs = fw / W;
+      fg.setTransform(fs, 0, 0, fs, 0, 0); fg.globalCompositeOperation = 'source-over'; fg.clearRect(0, 0, W, H);
       for (let L = 0; L < (lv > 0.5 ? 2 : 1); L++) {
         const k = L ? 1.35 : 1, ox = ((-(cam.x * ZOOM) * (L ? 0.9 : 1) - G.time * 14 * WX.wx * (L + 1) * 10) % (ts * k) + ts * k) % (ts * k), oy = ((-(cam.y * ZOOM) * (L ? 0.9 : 1) - G.time * 6 * (L + 1)) % (ts * k) + ts * k) % (ts * k);
-        ctx.globalAlpha = Math.min(0.85, WX.fog * (L ? 0.38 : 0.5) * Math.min(1, lv + 0.3)) * lum;
-        for (let x = ox - ts * k; x < W; x += ts * k) for (let y = oy - ts * k; y < H; y += ts * k) ctx.drawImage(T, x, y, ts * k, ts * k);
+        fg.globalAlpha = Math.min(0.85, WX.fog * (L ? 0.38 : 0.5) * Math.min(1, lv + 0.3));
+        for (let x = ox - ts * k; x < W; x += ts * k) for (let y = oy - ts * k; y < H; y += ts * k) fg.drawImage(T, x, y, ts * k, ts * k);
       }
+      // the light on the cloud: the light map's colour where the cloud is (its own alpha kept), at the fog's albedo
+      fg.setTransform(1, 0, 0, 1, 0, 0); fg.globalAlpha = 1; fg.globalCompositeOperation = 'source-atop';
+      if (LUX.live && LUX.M) fg.drawImage(LUX.M, 0, 0, fw, fh);
+      else { const a = LUX.live ? LUX.amb : [1, 1, 1]; fg.fillStyle = 'rgb(' + Math.round(a[0] * 255) + ',' + Math.round(a[1] * 255) + ',' + Math.round(a[2] * 255) + ')'; fg.fillRect(0, 0, fw, fh); }
+      fg.fillStyle = 'rgba(0,4,12,0.16)'; fg.fillRect(0, 0, fw, fh);
+      fg.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1; ctx.drawImage(F.c, 0, 0, W, H);
     }
     ctx.globalAlpha = 1;
   }
@@ -531,6 +543,13 @@ function drawWeatherScreen(rdt) {
   if (WX.flash > 0.01) { ctx.fillStyle = 'rgba(225,235,255,' + (WX.flash * (Math.random() < 0.25 ? 0.25 : 0.55)).toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
 }
 const GRADE = { city: [0, 0, 0, 0], burning: [255, 96, 30, 0.07], chaos: [255, 180, 60, 0.03], ruins: [120, 100, 80, 0.05], ash: [150, 150, 156, 0.13], suburb: [60, 120, 40, 0.025], desert: [255, 170, 80, 0.07], snow: [170, 205, 255, 0.07] };
+// the half-size scratch picture the lit fog is built in
+let FOGSCR = null;
+function fogScratch() {
+  const w = Math.max(2, Math.ceil(W / 2)), h = Math.max(2, Math.ceil(H / 2));
+  if (!FOGSCR || FOGSCR.c.width !== w || FOGSCR.c.height !== h) { const c = document.createElement('canvas'); c.width = w; c.height = h; FOGSCR = { c: c, g: c.getContext('2d') }; }
+  return FOGSCR;
+}
 function fogTex() {
   if (FOGTEX) return FOGTEX;
   const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
