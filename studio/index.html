@@ -7744,7 +7744,8 @@ function vfxPost(src, w, h, o, tm) {
     st = A;
   }
   const mbOn = q.mb && (o.mb || 0) > 0.01 && VX.prev && VX.prev.w === w && VX.prev.h === h;
-  const out = q.mb ? lgFBO('vxout', w, h, false) : null;
+  // o.into: write the picture into that target instead of the screen (the exams read it back at its own size)
+  const out = o.into || (q.mb ? lgFBO('vxout', w, h, false) : null);
   pass(VX.P.post, out, U => {
     tex(0, src.tex, U.uS); tex(1, b[0] ? b[0].tex : white, U.uB1); tex(2, b[1] ? b[1].tex : white, U.uB2); tex(3, b[2] ? b[2].tex : white, U.uB3); tex(4, st ? st.tex : white, U.uSt); tex(5, mbOn ? VX.prev.tex : white, U.uPv);
     gl.uniform2f(U.uRes, w, h); gl.uniform1f(U.uTime, tm || 0); gl.uniform1f(U.uGrain, o.grain == null ? 0.035 : o.grain); gl.uniform1f(U.uVig, o.vig == null ? 0.55 : o.vig);
@@ -7758,7 +7759,7 @@ function vfxPost(src, w, h, o, tm) {
     // a split tone (cool shadows, warm highlights)
     if (U.uHal) gl.uniform1f(U.uHal, lv > 1 ? (o.hal || 0) : 0); if (U.uTone) gl.uniform1f(U.uTone, o.tone || 0); if (U.uShd) gl.uniform3fv(U.uShd, o.shd || [0, 0, 0]); if (U.uHil) gl.uniform3fv(U.uHil, o.hil || [0, 0, 0]);
   });
-  if (out) {
+  if (out && !o.into) {
     // keep this frame for motion blur, and show it
     const pv = lgFBO('vxprev', w, h, false); pass(VX.P.copy, pv, U => tex(0, out.tex, U.uS)); VX.prev = pv;
     pass(VX.P.copy, null, U => tex(0, out.tex, U.uS));
@@ -9044,6 +9045,8 @@ function curAng(a, b) { const d = curV3.dot(curV3.norm(a), curV3.norm(b)); retur
 const CUR_DEG = 180 / Math.PI;
 // a seeded random (exams are repeatable)
 function curRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// the line the engine room shows under what an engine learned
+function curLearned(name) { const c = CUR.eng[name]; return c && Object.keys(c.res).length ? ['Its course on this device: ' + curSummary(name) + '.'] : []; }
 
 /* ---- leganat.js ---- */
 /* ================= LEGEND v3: anatomy (1.9.995) =================
@@ -11411,6 +11414,8 @@ function curVxGL() { if (!LGR.gl) { lgGLInit(); if (LGR.cv && !LGR.cv.parentNode
 function curVxCam(w, h, f) { const cam = lgCam(); cam.eye = [0, 0, 1]; cam.tgt = [1, 0, 1]; mimcToCam(cam, mimcBody({ f: f || 50, aspect: w / h })); return cam; }
 // a source image for the post chain: the tone ramp (dark to bright across), or a uniform grey
 function curVxRamp(w, h, maxX) { const f = lgFBO('cur_ramp', w, h, false); vxlPass(VXL.P.ramp, f, w, h, U => { LGR.gl.uniform1f(U.uMaxX, maxX || 4); }); return f; }
+// the post chain into a target of the exam's own size, read back (never the screen, whose size and quality step vary by device)
+function curVxPost(src, w, h, o) { const f = lgFBO('cur_out', w, h, false); vfxPost(src, w, h, Object.assign({}, o, { into: f }), 0); return vxlRead(f, w, h); }
 const curLum = (px, i) => 0.2126 * Math.pow(px[i] / 255, 2.2) + 0.7152 * Math.pow(px[i + 1] / 255, 2.2) + 0.0722 * Math.pow(px[i + 2] / 255, 2.2);
 curLevel('VFXRAY', {
   v: 1, title: 'The finishing pass', focus: 'Rain in 3D, flashes, sprites, and a compositor\'s post chain (1.9.992).',
@@ -11427,10 +11432,10 @@ curLevel('VFXRAY', {
     if (!curVxGL()) { X.ok('WebGL available for the render checks', false, 'none', 'WebGL'); return; }
     const w = 320, h = 200, cam = curVxCam(w, h, 50), S = vxlStage([vxlPlace('vxl_hot', [3, 0, 1])], cam), src = lgFBO('cur_src', w, h, true);
     lgGLScene(S, w, h, src); const before = vxlRead(src, w, h);
-    vfxPost(src, w, h, { bloom: 3, bloomK: 1.2, th: 0.3, vig: 0, grain: 0, ca: 0 }, 0); const after = vxlRead(vfxQ().mb ? LGR.fbo.vxout : null, w, h);
+    const after = curVxPost(src, w, h, { bloom: 3, bloomK: 1.2, th: 0.3, vig: 0, grain: 0, ca: 0 });
     const ring = (px) => { let s = 0; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const r = Math.hypot(x - w / 2, y - h / 2); if (r > 8 && r < 30) s += curLum(px, (y * w + x) * 4); } return s; };
     X.ok('bloom: light spreads round a bright point', ring(after) > ring(before) * 3 + 0.05, ring(before).toFixed(2) + ' -> ' + ring(after).toFixed(2), 'spreads');
-    const flat = curVxRamp(w, h, 0.4); vfxPost(flat, w, h, { bloom: 0, vig: 0.55, grain: 0, ca: 0 }, 0); const vg = vxlRead(vfxQ().mb ? LGR.fbo.vxout : null, w, h);
+    const flat = curVxRamp(w, h, 0.4); const vg = curVxPost(flat, w, h, { bloom: 0, vig: 0.55, grain: 0, ca: 0 });
     const top = curLum(vg, ((h - 3) * w + (w >> 1)) * 4), mid = curLum(vg, ((h >> 1) * w + (w >> 1)) * 4);
     X.ok('vignette: the edge darker than the middle (same tone)', top < mid * 0.95, (top / mid * 100).toFixed(0) + '% of the middle', 'under 95%');
   }
@@ -11443,7 +11448,7 @@ curLevel('VFXRAY', {
   can: ['A warm fringe round the bright things, a soft shoulder, cool shadows and warm highlights'],
   exam: X => {
     if (!curVxGL()) { X.ok('WebGL available', false, 'none', 'WebGL'); return; }
-    const w = 256, h = 64, src = curVxRamp(w, h, 1), read = (o) => { vfxPost(src, w, h, Object.assign({ bloom: 0, vig: 0, grain: 0, ca: 0 }, o), 0); return vxlRead(vfxQ().mb ? LGR.fbo.vxout : null, w, h); };
+    const w = 256, h = 64, src = curVxRamp(w, h, 1), read = (o) => curVxPost(src, w, h, Object.assign({ bloom: 0, vig: 0, grain: 0, ca: 0 }, o));
     const plain = read({}), tone = read({ shd: [-0.03, 0.0, 0.04], hil: [0.05, 0.015, -0.04] }), sh = read({ tone: 1 });
     const at = (px, x) => { const i = ((h >> 1) * w + x) * 4; return [px[i], px[i + 1], px[i + 2]]; };
     const d = at(tone, 6), b = at(tone, w - 20);
@@ -11887,6 +11892,28 @@ function choAlleyFight(o) {
 }
 // the story's shape: the intensity of each exchange (how hard, whether it lands, how many are in it) over the fight
 function choArc(F) { return F.ex.map(e => { const m = CHO_MOVES[e.move]; return { t: e.t, k: (m.power || 0.3) * (e.def ? 0.55 : 1) * (m.kind === 'shot' ? 1.6 : 1) + (e.phrase || 0) * 0.08 }; }); }
+/* ---------- in the ecosystem ---------- */
+// its self-test: a jab and a cross staged between two fighters; the cross must stop a hand's breadth short of the face
+// (along the lens) and read as landing on the picture, and every move's phases must leave the partner time to react
+function choSelfTest() {
+  let n = 0, p = 0, why = '';
+  try {
+    n++; if (Object.values(CHO_MOVES).every(m => m.t.length === 3 && m.t.every(x => x > 0))) p++; else why = 'a move has no timing';
+    n++; if (CHO_CUE >= CHO_REACTION_T) p++; else why = why || 'the cue comes faster than a person can react';
+    const F = choFight({ fighters: [{ name: 'A', at: [0, 0] }, { name: 'B', at: [1.05, 0] }], dur: 1.4, steps: [], ex: [{ t: 0.5, a: 0, move: 'jab', b: 1, def: 'block' }, { t: 0.9, a: 0, move: 'cross', b: 1 }] }); choPerf(F);
+    const r = choReads(F, F.ex[1]); n++; if (r.gap3 > 0.04 && r.gap3 < 0.16 && r.gap2 < 0.05) p++; else why = why || 'the staged cross is ' + (r.gap3 * 100).toFixed(0) + ' cm from the face';
+  } catch (e) { why = String(e && e.message || e); }
+  return { ok: p === n, n: n, pass: p, why: why };
+}
+coreDefine({ name: 'CHOREO', kind: 'sim', ver: 5, does: 'The choreographer: fights designed the way a fight director does: thirteen moves timed from real punches and kicks, the measure kept, blows that stop a hand short of the face along the lens, partners reacting on the beat, phrases with the pause-burst-pause rhythm, several attackers taking turns, objects picked up and used, and the fight sheet; LEGEND performs them, MIMATIC shoots them, VFXRAY dresses them.',
+  provides: ['fights', 'choreography'], needs: ['LEGEND'], adapts: 'a fight is solved once and kept, so it costs nothing per frame',
+  state: () => CHO.made ? CHO.made + ' fight' + (CHO.made === 1 ? '' : 's') + ' staged' : 'ready', level: () => 'v' + (typeof curVer === 'function' ? curVer('CHOREO') || 5 : 5),
+  check: () => '', repair: () => { }, reset: () => { CHO.made = 0; },
+  selfTest: () => choSelfTest(),
+  learned: () => { const out = []; if (typeof CUR !== 'undefined' && CUR.eng.CHOREO && Object.keys(CUR.eng.CHOREO.res).length) out.push('Its course on this device: ' + curSummary('CHOREO') + '.'); if (CHO.made) out.push('Staged ' + CHO.made + ' fight' + (CHO.made === 1 ? '' : 's') + ' this session.'); return out; },
+  spec: { files: ['choreo', 'cur_choreo'], parts: ['thirteen moves with real timing', 'reactions and falls', 'the measure and footwork', 'the stage-combat gap along the lens', 'cues and reaction time', 'phrases and rhythm', 'many against one', 'objects in a fight', 'the fight sheet', 'reading on camera', 'the course (v1 to v5)'], procs: ['cpu'], effort: false, effortWhy: 'a fight is staged once; nothing about it runs per frame',
+    stats: () => [['Fights staged', CHO.made], ['Moves', Object.keys(CHO_MOVES).length], ['Course', typeof curSummary === 'function' ? curSummary('CHOREO') : '…']] }
+});
 
 /* ---- cur_choreo.js ---- */
 /* ================= CHOREO's course (1.9.995): moves, spacing and contact, phrases, the camera, whole fights ================= */
@@ -12343,6 +12370,27 @@ function brdRevise(B, note) {
 function brdAnimatic(B) {
   return B.shots.filter(s => s.t0 != null).map(s => ({ n: s.n, t0: s.t0, t1: s.t1, from: s.move === 'push in' ? { s: 1, x: 0, y: 0 } : s.move === 'pull out' ? { s: 1.18, x: 0, y: 0 } : s.move === 'pan' ? { s: 1.12, x: -0.05, y: 0 } : { s: 1, x: 0, y: 0 }, to: s.move === 'push in' ? { s: 1.18, x: 0, y: 0 } : s.move === 'pull out' ? { s: 1, x: 0, y: 0 } : s.move === 'pan' ? { s: 1.12, x: 0.05, y: 0 } : s.move === 'handheld' ? { s: 1.02, x: 0.005, y: -0.004 } : { s: 1, x: 0, y: 0 } }));
 }
+/* ---------- in the ecosystem ---------- */
+// its self-test: a short scene read back: the people, what each does and to whom
+function brdSelfTest() {
+  let n = 0, p = 0, why = '';
+  try {
+    const sc = brdRead('EXT. ALLEY - NIGHT. ANNA walks in. She hands Tom the bottle. Tom throws a punch. Anna ducks.'), nm = id => id == null ? '' : (sc.chars[id] || {}).name;
+    n++; if (sc.heading === 'EXT. ALLEY - NIGHT' && sc.inside === false) p++; else why = 'the heading';
+    n++; if (sc.chars.length === 2) p++; else why = why || sc.chars.length + ' people found, not 2';
+    const b = sc.beats; n++; if (b.length === 3 && b[0].act === 'walk' && b[1].act === 'give' && nm(b[1].target) === 'Tom' && b[2].def === 'duck') p++; else why = why || 'the beats were read wrong';
+  } catch (e) { why = String(e && e.message || e); }
+  return { ok: p === n, n: n, pass: p, why: why };
+}
+coreDefine({ name: 'BOARD', kind: 'data', ver: 5, does: 'The storyboard artist: reads a written scene (the heading, the people, who does what to whom, with what, how, what they say), plans the shot list, draws each shot in pencil from MIMATIC\'s camera with the people as LEGEND and CHOREO perform them, lays out the floor plan, checks continuity across the cuts, takes a director\'s notes and times the animatic; and compiles the scene so the others can perform, shoot and finish it.',
+  provides: ['storyboards', 'staging'], needs: ['LEGEND', 'CHOREO', 'MIMATIC'], adapts: 'a scene is read and staged once, so it costs nothing per frame',
+  state: () => BRD.made ? BRD.made + ' scene' + (BRD.made === 1 ? '' : 's') + ' read' : 'ready', level: () => 'v' + (typeof curVer === 'function' ? curVer('BOARD') || 5 : 5),
+  check: () => '', repair: () => { }, reset: () => { BRD.made = 0; },
+  selfTest: () => brdSelfTest(),
+  learned: () => { const out = []; if (typeof CUR !== 'undefined' && CUR.eng.BOARD && Object.keys(CUR.eng.BOARD.res).length) out.push('Its course on this device: ' + curSummary('BOARD') + '.'); if (BRD.made) out.push('Read ' + BRD.made + ' scene' + (BRD.made === 1 ? '' : 's') + ' this session.'); return out; },
+  spec: { files: ['board', 'cur_board'], parts: ['the screenplay reader', 'people, names and pronouns', 'the shot list', 'the scene compiled for LEGEND and CHOREO', 'pencil panels', 'arrows for movement and camera', 'the floor plan', 'continuity checks', 'notes from a director', 'the animatic', 'the course (v1 to v5)'], procs: ['cpu'], effort: false, effortWhy: 'a scene is read and drawn once',
+    stats: () => [['Scenes read', BRD.made], ['Verbs it knows', BRD_VERBS.length], ['Course', typeof curSummary === 'function' ? curSummary('BOARD') : '…']] }
+});
 
 /* ---- cur_board.js ---- */
 /* ================= BOARD's course (1.9.995): reading, the shot list, panels, floor plans and continuity, style and revisions ================= */
@@ -12467,6 +12515,8 @@ curLevel('BOARD', {
     X.ok('pencil: hatching on the shadow side', r.bodies.reduce((a, b) => a + b.marks, 0) > 40, r.bodies.reduce((a, b) => a + b.marks, 0) + ' strokes', 'over 40');
   }
 });
+// the results this device kept from earlier exams
+try { curLoad(); } catch (e) { }
 
 /* ---- mimshoot.js ---- */
 /* ================= THE SHOOT: a written scene filmed, lit and finished (1.9.995) =================
@@ -12939,6 +12989,8 @@ function mimsFrame(T, t, o) {
   (async () => {
     try { if (typeof curLoad === 'function') curLoad(); } catch (e) { }
     for (const [n] of DEPTS) { const R = results(n); if (R) $('v-' + n).textContent = 'v' + R.earned; }
+    // (a small screen starts on the faster picture; it can be switched to the final one)
+    if (window.innerWidth < 700) $('q').value = 'preview';
     const gl = boot(); requestAnimationFrame(loop);
     if (gl) { busy('Setting up', 'building the textures (a few seconds the first time)'); status('Building the textures and the cast…'); await tick(); try { await lgAtlasGet(256); vfxGLInit(); S.ready = true; } catch (e) { console.error(e); } }
     busy(null); await shoot();

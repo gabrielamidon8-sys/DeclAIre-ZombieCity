@@ -251,7 +251,8 @@ function vfxPost(src, w, h, o, tm) {
     st = A;
   }
   const mbOn = q.mb && (o.mb || 0) > 0.01 && VX.prev && VX.prev.w === w && VX.prev.h === h;
-  const out = q.mb ? lgFBO('vxout', w, h, false) : null;
+  // o.into: write the picture into that target instead of the screen (the exams read it back at its own size)
+  const out = o.into || (q.mb ? lgFBO('vxout', w, h, false) : null);
   pass(VX.P.post, out, U => {
     tex(0, src.tex, U.uS); tex(1, b[0] ? b[0].tex : white, U.uB1); tex(2, b[1] ? b[1].tex : white, U.uB2); tex(3, b[2] ? b[2].tex : white, U.uB3); tex(4, st ? st.tex : white, U.uSt); tex(5, mbOn ? VX.prev.tex : white, U.uPv);
     gl.uniform2f(U.uRes, w, h); gl.uniform1f(U.uTime, tm || 0); gl.uniform1f(U.uGrain, o.grain == null ? 0.035 : o.grain); gl.uniform1f(U.uVig, o.vig == null ? 0.55 : o.vig);
@@ -265,7 +266,7 @@ function vfxPost(src, w, h, o, tm) {
     // a split tone (cool shadows, warm highlights)
     if (U.uHal) gl.uniform1f(U.uHal, lv > 1 ? (o.hal || 0) : 0); if (U.uTone) gl.uniform1f(U.uTone, o.tone || 0); if (U.uShd) gl.uniform3fv(U.uShd, o.shd || [0, 0, 0]); if (U.uHil) gl.uniform3fv(U.uHil, o.hil || [0, 0, 0]);
   });
-  if (out) {
+  if (out && !o.into) {
     // keep this frame for motion blur, and show it
     const pv = lgFBO('vxprev', w, h, false); pass(VX.P.copy, pv, U => tex(0, out.tex, U.uS)); VX.prev = pv;
     pass(VX.P.copy, null, U => tex(0, out.tex, U.uS));

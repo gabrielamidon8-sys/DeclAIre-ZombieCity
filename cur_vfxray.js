@@ -5,6 +5,8 @@ function curVxGL() { if (!LGR.gl) { lgGLInit(); if (LGR.cv && !LGR.cv.parentNode
 function curVxCam(w, h, f) { const cam = lgCam(); cam.eye = [0, 0, 1]; cam.tgt = [1, 0, 1]; mimcToCam(cam, mimcBody({ f: f || 50, aspect: w / h })); return cam; }
 // a source image for the post chain: the tone ramp (dark to bright across), or a uniform grey
 function curVxRamp(w, h, maxX) { const f = lgFBO('cur_ramp', w, h, false); vxlPass(VXL.P.ramp, f, w, h, U => { LGR.gl.uniform1f(U.uMaxX, maxX || 4); }); return f; }
+// the post chain into a target of the exam's own size, read back (never the screen, whose size and quality step vary by device)
+function curVxPost(src, w, h, o) { const f = lgFBO('cur_out', w, h, false); vfxPost(src, w, h, Object.assign({}, o, { into: f }), 0); return vxlRead(f, w, h); }
 const curLum = (px, i) => 0.2126 * Math.pow(px[i] / 255, 2.2) + 0.7152 * Math.pow(px[i + 1] / 255, 2.2) + 0.0722 * Math.pow(px[i + 2] / 255, 2.2);
 curLevel('VFXRAY', {
   v: 1, title: 'The finishing pass', focus: 'Rain in 3D, flashes, sprites, and a compositor\'s post chain (1.9.992).',
@@ -21,10 +23,10 @@ curLevel('VFXRAY', {
     if (!curVxGL()) { X.ok('WebGL available for the render checks', false, 'none', 'WebGL'); return; }
     const w = 320, h = 200, cam = curVxCam(w, h, 50), S = vxlStage([vxlPlace('vxl_hot', [3, 0, 1])], cam), src = lgFBO('cur_src', w, h, true);
     lgGLScene(S, w, h, src); const before = vxlRead(src, w, h);
-    vfxPost(src, w, h, { bloom: 3, bloomK: 1.2, th: 0.3, vig: 0, grain: 0, ca: 0 }, 0); const after = vxlRead(vfxQ().mb ? LGR.fbo.vxout : null, w, h);
+    const after = curVxPost(src, w, h, { bloom: 3, bloomK: 1.2, th: 0.3, vig: 0, grain: 0, ca: 0 });
     const ring = (px) => { let s = 0; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const r = Math.hypot(x - w / 2, y - h / 2); if (r > 8 && r < 30) s += curLum(px, (y * w + x) * 4); } return s; };
     X.ok('bloom: light spreads round a bright point', ring(after) > ring(before) * 3 + 0.05, ring(before).toFixed(2) + ' -> ' + ring(after).toFixed(2), 'spreads');
-    const flat = curVxRamp(w, h, 0.4); vfxPost(flat, w, h, { bloom: 0, vig: 0.55, grain: 0, ca: 0 }, 0); const vg = vxlRead(vfxQ().mb ? LGR.fbo.vxout : null, w, h);
+    const flat = curVxRamp(w, h, 0.4); const vg = curVxPost(flat, w, h, { bloom: 0, vig: 0.55, grain: 0, ca: 0 });
     const top = curLum(vg, ((h - 3) * w + (w >> 1)) * 4), mid = curLum(vg, ((h >> 1) * w + (w >> 1)) * 4);
     X.ok('vignette: the edge darker than the middle (same tone)', top < mid * 0.95, (top / mid * 100).toFixed(0) + '% of the middle', 'under 95%');
   }
@@ -37,7 +39,7 @@ curLevel('VFXRAY', {
   can: ['A warm fringe round the bright things, a soft shoulder, cool shadows and warm highlights'],
   exam: X => {
     if (!curVxGL()) { X.ok('WebGL available', false, 'none', 'WebGL'); return; }
-    const w = 256, h = 64, src = curVxRamp(w, h, 1), read = (o) => { vfxPost(src, w, h, Object.assign({ bloom: 0, vig: 0, grain: 0, ca: 0 }, o), 0); return vxlRead(vfxQ().mb ? LGR.fbo.vxout : null, w, h); };
+    const w = 256, h = 64, src = curVxRamp(w, h, 1), read = (o) => curVxPost(src, w, h, Object.assign({ bloom: 0, vig: 0, grain: 0, ca: 0 }, o));
     const plain = read({}), tone = read({ shd: [-0.03, 0.0, 0.04], hil: [0.05, 0.015, -0.04] }), sh = read({ tone: 1 });
     const at = (px, x) => { const i = ((h >> 1) * w + x) * 4; return [px[i], px[i + 1], px[i + 2]]; };
     const d = at(tone, 6), b = at(tone, w - 20);
