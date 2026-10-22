@@ -49,6 +49,10 @@ function lgGunMP5(B, K) {
   lgBore(B, 0.03, 0.28, [[0, 0.01], [0.9, 0.0105], [1, 0.0095]], 0, 0.026, { segs: 10 });   // the cocking tube
   if (top) for (let i = 0; i < 9; i++) lgBox(B, 0.11 + i * 0.02, 0, 0.0365, 0.006, 0.0022, 0.0008, 0);   // its slots
   lgBox(B, -0.112, 0, 0.0, 0.004, 0.019, 0.019, 0.003);                                                    // the rear cap
+  // (1.9.997, the detail pass: the stamped receiver wraps up round the cocking tube, so the tube is part of the gun and
+  // not a bar floating over it; the pressed ribs on the receiver's sides; the two push pins that hold the trigger group)
+  lgSide(B, [[-0.1, 0.004], [0.25, 0.004], [0.25, 0.03], [-0.07, 0.03], [-0.1, 0.022]], 0.03, { bev: 0.003, round: true });
+  if (hi) { for (const sy of [1, -1]) lgBox(B, -0.03, sy * 0.0186, 0.004, 0.06, 0.0008, 0.0022, 0.0008); lgMat(B, M.metal); lgPin(B, -0.088, -0.009, 0.0026, 0.034); lgPin(B, 0.032, -0.009, 0.0026, 0.034); lgMat(B, M.gunBlk); }
   // the magazine housing and the paddle release behind it
   lgSide(B, [[0.045, -0.012], [0.105, -0.012], [0.105, -0.036], [0.047, -0.036]], 0.03, { bev: 0.0025, round: true });
   if (hi) { lgMat(B, M.gunBlk); lgSide(B, [[0.036, -0.03], [0.046, -0.032], [0.046, -0.046], [0.034, -0.044]], 0.014, { bev: 0.001 }); }   // the paddle
