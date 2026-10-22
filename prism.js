@@ -110,7 +110,7 @@ const PR_FS = {
     '#ifdef DET\n' +
     ' if (uDetK > 0.0) { vec2 dpx = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 dw = vec2((dpx.x - uTr.y) / uTr.x, (dpx.y - uTr.w) / uTr.z) / uDetTile; float de = 1.0 / 256.0;\n' +
     '  float dh = dth(dw), dhn = dth(dw + vec2(0.0, -de)), dhs = dth(dw + vec2(0.0, de)), dhe = dth(dw + vec2(de, 0.0)), dhw = dth(dw - vec2(de, 0.0));\n' +
-    '  nd = normalize(vec3((dhw - dhe) * 2.4 * uDetK, (dhs - dhn) * 2.4 * uDetK, 1.0)); c *= 1.0 + (dh - 0.5) * 0.08 * uDetK + (texture2D(uDet, dw * 3.0).g - 0.5) * 0.04 * uDetK; }\n' +
+    '  nd = normalize(vec3((dhw - dhe) * 2.4 * uDetK, (dhs - dhn) * 2.4 * uDetK, 1.0)); c *= 1.0 + (dh - 0.5) * 0.06 * uDetK + (texture2D(uDet, dw * 3.0).g - 0.5) * 0.035 * uDetK; }\n' +
     '#endif\n' +
     // relief: the picture's own detail (asphalt grain, roof gravel, cracks, skin) lit from the sun's side
     ' if (uRelief > 0.0) { float ln = dot(tap(uv + vec2(0.0, uIn.y)), W3), ls = dot(tap(uv - vec2(0.0, uIn.y)), W3), le = dot(tap(uv + vec2(uIn.x, 0.0)), W3), lw = dot(tap(uv - vec2(uIn.x, 0.0)), W3);\n' +
@@ -357,7 +357,7 @@ function prismGpu() {
   if (PRISM.det && u.uDet != null) {
     if (!PRISM.detUp) { try { prismUpload(T.det, texelDetail()); PRISM.detUp = true; } catch (e) { PRISM.det = false; } }
     const bio = WORLD.cur ? WORLD.cur.bio : 'city', soft = bio === 'snow' || bio === 'desert' || bio === 'ash';
-    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.6 : 0.35) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (soft ? 0.6 : 1);
+    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.48 : 0.28) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (soft ? 0.6 : 1);
     gl.uniform1f(u.uDetK, dk); gl.uniform1f(u.uDetTile, 150 * (typeof PK === 'number' && PK > 0 ? PK : 1)); gl.uniform1f(u.uCrack, soft ? 0 : bio === 'suburb' ? 0.5 : 1); if (dk > 0) prismBind(fp, 'uDet', 8, T.det);
   }
   prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
