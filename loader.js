@@ -85,6 +85,7 @@ async function loadRun(title, steps, o) {
 // a job list that draws every block of the city that will be on screen around (x, y), plus a margin, so the first
 // seconds of a run (or the title screen) never stutter on drawing streets
 function chunkJobs(x, y) {
+  if (typeof depthWantedNow === 'function' && depthWantedNow()) return depthWarmJobs(x, y);   // (1.9.999: the 3D view builds its blocks instead)
   const hw = W / 2 / ZOOM + 260, hh = H / 2 / ZOOM + 260, jobs = [];
   const cx0 = Math.floor((x - hw) / CHS), cx1 = Math.floor((x + hw) / CHS), cy0 = Math.floor((y - hh) / CHS), cy1 = Math.floor((y + hh) / CHS);
   const list = [];
@@ -114,7 +115,7 @@ function warmJobs() {
   jobs.push(() => { if (typeof drawWeatherScreen === 'function') drawWeatherScreen(0.016); });
   // 1.9.992: the legend's textures and the frames of him standing and walking, so the first steps of a run are ready
   for (const j of legendWarmJobs()) jobs.push(j);
-  for (let i = 0; i < 3; i++) jobs.push(() => { render(); });
+  for (let i = 0; i < 3; i++) jobs.push(() => { if (typeof depthWantedNow === 'function' && depthWantedNow()) depthRender(); else render(); });
   jobs.push(() => { LUX.msAvg = 0; LUX.bad = 0; PERF.sec && (PERF.sec.lux = 0); });
   return jobs;
 }

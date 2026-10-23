@@ -12,6 +12,7 @@ const SET_DEF = {
   aimKbm: 'manual', fireKbm: 'hold', aimPad: 'assist', firePad: 'stick', padDead: 18, padSwap: false, padRumble: true, xhair: 'cross', xhairSize: 100, xhairColor: 'yellow',
   motion: 'auto', flash: false, hudScale: 100, contrast: false,
   saver: 'auto', netPing: true, netArrows: true,
+  view: '3d', q3d: 'auto', fov: 68, camDist: 100, look: 100, invertY: false, shoulder: 'right', fire3d: 'auto', assist3d: true, lockMouse: true,   // 1.9.999: the 3D view
   legend: 'operator', legendClass: 'attack', legendGpu: true,   // 1.9.992: the deployed legend, his class, and whether the GPU draws the Legends screen
   eng: {}   // the engine room's choices: { NAME: { effort, proc } }
 };
@@ -67,6 +68,8 @@ function setSetting(k, v) {
   SET[k] = v; saveSettings();
   switch (k) {
     case 'quality': setMode(v); break;
+    case 'view': if (typeof depthSetView === 'function') depthSetView(v); break;
+    case 'q3d': if (typeof DEPTH !== 'undefined') { DEPTH.adapt = 0; DEPTH.scale = 1; } break;
     case 'res': PERF.resLock = v === 'auto' ? null : +v / 100; resize(); break;
     case 'fps': PERF.cap = +v; PERF.holdT = performance.now() + 1500; savePerf(); break;
     case 'saver': PERF.saverMode = v; savePerf(); perfTicks = 4; perfCare(); break;
@@ -99,6 +102,11 @@ const AUTO_LH = [['auto', 'Auto'], ['off', 'Off'], ['low', 'Light'], ['full', 'F
 const SET_TABS = [['graphics', 'Graphics'], ['sound', 'Sound'], ['gameplay', 'Gameplay'], ['controls', 'Controls'], ['access', 'Accessibility'], ['system', 'System']];
 const SET_ROWS = [
   // graphics
+  { tab: 'graphics', group: 'View' },
+  { id: 'view', tab: 'graphics', basic: true, type: 'seg', label: 'View', desc: '3D: a camera behind you that swings over your shoulder when you aim. Top-down: the classic view from above, lighter on older phones (the game switches to it by itself if 3D cannot run).', opts: [['3d', '3D third person'], ['top', 'Top-down']] },
+  { id: 'q3d', tab: 'graphics', basic: true, type: 'seg', label: '3D detail', desc: 'Resolution, shadows, how far you can see, real lights, bloom and ambient occlusion in the 3D view. Auto adapts to your device.', opts: [['auto', 'Auto'], ['0', 'Low'], ['1', 'Medium'], ['2', 'High'], ['3', 'Ultra']] },
+  { id: 'fov', tab: 'graphics', type: 'slider', label: 'Field of view (3D)', desc: 'How wide the 3D camera sees.', min: 55, max: 90, step: 5, fmt: v => v + '°' },
+  { id: 'camDist', tab: 'graphics', type: 'slider', label: 'Camera distance (3D)', desc: 'How far behind you the camera hovers.', min: 70, max: 140, step: 10, fmt: v => v + '%' },
   { tab: 'graphics', group: 'Quality' },
   { id: 'quality', tab: 'graphics', basic: true, type: 'seg', label: 'Graphics quality', desc: 'Auto watches your frame rate and adjusts resolution and detail as you play.', opts: [['auto', 'Auto'], ['0', 'Low'], ['1', 'Medium'], ['2', 'High'], ['3', 'Ultra']] },
   { id: 'res', tab: 'graphics', type: 'seg', label: 'Resolution', desc: 'Lower draws fewer pixels, the biggest saving on a slow phone.', opts: [['auto', 'Auto'], ['100', '100%'], ['85', '85%'], ['72', '72%'], ['60', '60%'], ['50', '50%']] },
@@ -178,6 +186,12 @@ const SET_ROWS = [
   { id: 'netArrows', tab: 'gameplay', type: 'seg', label: 'Teammate arrows', desc: 'Arrows on the edge of the screen point to teammates who are off screen, with how far away they are.', opts: ON_OFF },
   // controls: each device has its own section, shown once the game has seen that device (the one in use comes first)
   { tab: 'controls', info: 'devnow' },
+  { tab: 'controls', group: '3D camera' },
+  { id: 'look', tab: 'controls', basic: true, type: 'slider', label: 'Look sensitivity', desc: 'How fast the 3D camera turns with the mouse, the stick or your thumb.', min: 30, max: 250, step: 10, fmt: v => v + '%' },
+  { id: 'invertY', tab: 'controls', type: 'seg', label: 'Invert looking up and down', desc: 'Push up to look down.', opts: ON_OFF },
+  { id: 'shoulder', tab: 'controls', type: 'seg', label: 'Shoulder', desc: 'Which shoulder the camera looks over (T swaps it in a run).', opts: [['right', 'Right'], ['left', 'Left']] },
+  { id: 'assist3d', tab: 'controls', type: 'seg', label: 'Aim assist (touch and controller)', desc: 'The crosshair slows over a zombie and drifts onto it.', opts: ON_OFF },
+  { id: 'fire3d', tab: 'controls', dev: 'touch', type: 'seg', label: 'Touch firing', desc: 'Auto fires when the crosshair is on a zombie; Button only with the fire button.', opts: [['auto', 'Auto'], ['manual', 'Button']] },
   { tab: 'controls', group: 'Keyboard and mouse', dev: 'kbm' },
   { id: 'aimKbm', tab: 'controls', basic: 'kbm', dev: 'kbm', type: 'seg', label: 'Aiming', desc: 'Aim with the mouse, get a small nudge onto zombies, or let the gun aim itself like on a phone.', opts: [['manual', 'Mouse'], ['assist', 'Mouse + assist'], ['auto', 'Auto-aim']] },
   { id: 'fireKbm', tab: 'controls', basic: 'kbm', dev: 'kbm', type: 'seg', label: 'Firing', desc: 'Hold the fire button, click once to keep firing, or fire on its own when a zombie is under the crosshair.', opts: [['hold', 'Hold'], ['toggle', 'Click on/off'], ['auto', 'On target']] },

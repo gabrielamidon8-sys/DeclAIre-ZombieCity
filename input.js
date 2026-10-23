@@ -10,7 +10,7 @@ const ACTIONS = [
   { id: 'right', label: 'Move right', kb: ['KeyD', 'ArrowRight'], pad: null },
   { id: 'fire', label: 'Fire', kb: ['Mouse0', ''], pad: ['b7', ''] },
   { id: 'dash', label: 'Dodge roll (hold to sprint out of it)', kb: ['Space', ''], pad: ['b0', ''] },
-  { id: 'sprint', label: 'Sprint (the gun comes down)', kb: ['ShiftLeft', ''], pad: ['b10', 'b6'] },
+  { id: 'sprint', label: 'Sprint (the gun comes down)', kb: ['ShiftLeft', ''], pad: ['b10', ''] },
   { id: 'reload', label: 'Reload (with a full gun: check it)', kb: ['KeyR', ''], pad: ['b2', ''] },
   { id: 'swap', label: 'Swap primary and secondary', kb: ['KeyX', ''], pad: ['b1', ''] },
   { id: 'melee', label: 'Knife (again for the next one; fire in the chain: point blank)', kb: ['KeyV', ''], pad: ['b5', ''] },
@@ -18,6 +18,9 @@ const ACTIONS = [
   { id: 'free', label: 'Break free when grabbed', kb: ['KeyE', 'Enter'], pad: ['', ''] },
   { id: 'mark', label: 'Mark a spot for your team (co-op)', kb: ['KeyG', ''], pad: ['b4', ''] },
   { id: 'aim', label: 'Auto-aim on or off', kb: ['KeyC', ''], pad: ['b11', ''] },
+  // 1.9.999: the 3D view's camera
+  { id: 'ads', label: 'Aim over the shoulder (3D)', kb: ['Mouse2', ''], pad: ['b6', ''] },
+  { id: 'shoulder', label: 'Swap shoulders (3D)', kb: ['KeyT', ''], pad: ['', ''] },
   { id: 'pause', label: 'Pause', kb: ['KeyP', ''], pad: ['b9', 'b8'] },
   { id: 'mute', label: 'Mute the radio', kb: ['KeyM', ''], pad: ['b13', ''] },
   { id: 'next', label: 'Next song', kb: ['KeyN', ''], pad: ['b15', ''] },
@@ -355,6 +358,8 @@ function padNav(dt) {
 
 /* ---------- aiming and firing ---------- */
 function aimMode() {
+  // (1.9.999: in 3D you aim with the camera everywhere; on a touch screen and a controller with a little assist)
+  if (typeof hoverActive === 'function' && hoverActive()) return DEV.kind === 'kbm' ? (SET.aimKbm === 'assist' ? 'assist' : 'manual') : SET.assist3d === false ? 'manual' : 'assist';
   if (DEV.kind === 'touch') return 'auto';
   if (DEV.kind === 'kbm' && !DEV.mIn) return 'auto';   // keys but no mouse yet (a tablet with a keyboard): the gun aims itself
   const m = DEV.kind === 'pad' ? SET.aimPad : SET.aimKbm;
@@ -368,10 +373,12 @@ function moveInput() {
   if (held('left')) x -= 1; if (held('right')) x += 1; if (held('up')) y -= 1; if (held('down')) y += 1;
   if (DEV.pad) { const s = moveStick(); x += s.x; y += s.y; }
   if (joy.active) { x += joy.dx; y += joy.dy; }
+  if (typeof hoverActive === 'function' && hoverActive() && G.mode === 'play') return hoverMove(x, y);   // (1.9.999: forward is where the 3D camera looks)
   return [x, y];
 }
 // the direction you are aiming yourself, or null when you are not aiming (mouse not over the game, stick let go)
 function aimInput(p) {
+  if (typeof hoverActive === 'function' && hoverActive() && G.mode === 'play' && p === G.p) return hoverAimAng(p);   // (1.9.999: the gun points where the crosshair is)
   if (DEV.kind === 'kbm') {
     if (!DEV.mIn) return null;
     const z = gcamZoom(), wx = cam.x + GCAM.kx + (DEV.mx - W / 2) / z, wy = cam.y + GCAM.ky + (DEV.my - H / 2) / z;
@@ -398,6 +405,7 @@ function coneTarget(p, ang, cone) {
   return best;
 }
 function wantFire(p) {
+  if (typeof hoverActive === 'function' && hoverActive()) { const f3 = hoverWantFire(p); if (f3 !== null) return f3; }
   if (DEV.kind === 'kbm') { const f = SET.fireKbm; if (f === 'toggle') return DEV.fireOn || held('fire'); if (held('fire')) return true; return f === 'auto' && !!coneTarget(p, p.aim, 0.08); }
   if (DEV.kind === 'pad') { const f = SET.firePad; if (held('fire')) return true; if (f === 'stick') { const s = aimStick(); return Math.hypot(s.x, s.y) > 0.55; } return f === 'auto' && !!coneTarget(p, p.aim, 0.1); }
   return false;

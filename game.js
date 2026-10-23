@@ -51,6 +51,7 @@ function resize() {
   if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
   const nz = clamp(Math.min(W, H) / 480, 0.66, 1.2) * (typeof SET !== 'undefined' ? 100 / SET.zoom : 1), ns = DPR * nz * Q.spr;
   if (Math.abs(nz - ZOOM) > 0.001 || Math.abs(SPR - ns) > 0.001) { ZOOM = nz; SPR = ns; sprites.clear(); }
+  if (typeof DEPTH !== 'undefined' && DEPTH.ok) depthResize(true);
 }
 window.addEventListener('resize', resize);
 
@@ -436,7 +437,7 @@ cv.addEventListener('pointerdown', e => {
     joy.id = e.pointerId; joy.dx = 0; joy.dy = 0; joy.kx = 0; joy.ky = 0; joy.active = true;
     if (SET.joy === 'fixed') { const h = joyHome(); joy.ox = h[0]; joy.oy = h[1]; joyMove(xy); } else { joy.ox = xy[0]; joy.oy = xy[1]; }
     try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-  } else if (!moveSide(xy[0]) && SET.dashTap) tryDash();
+  } else if (!moveSide(xy[0]) && SET.dashTap && !(typeof hoverActive === 'function' && hoverActive())) tryDash();   // (in 3D the right thumb looks; a tap still rolls: hover.js)
   e.preventDefault();
 });
 cv.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyMove(localXY(e)); });
@@ -526,6 +527,7 @@ function spawnZombie(m, x, y, o) {
 function heal(z, a) { z.hp = Math.min(z.maxHp, z.hp + a); }
 // Just outside a random edge of the screen, so zombies walk in quickly but never pop in on camera.
 function spawnPos() {
+  if (typeof hoverActive === 'function' && hoverActive()) { const s3 = hoverSpawnPos(); if (s3) return s3; }   // (1.9.999: out of the 3D camera's sight)
   const p = NET.role === 'host' ? netAnchor() : G.p, hw = W / ZOOM / 2, hh = H / ZOOM / 2;
   for (let i = 0; i < 20; i++) {
     const side = Math.floor(Math.random() * 4), off = rand(50, 130);
@@ -2601,7 +2603,8 @@ function frame(now) {
     if ((G.mode === 'play' || G.mode === 'title' || G.mode === 'cine') && !(G.mode === 'title' && legendCover())) updWeather(dt, rdt);
     else if (G.mode === 'over') { G.time += dt; updFx(dt); }
     else if (G.mode === 'intro') introFrame(rdt);
-    if (G.mode !== 'intro') { if (G.mode === 'title' && legendCover()) legendFrame(rdt); else render(); }
+    // (1.9.999: in the 3D view DEPTH draws the frame; the top-down renderer covers when it is off, resting or lost)
+    if (G.mode !== 'intro') { if (G.mode === 'title' && legendCover()) legendFrame(rdt); else if (!(typeof depthFrame3 === 'function' && depthFrame3())) render(); }
     if (INTRO.fading) introFadeFrame(rdt);
     if (G.mode === 'play' || G.mode === 'pause' || G.mode === 'upgrade' || G.mode === 'skull' || G.mode === 'cine') { updHud(); bossMusic(); updWhere(); }
     updFpsBox(now);
@@ -2616,6 +2619,7 @@ function frame(now) {
 /*__ARSENAL__*/
 resize();
 applyDev();
+if (typeof depthSetView === 'function') { try { depthSetView(SET.view || '3d'); } catch (e) { } }   // (1.9.999: the 3D view, unless Settings or the device say top-down)
 // starting up, behind the loading screen that has been showing since the page opened: fonts, the city for the title
 // screen, the menus. Then the studio intro (tests and ?nointro links go straight to the title).
 G.attractReady = false;

@@ -783,10 +783,14 @@ function renderChunk(c) {
   const tc = performance.now();
   try { chunkPaint(c); } finally { const ms = performance.now() - tc; coreCost('WORLD', ms); WORLD.rfMs = (WORLD.rfMs || 0) + ms; worldLearn(ms); }
 }
-function chunkPaint(c) {
+// (1.9.999: o.ground paints only the ground for the 3D view (DEPTH): the road, its paint, the sidewalks, lots, grass, sand,
+// snow, water and stains, at o.px pixels per block unit, and returns the canvas; buildings, cars, trees, props, fires,
+// baked lamp light and the street furniture are 3D there, so they are left out, and the furniture is listed in c.furn)
+function chunkPaint(c, o) {
+  const ground = !!(o && o.ground);
   // the picture is sharp at the scale it is shown at: SCL times the block's drawing units (kept under 2048 pixels)
-  const sc = Q.chunkScale, px = Math.min(sc * c.k, 2048 / CH), can = document.createElement('canvas'); can.width = can.height = Math.round(CH * px);
-  const g = can.getContext('2d'); g.scale(px, px); c.sc = sc; c.px = px;
+  const sc = Q.chunkScale, px = ground ? o.px : Math.min(sc * c.k, 2048 / CH), can = document.createElement('canvas'); can.width = can.height = Math.round(CH * px);
+  const g = can.getContext('2d'); g.scale(px, px); if (!ground) { c.sc = sc; c.px = px; }
   const keep = artView(c);
   try {
   const R = chunkRng(c.cx, c.cy, 0xabc123), B = BIO[c.bio], ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, win = winterOn(c), dm = Q.deco || 1, sea = WORLD.season;
@@ -803,7 +807,7 @@ function chunkPaint(c) {
   // the block
   drawBlock(g, c, B, R, win, sea);
   walkDetail(g, c, B, win, sea);
-  drawStreetFurniture(g, c, B, Z.mulberry32(Z.hash32(c.cx * 7919 + c.cy * 104729 + 0x5f)), win);
+  drawStreetFurniture(g, c, B, Z.mulberry32(Z.hash32(c.cx * 7919 + c.cy * 104729 + 0x5f)), win, ground ? (c.furn = []) : null);
   // the surface of the street (the texture engine): aggregate in the asphalt, concrete, grass, sand, snow, wear
   if (typeof texelGround === 'function') texelGround(g, c, win);
   if (typeof texelSplats === 'function') texelSplats(g, c, win);   // one material growing into another
@@ -816,6 +820,7 @@ function chunkPaint(c) {
   // the city's bloodstains: a splash with droplets thrown off one side
   for (let i = 0; i < 3; i++) bloodSplat(g, ox + R() * CH, oy + R() * CH, 6 + R() * 10, R, c.bio === 'snow' || win ? 'rgba(120,14,14,0.42)' : 'rgba(46,10,10,0.42)');
   t1 = performance.now(); RT.decal += t1 - t0; t0 = t1;
+  if (ground) return can;
   drawWrecks(g, c);
   for (const r of c.rects) if (!r.dyn) drawRectArt(g, r, c, B, win);   // (vehicles the crowd moved are drawn live)
   if (win || c.bio === 'snow') snowCaps(g, c);
@@ -868,7 +873,7 @@ function bloodSplat(g, x, y, r, R, col) {
 }
 // on the sidewalks: fire hydrants, traffic signals at the corner, a bus stop, newspaper boxes; and on the road:
 // stop lines, manholes, storm drains, skid marks and oil stains. All of it is paint on the ground, nothing to bump into.
-function drawStreetFurniture(g, c, B, R, win) {
+function drawStreetFurniture(g, c, B, R, win, rec) {
   const bio = c.bio, ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, urban = bio === 'city' || bio === 'chaos' || bio === 'burning' || bio === 'ruins' || bio === 'ash';
   if (bio === 'desert' || bio === 'snow') return;
   const dm = Q.deco || 1;
@@ -899,30 +904,35 @@ function drawStreetFurniture(g, c, B, R, win) {
   for (let i = 0; i < Math.floor(2 * dm + R()); i++) softBlob(g, ox + 20 + R() * (CH - 40), oy + 20 + R() * (ROAD - 40), 10 + R() * 12, 6 + R() * 8, R() * 3, '6,6,8', 0.45);
   if (!urban && bio !== 'suburb') return;
   // sidewalk: a fire hydrant near the corner
-  if (R() < 0.8) { const onTop = R() < 0.5, x = onTop ? bx + 30 + R() * 40 : bx + 8, y = onTop ? by + 8 : by + 30 + R() * 40; g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(x + 1.5, y + 2, 4.5, 0, TAU); g.fill(); g.fillStyle = bio === 'ash' ? '#6a6a6c' : '#c03a2e'; g.beginPath(); g.arc(x, y, 4.5, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x - 1, y - 1, 2, 2); }
+  if (R() < 0.8) { const onTop = R() < 0.5, x = onTop ? bx + 30 + R() * 40 : bx + 8, y = onTop ? by + 8 : by + 30 + R() * 40; if (rec) rec.push({ k: 'hydrant', x: x, y: y, col: bio === 'ash' ? '#6a6a6c' : '#c03a2e' }); else { g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(x + 1.5, y + 2, 4.5, 0, TAU); g.fill(); g.fillStyle = bio === 'ash' ? '#6a6a6c' : '#c03a2e'; g.beginPath(); g.arc(x, y, 4.5, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x - 1, y - 1, 2, 2); } }
   if (bio === 'suburb') {
     // mailboxes at the end of each driveway
-    for (const d of c.decals) if (d.k === 'drive') { const mx = d.x + d.w + 4, my = d.top ? d.y + 4 : d.y + d.h - 10; g.fillStyle = '#3a2a1e'; g.fillRect(mx + 2, my + 2, 3, 3); g.fillStyle = win ? '#c9d3da' : ['#2f4f6b', '#7b2f2b', '#22262b'][d.s % 3]; g.fillRect(mx - 2, my - 3, 9, 6); g.fillStyle = '#c9402e'; g.fillRect(mx + 6, my - 5, 1.5, 4); }
+    for (const d of c.decals) if (d.k === 'drive') { const mx = d.x + d.w + 4, my = d.top ? d.y + 4 : d.y + d.h - 10; if (rec) { rec.push({ k: 'mailbox', x: mx + 2, y: my, col: win ? '#c9d3da' : ['#2f4f6b', '#7b2f2b', '#22262b'][d.s % 3] }); continue; } g.fillStyle = '#3a2a1e'; g.fillRect(mx + 2, my + 2, 3, 3); g.fillStyle = win ? '#c9d3da' : ['#2f4f6b', '#7b2f2b', '#22262b'][d.s % 3]; g.fillRect(mx - 2, my - 3, 9, 6); g.fillStyle = '#c9402e'; g.fillRect(mx + 6, my - 5, 1.5, 4); }
     return;
   }
   // a traffic signal at the corner, its arm reaching out over the crossing
   if (bio !== 'ruins' || R() < 0.4) {
     const px = bx + 7, py = by + 7, broken = bio === 'ruins' || (bio === 'chaos' && R() < 0.3);
+    if (rec) { rec.push({ k: 'signal', x: px, y: py, broken: broken, lit: broken ? -1 : Math.floor(R() * 3) }); }
+    else {
     g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 3; g.beginPath(); g.moveTo(px + 3, py + 4); g.lineTo(px - 34 + 3, py - 30 + 4); g.stroke();
     g.strokeStyle = '#3a3d42'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(px, py); g.lineTo(px - 34, py - 30); g.stroke();
     g.fillStyle = '#26282c'; g.beginPath(); g.arc(px, py, 3.5, 0, TAU); g.fill();
     g.fillStyle = '#1a1b1e'; g.fillRect(px - 42, py - 38, 12, 6);
     if (!broken) { const lit = ['#ff3b30', '#ffcc00', '#34c759'][Math.floor(R() * 3)]; g.fillStyle = lit; g.beginPath(); g.arc(px - 36, py - 35, 2, 0, TAU); g.fill(); }
+    }
   }
   // a bus stop on the top sidewalk now and then, with its shelter and sign
   if (bio === 'city' && R() < 0.3) {
     const x = bx + 110 + R() * (BS - 260), y = by + 2;
+    if (rec) rec.push({ k: 'busstop', x: x, y: y }); else {
     g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 3, y + 3, 52, 11); g.fillStyle = 'rgba(150,200,230,0.28)'; g.fillRect(x, y, 52, 11);
     g.strokeStyle = '#4a4d52'; g.lineWidth = 1.5; g.strokeRect(x, y, 52, 11); g.fillStyle = '#4a4d52'; g.fillRect(x + 4, y + 6, 44, 3);
     g.fillStyle = '#2f6fb0'; g.fillRect(x + 60, y + 2, 7, 7); g.fillStyle = '#e8e2d4'; g.fillRect(x + 62, y + 4, 3, 3);
+    }
   }
   // newspaper boxes in a row by the corner
-  if ((bio === 'city' || bio === 'chaos') && R() < 0.5) { const x = bx + 2, y = by + BS - 60 - R() * 120; for (let i = 0; i < 3; i++) { g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 2, y + i * 10 + 2, 9, 8); g.fillStyle = ['#2f6fb0', '#c9402e', '#f2cc3a', '#3d8a4a'][Math.floor(R() * 4)]; g.fillRect(x, y + i * 10, 9, 8); } }
+  if ((bio === 'city' || bio === 'chaos') && R() < 0.5) { const x = bx + 2, y = by + BS - 60 - R() * 120; for (let i = 0; i < 3; i++) { if (rec) { rec.push({ k: 'newsbox', x: x + 4.5, y: y + i * 10 + 4, col: ['#2f6fb0', '#c9402e', '#f2cc3a', '#3d8a4a'][Math.floor(R() * 4)] }); continue; } g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 2, y + i * 10 + 2, 9, 8); g.fillStyle = ['#2f6fb0', '#c9402e', '#f2cc3a', '#3d8a4a'][Math.floor(R() * 4)]; g.fillRect(x, y + i * 10, 9, 8); } }
 }
 function drawRoadMarks(g, c, B, R) {
   const ox = c.ox, oy = c.oy, bx = ox + ROAD, by = oy + ROAD, bio = c.bio;
