@@ -279,11 +279,11 @@ function hordeSelfTest() {
   return { ok: pass === n, n: n, pass: pass, why: why };
 }
 // the ground shadow of a zombie up off the ground: softer and further off the higher it is, along the light
-function hordeShadow(z, s, e, f) {
+function hordeShadow(z, T) {   // (T: the world transform, whole)
   const U = HD_U(), h = Math.min(3.2, z.pz || 0);
   const sun = CORE.frame && CORE.frame.sun, dx = sun && sun.on ? sun.dx : 0.5, dy = sun && sun.on ? sun.dy : 0.6, k = h * U * 0.55;
   const x = z.x + dx * k, y = z.y + dy * k, r = z.r * (1.05 + h * 0.18);
-  ctx.setTransform(s, 0, 0, s, e + x * s, f + y * s);
+  wPut(ctx, T, x, y, 1, 0);
   const g = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r); g.addColorStop(0, 'rgba(0,0,0,' + (0.32 - h * 0.05).toFixed(3) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
 }

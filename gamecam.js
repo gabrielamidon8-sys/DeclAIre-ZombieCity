@@ -51,7 +51,7 @@ function gcamTick(dt, p) {
   // the kick: each shot (ARMS sets camK by calibre) pushes the frame back along the gun, a stiff spring brings it home
   const shake = SET.shake == null ? 100 : SET.shake;
   if (a.camK > (GCAM.lastK || 0) + 0.01 && shake > 0 && !RM) {
-    const d = (a.camK - (GCAM.lastK || 0)) * 3.2 * shake / 100; GCAM.kv -= d * 26; GCAM.heavy = Math.max(GCAM.heavy || 0, a.camK > 0.9 ? 0.35 : 0);
+    const d = (a.camK - (GCAM.lastK || 0)) * 3.2 * shake / 100; GCAM.kv -= d * 15;   // (15, not 26: the stepped spring answers truly, so this keeps the kick the size it was at 60 fps) GCAM.heavy = Math.max(GCAM.heavy || 0, a.camK > 0.9 ? 0.35 : 0);
     // trauma by the round's impulse (a 9 mm 0.05, 5.56 0.1, 7.62 and buckshot 0.2)
     const D = p.weapon && p.weapon.arms && typeof LG_GUN_DEF !== 'undefined' ? LG_GUN_DEF[p.weapon.arms.key] : null, imp = D && D.act && D.act.imp ? D.act.imp : (a.camK - (GCAM.lastK || 0)) * 8;
     gcamTrauma(clamp(imp * 0.014, 0.03, 0.3) * shake / 100);
@@ -59,7 +59,12 @@ function gcamTick(dt, p) {
   // blasts and hits (the game raises G.shake for them): a jump in it is trauma too
   if ((G.shake || 0) > (GCAM.lastShake || 0) + 0.5) gcamTrauma(Math.min(0.6, ((G.shake || 0) - (GCAM.lastShake || 0)) * 0.08)); GCAM.lastShake = G.shake || 0;
   GCAM.lastK = a.camK || 0;
-  const kx0 = GCAM.k; GCAM.kv += (-420 * GCAM.k - 34 * GCAM.kv) * dt; GCAM.k += GCAM.kv * dt; if (!(GCAM.k === GCAM.k)) { GCAM.k = 0; GCAM.kv = 0; }
+  // (1.9.998.1: the kick's spring runs in steps of at most 8 ms. In one step a frame this stiff spring went unstable
+  // whenever a frame took longer than about 46 ms (under ~21 fps): each frame then threw it further instead of settling
+  // it, and the whole view lurched back and forth by hundreds of pixels, worst when shooting and rolling, as frames run
+  // slowest then. A kick is a few units at most, so it is also held to 40 as a last guard.)
+  { const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n; for (let i = 0; i < n; i++) { GCAM.kv += (-420 * GCAM.k - 34 * GCAM.kv) * h; GCAM.k += GCAM.kv * h; } }
+  if (!(GCAM.k === GCAM.k) || !(GCAM.kv === GCAM.kv)) { GCAM.k = 0; GCAM.kv = 0; } else if (Math.abs(GCAM.k) > 40) { GCAM.k = Math.sign(GCAM.k) * 40; GCAM.kv = 0; }
   GCAM.kx = Math.cos(aim) * GCAM.k; GCAM.ky = Math.sin(aim) * GCAM.k;
   GCAM.heavy = Math.max(0, (GCAM.heavy || 0) - dt * 2.5);
 }

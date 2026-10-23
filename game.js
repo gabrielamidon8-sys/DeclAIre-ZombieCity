@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.998';
+const ZC_VERSION = '1.9.998.1';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -1942,7 +1942,7 @@ function render() {
   if (vz) drawVizMobs(vz, vis);
   // level of detail: zombies far from you, or part of a big crowd, skip their cosmetic overlays (the crowd engine draws
   // them; this is the plain way, if it is resting)
-  let swd = false; if (typeof swarmDraw === 'function' && swarmUp()) { try { swarmDraw(vis, hw, hh); swd = true; } catch (e) { ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - cam.x * s, DPR * (H / 2 + shy) - cam.y * s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; swarmHurt(e, 'draw'); } }
+  let swd = false; if (typeof swarmDraw === 'function' && swarmUp()) { const WT = ctx.getTransform(); try { swarmDraw(vis, hw, hh); swd = true; } catch (e) { ctx.setTransform(WT); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; swarmHurt(e, 'draw'); } }
   let nv = 0; if (!swd) for (const z of G.zs) if (!z.dead && !z.boss && vis(z.x, z.y, z.r * 2.6)) LODQ[nv++] = z;
   const fx = G.p && G.mode !== 'title' ? G.p.x : cam.x, fy = G.p && G.mode !== 'title' ? G.p.y : cam.y;
   const nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, crowd = nv > 70 ? 1 : 0, ln = PERF.lodN; if (!swd) ln[0] = ln[1] = ln[2] = ln[3] = 0;
@@ -2135,7 +2135,7 @@ function drawZ(z, lod, far) {
   if (z.m.unique) { drawSnatcher(z); return; }
   if (z.m.v2 && !z.fly && !z.st.under && typeof animaDraw === 'function') {
     const T = ctx.getTransform();
-    const ok = animaDraw(z, lod, z.swRkF === frameNo ? z.swRk : 0, T.a, T.e, T.f, swarmAlpha(z));
+    const ok = animaDraw(z, lod, z.swRkF === frameNo ? z.swRk : 0, T, swarmAlpha(z));
     ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f); ctx.globalAlpha = 1;
     if (ok) { drawZOver(z, lod, far); return; }
   }

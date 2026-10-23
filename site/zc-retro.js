@@ -18,7 +18,7 @@
       'DECLAIRE BIOS v2.0  (C) 2026 DECLAIRE STUDIOS',
       'MEMORY TEST ............ 640K OK',
       'LOADING QUARANTINE ZONE  [##########] 100%',
-      'BUILD 1.9.998 ......... OK',
+      ('BUILD ' + ((D.log[0] || {}).v || '') + ' ').padEnd(24, '.') + ' OK',
       '2.0 SLICES SHIPPED ..... 15',
       'ENGINES ONLINE ......... 35/35',
       'CORNERS CUT ............ 0',
@@ -55,7 +55,7 @@
   /* ---------- the update log ---------- */
   function buildLog() {
     const list = $('logList'); if (!list) return;
-    const tag = e => e.slice ? 'SLICE ' + String(e.slice).padStart(2, '0') : (e.era === 'road' ? 'ROAD TO 2.0' : 'CLASSIC');
+    const tag = e => typeof e.slice === 'string' ? 'BUG FIX ' + e.slice.replace(/\D/g, '').padStart(2, '0') : e.slice ? 'SLICE ' + String(e.slice).padStart(2, '0') : (e.era === 'road' ? 'ROAD TO 2.0' : 'CLASSIC');
     D.log.forEach((e, n) => {
       const d = h('details', 'lg-e era-' + e.era.replace('.', '') + (n === 0 ? ' latest' : ''));
       d.dataset.era = e.era; d.dataset.text = (e.v + ' ' + e.title + ' ' + e.bullets.join(' ')).toLowerCase();

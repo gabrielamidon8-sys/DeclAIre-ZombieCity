@@ -658,7 +658,7 @@ function swarmDraw(vis, hw, hh) {
   const nv = V.length, nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, ln = PERF.lodN; ln[0] = ln[1] = ln[2] = ln[3] = 0;
   const crowd = nv > 70 ? 1 : 0, mob = nv > 220 ? 1 : 0, strain = -SWARM.adapt, hi = SET.crowd === 'high' || TUNE.SWARM > 0, low = SET.crowd === 'low' || TUNE.SWARM < 0;
   const tier = clamp(PERF.tier | 0, 0, 3); SWARM.budF = [2, 3, 5, 8][tier] + (strain ? 0 : 1); SWARM.budL = [6, 10, 16, 24][tier]; SWARM.keys.clear();
-  const T = ctx.getTransform(), s = T.a, e = T.e, f = T.f, setT = () => ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f), FL = SWARM.fl, FS = SWARM.flS, OV = SWARM.ov, OL = SWARM.ovL; FL.length = 0; FS.length = 0; OV.length = 0; OL.length = 0;
+  const T = ctx.getTransform(), setT = () => ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f), FL = SWARM.fl, FS = SWARM.flS, OV = SWARM.ov, OL = SWARM.ovL; FL.length = 0; FS.length = 0; OV.length = 0; OL.length = 0;
   const UP = SWARM.up || (SWARM.up = []); UP.length = 0;
   for (let i = 0; i < nv; i++) {
     const z = V[i], far = z.swD > nr2; z.swRk = i; z.swRkF = frameNo;
@@ -670,20 +670,20 @@ function swarmDraw(vis, hw, hh) {
     // the 2.0 zombies: the animation engine draws them (live joints near you, cached frames further out)
     if (z.m.v2 && !z.fly && !z.st.under) {
       const a = swarmAlpha(z);
-      if (animaDraw(z, lod, i, s, e, f, a)) {
-        if (lod < 2 && (z.wnd || z.charK || z.frostK) && typeof goreWounds === 'function') { ctx.setTransform(Math.cos(z.ang) * s, Math.sin(z.ang) * s, -Math.sin(z.ang) * s, Math.cos(z.ang) * s, e + z.x * s, f + z.y * s); goreWounds(ctx, z, z.r); }
+      if (animaDraw(z, lod, i, T, a)) {
+        if (lod < 2 && (z.wnd || z.charK || z.frostK) && typeof goreWounds === 'function') { wPut(ctx, T, z.x, z.y, Math.cos(z.ang), Math.sin(z.ang)); goreWounds(ctx, z, z.r); }
         if (lod < 3 || z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0) || z.shield > 1 || z.st.aim > 0) { OV.push(z); OL.push(lod, far ? 1 : 0); }
         continue;
       }
       // no frame yet: a plain stand-in for a moment (never the old mutation art)
-      const sp = swarmImp(z), an = z.ang; ctx.setTransform(Math.cos(an) * s, Math.sin(an) * s, -Math.sin(an) * s, Math.cos(an) * s, e + z.x * s, f + z.y * s); ctx.globalAlpha = a;
+      const sp = swarmImp(z), an = z.ang; wPut(ctx, T, z.x, z.y, Math.cos(an), Math.sin(an)); ctx.globalAlpha = a;
       ctx.drawImage(sp.c, sp.sx, sp.sy, sp.sw, sp.sh, sp.ox, sp.oy, sp.w, sp.h); OV.push(z); OL.push(lod, far ? 1 : 0); continue;
     }
     if (z.rb || z.m.unique || z.st.down > 0 || z.st.under || z.fly) { setT(); drawZ(z, lod, far); continue; }
     const sp = swarmSpr(z, lod <= 1 ? 0 : 1), a = swarmAlpha(z);
-    const an = z.ang + (lod < 3 ? Math.sin(G.time * 7 + z.bob) * 0.06 : 0), co = Math.cos(an) * s, si = Math.sin(an) * s;
+    const an = z.ang + (lod < 3 ? Math.sin(G.time * 7 + z.bob) * 0.06 : 0), co = Math.cos(an), si = Math.sin(an);
     let x = z.x, y = z.y; if (z.warn > 0 || z.st.fuse > 0) { x += rand(-1.5, 1.5); y += rand(-1.5, 1.5); }
-    ctx.setTransform(co, si, -si, co, e + x * s, f + y * s); ctx.globalAlpha = a;
+    wPut(ctx, T, x, y, co, si); ctx.globalAlpha = a;
     ctx.drawImage(sp.c, sp.sx, sp.sy, sp.sw, sp.sh, sp.ox, sp.oy, sp.w, sp.h);
     if (lod < 2 && (z.wnd || z.charK || z.frostK) && typeof goreWounds === 'function') goreWounds(ctx, z, z.r);
     if (z.flash > 0 && lod < 3) { FL.push(z); FS.push(sp.c, sp.sx, sp.sy, sp.sw, sp.sh, sp.ox, sp.oy, sp.w, sp.h, an, a); }
@@ -691,17 +691,17 @@ function swarmDraw(vis, hw, hh) {
   }
   if (UP.length) {
     UP.sort((a, b) => (a.pz || 0) - (b.pz || 0));
-    for (const z of UP) { z.upD = 1; try { hordeShadow(z, s, e, f); } catch (er) { } }
+    for (const z of UP) { z.upD = 1; try { hordeShadow(z, T); } catch (er) { } }
     // (drawn again through the same loop body: the flag stops them being set aside a second time)
     const keep = V.slice(); V.length = 0; for (const z of UP) V.push(z);
-    for (let i = 0; i < V.length; i++) { const z = V[i], lod = Math.min(3, Q.lod), a = swarmAlpha(z); if (z.m.v2 && animaDraw(z, lod, Math.max(0, z.swRk | 0), s, e, f, a)) { OV.push(z); OL.push(lod, 0); } z.upD = 0; }
+    for (let i = 0; i < V.length; i++) { const z = V[i], lod = Math.min(3, Q.lod), a = swarmAlpha(z); if (z.m.v2 && animaDraw(z, lod, Math.max(0, z.swRk | 0), T, a)) { OV.push(z); OL.push(lod, 0); } z.upD = 0; }
     V.length = 0; for (const z of keep) V.push(z);
   }
   if (FL.length) {
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < FL.length; i++) {
-      const z = FL[i], o = i * 11, an = FS[o + 9], co = Math.cos(an) * s, si = Math.sin(an) * s;
-      ctx.setTransform(co, si, -si, co, e + z.x * s, f + z.y * s); ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * FS[o + 10];
+      const z = FL[i], o = i * 11, an = FS[o + 9];
+      wPut(ctx, T, z.x, z.y, Math.cos(an), Math.sin(an)); ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * FS[o + 10];
       ctx.drawImage(FS[o], FS[o + 1], FS[o + 2], FS[o + 3], FS[o + 4], FS[o + 5], FS[o + 6], FS[o + 7], FS[o + 8]);
     }
     ctx.globalCompositeOperation = 'source-over';

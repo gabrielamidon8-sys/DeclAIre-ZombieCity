@@ -1245,27 +1245,27 @@ function aCorpsePose(C) {
 }
 function animaDrawCorpses(vis) {
   const L = ANIMA.corpses; if (!L.length || !animaUp()) return;
-  const T = ctx.getTransform(), s = T.a, e = T.e, f = T.f;
+  const T = ctx.getTransform();   // (whole: the camera can roll the frame; see wPut)
   let live = 0; const liveCap = ANIMA.liveCap;
   for (const C of L) {
     if (!vis(C.x, C.y, C.r * 6)) continue;
     const life = aCorpseLife(), fade = C.done ? clamp((life - C.life) / 3, 0, 1) : 1;
     if (fade <= 0) continue;
-    const co = Math.cos(C.ang) * s * C.r, si = Math.sin(C.ang) * s * C.r;
+    const co = Math.cos(C.ang) * C.r, si = Math.sin(C.ang) * C.r;
     if (!C.done || !C.spr) {
       if (C.done) {
         // lying still: its picture is made once and reused
         C.spr = aCorpseSprite(C);
       }
       if (!C.done && live < liveCap + 6) {
-        live++; ctx.setTransform(co, si, -si, co, e + C.x * s, f + C.y * s); ctx.globalAlpha = fade;
+        live++; wPut(ctx, T, C.x, C.y, co, si); ctx.globalAlpha = fade;
         lookDraw(ctx, C.m, aCorpsePose(C), { lod: 1, dead: 1, burn: C.burn, minion: C.minion, t: G.time, sever: C.sever });
         continue;
       }
       if (!C.spr) continue;
     }
     const sp = C.spr, kz = C.r / sp.rq;
-    ctx.setTransform(co / C.r, si / C.r, -si / C.r, co / C.r, e + C.x * s, f + C.y * s); ctx.globalAlpha = fade * (C.life > life - 8 ? 0.85 : 1);
+    wPut(ctx, T, C.x, C.y, co / C.r, si / C.r); ctx.globalAlpha = fade * (C.life > life - 8 ? 0.85 : 1);
     ctx.drawImage(sp.c, sp.x0 * kz, sp.y0 * kz, sp.w * kz, sp.h * kz);
   }
   ctx.globalAlpha = 1; ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f);
@@ -1341,7 +1341,8 @@ function animaForget() { ANIMA.cache.clear(); for (const C of ANIMA.corpses) C.s
 
 /* ---------- drawing a zombie (the crowd engine hands each one over, nearest first) ---------- */
 // returns false when it could not draw it (the crowd engine's own pictures cover)
-function animaDraw(z, lod, rank, s, e, f, a) {
+// (T: the world transform, whole; 1.9.998.1: it took the scale and the offset alone, which dropped the camera's roll)
+function animaDraw(z, lod, rank, T, a) {
   if (!animaUp() || !z.m.v2) return false;
   try {
     // the nearest few are always drawn live (every joint, every frame), on any device; the rest from cached frames
@@ -1350,10 +1351,10 @@ function animaDraw(z, lod, rank, s, e, f, a) {
     let x = z.x, y = z.y; if (z.warn > 0 && z.m.an.ab === 'bomber') { x += rand(-1, 1); y += rand(-1, 1); }
     // 1.9.998: up on a pile or a roof (or mid-vault) it is nearer the camera: drawn bigger; under a car, half hidden
     const lift = z.pz > 0.05 && typeof hordeLift === 'function' ? hordeLift(z) : 1, up = z.pz > 0.15;
-    const co = Math.cos(z.ang) * s * z.r * lift, si = Math.sin(z.ang) * s * z.r * lift;
+    const co = Math.cos(z.ang) * z.r * lift, si = Math.sin(z.ang) * z.r * lift;
     ctx.globalAlpha = a * (z.under ? 0.45 : 1);
     if (live) {
-      ctx.setTransform(co, si, -si, co, e + x * s, f + y * s);
+      wPut(ctx, T, x, y, co, si);
       lookDraw(ctx, z.m, A.pose, { lod: lod, t: G.time, z: z, light: aLight(z), flash: z.flash, minion: z.minion, burn: z.burnT > 0, frost: z.frostK, glow: 1, sever: z.sever | 0, tex: lod === 0 && texelLevel() >= 2, noShadow: up });
       // its skeleton, kept for the lighting engine (the shadow of this exact pose)
       (A.J || (A.J = new Float32Array(NJ * 3))).set(ANIMA.J); A.jF = frameNo;
@@ -1363,7 +1364,7 @@ function animaDraw(z, lod, rank, s, e, f, a) {
     const sp = aFrame(z, A, lod, z.sever | 0);
     if (!sp) return false;
     const kz = z.r / sp.rq;
-    ctx.setTransform(co / z.r, si / z.r, -si / z.r, co / z.r, e + x * s, f + y * s);   // (lift is in co and si)
+    wPut(ctx, T, x, y, co / z.r, si / z.r);   // (lift is in co and si)
     ctx.drawImage(sp.c, sp.x0 * kz, sp.y0 * kz, sp.w * kz, sp.h * kz);
     // the light beside it on the picture too (near ones, on devices with room): lit side, shaded side, a rim of its colour
     if (lod <= 1 && rank < 40 && PERF.tier >= 2 && typeof LUX !== 'undefined' && LUX.live && typeof lookShade === 'function') lookShade(ctx, aLight(z), z.r * 0.95, z.r * 0.85, 0.8);

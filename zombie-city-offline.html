@@ -7599,7 +7599,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.998';
+const ZC_VERSION = '1.9.998.1';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -9528,7 +9528,7 @@ function render() {
   if (vz) drawVizMobs(vz, vis);
   // level of detail: zombies far from you, or part of a big crowd, skip their cosmetic overlays (the crowd engine draws
   // them; this is the plain way, if it is resting)
-  let swd = false; if (typeof swarmDraw === 'function' && swarmUp()) { try { swarmDraw(vis, hw, hh); swd = true; } catch (e) { ctx.setTransform(s, 0, 0, s, DPR * (W / 2 + shx) - cam.x * s, DPR * (H / 2 + shy) - cam.y * s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; swarmHurt(e, 'draw'); } }
+  let swd = false; if (typeof swarmDraw === 'function' && swarmUp()) { const WT = ctx.getTransform(); try { swarmDraw(vis, hw, hh); swd = true; } catch (e) { ctx.setTransform(WT); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; swarmHurt(e, 'draw'); } }
   let nv = 0; if (!swd) for (const z of G.zs) if (!z.dead && !z.boss && vis(z.x, z.y, z.r * 2.6)) LODQ[nv++] = z;
   const fx = G.p && G.mode !== 'title' ? G.p.x : cam.x, fy = G.p && G.mode !== 'title' ? G.p.y : cam.y;
   const nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, crowd = nv > 70 ? 1 : 0, ln = PERF.lodN; if (!swd) ln[0] = ln[1] = ln[2] = ln[3] = 0;
@@ -9721,7 +9721,7 @@ function drawZ(z, lod, far) {
   if (z.m.unique) { drawSnatcher(z); return; }
   if (z.m.v2 && !z.fly && !z.st.under && typeof animaDraw === 'function') {
     const T = ctx.getTransform();
-    const ok = animaDraw(z, lod, z.swRkF === frameNo ? z.swRk : 0, T.a, T.e, T.f, swarmAlpha(z));
+    const ok = animaDraw(z, lod, z.swRkF === frameNo ? z.swRk : 0, T, swarmAlpha(z));
     ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f); ctx.globalAlpha = 1;
     if (ok) { drawZOver(z, lod, far); return; }
   }
@@ -10495,8 +10495,20 @@ function coreFrame(x0, y0, x1, y1, dt) {
   return F;
 }
 // world point to screen pixel (of the game canvas), using the frame's camera
+// (1.9.998.1: through the frame's whole transform, so the gun's kick, the shake, the camera's zoom and its roll are all
+// in it; it used to rebuild the camera from the base zoom alone, and the lights it placed for the shader slid off theirs)
 function coreToScreen(x, y, out) {
-  const F = CORE.frame, s = F.zoom * F.dpr; out[0] = (x - F.cx) * s + cv.width / 2; out[1] = (y - F.cy) * s + cv.height / 2; return out;
+  const F = CORE.frame, T = F.tr;
+  if (T) { out[0] = T.a * x + T.c * y + T.e; out[1] = T.b * x + T.d * y + T.f; return out; }
+  const s = F.zoom * F.dpr; out[0] = (x - F.cx) * s + cv.width / 2; out[1] = (y - F.cy) * s + cv.height / 2; return out;
+}
+// 1.9.998.1: put a picture on the world at (x, y), turned and scaled by co = cos(turn) * scale and si = sin(turn) * scale
+// (world units), under the world transform T. The camera rolls the frame a fraction of a degree (each shot's trauma, the
+// dodge), so a sprite's matrix has to be T times its own place and turn. Rebuilding it from T's scale and offset alone
+// drops the roll, and the offset then carries roll times the sprite's distance from the map's origin: in the city that
+// is hundreds of pixels, so everything drawn that way jumped about the screen as the frame shook.
+function wPut(c, T, x, y, co, si) {
+  c.setTransform(T.a * co + T.c * si, T.b * co + T.d * si, T.c * co - T.a * si, T.d * co - T.b * si, T.a * x + T.c * y + T.e, T.b * x + T.d * y + T.f);
 }
 
 coreAdd({ name: 'CORE', kind: 'sim', ver: 3, covers: ['TRACER', 'MUZZLE'], does: 'Engine hub and learning ecosystem: connects every engine through one shared frame, one time budget, a message bus, a capability registry and a watchdog with heartbeats and self-tests; it learns on each device what every engine costs at each level and load, steps engines down before a horde arrives, remembers which repair fixed which problem and tries that first, builds trust in engines that run clean, remembers levels across updates, and runs the engine room\'s tuning and locks.', state: () => 'on', level: () => CORE.list.length + ' engines, ' + CORE.list.filter(e => e.down).length + ' resting, ' + Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0) + ' listeners' });
@@ -10981,7 +10993,7 @@ const ENG_DOCS = {
   CORE: {
     title: 'The Conductor',
     character: 'The calm one in the middle. It never draws a pixel: it listens to every engine every second, keeps the books on the frame, and decides who steps back when time runs short. Since v3 it remembers what works on each device, what has failed there, and which engines it can trust.',
-    does: 'The hub every engine plugs into: one shared frame (the view, the camera, the sun, the brightest lights), one time budget, a message bus for events (a new run, a kill, a horde, memory running short), a capability registry so engines ask for "light" or "crowd" instead of for each other by name, and the watchdog that keeps them all sound. It also runs the engine room\'s tuning and locks.',
+    does: 'The hub every engine plugs into: one shared frame (the view, the camera, the sun, the brightest lights), one time budget, a message bus for events (a new run, a kill, a horde, memory running short), a capability registry so engines ask for "light" or "crowd" instead of for each other by name, and the watchdog that keeps them all sound. It also runs the engine room\'s tuning and locks. Since 1.9.998.1 the frame\'s world-to-screen goes through the frame\'s whole transform (the gun\'s kick, the shake, the zoom and the roll), and it gives every engine one way to put a picture on the world under that transform, so a sprite turns with the frame when the camera rolls.',
     adapts: 'Runs the time budget. When the frame runs late it steps down the engine whose step down saves the most on this device (Eco engines first, Hard engines last, Max never on its own). It climbs engines back up when the frame has room and what it learned says the next level fits. When a horde sets off or a wave starts it looks at what the engines cost with that many zombies and steps them down before the crowd arrives, not after the frame stutters.',
     repairs: 'Every two seconds it looks at every engine: a run of errors, the engine\'s own check, a heartbeat gone quiet, a self-test that fails. For each problem it tries the fixes that have worked best for that kind of problem on this device (the engine\'s own repair, help from the other engines, a step down, a fresh start; at most three), then rests the engine for a minute (longer each time) while the others cover for it, and tells everyone who leans on it so they can adapt. It checks itself too: its cost readings and its log.',
     learns: 'On each device: what every engine costs at each of its levels under each load, the levels an engine could not hold (so it stops bouncing between two), which fix clears which kind of problem, and how much to trust each engine (an engine with recent trouble starts a run one step lighter and earns the step back). It also remembers each engine\'s settled level across launches. All of it stays on the device, is relearned after an engine is updated, and can be wiped with Forget in the engine room.',
@@ -11146,7 +11158,7 @@ const ENG_DOCS = {
   PRISM: {
     title: 'The Lens',
     character: 'The finisher. Every frame passes through it last, and it decides how the whole picture feels.',
-    does: 'GPU shaders (WebGL 2 or 1) with a processor fallback: path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, colour temperature and grading (since 1.9.997 the ACES curve with vibrance), vignette and film grain, relief and highlights from the nearest lamps on every surface, and (1.9.997) TEXEL\'s detail normal map in world space: pebbles, grain and hairline cracks (weighed by district: asphalt and concrete crack, snow and sand do not) carved by the sun, the lamps and the flashlight.',
+    does: 'GPU shaders (WebGL 2 or 1) with a processor fallback: path-traced bounce light, bloom, light shafts, heat haze, sharpening and upscaling, colour temperature and grading (since 1.9.997 the ACES curve with vibrance), vignette and film grain, relief and highlights from the nearest lamps on every surface, and (1.9.997) TEXEL\'s detail normal map in world space: pebbles, grain and hairline cracks (weighed by district: asphalt and concrete crack, snow and sand do not) carved by the sun, the lamps and the flashlight. Since 1.9.998.1 it reads the world back from the screen through the exact inverse of the frame\'s transform, so the reflections\' ripples, the bounce light and the ground\'s detail stay where they belong when the camera rolls.',
     adapts: 'Four levels; steps down when the graphics chip is the bottleneck and back up when there is room; runs on the processor on devices without a usable graphics chip.',
     repairs: 'Rebuilds its shaders after errors, rebuilds everything when the graphics chip comes back after losing its context, runs on the processor for a minute after repeated GPU errors; a heartbeat on the GPU path and a check for a lost context.',
     learns: 'How reliable this device\'s graphics chip is: after 3 lost contexts in recent sessions, Auto keeps the shaders on the processor for a while instead of stuttering through rebuilds, and calm sessions win the GPU back. Also what each level costs by screen size.',
@@ -11245,7 +11257,7 @@ const ENG_DOCS = {
   SWARM: {
     title: 'The Hive Mind',
     character: 'Hundreds of bodies, one intention. It knows a crowd is more than many zombies.',
-    does: 'Hordes and droves of hundreds that gather out of sight, march at one pace and surge when they see you (since 1.9.994 after fourteen seconds of marching at most: they come for you); a horde is a mix now, the leader\'s kind, its strain and a handful of the wave\'s other dead, so a crowd is never a wall of one face, and every zombie is its own size and pace; zombies moving the same way fall in step; bodies push by weight, and crowds push vehicles with real physics (only when 30 or more are after a player within 18 m and the vehicle stands within 9 m of that player); hordes spread to surround you and come to gunfire; levels of detail so 500 and more fit on screen. Since 1.9.998 HORDE gives it a body and a brain for World War Z speed (the default): three gears from real human speeds (an amble, a pursuit, a frenzy that spreads body to body and never outruns your sprint), momentum that slams the leaders into the wall at a corner so the rest cut it faster, solid bodies, crossing cars (over the bonnet, across the roof, through the windows, under) and fences, cutting you off, and pile-ups.',
+    does: 'Hordes and droves of hundreds that gather out of sight, march at one pace and surge when they see you (since 1.9.994 after fourteen seconds of marching at most: they come for you); a horde is a mix now, the leader\'s kind, its strain and a handful of the wave\'s other dead, so a crowd is never a wall of one face, and every zombie is its own size and pace; zombies moving the same way fall in step; bodies push by weight, and crowds push vehicles with real physics (only when 30 or more are after a player within 18 m and the vehicle stands within 9 m of that player); hordes spread to surround you and come to gunfire; levels of detail so 500 and more fit on screen. Since 1.9.998 HORDE gives it a body and a brain for World War Z speed (the default): three gears from real human speeds (an amble, a pursuit, a frenzy that spreads body to body and never outruns your sprint), momentum that slams the leaders into the wall at a corner so the rest cut it faster, solid bodies, crossing cars (over the bonnet, across the roof, through the windows, under) and fences, cutting you off, and pile-ups. Since 1.9.998.1 every zombie, wound and hit flash, and the shadow of one up on a pile, is placed with the frame\'s whole transform, so the crowd stays on the ground when the camera rolls with a shot or the dodge.',
     adapts: 'Crowd detail and how many can be alive at once, stepped by its own watch; since 1.9.991 CORE also steps it down before a horde arrives when the learned costs say the frame will not hold it.',
     repairs: 'A heartbeat while zombies are on the street, its own checks and repairs, a fresh start that resets its caps; the pathfinding engine covers for its movement when it rests.',
     learns: 'What the crowd costs by how many zombies are alive, which is what lets CORE look ahead.',
@@ -11256,7 +11268,7 @@ const ENG_DOCS = {
   ANIMA: {
     title: 'The Puppeteer',
     character: 'Gives each of the dead its own way of moving: 3,750 animations (since 1.9.998, with the ten knife kills and fifteen contacts with the world), and not one of them shared.',
-    does: 'Every 2.0 zombie is a jointed body seen from above with its own animations (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials, 10 knife kills), cross-fades that keep the feet in step, hit reactions layered on top, deaths from whatever pose it was in, bodies that stay a while; live joints near you, cached frames for the crowd, shadows shaped by each pose. Since 1.9.998 there are 75 (fifteen contacts with the world and the crowd: bumps, shoves, wall slams and scrapes, corner skids, vaulting, climbing and diving through cars, pile-ups, trampling, squeezing through gaps), the bodies have real proportions, a spring on the torso answers to their momentum, and each zombie carries a hit rig built from its skeleton every frame.',
+    does: 'Every 2.0 zombie is a jointed body seen from above with its own animations (10 ways of moving, 8 idles, 10 attacks, 8 hit reactions, 8 deaths, 6 specials, 10 knife kills), cross-fades that keep the feet in step, hit reactions layered on top, deaths from whatever pose it was in, bodies that stay a while; live joints near you, cached frames for the crowd, shadows shaped by each pose. Since 1.9.998 there are 75 (fifteen contacts with the world and the crowd: bumps, shoves, wall slams and scrapes, corner skids, vaulting, climbing and diving through cars, pile-ups, trampling, squeezing through gaps), the bodies have real proportions, a spring on the torso answers to their momentum, and each zombie carries a hit rig built from its skeleton every frame. Since 1.9.998.1 each zombie and body is placed with the frame\'s whole transform, the camera\'s roll included.',
     adapts: 'How many zombies get live joints (the rest use cached frames), stepped down when it takes too much of the frame and back up if CORE agrees.',
     repairs: 'Finds and resets broken poses and lost bodies; a self-test at start runs a handful of zombies through attacks, hit reactions, deaths and knife kills and checks every joint comes out sound.',
     learns: 'What it costs by how many zombies it animates.',
@@ -11322,7 +11334,7 @@ const ENG_DOCS = {
   MIMATIC: {
     title: 'The Director',
     character: 'Mimatic means cinematic mimicry. It studies how films are shot, keeps the techniques rather than the images, and blends them the way a director would: it chooses where the camera stands, when time slows, and where the music hits. It references; it never copies.',
-    does: 'Turns a beat sheet into a film. A library of 13 film techniques, each with a note on why it works and where it comes from: low-angle hero, tracking shot, macro insert and push-in, over the shoulder, Dutch angle, whip pan, punch-in and impact shake, handheld energy, speed ramp, freeze frame and bullet time, lightning as light, title card, and hit points. From the beats it builds the shots (framed on the actors\' bones, so the camera follows a real head or a real hand), a time curve for speed ramps and freezes, and cues for the score and effects. The Operator\'s cinematic (14.5 seconds, 15 shots, rebuilt in 1.9.994): he walks a rain-soaked alley carrying your sidearm, the mask closes, a door bangs, two of the dead rush him; a whip pan, a muzzle-lit headshot, a grab, a tactical throw; down on a knee and the knife goes in; a third one out of the dark behind him; he comes up turning, the knife at its collar in slow motion, the pistol past the knife arm, point blank (knife, knife, shot, the in-game combo\'s rhythm), and time stops on the muzzle flash while lightning freezes the frame on his name; the score is rewritten to the new cut. It also stages the line-up (the five classes standing in the rain behind the selection), the hub, and the studio, where the model turns front-on and then the camera tilts up and over to look straight down, the way the game sees him (a seated clip plays there on his chair). Since v2 (1.9.993): the stoop, the idle scene behind each face on the selection screen: the Operator sits on a wooden chair under a dim bulb swinging on its cable over a shop shutter, mask down, sharpening his knife, the camera on the street at floor level looking up at him; a director picks from thirty seated idles and cross-fades them so he is never still the same way twice, and somewhere in the first quarter-minute a can is kicked in the dark: he is up off the chair with the knife out, and there is nothing there. Every actor carries weight now (springs that lag the head and the chest behind the hips), the knife is held the right way, the alley has neon that buzzes and flickers, bottles and cans the fight knocks over, papers in the wind, a passing car\'s lights sweeping the walls and a siren far off. And it directs the run\'s camera: lead room ahead of where you look when engaged and where you move when not, a slight push in when you focus, a pull out when you sprint, and a kick by each gun\'s calibre that springs back. In the studio the Operator carries the guns from the armory, his hands fitted to them, and a pick turns the camera three-quarters from his gun side to watch him take it. Since 1.9.995 (v3 to v5, its course): a camera body and lens (Super 35 and full frame, focal length and angle of view, aperture, focus, depth of field by the thin-lens formula, shutter angle, exposure value, the judder limit on pans) and its rigs (locked, pan, tilt, whip, dolly, crane, arc, steadicam, handheld, dolly zoom, rack focus) with minimum-jerk starts and stops; the shot sizes from extreme close-up to extreme wide, framed on the face as LEGEND models it, composition and clear sightlines; light designed for the subject (key, fill and back at the look\'s ratio, 2:1 to 16:1, colour temperatures through Planck\'s law) and metered by two renders until the ratio is right; and directing: coverage of a scene (master, two-shot, singles, overs, inserts), continuity (the 180-degree and 30-degree rules, match on action) and the cut chosen over all the possibilities by Murch\'s rule of six. With BOARD and VFXRAY it shoots a written scene: the set and its practical lights from the heading (a night avenue of sodium lamps and neon, a warehouse under bulbs), the light per shot, the director\'s camera following its subject, focus pulled to the eyes, a kick on the camera when a blow lands. Since 1.9.996: every actor plays through LEGEND\'s performance layer, so the films move as if motion-captured; the alley was watched frame by frame from a fixed witness camera and fixed: the mask-on reach (elbow forward, his hand to the helmet\'s rail) shot from his left with a warm key light, the shoulder throw turned round the contact on his back (he drops and bends, it rolls over and is slammed down), the head shots that drop as dead weight, the last of the dead clawing at the knife in its collar on the freeze, and no jump before it. The stoop is cut like a film\'s quiet scene: four held shots on a 26-second loop (a wide pushing in, a side medium on the knife, an insert on his hands and the blade, his face from under the helmet\'s brim), each keeping him clear of the class card.',
+    does: 'Turns a beat sheet into a film. A library of 13 film techniques, each with a note on why it works and where it comes from: low-angle hero, tracking shot, macro insert and push-in, over the shoulder, Dutch angle, whip pan, punch-in and impact shake, handheld energy, speed ramp, freeze frame and bullet time, lightning as light, title card, and hit points. From the beats it builds the shots (framed on the actors\' bones, so the camera follows a real head or a real hand), a time curve for speed ramps and freezes, and cues for the score and effects. The Operator\'s cinematic (14.5 seconds, 15 shots, rebuilt in 1.9.994): he walks a rain-soaked alley carrying your sidearm, the mask closes, a door bangs, two of the dead rush him; a whip pan, a muzzle-lit headshot, a grab, a tactical throw; down on a knee and the knife goes in; a third one out of the dark behind him; he comes up turning, the knife at its collar in slow motion, the pistol past the knife arm, point blank (knife, knife, shot, the in-game combo\'s rhythm), and time stops on the muzzle flash while lightning freezes the frame on his name; the score is rewritten to the new cut. It also stages the line-up (the five classes standing in the rain behind the selection), the hub, and the studio, where the model turns front-on and then the camera tilts up and over to look straight down, the way the game sees him (a seated clip plays there on his chair). Since v2 (1.9.993): the stoop, the idle scene behind each face on the selection screen: the Operator sits on a wooden chair under a dim bulb swinging on its cable over a shop shutter, mask down, sharpening his knife, the camera on the street at floor level looking up at him; a director picks from thirty seated idles and cross-fades them so he is never still the same way twice, and somewhere in the first quarter-minute a can is kicked in the dark: he is up off the chair with the knife out, and there is nothing there. Every actor carries weight now (springs that lag the head and the chest behind the hips), the knife is held the right way, the alley has neon that buzzes and flickers, bottles and cans the fight knocks over, papers in the wind, a passing car\'s lights sweeping the walls and a siren far off. And it directs the run\'s camera: lead room ahead of where you look when engaged and where you move when not, a slight push in when you focus, a pull out when you sprint, and a kick by each gun\'s calibre that springs back. In the studio the Operator carries the guns from the armory, his hands fitted to them, and a pick turns the camera three-quarters from his gun side to watch him take it. Since 1.9.995 (v3 to v5, its course): a camera body and lens (Super 35 and full frame, focal length and angle of view, aperture, focus, depth of field by the thin-lens formula, shutter angle, exposure value, the judder limit on pans) and its rigs (locked, pan, tilt, whip, dolly, crane, arc, steadicam, handheld, dolly zoom, rack focus) with minimum-jerk starts and stops; the shot sizes from extreme close-up to extreme wide, framed on the face as LEGEND models it, composition and clear sightlines; light designed for the subject (key, fill and back at the look\'s ratio, 2:1 to 16:1, colour temperatures through Planck\'s law) and metered by two renders until the ratio is right; and directing: coverage of a scene (master, two-shot, singles, overs, inserts), continuity (the 180-degree and 30-degree rules, match on action) and the cut chosen over all the possibilities by Murch\'s rule of six. With BOARD and VFXRAY it shoots a written scene: the set and its practical lights from the heading (a night avenue of sodium lamps and neon, a warehouse under bulbs), the light per shot, the director\'s camera following its subject, focus pulled to the eyes, a kick on the camera when a blow lands. Since 1.9.996: every actor plays through LEGEND\'s performance layer, so the films move as if motion-captured; the alley was watched frame by frame from a fixed witness camera and fixed: the mask-on reach (elbow forward, his hand to the helmet\'s rail) shot from his left with a warm key light, the shoulder throw turned round the contact on his back (he drops and bends, it rolls over and is slammed down), the head shots that drop as dead weight, the last of the dead clawing at the knife in its collar on the freeze, and no jump before it. The stoop is cut like a film\'s quiet scene: four held shots on a 26-second loop (a wide pushing in, a side medium on the knife, an insert on his hands and the blade, his face from under the helmet\'s brim), each keeping him clear of the class card. Since 1.9.998.1 the run camera\'s recoil spring steps in pieces of at most 8 ms and is held to a few units, so a slow frame can never throw the view.',
     adapts: 'Its level sets the resolution the cinematic renders at (55% to 100%), the detail of the characters it casts (the hero and the line-up separately) and, since 1.9.997, whether the alley and the stoop go through the real lens (the thin lens\'s depth of field focused on the shot\'s subject, a stop wider on the inserts; the 180-degree shutter\'s motion blur from the camera\'s own move, none across a cut; a low mist; rays off the lamp when it is in frame; a teal-and-orange look). The screen\'s governor steps it down after the effects when frames run slow.',
     repairs: 'A clock gone bad is reset to the start of the shot. Repeated errors rest it while the screen holds a still. Its self-test at start directs the Operator\'s cinematic and checks that no two shots leave a gap, that time never runs backwards through the speed ramps and the freeze, and that every shot uses a technique from its library.',
     learns: 'What a cinematic frame costs on this device at its current resolution. It also checks its own framing as it plays: where the subject\'s head lands in each shot (off the edge, or with no headroom over the eyes) and corrects that shot next time, a little wider or the target moved, keeping the corrections on the device. Its course: five versions with exams on its own output (the cinematic\'s time curve, framing learned from its own frames, lens arithmetic and a dolly zoom measured on renders, framing within 1%, colour temperatures against Planck, lighting ratios metered within 2%, an edit with no crossings and no jump cuts that beats a careless one by the rule of six); a version is held only while every earlier exam passes.',
@@ -17106,10 +17118,10 @@ const PR_FS = {
     '  acc += s * uC[i] * fall * fall; }\n' +
     ' gl_FragColor = vec4(acc * uD / 16.0, 1.0); }',
   // bounce light: a Monte Carlo path tracer over the grid of solid cells, blended over the frames
-  gi: 'uniform sampler2D uOcc, uM, uPrev, uS; uniform vec2 uG, uOrg, uCv, uShift; uniform float uCell, uFrame, uBlend; uniform vec4 uTr; uniform vec3 uAlb;\n' +
+  gi: 'uniform sampler2D uOcc, uM, uPrev, uS; uniform vec2 uG, uOrg, uCv, uShift, uTo; uniform float uCell, uFrame, uBlend; uniform vec4 uTm; uniform vec3 uAlb;\n' +
     'float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }\n' +
     'float occ(vec2 c) { vec2 uv = vec2((c.x + 0.5) / uG.x, 1.0 - (c.y + 0.5) / uG.y); if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return -1.0; return texture2D(uOcc, uv).a; }\n' +
-    'vec2 scr(vec2 c) { vec2 w = uOrg + (c + 0.5) * uCell; vec2 px = vec2(uTr.x * w.x + uTr.y, uTr.z * w.y + uTr.w); return vec2(px.x / uCv.x, 1.0 - px.y / uCv.y); }\n' +
+    'vec2 scr(vec2 c) { vec2 w = uOrg + (c + 0.5) * uCell; vec2 px = vec2(uTm.x * w.x + uTm.z * w.y + uTo.x, uTm.y * w.x + uTm.w * w.y + uTo.y); return vec2(px.x / uCv.x, 1.0 - px.y / uCv.y); }\n' +
     'vec3 lightAt(vec2 c) { return texture2D(uM, scr(c)).rgb; }\n' +
     'vec3 albAt(vec2 c) { vec3 s = texture2D(uS, scr(c)).rgb; return mix(uAlb, s / (max(s.r, max(s.g, s.b)) + 0.08) * 0.38, 0.6); }\n' +
     'vec3 prevAt(vec2 c) { return texture2D(uPrev, vec2((c.x + 0.5) / uG.x, 1.0 - (c.y + 0.5) / uG.y) + uShift).rgb; }\n' +
@@ -17123,11 +17135,15 @@ const PR_FS = {
     ' vec4 cur = vec4(sum / float(RAYS), open / float(RAYS)); vec4 prev = texture2D(uPrev, v + uShift);\n' +
     ' gl_FragColor = mix(prev, cur, uBlend); }',
   // the final pass: everything together, then the grade
-  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir; uniform vec4 uTr; uniform vec4 uHot[8]; uniform vec4 uPL[6]; uniform vec3 uPC[6]; uniform float uNPL, uLamp, uSpec;\n' +
+  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir, uTo; uniform vec4 uTi; uniform vec4 uHot[8]; uniform vec4 uPL[6]; uniform vec3 uPC[6]; uniform float uNPL, uLamp, uSpec;\n' +
     '#ifdef DET\nuniform sampler2D uDet; uniform float uDetK, uDetTile, uCrack;\nfloat dth(vec2 p) { vec4 s = texture2D(uDet, p); return s.r - (1.0 - s.b) * uCrack * 0.45; }\n#endif\n' +
     'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub, uRefK, uRbK, uSunK, uRain, uWind, uRelief, uClar, uGlare, uPurk, uVib, uTone; uniform vec3 uWB, uTS, uTH, uSky, uSun;\n' +
     'const vec3 W3 = vec3(0.2126, 0.7152, 0.0722);\n' +
     'vec3 tap(vec2 p) { return texture2D(uS, p).rgb; }\n' +
+    // 1.9.998.1: a screen pixel back to the world, through the inverse of the frame's whole transform (it divided by the
+    // scale and took off the offset, which ignored the camera's roll: the reflections' ripples, the bounce light and the
+    // ground's detail then read from the wrong place, hundreds of pixels off in the city, and jumped as the frame shook)
+    'vec2 toW(vec2 px) { vec2 d = px - uTo; return vec2(uTi.x * d.x + uTi.z * d.y, uTi.y * d.x + uTi.w * d.y); }\n' +
     'vec3 cubic(vec2 uv) { vec2 sz = 1.0 / uIn; vec2 sp = uv * sz; vec2 tp = floor(sp - 0.5) + 0.5; vec2 f = sp - tp;\n' +
     ' vec2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f)); vec2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f); vec2 w2 = f * (0.5 + f * (2.0 - 1.5 * f)); vec2 w3 = f * f * (-0.5 + 0.5 * f);\n' +
     ' vec2 w12 = w1 + w2; vec2 t0 = (tp - 1.0) * uIn; vec2 t3 = (tp + 2.0) * uIn; vec2 t12 = (tp + w2 / w12) * uIn;\n' +
@@ -17146,7 +17162,7 @@ const PR_FS = {
     // cracks on every surface, with a touch of its own shading so the grain shows even in flat light
     ' vec3 nd = vec3(0.0, 0.0, 1.0);\n' +
     '#ifdef DET\n' +
-    ' if (uDetK > 0.0) { vec2 dpx = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 dw = vec2((dpx.x - uTr.y) / uTr.x, (dpx.y - uTr.w) / uTr.z) / uDetTile; float de = 1.0 / 256.0;\n' +
+    ' if (uDetK > 0.0) { vec2 dpx = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 dw = toW(dpx) / uDetTile; float de = 1.0 / 256.0;\n' +
     '  float dh = dth(dw), dhn = dth(dw + vec2(0.0, -de)), dhs = dth(dw + vec2(0.0, de)), dhe = dth(dw + vec2(de, 0.0)), dhw = dth(dw - vec2(de, 0.0));\n' +
     '  nd = normalize(vec3((dhw - dhe) * 2.4 * uDetK, (dhs - dhn) * 2.4 * uDetK, 1.0)); c *= 1.0 + (dh - 0.5) * 0.06 * uDetK + (texture2D(uDet, dw * 3.0).g - 0.5) * 0.035 * uDetK; }\n' +
     '#endif\n' +
@@ -17164,12 +17180,12 @@ const PR_FS = {
     // clarity: local contrast against a wider ring, so textures read without oversharpening edges
     ' if (uClar > 0.0) { vec2 o1 = uIn * 5.0, o2 = vec2(uIn.x, -uIn.y) * 5.0; vec3 m = (tap(uv + vec2(o1.x, 0.0)) + tap(uv - vec2(o1.x, 0.0)) + tap(uv + vec2(0.0, o1.y)) + tap(uv - vec2(0.0, o1.y)) + tap(uv + o1 * 0.7) + tap(uv - o1 * 0.7) + tap(uv + o2 * 0.7) + tap(uv - o2 * 0.7)) * 0.125;\n' +
     '  c = max(c + (c - m) * uClar, vec3(0.0)); }\n' +
-    ' if (uGIK > 0.0) { vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 w = vec2((px.x - uTr.y) / uTr.x, (px.y - uTr.w) / uTr.z);\n' +
+    ' if (uGIK > 0.0) { vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 w = toW(px);\n' +
     '  vec4 gi = texture2D(uGI, vec2((w.x - uOrg.x) / (uG.x * uCell), 1.0 - (w.y - uOrg.y) / (uG.y * uCell))); vec3 m = max(texture2D(uM, uv).rgb, vec3(0.07));\n' +
     '  c = c * (1.0 - uAOK * (1.0 - gi.a)) + c * min(gi.rgb * uGIK / m, vec3(1.6)); }\n' +
     // reflections: the sky, the street's lights (mirrored outward, the image sits under the surface) and sun glitter, rippled
     ' if (uRefK > 0.0) { float rf = texture2D(uRf, uv).a * uRefK;\n' +
-    '  if (rf > 0.004) { float rw = texture2D(uRw, uv).a; vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 q = vec2((px.x - uTr.y) / uTr.x, (px.y - uTr.w) / uTr.z) * 0.03;\n' +
+    '  if (rf > 0.004) { float rw = texture2D(uRw, uv).a; vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 q = toW(px) * 0.03;\n' +
     '   vec2 n = vec2(sin(q.x * 1.3 + uTime * 1.4 + sin(q.y * 0.9 + uTime * 0.7) * 1.7), cos(q.y * 1.1 - uTime * 1.2 + sin(q.x * 0.8) * 1.9)) * (0.25 + 0.75 * rw) * (0.5 + uWind);\n' +
     '   n += vec2(sin(q.x * 9.0 + uTime * 9.0 + q.y * 3.0), cos(q.y * 9.0 + uTime * 8.0 - q.x * 2.0)) * uRain * (0.3 + rw) * 0.5;\n' +
     '   vec2 ru = uv + (uv - 0.5) * 0.05 + n * 0.006; vec3 sky = uSky * (0.9 + 0.1 * sin(q.x * 0.21 + q.y * 0.17 + uTime * 0.2));\n' +
@@ -17330,7 +17346,7 @@ function prismGpu() {
     const sx = (G2.gx - g.gx) / gw, sy = -(G2.gy - g.gy) / gh;
     gl.useProgram(giP.p); const u = giP.u, t = PRISM.tr, alb = bioBlend(GI_ALB, PRISM.albM || (PRISM.albM = []));
     gl.uniform2f(u.uG, gw, gh); gl.uniform2f(u.uOrg, G2.gx * G2.cell, G2.gy * G2.cell); gl.uniform2f(u.uCv, cw, ch); gl.uniform2f(u.uShift, sx, sy);
-    gl.uniform1f(u.uCell, G2.cell); gl.uniform1f(u.uFrame, PRISM.frames % 997); gl.uniform1f(u.uBlend, resize ? 1 : 0.18); gl.uniform4f(u.uTr, t.a, t.e, t.d, t.f); gl.uniform3f(u.uAlb, alb[0], alb[1], alb[2]);
+    gl.uniform1f(u.uCell, G2.cell); gl.uniform1f(u.uFrame, PRISM.frames % 997); gl.uniform1f(u.uBlend, resize ? 1 : 0.18); gl.uniform4f(u.uTm, t.a, t.b, t.c, t.d); gl.uniform2f(u.uTo, t.e, t.f); gl.uniform3f(u.uAlb, alb[0], alb[1], alb[2]);
     prismBind(giP, 'uOcc', 0, T.occ); prismBind(giP, 'uM', 1, T.amb); prismBind(giP, 'uPrev', 2, g.a.t); prismBind(giP, 'uS', 3, T.scene);
     prismDraw(giP, g.b, gw, gh);
     const sw = g.a; g.a = g.b; g.b = sw; g.w = gw; g.h = gh; g.cell = G2.cell; g.gx = G2.gx; g.gy = G2.gy;
@@ -17359,9 +17375,10 @@ function prismGpu() {
     prismBind(P.shafts, 'uB', 0, B.b0.t); prismDraw(P.shafts, B.sh, hw, hh); shT = B.sh.t; shK = 1;
   }
   // the final pass, to the screen
-  const fp = P.final, u = fp.u, gr = prismGrade(), night = F.night || 0, t = PRISM.tr || { a: 1, e: 0, d: 1, f: 0 };
+  const fp = P.final, u = fp.u, gr = prismGrade(), night = F.night || 0, t = PRISM.tr || { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
   gl.useProgram(fp.p);
-  gl.uniform2f(u.uIn, 1 / cw, 1 / ch); gl.uniform2f(u.uCv, cw, ch); gl.uniform2f(u.uRes, ow, oh); gl.uniform4f(u.uTr, t.a, t.e, t.d, t.f);
+  gl.uniform2f(u.uIn, 1 / cw, 1 / ch); gl.uniform2f(u.uCv, cw, ch); gl.uniform2f(u.uRes, ow, oh);
+  { const dt = t.a * t.d - t.b * t.c || 1; gl.uniform4f(u.uTi, t.d / dt, -t.b / dt, -t.c / dt, t.a / dt); gl.uniform2f(u.uTo, t.e, t.f); }
   const sharp = (SET.sharp == null ? 40 : SET.sharp) / 100, up = ow / cw;
   gl.uniform1f(u.uSharp, q.sharp ? clamp(sharp * (up > 1.05 ? 1.3 : 1), 0, 1.6) : 0); gl.uniform1f(u.uCub, q.up >= 2 && up > 1.05 ? 1 : 0);
   gl.uniform1f(u.uBlK, PRISM.bloomGpu ? (0.5 + 0.3 * night + 0.5 * (F.fog || 0) + 0.25 * (F.wet || 0)) * bloomK() : 0); gl.uniform1f(u.uShK, shK);
@@ -20487,7 +20504,7 @@ function swarmDraw(vis, hw, hh) {
   const nv = V.length, nr = Math.min(hw, hh) * 0.95, nr2 = nr * nr, ln = PERF.lodN; ln[0] = ln[1] = ln[2] = ln[3] = 0;
   const crowd = nv > 70 ? 1 : 0, mob = nv > 220 ? 1 : 0, strain = -SWARM.adapt, hi = SET.crowd === 'high' || TUNE.SWARM > 0, low = SET.crowd === 'low' || TUNE.SWARM < 0;
   const tier = clamp(PERF.tier | 0, 0, 3); SWARM.budF = [2, 3, 5, 8][tier] + (strain ? 0 : 1); SWARM.budL = [6, 10, 16, 24][tier]; SWARM.keys.clear();
-  const T = ctx.getTransform(), s = T.a, e = T.e, f = T.f, setT = () => ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f), FL = SWARM.fl, FS = SWARM.flS, OV = SWARM.ov, OL = SWARM.ovL; FL.length = 0; FS.length = 0; OV.length = 0; OL.length = 0;
+  const T = ctx.getTransform(), setT = () => ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f), FL = SWARM.fl, FS = SWARM.flS, OV = SWARM.ov, OL = SWARM.ovL; FL.length = 0; FS.length = 0; OV.length = 0; OL.length = 0;
   const UP = SWARM.up || (SWARM.up = []); UP.length = 0;
   for (let i = 0; i < nv; i++) {
     const z = V[i], far = z.swD > nr2; z.swRk = i; z.swRkF = frameNo;
@@ -20499,20 +20516,20 @@ function swarmDraw(vis, hw, hh) {
     // the 2.0 zombies: the animation engine draws them (live joints near you, cached frames further out)
     if (z.m.v2 && !z.fly && !z.st.under) {
       const a = swarmAlpha(z);
-      if (animaDraw(z, lod, i, s, e, f, a)) {
-        if (lod < 2 && (z.wnd || z.charK || z.frostK) && typeof goreWounds === 'function') { ctx.setTransform(Math.cos(z.ang) * s, Math.sin(z.ang) * s, -Math.sin(z.ang) * s, Math.cos(z.ang) * s, e + z.x * s, f + z.y * s); goreWounds(ctx, z, z.r); }
+      if (animaDraw(z, lod, i, T, a)) {
+        if (lod < 2 && (z.wnd || z.charK || z.frostK) && typeof goreWounds === 'function') { wPut(ctx, T, z.x, z.y, Math.cos(z.ang), Math.sin(z.ang)); goreWounds(ctx, z, z.r); }
         if (lod < 3 || z.st.fuse > 0 || z.warn > 0 || (z.frozen && z.stun > 0) || z.shield > 1 || z.st.aim > 0) { OV.push(z); OL.push(lod, far ? 1 : 0); }
         continue;
       }
       // no frame yet: a plain stand-in for a moment (never the old mutation art)
-      const sp = swarmImp(z), an = z.ang; ctx.setTransform(Math.cos(an) * s, Math.sin(an) * s, -Math.sin(an) * s, Math.cos(an) * s, e + z.x * s, f + z.y * s); ctx.globalAlpha = a;
+      const sp = swarmImp(z), an = z.ang; wPut(ctx, T, z.x, z.y, Math.cos(an), Math.sin(an)); ctx.globalAlpha = a;
       ctx.drawImage(sp.c, sp.sx, sp.sy, sp.sw, sp.sh, sp.ox, sp.oy, sp.w, sp.h); OV.push(z); OL.push(lod, far ? 1 : 0); continue;
     }
     if (z.rb || z.m.unique || z.st.down > 0 || z.st.under || z.fly) { setT(); drawZ(z, lod, far); continue; }
     const sp = swarmSpr(z, lod <= 1 ? 0 : 1), a = swarmAlpha(z);
-    const an = z.ang + (lod < 3 ? Math.sin(G.time * 7 + z.bob) * 0.06 : 0), co = Math.cos(an) * s, si = Math.sin(an) * s;
+    const an = z.ang + (lod < 3 ? Math.sin(G.time * 7 + z.bob) * 0.06 : 0), co = Math.cos(an), si = Math.sin(an);
     let x = z.x, y = z.y; if (z.warn > 0 || z.st.fuse > 0) { x += rand(-1.5, 1.5); y += rand(-1.5, 1.5); }
-    ctx.setTransform(co, si, -si, co, e + x * s, f + y * s); ctx.globalAlpha = a;
+    wPut(ctx, T, x, y, co, si); ctx.globalAlpha = a;
     ctx.drawImage(sp.c, sp.sx, sp.sy, sp.sw, sp.sh, sp.ox, sp.oy, sp.w, sp.h);
     if (lod < 2 && (z.wnd || z.charK || z.frostK) && typeof goreWounds === 'function') goreWounds(ctx, z, z.r);
     if (z.flash > 0 && lod < 3) { FL.push(z); FS.push(sp.c, sp.sx, sp.sy, sp.sw, sp.sh, sp.ox, sp.oy, sp.w, sp.h, an, a); }
@@ -20520,17 +20537,17 @@ function swarmDraw(vis, hw, hh) {
   }
   if (UP.length) {
     UP.sort((a, b) => (a.pz || 0) - (b.pz || 0));
-    for (const z of UP) { z.upD = 1; try { hordeShadow(z, s, e, f); } catch (er) { } }
+    for (const z of UP) { z.upD = 1; try { hordeShadow(z, T); } catch (er) { } }
     // (drawn again through the same loop body: the flag stops them being set aside a second time)
     const keep = V.slice(); V.length = 0; for (const z of UP) V.push(z);
-    for (let i = 0; i < V.length; i++) { const z = V[i], lod = Math.min(3, Q.lod), a = swarmAlpha(z); if (z.m.v2 && animaDraw(z, lod, Math.max(0, z.swRk | 0), s, e, f, a)) { OV.push(z); OL.push(lod, 0); } z.upD = 0; }
+    for (let i = 0; i < V.length; i++) { const z = V[i], lod = Math.min(3, Q.lod), a = swarmAlpha(z); if (z.m.v2 && animaDraw(z, lod, Math.max(0, z.swRk | 0), T, a)) { OV.push(z); OL.push(lod, 0); } z.upD = 0; }
     V.length = 0; for (const z of keep) V.push(z);
   }
   if (FL.length) {
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < FL.length; i++) {
-      const z = FL[i], o = i * 11, an = FS[o + 9], co = Math.cos(an) * s, si = Math.sin(an) * s;
-      ctx.setTransform(co, si, -si, co, e + z.x * s, f + z.y * s); ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * FS[o + 10];
+      const z = FL[i], o = i * 11, an = FS[o + 9];
+      wPut(ctx, T, z.x, z.y, Math.cos(an), Math.sin(an)); ctx.globalAlpha = Math.min(1, z.flash * 9) * 0.55 * FS[o + 10];
       ctx.drawImage(FS[o], FS[o + 1], FS[o + 2], FS[o + 3], FS[o + 4], FS[o + 5], FS[o + 6], FS[o + 7], FS[o + 8]);
     }
     ctx.globalCompositeOperation = 'source-over';
@@ -22100,27 +22117,27 @@ function aCorpsePose(C) {
 }
 function animaDrawCorpses(vis) {
   const L = ANIMA.corpses; if (!L.length || !animaUp()) return;
-  const T = ctx.getTransform(), s = T.a, e = T.e, f = T.f;
+  const T = ctx.getTransform();   // (whole: the camera can roll the frame; see wPut)
   let live = 0; const liveCap = ANIMA.liveCap;
   for (const C of L) {
     if (!vis(C.x, C.y, C.r * 6)) continue;
     const life = aCorpseLife(), fade = C.done ? clamp((life - C.life) / 3, 0, 1) : 1;
     if (fade <= 0) continue;
-    const co = Math.cos(C.ang) * s * C.r, si = Math.sin(C.ang) * s * C.r;
+    const co = Math.cos(C.ang) * C.r, si = Math.sin(C.ang) * C.r;
     if (!C.done || !C.spr) {
       if (C.done) {
         // lying still: its picture is made once and reused
         C.spr = aCorpseSprite(C);
       }
       if (!C.done && live < liveCap + 6) {
-        live++; ctx.setTransform(co, si, -si, co, e + C.x * s, f + C.y * s); ctx.globalAlpha = fade;
+        live++; wPut(ctx, T, C.x, C.y, co, si); ctx.globalAlpha = fade;
         lookDraw(ctx, C.m, aCorpsePose(C), { lod: 1, dead: 1, burn: C.burn, minion: C.minion, t: G.time, sever: C.sever });
         continue;
       }
       if (!C.spr) continue;
     }
     const sp = C.spr, kz = C.r / sp.rq;
-    ctx.setTransform(co / C.r, si / C.r, -si / C.r, co / C.r, e + C.x * s, f + C.y * s); ctx.globalAlpha = fade * (C.life > life - 8 ? 0.85 : 1);
+    wPut(ctx, T, C.x, C.y, co / C.r, si / C.r); ctx.globalAlpha = fade * (C.life > life - 8 ? 0.85 : 1);
     ctx.drawImage(sp.c, sp.x0 * kz, sp.y0 * kz, sp.w * kz, sp.h * kz);
   }
   ctx.globalAlpha = 1; ctx.setTransform(T.a, T.b, T.c, T.d, T.e, T.f);
@@ -22196,7 +22213,8 @@ function animaForget() { ANIMA.cache.clear(); for (const C of ANIMA.corpses) C.s
 
 /* ---------- drawing a zombie (the crowd engine hands each one over, nearest first) ---------- */
 // returns false when it could not draw it (the crowd engine's own pictures cover)
-function animaDraw(z, lod, rank, s, e, f, a) {
+// (T: the world transform, whole; 1.9.998.1: it took the scale and the offset alone, which dropped the camera's roll)
+function animaDraw(z, lod, rank, T, a) {
   if (!animaUp() || !z.m.v2) return false;
   try {
     // the nearest few are always drawn live (every joint, every frame), on any device; the rest from cached frames
@@ -22205,10 +22223,10 @@ function animaDraw(z, lod, rank, s, e, f, a) {
     let x = z.x, y = z.y; if (z.warn > 0 && z.m.an.ab === 'bomber') { x += rand(-1, 1); y += rand(-1, 1); }
     // 1.9.998: up on a pile or a roof (or mid-vault) it is nearer the camera: drawn bigger; under a car, half hidden
     const lift = z.pz > 0.05 && typeof hordeLift === 'function' ? hordeLift(z) : 1, up = z.pz > 0.15;
-    const co = Math.cos(z.ang) * s * z.r * lift, si = Math.sin(z.ang) * s * z.r * lift;
+    const co = Math.cos(z.ang) * z.r * lift, si = Math.sin(z.ang) * z.r * lift;
     ctx.globalAlpha = a * (z.under ? 0.45 : 1);
     if (live) {
-      ctx.setTransform(co, si, -si, co, e + x * s, f + y * s);
+      wPut(ctx, T, x, y, co, si);
       lookDraw(ctx, z.m, A.pose, { lod: lod, t: G.time, z: z, light: aLight(z), flash: z.flash, minion: z.minion, burn: z.burnT > 0, frost: z.frostK, glow: 1, sever: z.sever | 0, tex: lod === 0 && texelLevel() >= 2, noShadow: up });
       // its skeleton, kept for the lighting engine (the shadow of this exact pose)
       (A.J || (A.J = new Float32Array(NJ * 3))).set(ANIMA.J); A.jF = frameNo;
@@ -22218,7 +22236,7 @@ function animaDraw(z, lod, rank, s, e, f, a) {
     const sp = aFrame(z, A, lod, z.sever | 0);
     if (!sp) return false;
     const kz = z.r / sp.rq;
-    ctx.setTransform(co / z.r, si / z.r, -si / z.r, co / z.r, e + x * s, f + y * s);   // (lift is in co and si)
+    wPut(ctx, T, x, y, co / z.r, si / z.r);   // (lift is in co and si)
     ctx.drawImage(sp.c, sp.x0 * kz, sp.y0 * kz, sp.w * kz, sp.h * kz);
     // the light beside it on the picture too (near ones, on devices with room): lit side, shaded side, a rim of its colour
     if (lod <= 1 && rank < 40 && PERF.tier >= 2 && typeof LUX !== 'undefined' && LUX.live && typeof lookShade === 'function') lookShade(ctx, aLight(z), z.r * 0.95, z.r * 0.85, 0.8);
@@ -23539,11 +23557,11 @@ function hordeSelfTest() {
   return { ok: pass === n, n: n, pass: pass, why: why };
 }
 // the ground shadow of a zombie up off the ground: softer and further off the higher it is, along the light
-function hordeShadow(z, s, e, f) {
+function hordeShadow(z, T) {   // (T: the world transform, whole)
   const U = HD_U(), h = Math.min(3.2, z.pz || 0);
   const sun = CORE.frame && CORE.frame.sun, dx = sun && sun.on ? sun.dx : 0.5, dy = sun && sun.on ? sun.dy : 0.6, k = h * U * 0.55;
   const x = z.x + dx * k, y = z.y + dy * k, r = z.r * (1.05 + h * 0.18);
-  ctx.setTransform(s, 0, 0, s, e + x * s, f + y * s);
+  wPut(ctx, T, x, y, 1, 0);
   const g = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r); g.addColorStop(0, 'rgba(0,0,0,' + (0.32 - h * 0.05).toFixed(3) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
 }
@@ -26131,7 +26149,7 @@ function gcamTick(dt, p) {
   // the kick: each shot (ARMS sets camK by calibre) pushes the frame back along the gun, a stiff spring brings it home
   const shake = SET.shake == null ? 100 : SET.shake;
   if (a.camK > (GCAM.lastK || 0) + 0.01 && shake > 0 && !RM) {
-    const d = (a.camK - (GCAM.lastK || 0)) * 3.2 * shake / 100; GCAM.kv -= d * 26; GCAM.heavy = Math.max(GCAM.heavy || 0, a.camK > 0.9 ? 0.35 : 0);
+    const d = (a.camK - (GCAM.lastK || 0)) * 3.2 * shake / 100; GCAM.kv -= d * 15;   // (15, not 26: the stepped spring answers truly, so this keeps the kick the size it was at 60 fps) GCAM.heavy = Math.max(GCAM.heavy || 0, a.camK > 0.9 ? 0.35 : 0);
     // trauma by the round's impulse (a 9 mm 0.05, 5.56 0.1, 7.62 and buckshot 0.2)
     const D = p.weapon && p.weapon.arms && typeof LG_GUN_DEF !== 'undefined' ? LG_GUN_DEF[p.weapon.arms.key] : null, imp = D && D.act && D.act.imp ? D.act.imp : (a.camK - (GCAM.lastK || 0)) * 8;
     gcamTrauma(clamp(imp * 0.014, 0.03, 0.3) * shake / 100);
@@ -26139,7 +26157,12 @@ function gcamTick(dt, p) {
   // blasts and hits (the game raises G.shake for them): a jump in it is trauma too
   if ((G.shake || 0) > (GCAM.lastShake || 0) + 0.5) gcamTrauma(Math.min(0.6, ((G.shake || 0) - (GCAM.lastShake || 0)) * 0.08)); GCAM.lastShake = G.shake || 0;
   GCAM.lastK = a.camK || 0;
-  const kx0 = GCAM.k; GCAM.kv += (-420 * GCAM.k - 34 * GCAM.kv) * dt; GCAM.k += GCAM.kv * dt; if (!(GCAM.k === GCAM.k)) { GCAM.k = 0; GCAM.kv = 0; }
+  // (1.9.998.1: the kick's spring runs in steps of at most 8 ms. In one step a frame this stiff spring went unstable
+  // whenever a frame took longer than about 46 ms (under ~21 fps): each frame then threw it further instead of settling
+  // it, and the whole view lurched back and forth by hundreds of pixels, worst when shooting and rolling, as frames run
+  // slowest then. A kick is a few units at most, so it is also held to 40 as a last guard.)
+  { const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n; for (let i = 0; i < n; i++) { GCAM.kv += (-420 * GCAM.k - 34 * GCAM.kv) * h; GCAM.k += GCAM.kv * h; } }
+  if (!(GCAM.k === GCAM.k) || !(GCAM.kv === GCAM.kv)) { GCAM.k = 0; GCAM.kv = 0; } else if (Math.abs(GCAM.k) > 40) { GCAM.k = Math.sign(GCAM.k) * 40; GCAM.kv = 0; }
   GCAM.kx = Math.cos(aim) * GCAM.k; GCAM.ky = Math.sin(aim) * GCAM.k;
   GCAM.heavy = Math.max(0, (GCAM.heavy || 0) - dt * 2.5);
 }
@@ -38911,7 +38934,7 @@ for (const n of ['LEGEND', 'MIMATIC', 'VFXRAY']) { const e = CORE.by[n]; if (e &
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[244,26,72,28322],"learn":[363,44,83,33966],"engdocs":[388,0,4,74881],"world":[1744,88,211,161440],"garage":[515,34,79,54537],"skyway":[249,19,49,23953],"life":[534,32,48,42299],"weather":[1099,73,184,101999],"lux":[767,39,146,72533],"prism":[372,21,68,43547],"mirror":[118,9,26,12452],"texel":[500,32,125,50984],"gore":[692,49,106,65891],"muzzle":[264,13,67,30527],"tracer":[237,22,53,24052],"aura":[124,12,20,11472],"swarm":[682,66,117,60030],"roster":[176,8,40,42200],"anima":[1419,65,181,134852],"anilook":[682,42,103,108119],"horde":[229,28,66,23756],"ballistics":[237,13,47,22463],"arsenal":[861,70,32,65058],"dashes":[249,36,13,31089],"physics":[269,23,50,26017],"arms":[391,37,64,43122],"knife":[236,19,39,22446],"gamecam":[45,4,28,6655],"keeper":[160,17,11,13103],"bossai":[554,41,34,49931],"perf":[347,30,50,29270],"settings":[368,23,23,39447],"legend":[1283,122,223,149018],"legmodel":[535,26,157,69205],"leggun":[420,30,119,58894],"leggun2":[249,11,92,42038],"legfire":[39,5,32,6190],"leghand":[166,17,31,13241],"leganim":[444,22,68,57821],"legloco":[235,12,99,29241],"legperf":[67,3,33,8332],"legrun":[682,43,146,77449],"vfxray":[291,27,42,34778],"mimatic":[659,50,156,88612],"legidle":[353,20,72,46740],"curric":[47,14,21,6603],"leganat":[376,31,117,42543],"legobj":[365,25,71,40189],"legmove":[277,36,107,41490],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,58099],"engroom":[371,18,36,46130],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83800],"intro":[660,32,55,48828],"sfx2":[459,80,58,45899],"gunsfx":[91,9,33,14476],"cinesfx":[185,14,33,26793],"armsfx":[79,13,11,9185],"audio":[946,216,87,85598],"radio":[434,74,35,40166],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[79,7,5,5781]};
+const ENG_SRC = {"core":[249,27,79,29451],"learn":[363,44,83,33966],"engdocs":[388,0,4,75864],"world":[1744,88,211,161440],"garage":[515,34,79,54537],"skyway":[249,19,49,23953],"life":[534,32,48,42299],"weather":[1099,73,184,101999],"lux":[767,39,146,72533],"prism":[374,21,71,44074],"mirror":[118,9,26,12452],"texel":[500,32,125,50984],"gore":[692,49,106,65891],"muzzle":[264,13,67,30527],"tracer":[237,22,53,24052],"aura":[124,12,20,11472],"swarm":[682,66,117,59757],"roster":[176,8,40,42200],"anima":[1419,65,182,134836],"anilook":[682,42,103,108119],"horde":[229,28,66,23761],"ballistics":[237,13,47,22463],"arsenal":[861,70,32,65058],"dashes":[249,36,13,31089],"physics":[269,23,50,26017],"arms":[391,37,64,43122],"knife":[236,19,39,22446],"gamecam":[46,4,32,7392],"keeper":[160,17,11,13103],"bossai":[554,41,34,49931],"perf":[347,30,50,29270],"settings":[368,23,23,39447],"legend":[1283,122,223,149018],"legmodel":[535,26,157,69205],"leggun":[420,30,119,58894],"leggun2":[249,11,92,42038],"legfire":[39,5,32,6190],"leghand":[166,17,31,13241],"leganim":[444,22,68,57821],"legloco":[235,12,99,29241],"legperf":[67,3,33,8332],"legrun":[682,43,146,77449],"vfxray":[291,27,42,34778],"mimatic":[659,50,156,88612],"legidle":[353,20,72,46740],"curric":[47,14,21,6603],"leganat":[376,31,117,42543],"legobj":[365,25,71,40189],"legmove":[277,36,107,41490],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,58099],"engroom":[371,18,36,46130],"loader":[119,11,22,10067],"input":[521,56,35,39997],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83800],"intro":[660,32,55,48828],"sfx2":[459,80,58,45899],"gunsfx":[91,9,33,14476],"cinesfx":[185,14,33,26793],"armsfx":[79,13,11,9185],"audio":[946,216,87,85598],"radio":[434,74,35,40166],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[79,7,5,5781]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };

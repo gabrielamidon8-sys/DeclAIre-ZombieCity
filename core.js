@@ -296,8 +296,20 @@ function coreFrame(x0, y0, x1, y1, dt) {
   return F;
 }
 // world point to screen pixel (of the game canvas), using the frame's camera
+// (1.9.998.1: through the frame's whole transform, so the gun's kick, the shake, the camera's zoom and its roll are all
+// in it; it used to rebuild the camera from the base zoom alone, and the lights it placed for the shader slid off theirs)
 function coreToScreen(x, y, out) {
-  const F = CORE.frame, s = F.zoom * F.dpr; out[0] = (x - F.cx) * s + cv.width / 2; out[1] = (y - F.cy) * s + cv.height / 2; return out;
+  const F = CORE.frame, T = F.tr;
+  if (T) { out[0] = T.a * x + T.c * y + T.e; out[1] = T.b * x + T.d * y + T.f; return out; }
+  const s = F.zoom * F.dpr; out[0] = (x - F.cx) * s + cv.width / 2; out[1] = (y - F.cy) * s + cv.height / 2; return out;
+}
+// 1.9.998.1: put a picture on the world at (x, y), turned and scaled by co = cos(turn) * scale and si = sin(turn) * scale
+// (world units), under the world transform T. The camera rolls the frame a fraction of a degree (each shot's trauma, the
+// dodge), so a sprite's matrix has to be T times its own place and turn. Rebuilding it from T's scale and offset alone
+// drops the roll, and the offset then carries roll times the sprite's distance from the map's origin: in the city that
+// is hundreds of pixels, so everything drawn that way jumped about the screen as the frame shook.
+function wPut(c, T, x, y, co, si) {
+  c.setTransform(T.a * co + T.c * si, T.b * co + T.d * si, T.c * co - T.a * si, T.d * co - T.b * si, T.a * x + T.c * y + T.e, T.b * x + T.d * y + T.f);
 }
 
 coreAdd({ name: 'CORE', kind: 'sim', ver: 3, covers: ['TRACER', 'MUZZLE'], does: 'Engine hub and learning ecosystem: connects every engine through one shared frame, one time budget, a message bus, a capability registry and a watchdog with heartbeats and self-tests; it learns on each device what every engine costs at each level and load, steps engines down before a horde arrives, remembers which repair fixed which problem and tries that first, builds trust in engines that run clean, remembers levels across updates, and runs the engine room\'s tuning and locks.', state: () => 'on', level: () => CORE.list.length + ' engines, ' + CORE.list.filter(e => e.down).length + ' resting, ' + Array.from(CORE.bus.values()).reduce((a, L) => a + L.length, 0) + ' listeners' });

@@ -7,6 +7,19 @@ window.ZC_DATA = {
 },
 "log": [
 {
+"v": "1.9.998.1",
+"date": "Oct 22, 2026",
+"era": "2.0",
+"slice": "fix1",
+"title": "No more shaking when you shoot or roll",
+"bullets": [
+"Zombies no longer jump around the screen when you shoot or dodge-roll: they turn with the camera's tilt instead of being thrown off",
+"Reflections, bounce light and the ground's detail stay where they belong when the camera tilts",
+"The camera's recoil can no longer run away on a slow frame and swing the whole view",
+"Lamp highlights and heat haze follow the camera's kick, shake and zoom"
+]
+},
+{
 "v": "1.9.998",
 "date": "Oct 22, 2026",
 "era": "2.0",
