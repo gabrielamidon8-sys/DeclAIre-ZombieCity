@@ -7,6 +7,19 @@ window.ZC_DATA = {
 },
 "log": [
 {
+"v": "1.9.998.2",
+"date": "Oct 22, 2026",
+"era": "2.0",
+"slice": "fix2",
+"title": "No more squares, and a city that feels alive",
+"bullets": [
+"The squares of light and dark that flickered round lamps and your flashlight when you shot or rolled are gone, and so are the blocky patches in the bounce light",
+"Reflections and shaders fade smoothly when the game adjusts quality, instead of glitching on and off every so often",
+"Rats along the walls, flies over the dead, steam from the manholes, and the city's distant helicopters, firefights, explosions, sirens and flares you can see",
+"Zombie voices from where they stand, your own breathing, grunts and heartbeat, and a split-second hit-stop on big kills when you play alone"
+]
+},
+{
 "v": "1.9.998.1",
 "date": "Oct 22, 2026",
 "era": "2.0",
