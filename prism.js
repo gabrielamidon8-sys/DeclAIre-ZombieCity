@@ -68,8 +68,10 @@ const PR_FS = {
     '  acc += s * uC[i] * fall * fall; }\n' +
     ' gl_FragColor = vec4(acc * uD / 16.0, 1.0); }',
   // bounce light: a Monte Carlo path tracer over the grid of solid cells, blended over the frames
+  // (1.9.998.2: the rays' random numbers come from a hash without sine: the old fract(sin(large) * 43758) breaks into
+  // repeating blocks on many graphics chips once its input grows, and the bounce light's cells then flickered as squares)
   gi: 'uniform sampler2D uOcc, uM, uPrev, uS; uniform vec2 uG, uOrg, uCv, uShift, uTo; uniform float uCell, uFrame, uBlend; uniform vec4 uTm; uniform vec3 uAlb;\n' +
-    'float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }\n' +
+    'float hash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }\n' +
     'float occ(vec2 c) { vec2 uv = vec2((c.x + 0.5) / uG.x, 1.0 - (c.y + 0.5) / uG.y); if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return -1.0; return texture2D(uOcc, uv).a; }\n' +
     'vec2 scr(vec2 c) { vec2 w = uOrg + (c + 0.5) * uCell; vec2 px = vec2(uTm.x * w.x + uTm.z * w.y + uTo.x, uTm.y * w.x + uTm.w * w.y + uTo.y); return vec2(px.x / uCv.x, 1.0 - px.y / uCv.y); }\n' +
     'vec3 lightAt(vec2 c) { return texture2D(uM, scr(c)).rgb; }\n' +
@@ -85,8 +87,13 @@ const PR_FS = {
     ' vec4 cur = vec4(sum / float(RAYS), open / float(RAYS)); vec4 prev = texture2D(uPrev, v + uShift);\n' +
     ' gl_FragColor = mix(prev, cur, uBlend); }',
   // the final pass: everything together, then the grade
-  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir, uTo; uniform vec4 uTi; uniform vec4 uHot[8]; uniform vec4 uPL[6]; uniform vec3 uPC[6]; uniform float uNPL, uLamp, uSpec;\n' +
-    '#ifdef DET\nuniform sampler2D uDet; uniform float uDetK, uDetTile, uCrack;\nfloat dth(vec2 p) { vec4 s = texture2D(uDet, p); return s.r - (1.0 - s.b) * uCrack * 0.45; }\n#endif\n' +
+  // (1.9.998.2: uWo and uDo are world origins near the camera, snapped to a whole period of the ripples and of the detail
+  // tile, so those patterns are worked out from small numbers and come out exactly the same. From the world's own origin
+  // the numbers run into the tens of thousands deep in the city, and graphics chips lose the precision there: the ripples
+  // and the ground's grain broke into blocky, pixelated patches. The grain's random numbers no longer use sine either.)
+  final: 'uniform sampler2D uS, uBl, uSh, uGI, uM, uRf, uRw, uRb; uniform vec2 uIn, uCv, uOrg, uG, uRes, uSunDir, uTo, uWo, uGo; uniform vec4 uTi; uniform vec4 uHot[8]; uniform vec4 uPL[6]; uniform vec3 uPC[6]; uniform float uNPL, uLamp, uSpec;\n' +
+    '#ifdef DET\nuniform sampler2D uDet; uniform float uDetK, uDetTile, uCrack; uniform vec2 uDo;\nfloat dth(vec2 p) { vec4 s = texture2D(uDet, p); return s.r - (1.0 - s.b) * uCrack * 0.45; }\n#endif\n' +
+    'float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }\n' +
     'uniform float uSharp, uBlK, uShK, uGIK, uAOK, uExp, uSat, uCon, uVig, uGrain, uTime, uCA, uHaze, uNH, uAsp, uCell, uCub, uRefK, uRbK, uSunK, uRain, uWind, uRelief, uClar, uGlare, uPurk, uVib, uTone; uniform vec3 uWB, uTS, uTH, uSky, uSun;\n' +
     'const vec3 W3 = vec3(0.2126, 0.7152, 0.0722);\n' +
     'vec3 tap(vec2 p) { return texture2D(uS, p).rgb; }\n' +
@@ -112,7 +119,7 @@ const PR_FS = {
     // cracks on every surface, with a touch of its own shading so the grain shows even in flat light
     ' vec3 nd = vec3(0.0, 0.0, 1.0);\n' +
     '#ifdef DET\n' +
-    ' if (uDetK > 0.0) { vec2 dpx = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 dw = toW(dpx) / uDetTile; float de = 1.0 / 256.0;\n' +
+    ' if (uDetK > 0.0) { vec2 dpx = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 dw = (toW(dpx) - uDo) / uDetTile; float de = 1.0 / 256.0;\n' +
     '  float dh = dth(dw), dhn = dth(dw + vec2(0.0, -de)), dhs = dth(dw + vec2(0.0, de)), dhe = dth(dw + vec2(de, 0.0)), dhw = dth(dw - vec2(de, 0.0));\n' +
     '  nd = normalize(vec3((dhw - dhe) * 2.4 * uDetK, (dhs - dhn) * 2.4 * uDetK, 1.0)); c *= 1.0 + (dh - 0.5) * 0.06 * uDetK + (texture2D(uDet, dw * 3.0).g - 0.5) * 0.035 * uDetK; }\n' +
     '#endif\n' +
@@ -135,10 +142,10 @@ const PR_FS = {
     '  c = c * (1.0 - uAOK * (1.0 - gi.a)) + c * min(gi.rgb * uGIK / m, vec3(1.6)); }\n' +
     // reflections: the sky, the street's lights (mirrored outward, the image sits under the surface) and sun glitter, rippled
     ' if (uRefK > 0.0) { float rf = texture2D(uRf, uv).a * uRefK;\n' +
-    '  if (rf > 0.004) { float rw = texture2D(uRw, uv).a; vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 q = toW(px) * 0.03;\n' +
+    '  if (rf > 0.004) { float rw = texture2D(uRw, uv).a; vec2 px = vec2(uv.x * uCv.x, (1.0 - uv.y) * uCv.y); vec2 q = (toW(px) - uWo) * 0.03;\n' +
     '   vec2 n = vec2(sin(q.x * 1.3 + uTime * 1.4 + sin(q.y * 0.9 + uTime * 0.7) * 1.7), cos(q.y * 1.1 - uTime * 1.2 + sin(q.x * 0.8) * 1.9)) * (0.25 + 0.75 * rw) * (0.5 + uWind);\n' +
     '   n += vec2(sin(q.x * 9.0 + uTime * 9.0 + q.y * 3.0), cos(q.y * 9.0 + uTime * 8.0 - q.x * 2.0)) * uRain * (0.3 + rw) * 0.5;\n' +
-    '   vec2 ru = uv + (uv - 0.5) * 0.05 + n * 0.006; vec3 sky = uSky * (0.9 + 0.1 * sin(q.x * 0.21 + q.y * 0.17 + uTime * 0.2));\n' +
+    '   vec2 ru = uv + (uv - 0.5) * 0.05 + n * 0.006; vec3 sky = uSky * (0.9 + 0.1 * sin(q.x * 0.2 + q.y * 0.2 + uTime * 0.2));\n' +
     '   vec3 lit = texture2D(uRb, ru).rgb * uRbK; float gl = pow(max(0.0, sin(q.x * 6.1 + n.x * 5.0 + uTime * 2.6) * sin(q.y * 5.3 + n.y * 5.0 - uTime * 2.1)), 28.0) * rw * uSunK;\n' +
     '   c = mix(c, c * 0.7 + sky * (0.18 + 0.32 * rf) + lit, rf) + uSun * gl * 1.6; } }\n' +
     ' c += texture2D(uBl, uv).rgb * uBlK + texture2D(uSh, uv).rgb * uShK;\n' +
@@ -152,7 +159,7 @@ const PR_FS = {
     // the night shift: in the dark the eye sees in blue-grey, not in colour
     ' if (uPurk > 0.0) { float pl = dot(max(c, vec3(0.0)), W3); c = mix(c, vec3(pl) * vec3(0.62, 0.82, 1.18), uPurk * (1.0 - smoothstep(0.02, 0.32, pl))); }\n' +
     ' vec2 q = v - 0.5; c *= 1.0 - uVig * smoothstep(0.18, 0.75, dot(q, q) * 2.0);\n' +
-    ' c += (fract(sin(dot(v * uRes + vec2(uTime * 61.0, uTime * 37.0), vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * uGrain;\n' +
+    ' c += (h12(v * uRes + uGo) - 0.5) * uGrain;\n' +
     ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'
 };
 function prismInit() {
@@ -184,10 +191,12 @@ function prismShader(type, src) {
 function prismProgram(name, fs, defs) {
   const gl = PRISM.gl;
   try {
-    const p = gl.createProgram();
-    gl.attachShader(p, prismShader(gl.VERTEX_SHADER, PR_VS)); gl.attachShader(p, prismShader(gl.FRAGMENT_SHADER, (defs || '') + PR_HEAD + fs));
+    const p = gl.createProgram(), vs = prismShader(gl.VERTEX_SHADER, PR_VS), fsh = prismShader(gl.FRAGMENT_SHADER, (defs || '') + PR_HEAD + fs);
+    gl.attachShader(p, vs); gl.attachShader(p, fsh);
     gl.bindAttribLocation(p, 0, 'a'); gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('link: ' + String(gl.getProgramInfoLog(p)).slice(0, 160));
+    // (the shaders are only marked for deletion: they go with the program, so a rebuild leaves nothing behind)
+    gl.deleteShader(vs); gl.deleteShader(fsh);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { const log = gl.getProgramInfoLog(p); gl.deleteProgram(p); throw new Error('link: ' + String(log).slice(0, 160)); }
     const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
     for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i), nm = info.name.replace(/\[0\]$/, ''); u[nm] = gl.getUniformLocation(p, info.name); }
     return { p: p, u: u };
@@ -210,8 +219,23 @@ function prismFbo(o, w, h) {
   if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('framebuffer incomplete');
   o.w = w; o.h = h; return o;
 }
+// (1.9.998.2: a rebuild frees what the last build made. Each rebuild after an error left every program, texture, frame
+// buffer and the quad behind on the graphics chip, so a device that hit errors now and then slowly filled its memory
+// until the chip dropped the context.)
+function prismFree() {
+  const gl = PRISM.gl; if (!gl || gl.isContextLost()) return;
+  try {
+    for (const k in PRISM.P) { const p = PRISM.P[k]; if (p && p.p) gl.deleteProgram(p.p); }
+    for (const k in PRISM.T) if (PRISM.T[k]) gl.deleteTexture(PRISM.T[k]);
+    const fb = o => { if (o && o.t) { gl.deleteTexture(o.t); gl.deleteFramebuffer(o.f); } };
+    for (const k in PRISM.F) fb(PRISM.F[k]); fb(PRISM.gi.a); fb(PRISM.gi.b);
+    if (PRISM.quad) gl.deleteBuffer(PRISM.quad);
+  } catch (e) { }
+  PRISM.quad = null;
+}
 function prismBuild() {
   const gl = PRISM.gl; if (!gl || gl.isContextLost()) return;
+  prismFree();
   PRISM.P = {}; PRISM.T = {}; PRISM.F = {}; PRISM.gi.a = PRISM.gi.b = null; PRISM.gi.w = 0;
   const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0); PRISM.quad = b;
@@ -280,10 +304,20 @@ function prismGpu() {
   prismUpload(T.scene, cv);
   const lux = LUX.live && LUX.A && LUX.M;
   if (lux) { prismUpload(T.light, LUX.A); prismUpload(T.amb, LUX.M); }
+  // (1.9.998.2: the effects fade in and out over about a third of a second when the level changes, or when the air gets
+  // heavy enough for the shafts, instead of switching in a single frame. The governor steps the level down when a frame
+  // runs late and back up when there is room, and each step used to turn the bloom, the bounce light, the shafts, the
+  // relief and the lamplight on or off at once: the picture jumped every so often. While an effect fades out it keeps
+  // running, so there is something to fade.)
+  const now = performance.now(), E = PRISM.fx || (PRISM.fx = { n: 0, bloom: 0, gi: 0, sh: 0, rel: 0, clar: 0, glare: 0, det: 0, pl: 0, ca: 0 });
+  const fk = E.n++ === 0 ? 1 : Math.min(1, clamp((now - (PRISM.ft || now)) / 1000, 0, 0.1) * 3.5); PRISM.ft = now;
+  const ease = (k, want) => (E[k] += (want - E[k]) * fk);
   // bounce light on the GPU
   PRISM.giGpu = false;
-  const giP = q.gi >= 2 ? P.gi2 : P.gi1;
-  if (q.gi && giP && lux && LUX.giOn && F.gi && F.gi.occ && PRISM.tr && !LUX.giCpuOnly) {   // (giCpuOnly: bounce light set to CPU in the engine room)
+  const giCan = !!(lux && LUX.giOn && F.gi && F.gi.occ && PRISM.tr && !LUX.giCpuOnly && (P.gi1 || P.gi2));   // (giCpuOnly: bounce light set to CPU in the engine room)
+  if (ease('gi', q.gi && giCan ? 1 : 0) && !giCan) E.gi = 0;
+  const giP = q.gi >= 2 && P.gi2 ? P.gi2 : P.gi1 || P.gi2;
+  if (giCan && (q.gi || E.gi > 0.02)) {
     const G2 = F.gi, g = PRISM.gi, gw = G2.gw, gh = G2.gh;
     gl.bindTexture(gl.TEXTURE_2D, T.occ); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     if (!G2.occ255 || G2.occ255.length !== gw * gh) G2.occ255 = new Uint8Array(gw * gh);
@@ -306,11 +340,13 @@ function prismGpu() {
   PRISM.bloomGpu = false;
   let bloomT = T.black;
   const hw = Math.max(1, cw >> 1), hh = Math.max(1, ch >> 1);
-  if (q.bloom && P.bright && P.down && P.up && bloomK() > 0) {
+  const bloomCan = !!(P.bright && P.down && P.up && bloomK() > 0);
+  if (ease('bloom', q.bloom && bloomCan ? 1 : 0) && !bloomCan) E.bloom = 0;
+  if (bloomCan && (q.bloom || E.bloom > 0.02)) {
     const B = PRISM.F; B.b0 = prismFbo(B.b0, hw, hh);
     gl.useProgram(P.bright.p); gl.uniform2f(P.bright.u.uPx, 1 / cw, 1 / ch); gl.uniform1f(P.bright.u.uTh, 0.75); gl.uniform1f(P.bright.u.uLk, lux ? 0.18 + 0.22 * (F.night || 0) : 0);
     prismBind(P.bright, 'uS', 0, T.scene); prismBind(P.bright, 'uL', 1, lux ? T.light : T.black); prismDraw(P.bright, B.b0, hw, hh);
-    const steps = q.bloom + 1, chain = [B.b0];
+    const steps = Math.max(1, q.bloom) + 1, chain = [B.b0];
     for (let i = 1; i <= steps; i++) { const f = B['b' + i] = prismFbo(B['b' + i], Math.max(1, hw >> i), Math.max(1, hh >> i)), src = chain[i - 1]; gl.useProgram(P.down.p); gl.uniform2f(P.down.u.uPx, 1 / src.w, 1 / src.h); prismBind(P.down, 'uT', 0, src.t); prismDraw(P.down, f, f.w, f.h); chain.push(f); }
     for (let i = steps; i >= 1; i--) { const src = i === steps ? chain[i] : B['u' + i], dst = B['u' + (i - 1)] = prismFbo(B['u' + (i - 1)], chain[i - 1].w, chain[i - 1].h); gl.useProgram(P.up.p); gl.uniform2f(P.up.u.uPx, 1 / src.w, 1 / src.h); prismBind(P.up, 'uT', 0, src.t); prismBind(P.up, 'uB', 1, chain[i - 1].t); prismDraw(P.up, dst, dst.w, dst.h); }
     bloomT = B.u0.t; PRISM.bloomGpu = true;
@@ -318,11 +354,13 @@ function prismGpu() {
   // light shafts from the strongest lights, when the air is heavy enough to show them
   let shT = T.black, shK = 0;
   const air = clamp(0.05 + (F.fog || 0) * 0.6 + (WX.rain || 0) * 0.25 + (F.dust || 0) * 0.35 + (F.night || 0) * 0.18 + (WX.ash || 0) * 0.3, 0, 1);
-  if (q.shafts && P.shafts && PRISM.bloomGpu && F.lights.length && air > 0.08) {
+  const shCan = !!(P.shafts && PRISM.bloomGpu && F.lights.length);
+  if (ease('sh', q.shafts && shCan && air > 0.08 ? 1 : 0) && !shCan) E.sh = 0;
+  if (shCan && E.sh > 0.02) {
     const B = PRISM.F; B.sh = prismFbo(B.sh, hw, hh); const u = P.shafts.u, Ls = F.lights.slice(0, 4), lv = new Float32Array(16), lc = new Float32Array(12);
     Ls.forEach((l, i) => { lv[i * 4] = l.sx / cw; lv[i * 4 + 1] = 1 - l.sy / ch; lv[i * 4 + 2] = Math.min(1.2, l.r / ch * 1.6); const k = Math.min(1.5, l.i) / 255; lc[i * 3] = l.c0 * k; lc[i * 3 + 1] = l.c1 * k; lc[i * 3 + 2] = l.c2 * k; });
     gl.useProgram(P.shafts.p); gl.uniform4fv(u.uL, lv); gl.uniform3fv(u.uC, lc); gl.uniform1f(u.uN, Ls.length); gl.uniform1f(u.uD, 0.32 * air); gl.uniform1f(u.uAsp, cw / ch);
-    prismBind(P.shafts, 'uB', 0, B.b0.t); prismDraw(P.shafts, B.sh, hw, hh); shT = B.sh.t; shK = 1;
+    prismBind(P.shafts, 'uB', 0, B.b0.t); prismDraw(P.shafts, B.sh, hw, hh); shT = B.sh.t; shK = E.sh;
   }
   // the final pass, to the screen
   const fp = P.final, u = fp.u, gr = prismGrade(), night = F.night || 0, t = PRISM.tr || { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
@@ -331,40 +369,46 @@ function prismGpu() {
   { const dt = t.a * t.d - t.b * t.c || 1; gl.uniform4f(u.uTi, t.d / dt, -t.b / dt, -t.c / dt, t.a / dt); gl.uniform2f(u.uTo, t.e, t.f); }
   const sharp = (SET.sharp == null ? 40 : SET.sharp) / 100, up = ow / cw;
   gl.uniform1f(u.uSharp, q.sharp ? clamp(sharp * (up > 1.05 ? 1.3 : 1), 0, 1.6) : 0); gl.uniform1f(u.uCub, q.up >= 2 && up > 1.05 ? 1 : 0);
-  gl.uniform1f(u.uBlK, PRISM.bloomGpu ? (0.5 + 0.3 * night + 0.5 * (F.fog || 0) + 0.25 * (F.wet || 0)) * bloomK() : 0); gl.uniform1f(u.uShK, shK);
+  gl.uniform1f(u.uBlK, PRISM.bloomGpu ? (0.5 + 0.3 * night + 0.5 * (F.fog || 0) + 0.25 * (F.wet || 0)) * bloomK() * E.bloom : 0); gl.uniform1f(u.uShK, shK);
   const gig = PRISM.giGpu && F.gi;
-  gl.uniform1f(u.uGIK, gig ? 0.9 : 0); gl.uniform1f(u.uAOK, gig ? 0.12 + 0.18 * (F.day || 0) : 0);
+  gl.uniform1f(u.uGIK, gig ? 0.9 * E.gi : 0); gl.uniform1f(u.uAOK, gig ? (0.12 + 0.18 * (F.day || 0)) * E.gi : 0);
   if (gig) { gl.uniform2f(u.uOrg, F.gi.gx * F.gi.cell, F.gi.gy * F.gi.cell); gl.uniform2f(u.uG, F.gi.gw, F.gi.gh); gl.uniform1f(u.uCell, F.gi.cell); }
   gl.uniform1f(u.uExp, gr.exp); gl.uniform1f(u.uSat, gr.sat); gl.uniform1f(u.uCon, gr.con); gl.uniform1f(u.uVib, gr.vib || 0); gl.uniform1f(u.uTone, gr.tone || 0);
   gl.uniform3f(u.uWB, PRISM.wb[0], PRISM.wb[1], PRISM.wb[2]);
   gl.uniform3f(u.uTS, -0.012 * (1 - night), 0.004, 0.02 + 0.015 * night); gl.uniform3f(u.uTH, 0.018 * (1 - night * 0.6), 0.008, -0.012);
   gl.uniform1f(u.uVig, SET.grade === false ? 0 : (SET.vig == null ? 50 : SET.vig) / 100 * (0.42 + 0.12 * night));
   gl.uniform1f(u.uGrain, q.grain && SET.grain !== false ? 0.022 + 0.018 * night : 0); gl.uniform1f(u.uTime, (G.time || 0) % 100);
-  gl.uniform1f(u.uCA, q.ca ? 0.006 : 0); gl.uniform1f(u.uAsp, cw / ch);
+  // (the grain moves each frame by a small random step; the ripples count from a world origin near the camera, snapped to
+  // their common period, 2 pi x 10 / 0.03 world units, so they are the same pattern without the precision loss)
+  gl.uniform2f(u.uGo, Math.random() * 251, Math.random() * 241);
+  { const P = 2094.3951023931954; gl.uniform2f(u.uWo, Math.round(cam.x / P) * P, Math.round(cam.y / P) * P); }
+  gl.uniform1f(u.uCA, 0.006 * ease('ca', q.ca ? 1 : 0)); gl.uniform1f(u.uAsp, cw / ch);
   const hot = q.haze && !RM ? F.hot : null, hv = new Float32Array(32);
   if (hot) hot.forEach((h, i) => { if (i < 8) { hv[i * 4] = h.sx / cw; hv[i * 4 + 1] = 1 - h.sy / ch; hv[i * 4 + 2] = Math.max(0.01, h.r / ch); hv[i * 4 + 3] = h.k; } });
   gl.uniform4fv(u.uHot, hv); gl.uniform1f(u.uNH, hot ? Math.min(8, hot.length) : 0); gl.uniform1f(u.uHaze, hot && hot.length ? 1 : 0);
   // reflections: the maps the reflection engine painted this frame
   const refl = typeof MIRROR !== 'undefined' && MIRROR.on && MIRROR.gpu && MIRROR.MA;
   if (refl) { prismUpload(T.rfa, MIRROR.MA); prismUpload(T.rfw, MIRROR.MW); }
-  gl.uniform1f(u.uRefK, refl ? 1 : 0); gl.uniform1f(u.uRbK, 1.1 + 1.6 * night); gl.uniform1f(u.uRain, WX.rain || 0); gl.uniform1f(u.uWind, Math.min(1.2, WX.wind || 0));
-  if (refl) { const S = MIRROR.sky, Sn = MIRROR.sun; gl.uniform3f(u.uSky, S[0], S[1], S[2]); gl.uniform3f(u.uSun, Sn[0], Sn[1], Sn[2]); gl.uniform1f(u.uSunK, MIRROR.lvl >= 2 ? MIRROR.sunK * (F.day || 0) : 0); }
+  // (MIRROR.fk and MIRROR.wk: the reflections, and their wet streets and sun glitter, fading with the reflection engine's level)
+  gl.uniform1f(u.uRefK, refl ? (MIRROR.fk == null ? 1 : MIRROR.fk) : 0); gl.uniform1f(u.uRbK, 1.1 + 1.6 * night); gl.uniform1f(u.uRain, WX.rain || 0); gl.uniform1f(u.uWind, Math.min(1.2, WX.wind || 0));
+  if (refl) { const S = MIRROR.sky, Sn = MIRROR.sun; gl.uniform3f(u.uSky, S[0], S[1], S[2]); gl.uniform3f(u.uSun, Sn[0], Sn[1], Sn[2]); gl.uniform1f(u.uSunK, (MIRROR.wk == null ? (MIRROR.lvl >= 2 ? 1 : 0) : MIRROR.wk) * MIRROR.sunK * (F.day || 0)); }
   // relief and clarity by day (from the sun's side), glare and the blue shift of the eye at night
-  const sun = F.sun, sl = sun && sun.on ? Math.hypot(sun.dx, sun.dy) || 1 : 1;
-  gl.uniform1f(u.uRelief, q.sharp && sun && sun.on && prismLevel() >= 2 ? 0.22 * sun.k : 0); gl.uniform2f(u.uSunDir, sun && sun.on ? -sun.dx / sl : 0, sun && sun.on ? sun.dy / sl : 0);
-  gl.uniform1f(u.uClar, prismLevel() >= 2 ? 0.16 + 0.06 * night : 0);
+  const sun = F.sun, sl = sun && sun.on ? Math.hypot(sun.dx, sun.dy) || 1 : 1, lv2 = prismLevel() >= 2;
+  gl.uniform1f(u.uRelief, ease('rel', q.sharp && sun && sun.on && lv2 ? 0.22 * sun.k : 0)); gl.uniform2f(u.uSunDir, sun && sun.on ? -sun.dx / sl : 0, sun && sun.on ? sun.dy / sl : 0);
+  gl.uniform1f(u.uClar, ease('clar', lv2 ? 0.16 + 0.06 * night : 0));
   // lamplight relief: up to six lights from the lighting engine (screen positions), stronger in the dark and on wet streets
-  { const Ls = prismLevel() >= 1 && LUX.live ? F.lights : null, n = Ls ? Math.min(6, Ls.length) : 0, pl = PRISM.plv || (PRISM.plv = new Float32Array(24)), pc = PRISM.plc || (PRISM.plc = new Float32Array(18));
+  { const plk = ease('pl', prismLevel() >= 1 && LUX.live ? 1 : 0), Ls = plk > 0.02 && LUX.live ? F.lights : null, n = Ls ? Math.min(6, Ls.length) : 0, pl = PRISM.plv || (PRISM.plv = new Float32Array(24)), pc = PRISM.plc || (PRISM.plc = new Float32Array(18));
     for (let i = 0; i < n; i++) { const l = Ls[i]; pl[i * 4] = l.sx / cw; pl[i * 4 + 1] = 1 - l.sy / ch; pl[i * 4 + 2] = Math.min(1.4, l.r / ch * 1.4); pl[i * 4 + 3] = Math.min(1.5, l.i); pc[i * 3] = l.c0 / 255; pc[i * 3 + 1] = l.c1 / 255; pc[i * 3 + 2] = l.c2 / 255; }
-    gl.uniform4fv(u.uPL, pl); gl.uniform3fv(u.uPC, pc); gl.uniform1f(u.uNPL, n); gl.uniform1f(u.uLamp, n ? (0.18 + 0.5 * night) : 0); gl.uniform1f(u.uSpec, n ? clamp(0.15 + (F.wet || 0) * 0.9, 0, 1) * (0.3 + 0.7 * night) : 0); }
-  gl.uniform1f(u.uGlare, PRISM.bloomGpu && prismLevel() >= 2 ? 0.05 * night : 0); gl.uniform1f(u.uPurk, LUX.live ? 0.42 * night : 0);
+    gl.uniform4fv(u.uPL, pl); gl.uniform3fv(u.uPC, pc); gl.uniform1f(u.uNPL, n); gl.uniform1f(u.uLamp, n ? (0.18 + 0.5 * night) * plk : 0); gl.uniform1f(u.uSpec, n ? clamp(0.15 + (F.wet || 0) * 0.9, 0, 1) * (0.3 + 0.7 * night) * plk : 0); }
+  gl.uniform1f(u.uGlare, PRISM.bloomGpu ? ease('glare', lv2 ? 0.05 * night : 0) * E.bloom : ease('glare', 0)); gl.uniform1f(u.uPurk, LUX.live ? 0.42 * night : 0);
   // the detail normal map: uploaded once, stronger in the dark (the lamps carve it) and at the higher levels
   if (PRISM.det && u.uDet != null) {
     if (!PRISM.detUp) { try { prismUpload(T.det, texelDetail()); PRISM.detUp = true; } catch (e) { PRISM.det = false; } }
     // (how soft the ground is and how much it cracks, mixed from the districts round the camera)
     const soft = bioK('snow') + bioK('desert') + bioK('ash'), crack = Math.max(0, 1 - soft - bioK('suburb') * 0.5);
-    const dk = SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.48 : 0.28) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (1 - 0.4 * soft);
-    gl.uniform1f(u.uDetK, dk); gl.uniform1f(u.uDetTile, 150 * (typeof PK === 'number' && PK > 0 ? PK : 1)); gl.uniform1f(u.uCrack, crack); if (dk > 0) prismBind(fp, 'uDet', 8, T.det);
+    const dk = ease('det', SET.texel === 'off' || (typeof texelLevel === 'function' && !texelLevel()) ? 0 : (prismLevel() >= 2 ? 0.48 : 0.28) * (0.75 + 0.25 * night) * (RM ? 0.7 : 1) * (1 - 0.4 * soft));
+    const tile = 150 * (typeof PK === 'number' && PK > 0 ? PK : 1);
+    gl.uniform1f(u.uDetK, dk); gl.uniform1f(u.uDetTile, tile); gl.uniform2f(u.uDo, Math.round(cam.x / tile) * tile, Math.round(cam.y / tile) * tile); gl.uniform1f(u.uCrack, crack); if (dk > 0) prismBind(fp, 'uDet', 8, T.det);
   }
   prismBind(fp, 'uS', 0, T.scene); prismBind(fp, 'uBl', 1, bloomT); prismBind(fp, 'uSh', 2, shT); prismBind(fp, 'uGI', 3, gig ? PRISM.gi.a.t : T.black); prismBind(fp, 'uM', 4, lux ? T.amb : T.black);
   prismBind(fp, 'uRf', 5, refl ? T.rfa : T.black); prismBind(fp, 'uRw', 6, refl ? T.rfw : T.black); prismBind(fp, 'uRb', 7, PRISM.bloomGpu ? PRISM.F.b0.t : T.black);
@@ -397,7 +441,15 @@ function prismFrame() {
   try {
     if (mode === 'gpu') { prismGpu(); coreBeat('PRISM'); }
     else if (mode === 'cpu') prismCpu();
-  } catch (e) { prismHurt(e); if (PRISM.mode === 'gpu') { PRISM.mode = 'cpu'; prismShow(false); PRISM.giGpu = PRISM.bloomGpu = PRISM.vigGpu = false; } }
+  } catch (e) {
+    prismHurt(e);
+    // (1.9.998.2: one error no longer flashes a frame without the shaders: while the GPU is still sound the last shaded
+    // frame stays up for that one frame. Only a lost or broken context, or a run of errors (which sends the shaders to
+    // the processor for a minute), switches over. It used to hide the shaded picture for a frame at every error, and the
+    // periodic check for GL errors made that a flash every couple of seconds on a chip that reported one.)
+    const sound = PRISM.gl && !PRISM.gl.isContextLost() && PRISM.ok && !(PRISM.offUntil && performance.now() < PRISM.offUntil);
+    if (PRISM.mode === 'gpu' && !sound) { PRISM.mode = 'cpu'; prismShow(false); PRISM.giGpu = PRISM.bloomGpu = PRISM.vigGpu = false; }
+  }
   const ms = performance.now() - t0; PRISM.ms = ms; PRISM.msAvg += (ms - PRISM.msAvg) * 0.05; coreCost('PRISM', ms);
 }
 // once a second: a graphics chip that is the bottleneck (the frame is late but the CPU is not busy) steps the shaders

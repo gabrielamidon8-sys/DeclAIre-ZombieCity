@@ -10,7 +10,7 @@
    - On the CPU the same is approached with blend modes: the sky screened in, the lights' glows mirrored and added,
      shimmering as the water moves, sparkles on the water in sunshine.
    It steps down by itself (no glitter, no wet streets, then off) when the frame runs late, and back up after. */
-const MIRROR = { MA: null, ma: null, MW: null, mw: null, RF: null, rf: null, cw: 0, ch: 0, res: 0, on: false, gpu: false, adapt: 0, ms: 0, errT: [], offUntil: 0, sky: [0.5, 0.6, 0.75], sun: [1, 0.95, 0.85], sunK: 0, wet: 0 };
+const MIRROR = { MA: null, ma: null, MW: null, mw: null, RF: null, rf: null, cw: 0, ch: 0, res: 0, on: false, gpu: false, adapt: 0, ms: 0, errT: [], offUntil: 0, sky: [0.5, 0.6, 0.75], sun: [1, 0.95, 0.85], sunK: 0, wet: 0, fk: 0, wk: 0, ft: 0 };
 function mirrorLevel() {
   if (MIRROR.offUntil && performance.now() < MIRROR.offUntil) return 0;
   const w = SET.refl || 'auto', base = w === 'off' ? 0 : w === 'on' ? 2 : [1, 2, 2, 2][clamp(PERF.tier | 0, 0, 3)];
@@ -60,10 +60,12 @@ function mirrorMask(x0, y0, x1, y1, lvl) {
     const c = chunks.get(cx + ',' + cy); if (!c) continue;
     // rivers, ponds and ice
     if (c.wet) { const m = mirrorWater(c); if (m) { a.drawImage(m, c.sx, c.sy, CHS, CHS); if (!c.mice) w.drawImage(m, c.sx, c.sy, CHS, CHS); any = true; } }
-    // the street in the rain: roads shine more than sidewalks, puddles most of all
-    if (wet > 0.12 && lvl >= 2 && c.bio !== 'desert' && c.bio !== 'snow') {
-      a.fillStyle = 'rgba(255,255,255,' + (0.3 * wet).toFixed(3) + ')'; a.fillRect(c.sx, c.sy, CHS, ROADS); a.fillRect(c.sx, c.sy + ROADS, ROADS, CHS - ROADS);
-      a.fillStyle = 'rgba(255,255,255,' + (0.12 * wet).toFixed(3) + ')'; a.fillRect(c.sx + ROADS, c.sy + ROADS, CHS - ROADS, CHS - ROADS); any = true;
+    // the street in the rain: roads shine more than sidewalks, puddles most of all (1.9.998.2: easing in as the street
+    // gets wet, and with the level, instead of switching on at a wetness of 0.12)
+    const sk = MIRROR.wk * clamp((wet - 0.06) / 0.12, 0, 1);
+    if (sk > 0.01 && c.bio !== 'desert' && c.bio !== 'snow') {
+      a.fillStyle = 'rgba(255,255,255,' + (0.3 * wet * sk).toFixed(3) + ')'; a.fillRect(c.sx, c.sy, CHS, ROADS); a.fillRect(c.sx, c.sy + ROADS, ROADS, CHS - ROADS);
+      a.fillStyle = 'rgba(255,255,255,' + (0.12 * wet * sk).toFixed(3) + ')'; a.fillRect(c.sx + ROADS, c.sy + ROADS, CHS - ROADS, CHS - ROADS); any = true;
     }
     const pk = typeof wxPudK === 'function' ? wxPudK() : (wet > 0.06 ? 0.6 + wet * 0.5 : 0);
     if (pk > 0) {
@@ -99,21 +101,28 @@ function mirrorCpu(x0, y0, x1, y1, lvl) {
   }
   g.globalAlpha = 1; g.globalCompositeOperation = 'destination-in'; g.drawImage(MIRROR.MA, 0, 0);
   // sun glitter on open water: the sparkle pattern cut to the water map (which nothing reads after this on the CPU)
-  if (lvl >= 2 && MIRROR.sunK > 0.2 && day > 0.5) {
+  const gk = MIRROR.wk * clamp((MIRROR.sunK - 0.15) / 0.15, 0, 1) * clamp((day - 0.45) / 0.15, 0, 1);
+  if (gk > 0.01) {
     const pat = texelPattern(MIRROR.mw, 'glitter', 1);
     if (pat) {
       const w = MIRROR.mw; w.save(); w.setTransform(1, 0, 0, 1, 0, 0); w.globalCompositeOperation = 'source-in'; w.translate((t * 9) % 128, (t * 5) % 128); w.fillStyle = pat; w.fillRect(-128, -128, cw + 256, ch + 256); w.restore();
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.8 * MIRROR.sunK; g.drawImage(MIRROR.MW, 0, 0); g.globalAlpha = 1;
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.8 * MIRROR.sunK * gk; g.drawImage(MIRROR.MW, 0, 0); g.globalAlpha = 1;
     }
   }
   g.globalCompositeOperation = 'source-over';
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(R, 0, 0, cv.width, cv.height); ctx.restore();
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = clamp(MIRROR.fk, 0, 1); ctx.drawImage(R, 0, 0, cv.width, cv.height); ctx.restore();
 }
 // render() calls this after the lighting (and before the highways): builds the map, and on the CPU draws the reflections
 function mirrorRun(x0, y0, x1, y1) {
   const t0 = performance.now();
   MIRROR.on = false; MIRROR.gpu = false;
-  const lvl = mirrorLevel(); if (!lvl || G.mode === 'intro') return;
+  // (1.9.998.2: the reflections fade over about a third of a second when the level changes: fk all of them, wk the wet
+  // streets and the sun glitter that only the full level has. The governor trims the reflections when a frame runs late
+  // and CORE climbs them back when there is room, and each step used to switch the wet streets, the glitter or all of it
+  // on or off in one frame, so the reflections seemed to glitch every so often. While they fade out they keep running.)
+  const want = mirrorLevel(), now = performance.now(), fk = Math.min(1, clamp((now - (MIRROR.ft || now)) / 1000, 0, 0.1) * 3); MIRROR.ft = now;
+  MIRROR.fk += ((want ? 1 : 0) - MIRROR.fk) * fk; MIRROR.wk += ((want >= 2 ? 1 : 0) - MIRROR.wk) * fk;
+  const lvl = want || (MIRROR.fk > 0.02 ? 1 : 0); if (!lvl || G.mode === 'intro') { if (G.mode === 'intro') MIRROR.fk = MIRROR.wk = 0; return; }
   try {
     mirrorSky();
     if (!mirrorMask(x0, y0, x1, y1, lvl)) return;

@@ -5,7 +5,7 @@
    quality governor (perf.js) as it adapts to the device; picking a value pins that one feature. */
 const SET_DEF = {
   quality: 'auto', res: 'auto', fps: 60, weather: 'auto', particles: 100, veg: 'auto', water: 'auto', light: 'auto', lux: 'auto', bloom: 100, tod: 'cycle', nightDark: 'gentle', sun: true, gi: 'auto', refl: 'auto', prism: 'auto', texel: 'auto', sharp: 40, vig: 50, grain: true, temp: 'auto', fog: 'auto',
-  decals: 'normal', bloodTime: '60', bodies: 'normal', crowd: 'auto', swarm: 'auto', swarmPush: true, zspeed: 'wwz', life: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
+  decals: 'normal', bloodTime: '60', bodies: 'normal', crowd: 'auto', swarm: 'auto', swarmPush: true, zspeed: 'wwz', life: true, voices: true, hitstop: true, grade: true, vis: 'full', zoom: 100, fpsShow: false,
   sfxOn: true, volMaster: 100, volMusic: 80, volSfx: 90, volGun: 90, volAmb: 70, volUi: 70, aq: 'auto', night: false, mono: false, duck: true, steps: true,
   waveTimer: 'normal', wxPlay: true, wxMode: 'dynamic', season: 'auto', world: 'mixed', scale: 'real', seedMode: 'random', seed: 0, ftext: true, districts: true, hints: true, vibrate: true, shake: 100,
   joy: 'float', joySize: 100, dashTap: true, lefty: false,
@@ -78,7 +78,7 @@ function setSetting(k, v) {
     case 'motion': RM = v === 'on' || (v === 'auto' && SYS_RM); applyLook(); break;
     case 'season': if (G.mode !== 'title' && v !== 'cycle') setSeason(seasonFromSetting()); else if (G.mode === 'title') { WORLD.season = seasonFromSetting(); for (const c of chunks.values()) c.stale = 1; WSPR.clear(); } break;
     case 'wxMode': if (v !== 'dynamic') wxForce(v); else { WX.hold = -1; WX.rt = Math.max(WX.rt, WX.rd - 20); } break;
-    case 'life': if (!v) for (const b of WD.birds) b.st = 2; break;
+    case 'life': if (!v) { for (const b of WD.birds) b.st = 2; if (typeof PULSE !== 'undefined') { PULSE.rats.length = 0; PULSE.ev.length = 0; PULSE.plumes.length = 0; } } break;
     case 'veg': case 'water': WSPR.clear(); break;
     case 'sun': for (const c of chunks.values()) c.stale = 1; WSPR.clear(); break;
     case 'swarm': if (typeof swarmCaps === 'function') { SWARM.capLive = 0; swarmCaps(); } break;
@@ -110,7 +110,7 @@ const SET_ROWS = [
   { id: 'veg', tab: 'graphics', type: 'seg', label: 'Trees and bushes', desc: 'Light draws them still; Full lets them sway and shake.', opts: AUTO_LH },
   { id: 'water', tab: 'graphics', type: 'seg', label: 'Animated water', desc: 'Glints drifting on rivers and ponds.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
   { id: 'fog', tab: 'graphics', type: 'seg', label: 'Fog and haze', desc: 'Drifting clouds of fog over the street.', opts: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
-  { id: 'life', tab: 'graphics', type: 'seg', label: 'Birds', desc: 'Crows and pigeons that take off when you get close.', opts: ON_OFF },
+  { id: 'life', tab: 'graphics', type: 'seg', label: 'City life', desc: 'Crows that take off when you get close, rats along the walls, flies over the dead, steam from the manholes, and the fighting, sirens, helicopters and flares across the city.', opts: ON_OFF },
   { tab: 'graphics', group: 'Shaders and textures' },
   { id: 'prism', tab: 'graphics', basic: true, type: 'seg', label: 'Shader engine', desc: 'Finishes every frame with shaders: on the graphics chip when there is a real one, on the CPU otherwise. Auto picks for you.', opts: [['auto', 'Auto'], ['gpu', 'GPU'], ['cpu', 'CPU'], ['off', 'Off']] },
   { id: 'texel', tab: 'graphics', type: 'seg', label: 'Texture detail', desc: 'Skin, cloth and grime on zombies and the survivor, drawn sharper than the screen and scaled down.', opts: [['auto', 'Auto'], ['low', 'Low'], ['high', 'High'], ['ultra', 'Ultra'], ['off', 'Off']] },
@@ -146,6 +146,7 @@ const SET_ROWS = [
   { tab: 'sound', group: 'Options' },
   { id: 'sfxOn', tab: 'sound', type: 'seg', label: 'Sound effects', desc: 'Turn every effect off, leaving only the music.', opts: ON_OFF },
   { id: 'steps', tab: 'sound', type: 'seg', label: 'Footsteps', desc: 'Your steps on snow, sand, water and asphalt.', opts: ON_OFF },
+  { id: 'voices', tab: 'sound', type: 'seg', label: 'Voices', desc: 'The dead groan, snarl and screech around you; you breathe hard after running, grunt as you roll and gasp when hit.', opts: ON_OFF },
   { id: 'duck', tab: 'sound', type: 'seg', label: 'Music dips for the A-10', desc: 'The radio drops under the cannon so it hits harder.', opts: ON_OFF },
   { id: 'night', tab: 'sound', type: 'seg', label: 'Night mode', desc: 'Evens out loud and quiet sounds, for headphones or late at night.', opts: ON_OFF },
   { id: 'mono', tab: 'sound', type: 'seg', label: 'Mono audio', desc: 'Both ears hear everything.', opts: ON_OFF },
@@ -167,6 +168,7 @@ const SET_ROWS = [
   { id: 'swarmPush', tab: 'gameplay', type: 'seg', label: 'Crowds push vehicles', desc: 'A horde big enough to move it (about 50 for a car, 460 for a semi) shoves a parked vehicle out of its way when you are at that vehicle and it stands between you; anywhere else the horde goes round it.', opts: ON_OFF },
   { tab: 'gameplay', group: 'Screen' },
   { id: 'shake', tab: 'gameplay', basic: true, type: 'slider', label: 'Screen shake', desc: 'How hard explosions and hits shake the view.', min: 0, max: 150, step: 25, fmt: v => v ? v + '%' : 'Off' },
+  { id: 'hitstop', tab: 'gameplay', type: 'seg', label: 'Hit-stop', desc: 'A split-second freeze on a headshot, a heavy kill, a knife finisher or a blast (playing alone; never in co-op).', opts: ON_OFF },
   { id: 'ftext', tab: 'gameplay', type: 'seg', label: 'Floating text', desc: 'Pickups, dodges and jams written above you.', opts: ON_OFF },
   { id: 'districts', tab: 'gameplay', type: 'seg', label: 'District names', desc: 'A note when you walk into a new part of the city.', opts: ON_OFF },
   { id: 'hints', tab: 'gameplay', type: 'seg', label: 'Hints', desc: 'Tips on the title screen and the movement guide.', opts: ON_OFF },

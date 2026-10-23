@@ -13,7 +13,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.998.1';
+const ZC_VERSION = '1.9.998.2';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -2000,6 +2000,7 @@ function render() {
   drawCloudShadows(x0, y0, x1, y1);
   luxRun(x0, y0, x1, y1, shx, shy, Math.min(0.05, G.rdt || 0.016));
   drawEmissive(vis);
+  if (typeof pulseDrawLit === 'function') { const tp = performance.now(); pulseDrawLit(vis); PERF.sec.life += performance.now() - tp; }   // (1.9.998.2: a searchlight, far flashes, sirens, flares)
   mirrorRun(x0, y0, x1, y1);   // reflections (on the GPU the shader engine draws them from the map made here)
   try { skyDraw(x0, y0, x1, y1, Math.min(0.05, G.rdt || 0.016)); } catch (e) { coreHurt('SKYWAY', e); }   // the highways, over the street
   drawWeatherWorld();
@@ -2584,6 +2585,7 @@ function frame(now) {
   const rdt = Math.min(0.05, (now - last) / 1000); last = now; frameNo++; G.rdt = rdt;
   let dt = rdt;
   if (G.slowT > 0) { G.slowT -= rdt; dt = rdt * 0.3; }
+  if (typeof pulseStop === 'function') dt = pulseStop(dt, rdt);   // (1.9.998.2: hit-stop on a big kill, solo only)
   if (G.tierFlash > 0) G.tierFlash = Math.max(0, G.tierFlash - rdt * 2.5);
   const t0 = performance.now();
   try {

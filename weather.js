@@ -430,8 +430,9 @@ function ambienceTick(rdt, bio) {
   const L = (AMB_LIST[bio] || AMB_LIST.city).filter(e => ambOk(e[0], bio)); if (!L.length) return;
   let tot = 0; for (const e of L) tot += e[1];
   let r = Math.random() * tot, k = L[0][0]; for (const e of L) { r -= e[1]; if (r <= 0) { k = e[0]; break; } }
-  const far = k === 'rattle' || k === 'branch' || k === 'chime' ? rand(0, 0.3) : rand(0.25, 0.85), vol = (1 - far * 0.55) * rand(0.5, 0.9);
-  SFX.ambEvent(k, rand(-0.85, 0.85), vol, far, k === 'heli');
+  const far = k === 'rattle' || k === 'branch' || k === 'chime' ? rand(0, 0.3) : rand(0.25, 0.85), vol = (1 - far * 0.55) * rand(0.5, 0.9), pan = rand(-0.85, 0.85);
+  SFX.ambEvent(k, pan, vol, far, k === 'heli');
+  if (typeof pulseEvent === 'function') pulseEvent(k, pan, far);   // (1.9.998.2: the helicopter, far fighting, explosions and sirens show)
 }
 /* ---------- wind ---------- */
 // WX.wbase is how hard the weather blows (eased in and out); WX.wind is that plus the wander, the gust passing over you

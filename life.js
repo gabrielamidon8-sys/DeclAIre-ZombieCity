@@ -9,6 +9,7 @@ function worldReset() {
   WD.act = []; WD.props = []; WD.fires = []; WD.birds = []; WD.lights = []; WD.t = 0; WD.cx = 1e9; WD.wasW = false; WD.wetT = 0; WD.stepD = 0;
   G.prints = []; G.alarms = [];
   WORLD.cur = null;
+  if (typeof pulseReset === 'function') pulseReset();
 }
 // everything interactive within a chunk of the screen
 function rebuildActive() {
@@ -267,6 +268,7 @@ function updWorld(dt) {
   updProps(dt); updBirds(dt); updFires(dt); updAlarms(dt);
   if (G.prints && G.prints.length) { for (const f of G.prints) f.t += dt; if (G.prints[0].t > G.prints[0].life) G.prints = G.prints.filter(f => f.t < f.life); }
   if (play) { updSteps(dt); updZombieWater(); }
+  if (typeof pulseTick === 'function') pulseTick(dt);   // (1.9.998.2: rats, the city's far events, voices)
 }
 
 /* ---------- sprites ---------- */
@@ -428,6 +430,7 @@ function drawWorldUnder(vis) {
     for (const a of (G.alarms || [])) { if (!vis(a.x, a.y, 80)) continue; const on = Math.floor(G.time * 5) % 2; ctx.globalAlpha = on ? 0.55 : 0.18; const r = 60; ctx.drawImage(glowSprite('#ffd27a'), a.x - r, a.y - r, r * 2, r * 2); }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   }
+  if (typeof pulseDrawUnder === 'function') pulseDrawUnder(vis);   // (1.9.998.2: rats, a helicopter's shadow)
 }
 function lightLevel() { return SET.light === 'auto' ? Q.light : SET.light === 'full' ? 2 : 1; }
 function drawProp(o) {
@@ -560,6 +563,7 @@ function drawWorldOver(vis) {
     if (typeof garageEmissive === 'function' && !(LUX.live && LUX.day < 0.9)) garageEmissive(vis, 0);
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   }
+  if (typeof pulseDrawOver === 'function') pulseDrawOver(vis);   // (1.9.998.2: flies over the dead, steam, far smoke)
 }
 function drawFlame(x, y, r, ph) {
   // three tongues of fire, outer red to inner yellow, licking upward
@@ -583,7 +587,9 @@ function buzz(ms) {
 }
 // CORE v3: the plants' cost by how many are moving, a ladder CORE can step (stiller plants, the same switch the
 // governor uses), a check that the moving plants and the birds stay finite and bounded
-coreMeta('LIFE', { ver: 2, provides: ['plants', 'birds', 'props'],
+// (v3, 1.9.998.2: PULSE in pulse.js: rats, flies, steam, the city's far events made visible, hit-stop and voices; its
+// self-test checks the hit-stop, the voices, the far events and a rat running from you)
+coreMeta('LIFE', { ver: 3, provides: ['plants', 'birds', 'props', 'rats', 'flies', 'steam', 'cityEvents', 'hitStop', 'voices'], selfTest: () => typeof pulseSelfTest === 'function' ? pulseSelfTest() : { ok: true, n: 0, pass: 0, why: '' },
   lv: () => vegLevel(), adaptGet: () => PERF.vegCut ? -1 : 0, loadNow: () => WD.act.length, loadName: 'moving plants',
   canTrim: () => SET.veg === 'auto' && !PERF.vegCut, trim: () => { if (SET.veg !== 'auto' || PERF.vegCut) return false; PERF.vegCut = true; return true; },
   boost: () => { if (!PERF.vegCut) return false; PERF.vegCut = false; return true; },

@@ -885,7 +885,9 @@ function drawStreetFurniture(g, c, B, R, win) {
     g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x + 1, y + 1.5, 9, 0, TAU); g.fill();
     g.fillStyle = '#2c2d30'; g.beginPath(); g.arc(x, y, 9, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 1; g.beginPath(); g.arc(x, y, 7, 0, TAU); g.stroke();
     g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 6, y); g.moveTo(x, y - 6); g.lineTo(x, y + 6); g.stroke();
+    if (!c.ventsSeen && typeof pulseVent === 'function' && urban) pulseVent(c, x, y);   // (1.9.998.2: some of them steam)
   }
+  c.ventsSeen = 1;
   for (const [x, y, w, h] of [[bx + 40 + R() * (BS - 100), by - 7, 18, 6], [bx - 7, by + 40 + R() * (BS - 100), 6, 18]]) { g.fillStyle = '#121315'; g.fillRect(x, y, w, h); g.fillStyle = '#3a3c40'; if (w > h) for (let k = 2; k < w; k += 4) g.fillRect(x + k, y + 1, 1.5, h - 2); else for (let k = 2; k < h; k += 4) g.fillRect(x + 1, y + k, w - 2, 1.5); }
   // skid marks and oil stains, more of them where the city went wrong
   const ns = bio === 'chaos' || bio === 'ruins' ? 2 : R() < 0.4 ? 1 : 0;

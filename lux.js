@@ -393,7 +393,12 @@ function luxFinite(s, L) {
 }
 function luxDrawFin(g, L, lq) {
   const S = LUX.S, s = LUX.sg, tr = LUX.tr, res = LUX.res;
-  const sx = (tr.a * L.x + tr.e) * res, sy = (tr.d * L.y + tr.f) * res, sr = Math.abs(L.r * tr.a * res) + 3;
+  // (1.9.998.2: the light's box on the scratch canvas goes through the frame's whole transform. It used only the scale
+  // and the offset, which leaves out the camera's roll: with every shot (a fraction of a degree) and every dodge roll the
+  // box landed away from the light, tens to hundreds of pixels deep in the city, so the light was cut off along a square
+  // edge, and old light left on the scratch canvas outside the box came through as bright squares, flickering as the
+  // frame shook. The lamps, the flashlight and the fires then carried those squares into the bloom and the reflections.)
+  const sx = (tr.a * L.x + tr.c * L.y + tr.e) * res, sy = (tr.b * L.x + tr.d * L.y + tr.f) * res, sr = L.r * Math.hypot(tr.a, tr.b) * res + 3;
   const bx = Math.max(0, Math.floor(sx - sr)), by = Math.max(0, Math.floor(sy - sr)), bx2 = Math.min(LUX.cw, Math.ceil(sx + sr)), by2 = Math.min(LUX.ch, Math.ceil(sy + sr));
   if (bx2 <= bx || by2 <= by) return;
   s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = 'source-over'; s.globalAlpha = 1; s.clearRect(bx, by, bx2 - bx, by2 - by);
@@ -446,6 +451,8 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
   // paint
   const g = LUX.ag, tr = ctx.getTransform(), s = lq.res;
   LUX.tr = tr; LUX.beams.length = 0; LUX.fn = (LUX.fn || 0) + 1; LUX.finLeft = [0, 0, 2, 4, 6][LUX.level];
+  // (1.9.998.2: the scratch canvas starts each frame empty, so nothing a light left behind can ever be copied again)
+  if (LUX.finLeft && LUX.sg) { LUX.sg.setTransform(1, 0, 0, 1, 0, 0); LUX.sg.globalCompositeOperation = 'source-over'; LUX.sg.globalAlpha = 1; LUX.sg.clearRect(0, 0, LUX.S.width, LUX.S.height); }
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.fillRect(0, 0, LUX.cw, LUX.ch);
   g.setTransform(tr.a * s, tr.b * s, tr.c * s, tr.d * s, tr.e * s, tr.f * s);
   g.globalCompositeOperation = 'lighter';
@@ -509,10 +516,12 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
   // glow and bloom: the light itself, added on top
   ctx.globalCompositeOperation = 'lighter';
   const night = 1 - LUX.day, wet = clamp(WX.rain * 1.2 + (WX.storm || 0) * 0.4, 0, 1), fogk = clamp(WX.fog, 0, 1);
-  const gpuBloom = typeof PRISM !== 'undefined' && PRISM.bloomGpu;
-  if (use && !gpuBloom) {
+  // (1.9.998.2: this glow stands in for the shader engine's bloom, so it fades in as that bloom fades out, and out as it
+  // fades in, rather than switching at the frame the bloom turns off or on)
+  const gpuBloom = typeof PRISM !== 'undefined' && PRISM.bloomGpu, gbk = gpuBloom ? (PRISM.fx ? clamp(PRISM.fx.bloom, 0, 1) : 1) : 0, own = 1 - gbk;
+  if (use && own > 0.02) {
     // wet streets shine and fog glows around every lamp
-    ctx.globalAlpha = Math.min(1, (0.1 + 0.12 * night) * (1 + 0.6 * wet + 0.8 * fogk)); ctx.drawImage(LUX.A, 0, 0, cv.width, cv.height);
+    ctx.globalAlpha = Math.min(1, (0.1 + 0.12 * night) * (1 + 0.6 * wet + 0.8 * fogk)) * own; ctx.drawImage(LUX.A, 0, 0, cv.width, cv.height);
     if (lq.bloom && bloomK() > 0) {
       // two blurs (a third and a ninth of the light map), summed small and laid over the picture in one pass
       const b1 = LUX.b1, B1w = LUX.B1.width, B1h = LUX.B1.height;
@@ -524,8 +533,8 @@ function luxFrame(x0, y0, x1, y1, shx, shy, dt) {
         b1.globalCompositeOperation = 'lighter'; b1.globalAlpha = a2 / top; b1.drawImage(LUX.B2, 0, 0, B1w, B1h);
         b1.globalCompositeOperation = 'source-over'; b1.globalAlpha = 1;
       }
-      ctx.globalAlpha = Math.min(1, top * bloomK()); ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height);
-      if (bloomK() > 1.05) { ctx.globalAlpha = Math.min(1, top * (bloomK() - 1)); ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height); }
+      ctx.globalAlpha = Math.min(1, top * bloomK()) * own; ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height);
+      if (bloomK() > 1.05) { ctx.globalAlpha = Math.min(1, top * (bloomK() - 1)) * own; ctx.drawImage(LUX.B1, 0, 0, cv.width, cv.height); }
     }
   }
   if (use) {
@@ -800,7 +809,8 @@ function luxGIwanted(lq) {
   const w = SET.gi || 'auto'; if (w === 'off' || !lq.rays) return false;
   // with the shader engine on the GPU, the GPU traces (if its level allows); the CPU tracer reads the light map back,
   // which would stall a graphics chip, so it only runs where the canvas is drawn on the CPU anyway
-  if (typeof PRISM !== 'undefined' && PRISM.mode === 'gpu') return PRQ[PRISM.lvl].gi > 0;
+  // (1.9.998.2: and while the shader engine fades its bounce light out after a level change, the grid keeps coming)
+  if (typeof PRISM !== 'undefined' && PRISM.mode === 'gpu') return PRQ[PRISM.lvl].gi > 0 || !!(PRISM.fx && PRISM.fx.gi > 0.02);
   return w === 'on' || LUX.level >= 2;
 }
 // the grid for this frame and which of its cells are solid (also handed to the shader engine for its GPU pass)
@@ -808,9 +818,16 @@ function luxGIgrid(x0, y0, x1, y1, lq) {
   const gpu = typeof PRISM !== 'undefined' && PRISM.mode === 'gpu', cols = (gpu ? GI_COLS_GPU : GI_COLS)[LUX.level] || 48, cell = Math.max(4, Math.round((x1 - x0) / cols * 4) / 4);
   const gx = Math.floor(x0 / cell) - 1, gy = Math.floor(y0 / cell) - 1, gw = Math.ceil((x1 - x0) / cell) + 3, gh = Math.ceil((y1 - y0) / cell) + 3, N = gw * gh;
   if (cell !== GI.cell || gw !== GI.gw || gh !== GI.gh || !GI.acc) {
+    const oa = GI.acc, ov = GI.vis, ow = GI.gw, oh = GI.gh, oc = GI.cell, ogx = GI.gx, ogy = GI.gy;
     GI.cell = cell; GI.gw = gw; GI.gh = gh; GI.gx = gx; GI.gy = gy;
     GI.acc = new Float32Array(N * 3); GI.vis = new Float32Array(N).fill(1); GI.occ = new Uint8Array(N); GI.src = new Float32Array(N * 3);
     GI.out = null; GI.ao = null;
+    // (1.9.998.2: a new grid (the level or the zoom changed) starts from what the old one had gathered, cell by cell at
+    // the same spot in the world, instead of from black: the bounce light used to vanish and creep back each time)
+    if (oa && oc > 0) for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      const ox = Math.floor((gx + x + 0.5) * cell / oc) - ogx, oy = Math.floor((gy + y + 0.5) * cell / oc) - ogy; if (ox < 0 || oy < 0 || ox >= ow || oy >= oh) continue;
+      const i = y * gw + x, j = oy * ow + ox; GI.acc[i * 3] = oa[j * 3]; GI.acc[i * 3 + 1] = oa[j * 3 + 1]; GI.acc[i * 3 + 2] = oa[j * 3 + 2]; GI.vis[i] = ov[j];
+    }
   } else if (gx !== GI.gx || gy !== GI.gy) {
     // the camera moved: slide what has been gathered so far along with the world
     const sx = gx - GI.gx, sy = gy - GI.gy, a = new Float32Array(N * 3), v = new Float32Array(N).fill(1);
@@ -830,22 +847,31 @@ function luxGIgrid(x0, y0, x1, y1, lq) {
   }
   const F = CORE.frame; F.gi = GI;
 }
+// a grid canvas's transform for drawing a screen-sized picture onto it: screen pixels (the frame's transform tr times s)
+// back to the world, then the world onto the grid's cells (one pixel a cell, from the grid's corner)
+function luxToGrid(g, tr, s, cell) {
+  const a = tr.a * s, b = tr.b * s, c = tr.c * s, d = tr.d * s, e = tr.e * s, f = tr.f * s, det = a * d - b * c || 1;
+  const ia = d / det, ib = -b / det, ic = -c / det, id = a / det, ie = (c * f - d * e) / det, iff = (b * e - a * f) / det, k = 1 / cell, ox = GI.gx, oy = GI.gy;
+  g.setTransform(ia * k, ib * k, ic * k, id * k, ie * k - ox, iff * k - oy);
+}
 function luxGI(m, tr, s, lq) {
   const t0 = performance.now(), gw = GI.gw, gh = GI.gh, N = gw * gh, cell = GI.cell;
   // the light on the ground, read back small from the light map (every 4th frame is plenty: the bounce settles slower)
   if (!GI.gs || GI.gs.width !== gw || GI.gs.height !== gh) { GI.gs = luxCanvas(gw, gh); GI.gsg = GI.gs.getContext('2d', { willReadFrequently: true }); GI.f = 0; }
+  // (1.9.998.2: both read-backs below map the screen back onto the grid through the inverse of the frame's whole
+  // transform. They cut a box out of the screen from the scale and offset alone, which leaves out the camera's roll:
+  // with every shot and roll the bounce light gathered the light and the colours of the wrong place, and its coarse
+  // cells came out as blocky bright and dark patches that lingered, as each frame's answer is blended into the last.)
   if ((GI.f & 3) === 0) {
-    const wx = GI.gx * cell, wy = GI.gy * cell, sx = (tr.a * wx + tr.e) * s, sy = (tr.d * wy + tr.f) * s, sw = tr.a * gw * cell * s, sh = tr.d * gh * cell * s;
     GI.gsg.setTransform(1, 0, 0, 1, 0, 0); GI.gsg.globalCompositeOperation = 'source-over'; GI.gsg.fillStyle = '#000'; GI.gsg.fillRect(0, 0, gw, gh);
-    GI.gsg.drawImage(LUX.M, sx, sy, sw, sh, 0, 0, gw, gh);
+    luxToGrid(GI.gsg, tr, s, cell); GI.gsg.drawImage(LUX.M, 0, 0); GI.gsg.setTransform(1, 0, 0, 1, 0, 0);
     const d = GI.gsg.getImageData(0, 0, gw, gh).data, src = GI.src;
     for (let i = 0; i < N; i++) { src[i * 3] = d[i * 4] / 255; src[i * 3 + 1] = d[i * 4 + 1] / 255; src[i * 3 + 2] = d[i * 4 + 2] / 255; }
   }
   // the colour of what the light bounces off, read small from the picture before the lighting goes on (every 16th frame)
   if ((GI.f & 15) === 0) {
     if (!GI.ac || GI.ac.width !== gw || GI.ac.height !== gh) { GI.ac = luxCanvas(gw, gh); GI.acg = GI.ac.getContext('2d', { willReadFrequently: true }); }
-    const wx = GI.gx * cell, wy = GI.gy * cell, sx = tr.a * wx + tr.e, sy = tr.d * wy + tr.f, sw = tr.a * gw * cell, sh = tr.d * gh * cell;
-    GI.acg.setTransform(1, 0, 0, 1, 0, 0); GI.acg.fillStyle = '#555'; GI.acg.fillRect(0, 0, gw, gh); GI.acg.drawImage(cv, sx, sy, sw, sh, 0, 0, gw, gh);
+    GI.acg.setTransform(1, 0, 0, 1, 0, 0); GI.acg.fillStyle = '#555'; GI.acg.fillRect(0, 0, gw, gh); luxToGrid(GI.acg, tr, 1, cell); GI.acg.drawImage(cv, 0, 0); GI.acg.setTransform(1, 0, 0, 1, 0, 0);
     const d = GI.acg.getImageData(0, 0, gw, gh).data; if (!GI.alb || GI.alb.length !== N * 3) GI.alb = new Float32Array(N * 3);
     const A = GI.alb, base = bioBlend(GI_ALB, GI.albM || (GI.albM = []));
     for (let i = 0; i < N; i++) { const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], m = Math.max(r, g, b) + 20; A[i * 3] = base[0] * 0.4 + r / m * 0.24; A[i * 3 + 1] = base[1] * 0.4 + g / m * 0.24; A[i * 3 + 2] = base[2] * 0.4 + b / m * 0.24; }

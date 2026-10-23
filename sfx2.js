@@ -120,6 +120,7 @@
     bake('static', 0.8, function (t) { staticSnd(t); }, 0.4);
     ['barrel', 'cone', 'can', 'tire', 'crate'].forEach(function (k) { bake('p_' + k, 0.35, function (t) { propSnd(t, k); }, 0.5); });
     ['road', 'sand', 'snow', 'water', 'ice', 'grass', 'ash', 'mud', 'wet'].forEach(function (s) { for (var v = 0; v < 2; v++) (function (v) { bake('st_' + s + v, 0.3, function (t) { stepSnd(t, s, Z2(s.length * 17 + v * 5)); }, 0.35); })(v); });
+    bakeVoices();   // (1.9.998.2: the dead, the survivor, flies and rats)
   }
   function Z2(n) { var a = n | 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   // gun voices: up to 8 ringing at once, the oldest fades out to make room
@@ -381,6 +382,8 @@
     // the emergency broadcast tone from a radio left on in a car
     eas: function (t, b, R) { var lp = flt('lowpass', 1500, 0.7, b), d = 1.2 + R() * 0.8; hold('sine', 853, 853, t, d, 0.05, lp, 0.02, 0.05); hold('sine', 960, 960, t, d, 0.05, lp, 0.02, 0.05); noise(t, d, 0.03, 'bandpass', 1800, 0.6, null, lp); return d + 0.3; },
     // a long way off, a lot of them
+    // 1.9.998.2: a survivor's flare going up somewhere: the pop of the launcher, then the long fizz as it burns
+    flare: function (t, b, R) { noise(t, 0.05, 0.5, 'bandpass', 900, 1.2, 400, b); osc('sine', 260, 80, t, 0.12, 0.25, b, 0.003); swell(t + 0.15, 3.2 + R(), 0.12, 'highpass', 2600, 0.6, b); return 4.6; },
     moan: function (t, b, R) {
       var bp = flt('bandpass', 480, 3, b), v = 1 + Math.floor(R() * 3);
       for (var i = 0; i < v; i++) { var f = 100 + R() * 50, s = t + i * (0.3 + R() * 0.5), d = 1.4 + R() * 0.8; glide('sawtooth', [[0, f], [d * 0.4, f * 1.12], [d, f * 0.85]], s, 0.12, bp, 3, 4 + R() * 2); }
@@ -514,5 +517,116 @@
       if (!ok()) return; var t = ac.currentTime, g = ac.createGain(); g.gain.value = 0.06 * vol;
       if (ac.createStereoPanner) { var p = ac.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan || 0)); g.connect(p); p.connect(sfxBus); } else g.connect(sfxBus);
       osc('square', hi ? 1250 : 880, hi ? 1250 : 880, t, 0.32, 1, g, 0.005); setTimeout(function () { try { g.disconnect(); } catch (e) { } }, 600);
-    }
+    },
+    // 1.9.998.2: a zombie's voice, from where it stands. kind: groan, snarl, screech or gurgle; pan -1..1; vol 0..1;
+    // rate: its pitch (a big one lower, a small one higher); far 0..1 dulls it with distance. Four at a time at most.
+    zvoice: function (kind, pan, vol, rate, far) {
+      var n = VOXN[kind]; if (!ok() || !n) return false;
+      var name = 'zv_' + kind + (VOXI[kind] = ((VOXI[kind] || 0) + 1 + (Math.random() < 0.4 ? 1 : 0)) % n);
+      return voxPlay(name, pan, vol, rate, far, ZVQ, 4);
+    },
+    // the survivor's own body: breath in, breath out (heavy: with a voiced "hah"), a grunt on the roll, a hurt gasp, the heart
+    pvoice: function (kind, vol, rate) {
+      var n = VOXN[kind]; if (!ok() || !n) return false;
+      var name = 'pv_' + kind + (n > 1 ? (VOXI[kind] = ((VOXI[kind] || 0) + 1) % n) : 0);
+      return voxPlay(name, 0, vol, rate || 1, 0, PVQ, 3);
+    },
+    // flies over the dead (a pass-by buzz) and rats (squeaks and the scurry of claws)
+    critter: function (kind, pan, vol, far) {
+      var n = VOXN[kind]; if (!ok() || !n || !throttle('cr_' + kind, kind === 'buzz' ? 1100 : 700)) return false;
+      return voxPlay('fx_' + kind + Math.floor(Math.random() * n), pan, vol, 0.92 + Math.random() * 0.16, far, CRQ, 2);
+    },
+    voices: function () { var o = {}; for (var k in VOXN) o[k] = !!(BANK[(k === 'buzz' || k === 'rat' ? 'fx_' : VOXZ[k] ? 'zv_' : 'pv_') + k + '0']); return o; }
   };
+  // ---------- 1.9.998.2: voices ----------
+  // Rendered once at startup like the guns. A voice is a throat and a mouth: two rough saw waves a hair apart (and a
+  // touch of breath noise) following a pitch contour with a little random jitter, through a light overdrive, then a
+  // bank of band-pass filters at the vowel's formants (F1, F2, F3), shaped by an envelope that wavers like a breath.
+  var VOXN = { groan: 3, snarl: 2, screech: 2, gurgle: 2, in: 2, out: 2, outH: 2, grunt: 2, hurt: 3, heart: 1, buzz: 2, rat: 2 }, VOXZ = { groan: 1, snarl: 1, screech: 1, gurgle: 1 }, VOXI = {};
+  var ZVQ = [], PVQ = [], CRQ = [];
+  function voxAt(pts, tt) { for (var i = 1; i < pts.length; i++) if (tt <= pts[i][0]) { var a = pts[i - 1], b = pts[i], k = (tt - a[0]) / Math.max(1e-4, b[0] - a[0]); return a[1] + (b[1] - a[1]) * k; } return pts[pts.length - 1][1]; }
+  function vox(t, o, out) {
+    var R = o.R, dur = o.dur, pre = ac.createGain(), bank = ac.createGain(), amp = ac.createGain(), irr = ac.createGain(), stop = t + dur + 0.05;
+    pre.gain.value = 1; bank.gain.value = 1; irr.gain.value = 1;
+    // the throat: two saws a hair apart (the roughness of a ruined voice), and a sub an octave down for the big ones
+    [[1, 1], [1.007 + R() * 0.004, 0.6], [0.5, o.sub || 0]].forEach(function (s) {
+      if (!s[1]) return; var os = ac.createOscillator(), g = ac.createGain(); os.type = s[0] === 0.5 ? 'square' : 'sawtooth'; g.gain.value = (o.saw == null ? 1 : o.saw) * s[1];
+      var n = Math.max(2, Math.round(dur * 32)), w = 0; os.frequency.setValueAtTime(o.f[0][1] * s[0], t);
+      for (var i = 1; i <= n; i++) { var tt = dur * i / n; w = w * 0.82 + (R() - 0.5) * (o.jit || 0.04); os.frequency.linearRampToValueAtTime(Math.max(20, voxAt(o.f, tt) * s[0] * (1 + w)), t + tt); }
+      os.connect(g); g.connect(pre); os.start(t); os.stop(stop);
+    });
+    // breath through it
+    if (o.nz) { var ns = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain(); ns.buffer = noiseBuf; ns.loop = true; nf.type = 'bandpass'; nf.frequency.value = o.nzF || 1400; nf.Q.value = o.nzQ || 0.8; ng.gain.value = o.nz; ns.connect(nf); nf.connect(ng); ng.connect(pre); ns.start(t, R() * 0.5); ns.stop(stop); }
+    var last = pre;
+    if (o.dist) { var ws = ac.createWaveShaper(); ws.curve = distCurve(o.dist); pre.connect(ws); last = ws; }
+    // the mouth: the vowel's formants, sliding toward the end vowel if there is one
+    o.F.forEach(function (F, i) {
+      var bp = ac.createBiquadFilter(), g = ac.createGain(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(F[0], t); bp.Q.value = F[1]; g.gain.value = F[2];
+      if (o.F2) bp.frequency.linearRampToValueAtTime(o.F2[i][0], t + dur);
+      last.connect(bp); bp.connect(g); g.connect(bank);
+    });
+    // the envelope, and a waver (an unsteady breath; a fast flutter for a snarl; a bubbling gate for a gurgle)
+    var att = o.att || 0.08, rel = o.rel || 0.2, v = o.vol || 1;
+    amp.gain.setValueAtTime(0.0001, t); amp.gain.linearRampToValueAtTime(v, t + att); amp.gain.setValueAtTime(v, t + Math.max(att, dur - rel)); amp.gain.linearRampToValueAtTime(0.0001, t + dur);
+    var step = o.am ? 1 / o.am : 0.07; irr.gain.setValueAtTime(1, t);
+    for (var tt = step; tt < dur; tt += step * (0.7 + R() * 0.6)) irr.gain.linearRampToValueAtTime(o.am ? (R() < 0.5 ? 0.25 + R() * 0.3 : 0.9 + R() * 0.1) : 0.72 + R() * 0.28, t + tt);
+    bank.connect(amp); amp.connect(irr);
+    if (o.trem) { var tr = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain(); tr.gain.value = 1 - o.trem[1]; lfo.frequency.value = o.trem[0]; lg.gain.value = o.trem[1]; lfo.connect(lg); lg.connect(tr.gain); lfo.start(t); lfo.stop(stop); irr.connect(tr); tr.connect(out); }
+    else irr.connect(out);
+  }
+  // the vowels (formant frequency, Q, gain): "uh", "ah", "ae" (a screech's open snarl), "oo"
+  var VUH = [[520, 6, 1], [980, 8, 0.5], [2450, 10, 0.18]], VAH = [[730, 6, 1], [1180, 8, 0.55], [2500, 10, 0.2]], VAE = [[640, 5, 1], [1850, 7, 0.6], [2750, 9, 0.3]], VOO = [[330, 6, 1], [800, 8, 0.35], [2300, 10, 0.1]];
+  function zVoxSnd(t, kind, R) {
+    var out = sfxBus;
+    if (kind === 'groan') { var f = 78 + R() * 22, d = 1.3 + R() * 0.6; vox(t, { R: R, dur: d, f: [[0, f * 0.9], [d * 0.35, f * 1.2], [d * 0.7, f], [d, f * 0.78]], jit: 0.07, saw: 0.9, sub: 0.25, nz: 0.22, nzF: 1100, dist: 6, F: VUH, F2: R() < 0.5 ? VAH : VOO, att: 0.25, rel: 0.4 }, out); return d; }
+    if (kind === 'snarl') { var f2 = 120 + R() * 30, d2 = 0.5 + R() * 0.3; vox(t, { R: R, dur: d2, f: [[0, f2], [d2 * 0.3, f2 * 1.3], [d2, f2 * 0.85]], jit: 0.12, saw: 0.8, sub: 0.35, nz: 0.7, nzF: 1800, nzQ: 1.4, dist: 40, F: VAH, trem: [24 + R() * 8, 0.45], att: 0.04, rel: 0.12 }, out); return d2; }
+    if (kind === 'screech') { var f3 = 360 + R() * 80, d3 = 0.6 + R() * 0.3; vox(t, { R: R, dur: d3, f: [[0, f3 * 0.8], [d3 * 0.25, f3 * 1.35], [d3 * 0.6, f3 * 1.1], [d3, f3 * 0.7]], jit: 0.1, saw: 0.8, nz: 0.55, nzF: 3000, nzQ: 1.6, dist: 30, F: VAE, F2: VAH, att: 0.03, rel: 0.2, vol: 0.9 }, out); return d3; }
+    var f4 = 66 + R() * 14, d4 = 0.8 + R() * 0.3; vox(t, { R: R, dur: d4, f: [[0, f4], [d4 * 0.5, f4 * 1.1], [d4, f4 * 0.9]], jit: 0.09, saw: 0.8, sub: 0.3, nz: 0.35, nzF: 600, dist: 10, F: VOO, F2: VUH, am: 9 + R() * 5, att: 0.1, rel: 0.2 }, out); return d4;
+  }
+  function pVoxSnd(t, kind, R) {
+    var out = sfxBus;
+    if (kind === 'in' || kind === 'out' || kind === 'outH') {
+      var inn = kind === 'in', d = (inn ? 0.42 : 0.5) + R() * 0.12, s = ac.createBufferSource(), bp = ac.createBiquadFilter(), lp = ac.createBiquadFilter(), g = ac.createGain();
+      s.buffer = noiseBuf; s.loop = true; bp.type = 'bandpass'; bp.Q.value = inn ? 0.9 : 0.7; bp.frequency.setValueAtTime(inn ? 1400 : 1250, t); bp.frequency.linearRampToValueAtTime(inn ? 1900 : 950, t + d);
+      lp.type = 'lowpass'; lp.frequency.value = 4200; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(inn ? 0.7 : 0.85, t + d * (inn ? 0.6 : 0.25)); g.gain.linearRampToValueAtTime(0.0001, t + d);
+      s.connect(bp); bp.connect(lp); lp.connect(g); g.connect(out); s.start(t, R()); s.stop(t + d + 0.05);
+      if (kind === 'outH') vox(t, { R: R, dur: d * 0.7, f: [[0, 125], [d * 0.7, 100]], jit: 0.03, saw: 0.25, nz: 0.6, nzF: 1300, F: VAH, att: 0.03, rel: 0.25, vol: 0.5 }, out);
+      return d;
+    }
+    if (kind === 'grunt') { var d1 = 0.18 + R() * 0.06; vox(t, { R: R, dur: d1, f: [[0, 122 + R() * 10], [d1, 92]], jit: 0.05, saw: 0.9, nz: 0.4, nzF: 1100, dist: 4, F: VUH, att: 0.015, rel: 0.08 }, out); return d1; }
+    if (kind === 'hurt') { var d2 = 0.28 + R() * 0.08, f = 140 + R() * 25; vox(t, { R: R, dur: d2, f: [[0, f], [d2 * 0.25, f * 1.08], [d2, f * 0.66]], jit: 0.07, saw: 0.9, nz: 0.55, nzF: 1500, dist: 8, F: VAH, F2: VUH, att: 0.012, rel: 0.12 }, out); return d2; }
+    // the heart: lub-dub, felt more than heard
+    [[0, 1], [0.19, 0.72]].forEach(function (b) { osc('sine', 62, 36, t + b[0], 0.12, 0.9 * b[1], out, 0.004); noise(t + b[0], 0.05, 0.25 * b[1], 'lowpass', 160, 0.7, 80, out); });
+    return 0.45;
+  }
+  function critSnd(t, kind, R) {
+    var out = sfxBus;
+    if (kind === 'buzz') {
+      // a few flies passing: thin saws near 200 Hz, their pitch darting with each turn, swelling as they come by
+      var d = 1.3, g = ac.createGain(), bp = flt('bandpass', 650, 0.7, out); g.connect(bp);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.7, t + 0.35); g.gain.linearRampToValueAtTime(0.3, t + 0.7); g.gain.linearRampToValueAtTime(0.6, t + 1); g.gain.linearRampToValueAtTime(0.0001, t + d);
+      for (var i = 0; i < 3; i++) { var o = ac.createOscillator(), og = ac.createGain(), f0 = 185 + R() * 60; o.type = 'sawtooth'; og.gain.value = 0.25; o.frequency.setValueAtTime(f0, t); for (var tt = 0.06; tt < d; tt += 0.05 + R() * 0.07) o.frequency.linearRampToValueAtTime(f0 * (0.9 + R() * 0.22), t + tt); o.connect(og); og.connect(g); o.start(t); o.stop(t + d + 0.05); }
+      return d;
+    }
+    // a rat: two or three squeaks, and claws skittering
+    var tt2 = t; for (var j = 0, n = 2 + Math.floor(R() * 2); j < n; j++) { var f = 3000 + R() * 900, dd = 0.05 + R() * 0.04; glide('sine', [[0, f], [dd * 0.4, f * 1.3], [dd, f * 0.92]], tt2, 0.18, out); glide('sine', [[0, f * 2], [dd * 0.4, f * 2.6], [dd, f * 1.84]], tt2, 0.04, out); tt2 += dd + 0.04 + R() * 0.08; }
+    for (var k = 0; k < 8; k++) noise(tt2 + k * (0.03 + R() * 0.03), 0.006, 0.12, 'highpass', 4200, 0.7, null, out);
+    return tt2 - t + 0.4;
+  }
+  function bakeVoices() {
+    ['groan', 'snarl', 'screech', 'gurgle'].forEach(function (k) { for (var v = 0; v < VOXN[k]; v++) (function (v) { bake('zv_' + k + v, 2.2, function (t) { zVoxSnd(t, k, Z2(k.length * 211 + v * 389)); }, k === 'screech' ? 0.55 : 0.6); })(v); });
+    ['in', 'out', 'outH', 'grunt', 'hurt', 'heart'].forEach(function (k) { for (var v = 0; v < VOXN[k]; v++) (function (v) { bake('pv_' + k + v, 0.8, function (t) { pVoxSnd(t, k, Z2(k.length * 97 + v * 131)); }, k === 'heart' ? 0.7 : 0.45); })(v); });
+    ['buzz', 'rat'].forEach(function (k) { for (var v = 0; v < VOXN[k]; v++) (function (v) { bake('fx_' + k + v, 1.5, function (t) { critSnd(t, k, Z2(k.length * 53 + v * 71)); }, 0.4); })(v); });
+  }
+  // one voice through its own distance filter and pan; past the cap, the oldest fades out to make room
+  function voxPlay(name, pan, vol, rate, far, Q, cap) {
+    if (!BANK[name]) return false;
+    var t = ac.currentTime, lp = ac.createBiquadFilter(), pn = ac.createStereoPanner ? ac.createStereoPanner() : null;
+    lp.type = 'lowpass'; lp.frequency.value = 12000 - Math.max(0, Math.min(1, far || 0)) * 10200; lp.Q.value = 0.5;
+    if (pn) { pn.pan.value = Math.max(-1, Math.min(1, pan || 0)); lp.connect(pn); pn.connect(sfxBus); } else lp.connect(sfxBus);
+    var v = play(name, t, Math.max(0, Math.min(1, vol)), rate || 1, lp, 0, 0, true); if (!v || v === true) { try { lp.disconnect(); if (pn) pn.disconnect(); } catch (e) { } return false; }
+    var it = { s: v.s, g: v.g }; Q.push(it);
+    v.s.onended = function () { var i = Q.indexOf(it); if (i >= 0) Q.splice(i, 1); try { v.g.disconnect(); lp.disconnect(); if (pn) pn.disconnect(); } catch (e) { } };
+    while (Q.length > cap) { var o = Q.shift(), tt = ac.currentTime; try { o.g.gain.cancelScheduledValues(tt); o.g.gain.setValueAtTime(o.g.gain.value, tt); o.g.gain.linearRampToValueAtTime(0.0001, tt + 0.08); o.s.stop(tt + 0.1); } catch (e) { } }
+    return true;
+  }
