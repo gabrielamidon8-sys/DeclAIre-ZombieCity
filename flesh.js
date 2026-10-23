@@ -299,7 +299,7 @@ function fleshGroundY(o) {
   const lx = o.x - c.sx, ly = o.y - c.sy, r0 = ROAD * SCL;
   return lx > r0 && ly > r0 ? 0.15 : 0;
 }
-function fleshHeightOf(z) { const rm = z.r / dUPM(); return z.m && z.m.ad ? z.m.ad.H * rm * 0.98 : 5.6 * rm; }
+function fleshHeightOf(z) { const rm = z.r / dUPM(); if (z.m && z.m.ad) return z.m.ad.H * rm * 0.98; const P = z.fly ? null : fleshProxy(z); return P ? P.m.ad.H * rm * 0.62 * 0.98 : z.fly ? 2.2 : 3.4 * rm; }
 const FL_LIST = [];
 function fleshFrame(dt) {
   const t0 = performance.now();
@@ -314,7 +314,8 @@ function fleshFrame(dt) {
     // who is in view: in front of the camera (or right beside it) and nearer than the fog
     FL_LIST.length = 0;
     for (const z of G.zs) {
-      if (z.dead || !z.m || !z.m.v2 || z.fly) continue;
+      if (z.dead || !z.m || z.fly) continue;
+      if (!z.m.v2 && !fleshProxy(z)) continue;   // (a boss, the Snatcher or an old mutation: drawn as a roster body standing in)
       const x = dX(z.x) - cx, y = dZ(z.y) - cz, d2 = x * x + y * y; if (d2 > far2) continue;
       if (x * fx + y * fz < -4 && d2 > 36) continue;
       FL_LIST.push({ z: z, d2: d2, c: null });
@@ -328,12 +329,12 @@ function fleshFrame(dt) {
     for (let i = 0; i < n; i++) {
       const it = FL_LIST[i];
       if (it.z) {
-        const z = it.z, T = fleshType(z.m); if (!T) continue;
+        const z0 = it.z, z = z0.m.v2 ? z0 : fleshProxy(z0), T = fleshType(z.m); if (!T) continue;
         // the nearest move every frame; further out the full pose every second or third frame
         const full = live < liveCap || ((FLESH.frame + (z.nid | 0)) % (it.d2 > 900 ? 3 : 2)) === 0;
         const A = animaTick(z, G.rdt || dt, full); if (full) live++;
         ANIMA.sev = z.sever | 0; animaFK(z.m.ad, A.pose, J); ANIMA.sev = 0;
-        const rm = z.r / U, gy = fleshGroundY(z) + (z.pz || 0) - (z.under ? 0.45 : 0);
+        const rm = z.r / U * (z0 !== z ? 0.62 : 1), gy = fleshGroundY(z) + (z.pz || 0) - (z.under ? 0.45 : 0);   // (a stand-in boss body: two and a half times a man, not five)
         let x = z.x, y = z.y; if (z.warn > 0 && z.m.an.ab === 'bomber') { x += rand(-1, 1); y += rand(-1, 1); }
         fleshBonesOf(J, z.m, z.ang, rm, dX(x), gy, dZ(y), row);
         const l = it.d2 < near0 * near0 ? 0 : 1, Lm = T.lod[l] || T.lod[0];
@@ -454,6 +455,19 @@ function fleshPlayerPose(p, R, mk, row) {
     const mi = fam === 'p' ? LGB.pistol : LGB.carbine, MW = W.subarray(mi * 16, mi * 16 + 16), mo = lgSockFor(fam === 'p' ? 'pistol' : 'carbine', 'muz'), mz = lgPt(MW, mo[0], mo[1], mo[2]);
     const ex = mz[0], ey = mz[2], ez = -mz[1]; FLESH.muz = [ex * c - ez * s + gx, ey + gy, ex * s + ez * c + gz];
   }
+}
+// a stand-in body for a zombie with no 3D model of its own (the fifty bosses, the Snatcher, the old mutations): one of the
+// big roster bodies, chosen by its seed so it is always the same one, animated by ANIMA like the rest (it reads the real
+// zombie through its prototype, so speed, attacks and turning are its own); its size is the boss's own
+const FL_PX = new WeakMap();
+function fleshProxy(z) {
+  let P = FL_PX.get(z); if (P) return P;
+  if (typeof ZR === 'undefined' || !ZR.length) return null;
+  if (!FLESH.big) FLESH.big = ZR.filter(m => m.v2 && m.ad).sort((a, b) => (b.size || 1) - (a.size || 1)).slice(0, 10);
+  if (!FLESH.big.length) return null;
+  const id = Math.abs((z.m && (z.m.seed != null ? z.m.seed : z.m.id)) | 0);
+  P = Object.create(z); P.m = FLESH.big[id % FLESH.big.length]; FL_PX.set(z, P);
+  return P;
 }
 function fleshHurt(e) {
   const now = performance.now(); coreHurt('FLESH', e); try { console.error(e); } catch (x) { }

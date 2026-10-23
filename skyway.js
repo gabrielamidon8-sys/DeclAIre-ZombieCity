@@ -148,8 +148,9 @@ function skyDeck(g, c, d, conc, win) {
   if (win) { g.fillStyle = 'rgba(232,238,244,0.55)'; g.fillRect(x, y, w, h); g.strokeStyle = 'rgba(40,48,56,0.35)'; g.lineWidth = 4; for (const o of [W2 * 0.18, W2 * 0.36, W2 * 0.64, W2 * 0.82]) { g.beginPath(); if (v) { g.moveTo(x + o, y); g.lineTo(x + o, y + h); } else { g.moveTo(x, y + o); g.lineTo(x + w, y + o); } g.stroke(); } }
   // skid marks and oil
   for (let i = 0; i < 3; i++) { const a = R2() * L, o = 20 + R2() * (W2 - 40); softBlob(g, v ? x + o : x + a, v ? y + a : y + o, v ? 7 : 22, v ? 22 : 7, 0, '8,8,10', 0.35); }
-  // the traffic that was stuck up here (this block's own stretch only, so nothing is drawn twice)
-  {
+  // the traffic that was stuck up here (this block's own stretch only, so nothing is drawn twice); the 3D view builds
+  // its own cars and leaves them off the painting (SKY.flat3)
+  if (!SKY.flat3) {
     const n = 2 + Math.floor(R() * 5), bio = distAt(d.ocx, d.ocy).bio;
     for (let i = 0; i < n; i++) {
       const lane = Math.floor(R() * 4), o = [W2 * 0.18, W2 * 0.37, W2 * 0.63, W2 * 0.82][lane], fd = lane < 2 ? -1 : 1, vt = vehPick(R, 'highway', 220), V = VEH[vt];

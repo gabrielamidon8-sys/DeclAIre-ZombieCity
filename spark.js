@@ -425,6 +425,7 @@ function sparkBuild(dt) {
     if (zz.st.wind > 0 && zz.st.cx != null) { const a = Math.atan2(zz.st.cy, zz.st.cx), L = 150 / U; sparkMark(x + Math.cos(a) * L, gy(zz.x, zz.y) + 0.03, z + Math.sin(a) * L, L, zz.r * 0.6 / U, a, 9, 0, 1, 0.16, 0.12, 0.3 + (0.65 - zz.st.wind) * 0.8, 0, 0, 1.4); }
     if (zz.m && zz.m.S && zz.m.S.p && zz.m.S.p.rad && !zz.st.down) sparkMark(x, 0.03, z, 90 / U, 90 / U, 0, 3, 0, 0.6, 1, 0.05, 0.35, 0.04, 0, 0.9);
     if (zz.abs && zz.abs.indexOf('chiller') >= 0) sparkMark(x, 0.03, z, 150 / U, 150 / U, 0, 3, 0, 0.5, 0.75, 1, 0.35, 0.03, 0, 0.7);
+    if (zz.boss) { const R = zz.r / U * 1.6, pu = 0.5 + 0.5 * Math.sin(T * 3); sparkMark(x, gy(zz.x, zz.y) + 0.035, z, R, R, 0, 3, 0, 1, 0.12, 0.08, 0.45 + 0.25 * pu, 0.05, 0, 1.4); }
   }
 
   /* medkits: a box that spins and bobs over a soft green glow (and blinks before it is gone) */
