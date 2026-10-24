@@ -12909,7 +12909,7 @@ const angLerp = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU -
 let RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // the Reduce motion setting can change it
 const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const IS_APP = !!window.ZC_APP;   // set by the Android app build
-const ZC_VERSION = '1.9.998.2';
+const ZC_VERSION = '1.9.999';
 
 STRAINS.forEach(S => { S.gore = 'hsl(' + S.skin[0] + ',' + Math.min(80, S.skin[1] + 10) + '%,' + Math.max(12, S.skin[2] - 14) + '%)'; });
 
@@ -16689,6 +16689,50 @@ const ENG_DOCS = {
     works: 'Hands CHOREO the fights and LEGEND the handling and the walks, asks MIMATIC for the cameras and the cut, and gives VFXRAY the weather. The Cinematic Studio (studio/ in the repository) runs it from a scene typed in.',
     runs: 'The processor, once per scene.',
     tune: 'Locked: nothing of it runs while a scene plays.'
+  },
+  DEPTH: {
+    title: 'The Set Builder',
+    character: 'A practical builder with a cinematographer\'s eye. It does not invent the city, it raises the one WORLD already planned, block by block, and then lights it like a film: hard low sun, grey haze, sodium lamps at night.',
+    does: 'The city in three dimensions (1.9.999). Every block is built from the city engine\'s own data: the ground from its painting (cut away where a river or a pond lies lower, with banks and moving water), buildings at the lighting engine\'s heights with floors, windows, storefronts and a room behind every window (interior mapping, blinds down on some, lit at night), gable roofs, ruins, parapets and roof clutter, vehicles shaped from a side profile of their kind (bonnet, windscreen, roof, glass, wheel arches, tyres and hubs, lamps; burnt shells, cars on their roofs), street lamps, trees, bushes and grass that sway, bridges with parapets and piers, the elevated highways with their decks, barriers, lamps, ramps and stuck traffic, fires on burning roofs. Each frame: the sun or the moon with shadows, a scattering sky with clouds, stars and the moon, fog by the weather, the nearest real lights from the lighting engine, the flashlight on the gun, rain, snow, sand, ash and embers, the street\'s kickable props and its birds and rats, the A-10 and the cars a horde is shoving; finished with a filmic curve, bloom, a gritty grade, grain and anti-aliasing.',
+    adapts: 'Four levels (Low, Medium, High, Ultra: resolution, shadow map, lights, bloom, ambient occlusion, view distance, blocks built round the camera, ground detail, plants, grain). The governor first shrinks the picture (down to 70%), then steps the level down; with room to spare it climbs back. A device too weak for 3D even at Low and 70% for eight seconds of a run is moved to the top-down view (and told where to turn 3D back on).',
+    repairs: 'Five errors in ten seconds hand the frame to the top-down view for 45 seconds, then it tries again. A lost graphics context is waited out and the scene rebuilt when it returns. Too many blocks held are dropped. A block a horde changed (a car shoved, a car come to rest) is rebuilt without the moving car, which it draws live.',
+    learns: 'Nothing of its own: the level and the resolution it settles on are the governor\'s to remember.',
+    works: 'Reads WORLD (blocks, rivers, decks), LUX (the hour, the sun, the ambient, the lights), WX (cloud, wind, rain, snow, fog, lightning), SKYWAY (the highways\' layout and painting), GARAGE (vehicle sizes), LIFE and PULSE (props, birds, rats), SWARM (the vehicles it moves). FLESH puts the bodies in its scene, HOVER moves its camera, SPARK adds the fight. The top-down engines (PRISM, TEXEL, MIRROR) rest while it draws.',
+    runs: 'The graphics chip (WebGL 2, three.js r170), one block or two built a frame on the processor.',
+    tune: 'Settings > Graphics > View (3D or top-down), 3D quality (Auto, Low, Medium, High, Ultra), field of view and camera distance.'
+  },
+  FLESH: {
+    title: 'The Prosthetics Shop',
+    character: 'Obsessive about bodies. It takes LEGEND\'s sculpted zombies and the survivors\' own models and makes them move in 3D with every animation ANIMA and LOCO already know, and it will not let a single one of the horde pop.',
+    does: 'The living and the dead in 3D. Each of the fifty zombies is LEGEND\'s model of it, stretched to its own proportions and moved by ANIMA\'s skeleton and seventy-five animations through GPU skinning (one draw per kind for the whole horde), with its own blood, char, frost and a flash when hit. Corpses finish their deaths and lie where they fell. The fifty bosses, the Snatcher and the old mutations stand in as the big roster bodies at a boss\'s size. Survivors (you and every teammate) are LEGEND\'s full models posed each frame: the legs by LOCO\'s gait, the upper body by the ARMS state (each gun\'s hold, reloads, swaps, sprint, the knife, the roll), the chest turned toward the aim, the muzzle found for the flash and the tracers.',
+    adapts: 'The nearest bodies move every frame, the rest every second or third; the far ones use the lighter model; how many it draws follows the 3D level and steps down under load.',
+    repairs: 'Six errors in ten seconds and it frees everything and rebuilds; more kinds held than it should is cleared.',
+    learns: 'Nothing of its own.',
+    works: 'ANIMA (zombie poses and corpses), LEGEND and LOCO (models, the survivors\' poses), ARMS (what the hands are doing), NET (teammates), DEPTH (the scene and the light).',
+    runs: 'The graphics chip for the skinning, the processor for the poses.',
+    tune: 'Through the 3D quality.'
+  },
+  HOVER: {
+    title: 'The Camera Operator',
+    character: 'A steadicam operator who never loses the actor. Behind and above, it floats on a spring, swings over the shoulder when you aim, and would rather pull in tight than look through a wall.',
+    does: 'The third-person camera: a high chase camera that hovers behind and above the survivor and swings over the right (or left) shoulder to aim, kept out of walls by a spring arm against the buildings, kicked by every shot and shaken by trauma. The crosshair is a ray into the 3D world that finds the zombie, its head, the wall or the street the gun points at. Movement turns with the camera. Mouse (locked to the game), controller (with acceleration) and touch (a stick to move, a drag to look, FIRE and AIM buttons, light aim assist) all drive it. On the title screen it orbits the street.',
+    adapts: 'Nothing per frame beyond its spring; the field of view and distance are settings.',
+    repairs: 'Bad angles are reset; a lost pointer lock pauses the game instead of leaving the mouse loose.',
+    learns: 'Nothing of its own.',
+    works: 'DEPTH (it moves its camera), the input engine (look, aim, fire, shoulder swap), ARMS (aim height and the head), NET (where a ping lands).',
+    runs: 'The processor.',
+    tune: 'Settings > Controls > 3D camera (look speed, invert, shoulder, aim assist, auto fire on touch) and Settings > Graphics > View.'
+  },
+  SPARK: {
+    title: 'The Pyrotechnician',
+    character: 'Loves a good bang and keeps the books on every spark. Nothing it draws is invented: it only gives height and light to what the fight already threw.',
+    does: 'The fight in 3D: tracers from the 3D muzzle to the crosshair\'s point, the muzzle flash at the real muzzle, sparks, blood and smoke that fall or rise under gravity, the zombies\' glowing shots, fireballs where the big flashes go off, the smoke and holes after, fire, acid, ice, sludge and vortices on the ground, blood and scorch marks where they landed, shock rings, warning circles, the bosses\' telegraphs and beams, grab zones with their warning, the zombies\' danger auras and charge lanes, the dash\'s zones, the knife\'s arcs, lightning bolts, brass, gun smoke, fallen magazines, the A-10\'s tracers, and medkits spinning over a glow.',
+    adapts: 'Whatever is beyond the fog is skipped; its buffers take only what fits (seven thousand glowing things, three and a half thousand dark, eighteen hundred marks on the ground).',
+    repairs: 'Five errors in ten seconds and it rests for thirty seconds; drawing into an old scene is caught and rebuilt.',
+    learns: 'Nothing of its own.',
+    works: 'Reads the game\'s lists (bullets, particles, shots, hazards, splats, pickups, rings, blasts, smoke, holes), MUZZLE (smoke and brass), GORE (gibs), PHYSICS (magazines), LUX (flashes), WX (lightning), BLADE (cuts), BOSS (telegraphs); draws into DEPTH\'s scene at FLESH\'s muzzle and HOVER\'s aim.',
+    runs: 'The graphics chip: four instanced draws.',
+    tune: 'Nothing of its own.'
   }
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = ENG_DOCS;
@@ -19419,8 +19463,9 @@ function skyDeck(g, c, d, conc, win) {
   if (win) { g.fillStyle = 'rgba(232,238,244,0.55)'; g.fillRect(x, y, w, h); g.strokeStyle = 'rgba(40,48,56,0.35)'; g.lineWidth = 4; for (const o of [W2 * 0.18, W2 * 0.36, W2 * 0.64, W2 * 0.82]) { g.beginPath(); if (v) { g.moveTo(x + o, y); g.lineTo(x + o, y + h); } else { g.moveTo(x, y + o); g.lineTo(x + w, y + o); } g.stroke(); } }
   // skid marks and oil
   for (let i = 0; i < 3; i++) { const a = R2() * L, o = 20 + R2() * (W2 - 40); softBlob(g, v ? x + o : x + a, v ? y + a : y + o, v ? 7 : 22, v ? 22 : 7, 0, '8,8,10', 0.35); }
-  // the traffic that was stuck up here (this block's own stretch only, so nothing is drawn twice)
-  {
+  // the traffic that was stuck up here (this block's own stretch only, so nothing is drawn twice); the 3D view builds
+  // its own cars and leaves them off the painting (SKY.flat3)
+  if (!SKY.flat3) {
     const n = 2 + Math.floor(R() * 5), bio = distAt(d.ocx, d.ocy).bio;
     for (let i = 0; i < n; i++) {
       const lane = Math.floor(R() * 4), o = [W2 * 0.18, W2 * 0.37, W2 * 0.63, W2 * 0.82][lane], fd = lane < 2 ? -1 : 1, vt = vehPick(R, 'highway', 220), V = VEH[vt];
@@ -25782,7 +25827,7 @@ function swarmVehBump(r, sx, sy) {
 function swarmVehWake(r) {
   r.dyn = 1; if (r.ox0 === undefined) { r.ox0 = r.x; r.oy0 = r.y; }
   SWDYN.set(r.vid, r);
-  const c = chunks.get(r.ck); if (c) c.stale = 1;
+  const c = chunks.get(r.ck); if (c) c.stale = c.stale3 = 1;
   if (typeof carHit === 'function') carHit(r);
   SWARM.stats.cars++; coreEmit('vehicle', { r: r });
 }
@@ -25794,7 +25839,7 @@ function swarmVehPark() {
     const c = chunks.get(r.ck); if (!c) continue;
     if (Math.hypot(r.x + r.w / 2 - cam.x, r.y + r.h / 2 - cam.y) < CHS * 2.5) continue;
     if (r.x < c.sx || r.y < c.sy || r.x + r.w > c.sx + CHS || r.y + r.h > c.sy + CHS) continue;
-    r.dyn = 0; r.spr = null; SWDYN.delete(vid); bucketRects(c); c.stale = 1;
+    r.dyn = 0; r.spr = null; SWDYN.delete(vid); bucketRects(c); c.stale = c.stale3 = 1;
   }
 }
 // each block's vehicles get a name both players agree on; ones moved earlier are put back where the crowd left them
@@ -25816,7 +25861,7 @@ function swarmVehFind(vid) {
 function swarmVehNet(vid, x, y) {
   if (!NUM(x) || !NUM(y)) return;
   const r = swarmVehFind(vid); if (!r) return;
-  if (!r.dyn) { r.dyn = 1; r.ox0 = r.x; r.oy0 = r.y; SWDYN.set(r.vid, r); const c = chunks.get(r.ck); if (c) c.stale = 1; if (typeof carHit === 'function') carHit(r); r.x = x; r.y = y; }
+  if (!r.dyn) { r.dyn = 1; r.ox0 = r.x; r.oy0 = r.y; SWDYN.set(r.vid, r); const c = chunks.get(r.ck); if (c) c.stale = c.stale3 = 1; if (typeof carHit === 'function') carHit(r); r.x = x; r.y = y; }
   r.tx = x; r.ty = y; SWARM.moved.set(vid, [x, y]);
 }
 function swarmClient(dt) {
@@ -26042,10 +26087,10 @@ function swarmHurt(e, part) {
 // a new run: no hordes, and every vehicle back where it was parked
 function swarmReset() {
   SWARM.hordes.length = 0; SWARM.hb.clear(); SWARM.plan.length = 0; SWARM.pending = 0; SWARM.vDirty.clear();
-  for (const r of SWDYN.values()) { if (r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; } r.dyn = 0; r.ph = null; r.spr = null; r.tx = undefined; const c = chunks.get(r.ck); if (c) c.stale = 1; }
+  for (const r of SWDYN.values()) { if (r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; } r.dyn = 0; r.ph = null; r.spr = null; r.tx = undefined; const c = chunks.get(r.ck); if (c) c.stale = c.stale3 = 1; }
   for (const vid of SWARM.moved.keys()) {
     const m = /^(-?\d+),(-?\d+):(\d+)$/.exec(vid), c = m && chunks.get(m[1] + ',' + m[2]), r = c && c.rects[+m[3]];
-    if (r && r.vid === vid && r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; r.dyn = 0; r.ph = null; r.spr = null; bucketRects(c); c.stale = 1; }
+    if (r && r.vid === vid && r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; r.dyn = 0; r.ph = null; r.spr = null; bucketRects(c); c.stale = c.stale3 = 1; }
   }
   SWDYN.clear(); SWARM.moved.clear(); SWARM.capLive = SWARM.cap;
   SWARM.stats.hordes = SWARM.stats.droves = SWARM.stats.cars = 0; SWARM.stats.peak = 0;
@@ -40325,7 +40370,7 @@ const DEPTH = {
   on: false, ok: false, tried: false, why: '', R: null, cv: null, scene: null, cam: null, comp: null, pass: {}, lvl: 2, lvlSet: -1, adapt: 0, good: 0,
   ox: 0, oy: 0, upm: 32, chunks: new Map(), queue: [], lights: [], spot: null, sun: null, hemi: null, sky: null, stars: null, moon: null,
   env: null, envT: -99, envDay: -1, pmrem: null, mats: {}, geo: {}, tex: {}, ms: 0, msAvg: 0, frames: 0, errT: [], offUntil: 0, lost: false,
-  built: 0, buildMs: 0, dyn: {}, t: 0, calls: 0, tris: 0, scale: 1, lastW: 0, lastH: 0, lastPR: 0, fogFar: 120, dayK: 1, night: 0, wet: 0, tests: null
+  built: 0, buildMs: 0, dyn: null, t: 0, calls: 0, tris: 0, scale: 1, lastW: 0, lastH: 0, lastPR: 0, fogFar: 120, dayK: 1, night: 0, wet: 0, tests: null
 };
 // metres per world unit: 32 units are a metre at the real world scale (fewer at the classic scale)
 function dUPM() { return 32 * SCL / SCALE_REAL; }
@@ -40410,7 +40455,7 @@ function depthFree(soft) {
       if (DEPTH.cv && DEPTH.cv.parentNode) DEPTH.cv.parentNode.removeChild(DEPTH.cv); DEPTH.cv = null;
     }
   } catch (e) { coreHurt('DEPTH', e); }
-  DEPTH.scene = null; DEPTH.ok = false; DEPTH.lvlSet = -1; DEPTH.envDay = -1; DEPTH.wx = null;
+  DEPTH.scene = null; DEPTH.ok = false; DEPTH.lvlSet = -1; DEPTH.envDay = -1; DEPTH.wx = null; DEPTH.life = null; DEPTH.jets = null; DEPTH.dyn = null;
   if (soft && DEPTH.R) { DEPTH.tried = false; depthInit(); }
 }
 // the 3D view on or off (Settings > Graphics > View, the governor's fallback, a lost context)
@@ -40483,10 +40528,12 @@ function depthMats() {
   // the ground: the block's painting, with relief and wear from noise, darker and glossier when it is wet (puddles in the
   // low spots shine), and snow settling on it in the north and in winter
   M.ground = dPatch(new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0, envMapIntensity: 0.6 }), {
-    key: 'ground3',
+    key: 'ground4',
     vHead: 'varying vec3 vWp;\n', vMain: 'vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;',
-    fHead: 'varying vec3 vWp; float dPud;\n',
+    fHead: 'varying vec3 vWp; float dPud; uniform sampler2D uWMask; uniform float uHasW;\n',
     fColor: `
+      // a river or a pond: the ground is cut away where the water is (the water lies lower, with banks round it)
+      if (uHasW > 0.5) { vec2 wu = vec2(vMapUv.x, 1.0 - vMapUv.y) * (80.0 / 81.0) + 0.5 / 81.0; if (texture2D(uWMask, wu).r < 0.5) discard; }
       { float n1 = dFbm(vWp.xz * 0.045); float n2 = dN(vWp.xz * 0.6); float n3 = dN(vWp.xz * 2.7 + 0.5);
         diffuseColor.rgb *= 0.82 + 0.3 * n1 + 0.12 * (n2 - 0.5) + 0.07 * (n3 - 0.5);
         dPud = smoothstep(0.62 - uWet * 0.22, 0.7 - uWet * 0.2, dFbm(vWp.xz * 0.11 + 3.3)) * uWet;
@@ -40499,17 +40546,17 @@ function depthMats() {
   // the buildings: walls with floors and windows drawn by the shader, storefronts at street level, lit windows at night,
   // roofs in their own colour; aS = style, seed, lit share, roof flag; aF = metres along the wall, metres up
   M.facade = dPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, envMapIntensity: 0.8 }), {
-    key: 'facade3',
-    vHead: 'attribute vec4 aS; attribute vec2 aF; varying vec4 vS; varying vec2 vF; varying vec3 vWp2;\n',
-    vMain: 'vS = aS; vF = aF; vWp2 = (modelMatrix * vec4(transformed, 1.0)).xyz;',
-    fHead: `varying vec4 vS; varying vec2 vF; varying vec3 vWp2; float dWin, dLit, dFrame; vec3 dLitC;
+    key: 'facade4',
+    vHead: 'attribute vec4 aS; attribute vec2 aF; varying vec4 vS; varying vec2 vF; varying vec3 vWp2; varying vec3 vWN;\n',
+    vMain: 'vS = aS; vF = aF; vWp2 = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);',
+    fHead: `varying vec4 vS; varying vec2 vF; varying vec3 vWp2; varying vec3 vWN; float dWin, dLit, dFrame, dRoomK; vec3 dLitC;
       vec2 dCellOf(float st, out vec2 f, out vec2 sz) {
         float fh = st < 0.5 ? 3.3 : st < 1.5 ? 3.5 : st < 2.5 ? 3.9 : st < 3.5 ? 3.6 : st < 5.5 ? 3.0 : 3.2;
         float ws = st < 0.5 ? 2.6 : st < 1.5 ? 3.1 : st < 2.5 ? 1.6 : st < 3.5 ? 2.9 : st < 4.5 ? 3.4 : 3.8;
         sz = vec2(ws, fh); vec2 g = vF / sz; f = fract(g); return floor(g); }
       `,
     fColor: `
-      dWin = 0.0; dLit = 0.0; dFrame = 0.0; dLitC = vec3(0.0);
+      dWin = 0.0; dLit = 0.0; dFrame = 0.0; dLitC = vec3(0.0); dRoomK = 1.0;
       { float st = vS.x, seed = vS.y, litK = vS.z, roof = vS.w;
         float grime = dFbm(vec2(vF.x * 0.13 + seed * 17.0, vF.y * 0.035));
         if (roof > 0.5) {
@@ -40543,6 +40590,25 @@ function depthMats() {
           dWin = w;
           vec3 glass = mix(vec3(0.05, 0.06, 0.07), vec3(0.14, 0.17, 0.2), dH12(cell + seed * 5.0));
           if (st < 0.5 || st > 7.5) glass *= 0.8;
+          // a room behind every window (interior mapping): the view ray runs into a box the size of the glass and three
+          // metres deep, and finds its back wall, side walls, floor or ceiling; some windows have their blinds down
+          dRoomK = 1.0;
+          if (w > 0.01 && far < 0.98) {
+            vec3 nW = normalize(vWN), tW = normalize(cross(vec3(0.0, 1.0, 0.0), nW) + vec3(1e-5)), V = normalize(vWp2 - cameraPosition);
+            vec3 vt = vec3(dot(V, tW), V.y, -dot(V, nW));
+            vec2 rs = sz * (whi - wlo), p0 = clamp((f - wlo) / (whi - wlo), 0.0, 1.0) * rs; float RD = shop > 0.5 ? 5.0 : 3.2;
+            float tx = vt.x > 0.0 ? (rs.x - p0.x) / max(vt.x, 1e-4) : p0.x / max(-vt.x, 1e-4);
+            float ty = vt.y > 0.0 ? (rs.y - p0.y) / max(vt.y, 1e-4) : p0.y / max(-vt.y, 1e-4);
+            float tz = RD / max(vt.z, 1e-3), tt = min(min(tx, ty), tz), dz = clamp(vt.z * tt / RD, 0.0, 1.0);
+            float rh = dH12(cell * 1.31 + seed * 17.0);
+            vec3 wallC = mix(vec3(0.46, 0.41, 0.34), vec3(0.32, 0.35, 0.38), step(0.5, rh)) * (0.65 + 0.5 * dH12(cell + 3.7));
+            vec3 ic = tt == tz ? wallC : tt == ty ? (vt.y > 0.0 ? vec3(0.5, 0.5, 0.47) : vec3(0.16, 0.12, 0.09)) : wallC * 0.72;
+            if (tt == tz && shop < 0.5) ic *= 0.8 + 0.4 * step(0.55, fract((p0.x + vt.x * tt) / max(rs.x, 0.1) * 2.0 + rh));   // a door or a picture on the far wall
+            dRoomK = 1.0 - 0.6 * dz; ic *= dRoomK;
+            float bl = step(0.62, dH12(cell * 2.9 + seed)) * step(1.0 - (0.25 + 0.6 * dH12(cell * 5.1 + seed)), clamp((f.y - wlo.y) / (whi.y - wlo.y), 0.0, 1.0));
+            ic = mix(ic, vec3(0.5, 0.47, 0.4) * (0.8 + 0.2 * sin(vF.y * 60.0)), bl); dRoomK = mix(dRoomK, 0.9, bl);
+            glass = mix(glass, ic * 0.24 * (1.0 - 0.75 * uNight), (1.0 - far) * (st > 7.5 ? 0.5 : 0.9));
+          }
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, dFrame * 0.8);
           diffuseColor.rgb = mix(diffuseColor.rgb, glass, w);
           // lit at night: warm rooms, cold screens, a few that flicker; a burnt or ruined building has none
@@ -40558,7 +40624,7 @@ function depthMats() {
       }`,
     fRough: 'roughnessFactor = mix(roughnessFactor, 0.06, dWin); roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.6, uWet);',
     fMetal: 'metalnessFactor = mix(metalnessFactor, 0.2, dWin * 0.6);',
-    fEmis: 'totalEmissiveRadiance += dLitC * dLit * 2.2;'
+    fEmis: 'totalEmissiveRadiance += dLitC * dLit * 2.4 * (0.35 + 0.75 * dRoomK);'
   });
   // plain materials for the things in the street (colour by vertex), with a little wear from the noise
   M.thing = dPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0.05, envMapIntensity: 0.7 }), {
@@ -40574,6 +40640,13 @@ function depthMats() {
     fRough: 'roughnessFactor = mix(roughnessFactor, 0.85, dDust * 0.6); roughnessFactor = mix(roughnessFactor, 0.12, uWet * 0.5);'
   });
   M.glass = new THREE.MeshStandardMaterial({ color: 0x0b0e12, roughness: 0.05, metalness: 0.6, envMapIntensity: 1.4 });
+  // water: dark and deep in the middle, a moving surface (two drifts of ripples, choppier in rain) that mirrors the sky
+  M.water = dPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.1, metalness: 0.0, envMapIntensity: 0.9 }), {
+    key: 'water1', vHead: 'varying vec3 vWp6;\n', vMain: 'vWp6 = (modelMatrix * vec4(transformed, 1.0)).xyz;', fHead: 'varying vec3 vWp6;\n',
+    fNormal: '{ vec2 q = vWp6.xz; float e = 0.04; vec2 a = q * 0.32 + uTime * vec2(0.035, 0.02), b = q * 0.9 - uTime * vec2(0.02, 0.055), c2 = q * 2.6 + uTime * vec2(0.09, -0.07);' +
+      ' float h0 = dN(a) + 0.5 * dN(b) + 0.25 * uWet * dN(c2), hx = dN(a + vec2(e, 0.0)) + 0.5 * dN(b + vec2(e, 0.0)) + 0.25 * uWet * dN(c2 + vec2(e, 0.0)), hz = dN(a + vec2(0.0, e)) + 0.5 * dN(b + vec2(0.0, e)) + 0.25 * uWet * dN(c2 + vec2(0.0, e));' +
+      ' vec3 bump = vec3(h0 - hx, 0.0, h0 - hz) * (2.2 + uWet * 4.0); normal = normalize(normal + (viewMatrix * vec4(bump, 0.0)).xyz); }'
+  });
   M.rubber = new THREE.MeshStandardMaterial({ color: 0x0c0c0d, roughness: 0.9, metalness: 0 });
   M.foliage = dPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, flatShading: false }), {
     key: 'leaf2', vHead: 'varying vec3 vWp5;\n', vMain: 'vWp5 = (modelMatrix * vec4(transformed, 1.0)).xyz;', fHead: 'varying vec3 vWp5;\n',
@@ -40805,13 +40878,17 @@ function depthChunkBuild(c, ring) {
   const t0 = performance.now(), U = DEPTH.upm, q = DQ[DEPTH.lvl], S = DEPTH.scene, G0 = new THREE.Group();
   G0.position.set((c.sx - DEPTH.ox) / U, 0, (c.sy - DEPTH.oy) / U); G0.matrixAutoUpdate = true;
   const ox = c.sx, oy = c.sy, L = (v) => v / U, keep = [], rec = { k: depthChunkKey(c.cx, c.cy), c: c, g: G0, keep: keep, ring: ring, lit: [], fires: [], props: [] };
+  const TH = dGB();   // everything in the plain material goes into one geometry (one draw for the whole block)
   const sz = CHS / U, bio = c.bio, B0 = BIO[bio] || BIO.city, urban = bio !== 'desert' && bio !== 'snow';
   const curb = urban && !c.wm ? 0.15 : 0;
   // the ground: the block's painting at this level's resolution (nearer blocks sharper)
   const px = q.gpx * (ring <= 0 ? 1.4 : ring === 1 ? 1 : 0.55) * (TOUCH ? 0.8 : 1), can = chunkPaint(c, { ground: true, px: Math.max(0.35, Math.min(2.4, px)) });
   const tex = new THREE.CanvasTexture(can); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, DEPTH.R.capabilities.getMaxAnisotropy()); tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
   keep.push(tex);
-  const gm = DEPTH.mats.ground.clone(); gm.map = tex; gm.onBeforeCompile = DEPTH.mats.ground.onBeforeCompile; gm.customProgramCacheKey = DEPTH.mats.ground.customProgramCacheKey; keep.push(gm);
+  const WT = depthWaterMask(c), wtex = WT ? WT.tex : depthNoWater(), obc = DEPTH.mats.ground.onBeforeCompile;
+  if (WT) keep.push(WT.tex);
+  const gm = DEPTH.mats.ground.clone(); gm.map = tex; gm.onBeforeCompile = (sh, r) => { obc(sh, r); sh.uniforms.uWMask = { value: wtex }; sh.uniforms.uHasW = { value: WT ? 1 : 0 }; }; gm.customProgramCacheKey = DEPTH.mats.ground.customProgramCacheKey; keep.push(gm);
+  if (WT) { try { depthWaterBuild(c, WT, G0, keep, curb, TH); } catch (e) { coreHurt('DEPTH', e); } }
   {
     const B = dGB(), bx = L(ROAD * SCL), BSm = L(BS * SCL), wcol = [1, 1, 1];
     // road (the whole square, the block sits on top of it), then the block raised by the curb
@@ -40821,11 +40898,11 @@ function depthChunkBuild(c, ring) {
     // (the ground's uv: x across, y up the texture; the painting's top row is the north edge)
     const uv = g.attributes.uv.array; for (let i = 0; i < uv.length; i += 2) { const vx = B.p[(i / 2) * 3], vz = B.p[(i / 2) * 3 + 2]; uv[i] = vx / sz; uv[i + 1] = 1 - vz / sz; }
     const m = new THREE.Mesh(g, gm); m.receiveShadow = true; m.castShadow = false; G0.add(m); keep.push(g);
-    if (curb) { const C = dGB(), cc = dLin('#8a8984', null, 0.8); dBox(C, bx, 0, bx, bx + BSm, curb, bx + BSm, cc, null, null, 't'); const cg = dGeom(C); const cm = new THREE.Mesh(cg, DEPTH.mats.thing); cm.receiveShadow = true; G0.add(cm); keep.push(cg); }
+    if (curb) { const cc = dLin('#8a8984', null, 0.8); dBox(TH, bx, 0, bx, bx + BSm, curb, bx + BSm, cc, null, null, 't'); }
   }
   // buildings
   {
-    const B = dGB(), T = dGB(), V = dGB(), roofTmp = [0, 0, 0], col = [0, 0, 0];
+    const B = dGB(), T = TH, V = TH, roofTmp = [0, 0, 0], col = [0, 0, 0];
     for (const r of c.rects) {
       const x0 = L(r.x - ox), z0 = L(r.y - oy), x1 = L(r.x + r.w - ox), z1 = L(r.y + r.h - oy);
       if (r.k === 'b') {
@@ -40856,13 +40933,12 @@ function depthChunkBuild(c, ring) {
       }
     }
     if (B.nv) { const g = dGeom(B, true); const m = new THREE.Mesh(g, DEPTH.mats.facade); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); rec.bld = m; }
-    if (T.nv) { const g = dGeom(T); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
-    if (V.nv) { const g = dGeom(V); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+    void T; void V;
   }
   // the things in the street: vehicles, benches, planters, fences, rubble... (boxes at their real sizes for now; the
   // vehicles get their own bodies)
   {
-    const B = dGB(), P = dGB(), Gl = dGB(), Tr = dGB(), col = [0, 0, 0];
+    const B = TH, P = dGB(), Gl = dGB(), Tr = dGB(), col = [0, 0, 0];
     for (const r of c.rects) {
       if (r.k === 'b' || r.k === 'trunk' || r.dyn) continue;
       const x0 = L(r.x - ox), z0 = L(r.y - oy), x1 = L(r.x + r.w - ox), z1 = L(r.y + r.h - oy), y0 = r.k === 'car' ? 0 : curb && x0 > L(ROAD * SCL) - 0.01 && z0 > L(ROAD * SCL) - 0.01 ? curb : 0;
@@ -40871,20 +40947,19 @@ function depthChunkBuild(c, ring) {
       dLin(T ? T[0] : '#6a6a6a', col);
       if (r.k === 'fence') { dBox(B, x0, y0, z0, x1, y0 + h, z1, dLin('#3e4246', col)); continue; }
       if (r.k === 'rub' || r.k === 'rock') { const R2 = Z.mulberry32(r.s || ((r.x * 7 + r.y) | 0)); const n = r.k === 'rock' ? 2 : 4; for (let i = 0; i < n; i++) { const w = (x1 - x0), d = (z1 - z0), cx = x0 + w * (0.25 + R2() * 0.5), cz = z0 + d * (0.25 + R2() * 0.5); dBoxR(B, cx, y0, cz, w * (0.2 + R2() * 0.3), d * (0.2 + R2() * 0.3), y0 + h * (0.4 + R2() * 0.6), R2() * 3, col); } continue; }
-      if (r.k === 'pillar') { dBox(B, x0, 0, z0, x1, h, z1, col); continue; }
+      if (r.k === 'pillar') { const ph = dPierH(c, r) || h; dBox(B, x0, 0, z0, x1, ph, z1, col); const e = 0.35; dBox(B, x0 - e, ph - 0.6, z0 - e, x1 + e, ph, z1 + e, col); continue; }
       if (r.k === 'planter') { dBox(B, x0, y0, z0, x1, y0 + 0.75, z1, col); dBox(B, x0 + 0.15, y0 + 0.75, z0 + 0.15, x1 - 0.15, y0 + 0.82, z1 - 0.15, dLin('#2e2418')); continue; }
       if (r.k === 'bench') { const bc = dLin('#5a4632'); dBox(B, x0, y0 + 0.4, z0, x1, y0 + 0.47, z1, bc); continue; }
       dBox(B, x0, y0, z0, x1, y0 + h, z1, col);
     }
     for (const f of c.furn || []) dFurniture(B, Gl, f, L(f.x * SCL - ox), L(f.y * SCL - oy), curb);
-    if (B.nv) { const g = dGeom(B); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
     if (P.nv) { const g = dGeom(P); const m = new THREE.Mesh(g, DEPTH.mats.paint); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
     if (Gl.nv) { const g = dGeom(Gl); const m = new THREE.Mesh(g, DEPTH.mats.glass); m.castShadow = false; m.receiveShadow = false; G0.add(m); keep.push(g); }
     if (Tr.nv) { const g = dGeom(Tr); const m = new THREE.Mesh(g, DEPTH.mats.rubber); m.castShadow = false; G0.add(m); keep.push(g); }
   }
   // street lamps: a pole, an arm out over the road and the head (lit by the light pool at night)
   {
-    const B = dGB(), H = dGB(), pc = dLin('#3a3d42');
+    const B = TH, H = dGB(), pc = dLin('#3a3d42');
     if (!c.lights) c.lights = lightsOf(c.cx, c.cy);
     for (const l of c.lights) {
       if (l.hw) continue;
@@ -40895,9 +40970,10 @@ function depthChunkBuild(c, ring) {
       dBoxR(H, hx, y0 + 6.88, hz, 0.34, 0.16, y0 + 7.06, Math.atan2(dz, dx), [1, 1, 1]);
       rec.lit.push({ x: hx, y: y0 + 6.85, z: hz });
     }
-    if (B.nv) { const g = dGeom(B); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; G0.add(m); keep.push(g); }
     if (H.nv) { const g = dGeom(H); const m = new THREE.Mesh(g, DEPTH.mats.lampHead); G0.add(m); keep.push(g); }
   }
+  // the elevated highways over this block: decks, ramps, barriers, lamps and the traffic stuck up there
+  try { depthSkyway(c, G0, keep, TH); } catch (e) { coreHurt('DEPTH', e); }
   // trees: a trunk and a crown, by kind and season (instanced per block)
   {
     const trees = c.deco.filter(d => d.k === 'tree'), n = Math.round(trees.length * q.trees);
@@ -40921,6 +40997,27 @@ function depthChunkBuild(c, ring) {
       G0.add(tm); G0.add(cm); rec.tm = tm; rec.cm = cm;
     }
   }
+  // bushes and grass: instanced per block, swaying in the wind like the trees; flattened and browned by the season
+  {
+    const bush = c.deco.filter(d => d.k === 'bush'), grass = c.deco.filter(d => d.k === 'grass'), sea = WORLD.season, win = winterOn(c) || bio === 'snow';
+    const M4 = new THREE.Matrix4(), Q4 = new THREE.Quaternion(), V3 = new THREE.Vector3(), S3 = new THREE.Vector3(), C3 = new THREE.Color(), YA = new THREE.Vector3(0, 1, 0), geo = depthBushGeo();
+    const nb = Math.round(bush.length * q.trees), ng = Math.round(grass.length * q.trees * (DEPTH.lvl >= 2 ? 1 : 0.5));
+    const at = (d) => { const x = L(d.x - ox), z = L(d.y - oy); return [x, z, curb && x > L(ROAD * SCL) && z > L(ROAD * SCL) ? curb : 0]; };
+    if (nb) {
+      const im = new THREE.InstancedMesh(geo.bush, DEPTH.mats.foliage, nb);
+      for (let i = 0; i < nb; i++) { const d = bush[i], [x, z, y0] = at(d), R2 = Z.mulberry32(d.s || i), rr = Math.max(0.45, L(d.r) * 0.7);
+        Q4.setFromAxisAngle(YA, R2() * TAU); M4.compose(V3.set(x, y0, z), Q4, S3.set(rr * (0.9 + R2() * 0.3), rr * (0.7 + R2() * 0.3), rr * (0.9 + R2() * 0.3))); im.setMatrixAt(i, M4);
+        im.setColorAt(i, C3.set(bio === 'ash' ? '#45453f' : bio === 'burning' ? '#3a2c20' : win && sea === 3 ? '#5a5a4a' : sea === 2 ? ['#7a5a26', '#5e5a24', '#3e4a22'][i % 3] : d.v === 'dry' ? '#6a6234' : ['#2e4a22', '#3a5426', '#26401e'][i % 3])); }
+      im.castShadow = true; im.receiveShadow = true; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere(); G0.add(im);
+    }
+    if (ng) {
+      const im = new THREE.InstancedMesh(geo.grass, DEPTH.mats.foliage, ng);
+      for (let i = 0; i < ng; i++) { const d = grass[i], [x, z, y0] = at(d), R2 = Z.mulberry32(d.s || i), rr = Math.max(0.25, L(d.r) * 0.55);
+        Q4.setFromAxisAngle(YA, R2() * TAU); M4.compose(V3.set(x, y0, z), Q4, S3.set(rr, rr * (d.v === 'reed' ? 2.4 : 1.1), rr)); im.setMatrixAt(i, M4);
+        im.setColorAt(i, C3.set(d.v === 'reed' ? '#5a6a34' : win ? '#7a7a64' : sea === 2 ? '#8a7a3a' : bio === 'ash' ? '#4a4a44' : ['#4a6a2a', '#5a7430', '#3e5a24'][i % 3])); }
+      im.receiveShadow = true; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere(); G0.add(im);
+    }
+  }
   // fires: flames on the ground and on burning roofs
   {
     const fl = [];
@@ -40933,9 +41030,165 @@ function depthChunkBuild(c, ring) {
       im.frustumCulled = false; im.renderOrder = 5; G0.add(im); rec.flames = im;
     }
   }
+  if (TH.nv) { const g = dGeom(TH); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
   S.add(G0); DEPTH.chunks.set(rec.k, rec);
   const ms = performance.now() - t0; DEPTH.built++; DEPTH.buildMs += ms; coreCost('DEPTH', ms);
   return rec;
+}
+// the water of a block: its field (from the city engine: below zero is water) as a mask the ground shader cuts away
+// with, the roads kept dry (the bridge decks carry them); none in the desert, on the frozen north or in a winter freeze
+function depthWaterMask(c) {
+  if (!c.wm || !c.fv || c.bio === 'desert' || c.bio === 'snow' || winterOn(c)) return null;
+  const N = WF, d = new Uint8Array(N * N), f = c.fv, nR = ROAD / WC;
+  let any = false;
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    let v = f[j * N + i]; if (i < nR || j < nR) v = Math.max(v, 1.5);
+    d[j * N + i] = Math.round(clamp(0.5 + v * 0.25, 0, 1) * 255); if (v < 0) any = true;
+  }
+  if (!any) return null;
+  const t = new THREE.DataTexture(d, N, N, THREE.RedFormat, THREE.UnsignedByteType); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+  return { tex: t, d: d };
+}
+function depthNoWater() { if (!DEPTH.tex.noW) { const t = new THREE.DataTexture(new Uint8Array([255]), 1, 1, THREE.RedFormat, THREE.UnsignedByteType); t.needsUpdate = true; DEPTH.tex.noW = t; } return DEPTH.tex.noW; }
+// the water itself (a surface half a metre down, under the decks too), the banks round it (traced along the field's
+// zero line, so they meet the cut in the ground exactly), and the bridges: the decks' edges, parapets and piers
+function depthWaterBuild(c, WT, G0, keep, curb, TH) {
+  const U = DEPTH.upm, N = WF, D = WT.d, f = c.fv, cs = WC * SCL / U, nR = ROAD / WC, WY = -0.5, B = dGB(), K = TH || dGB();
+  const mv = (i, j) => (D[j * N + i] / 255 - 0.5) * 4;   // the mask's value at a corner (a field: below zero is water)
+  const deep = [0.012, 0.03, 0.036], shal = [0.03, 0.07, 0.07];
+  // the surface: every cell with water at a corner (the road band too, under the decks)
+  for (let j = 0; j < WM; j++) for (let i = 0; i < WM; i++) {
+    const v0 = f[j * N + i], v1 = f[j * N + i + 1], v2 = f[(j + 1) * N + i + 1], v3 = f[(j + 1) * N + i];
+    if (Math.min(v0, v1, v2, v3) > 0.25) continue;
+    const col = (v) => { const k = clamp(-v / 1.6, 0, 1); return [shal[0] + (deep[0] - shal[0]) * k, shal[1] + (deep[1] - shal[1]) * k, shal[2] + (deep[2] - shal[2]) * k]; };
+    const x0 = i * cs, z0 = j * cs, x1 = x0 + cs, z1 = z0 + cs, vb = B.nv;
+    for (const [x, z, v] of [[x0, z1, v3], [x1, z1, v2], [x1, z0, v1], [x0, z0, v0]]) { const cc = col(v); B.p.push(x, WY, z); B.n.push(0, 1, 0); B.c.push(cc[0], cc[1], cc[2]); B.a.push(0, 0, 0, 0); B.f.push(0, 0); B.u.push(0, 0); }
+    B.i.push(vb, vb + 1, vb + 2, vb, vb + 2, vb + 3); B.nv += 4;
+  }
+  if (B.nv) { const g = dGeom(B); const m = new THREE.Mesh(g, DEPTH.mats.water); m.receiveShadow = true; G0.add(m); keep.push(g); }
+  // the banks: marching squares on the mask's zero line; a bank is earth and stone down past the water, a bridge's
+  // edge (where the dry side is road) is only the deck's thickness, with the water running on under it
+  const bank = dLin('#3a342c'), fascia = dLin('#6a6a66');
+  const P = (i, j, i2, j2) => { const a = mv(i, j), b = mv(i2, j2), t = a / ((a - b) || 1e-6); return [(i + (i2 - i) * t) * cs, (j + (j2 - j) * t) * cs]; };
+  for (let j = 0; j < WM; j++) for (let i = 0; i < WM; i++) {
+    const a = mv(i, j), b = mv(i + 1, j), cc = mv(i + 1, j + 1), d = mv(i, j + 1);
+    const pts = [];
+    if ((a < 0) !== (b < 0)) pts.push(P(i, j, i + 1, j));
+    if ((b < 0) !== (cc < 0)) pts.push(P(i + 1, j, i + 1, j + 1));
+    if ((d < 0) !== (cc < 0)) pts.push(P(i, j + 1, i + 1, j + 1));
+    if ((a < 0) !== (d < 0)) pts.push(P(i, j, i, j + 1));
+    for (let k = 0; k + 1 < pts.length; k += 2) {
+      const p = pts[k], q = pts[k + 1], dx = q[0] - p[0], dz = q[1] - p[1]; if (Math.hypot(dx, dz) < 1e-4) continue;
+      // which side is the water: the field a little to one side of the middle
+      const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2, nx = -dz, nz = dx, nl = Math.hypot(nx, nz), tx = (mx + nx / nl * 0.15 * cs) / cs, tz = (mz + nz / nl * 0.15 * cs) / cs;
+      const ti = clamp(Math.floor(tx), 0, WM - 1), tj = clamp(Math.floor(tz), 0, WM - 1), fx = tx - ti, fz = tz - tj;
+      const sv = mv(ti, tj) * (1 - fx) * (1 - fz) + mv(ti + 1, tj) * fx * (1 - fz) + mv(ti, tj + 1) * (1 - fx) * fz + mv(ti + 1, tj + 1) * fx * fz;
+      let A = p, Bq = q; if (sv > 0) { A = q; Bq = p; }   // (the normal (-dz, dx) of A -> B points at the water)
+      const ex = Bq[0] - A[0], ez = Bq[1] - A[1], el = Math.hypot(ex, ez), road = Math.min(mx, mz) < (nR + 0.6) * cs;
+      const top = road ? 0 : curb, bot = road ? -0.55 : -1.25, n = [-ez / el, 0, ex / el], cl = road ? fascia : bank;
+      dQuad(K, [A[0], bot, A[1]], [Bq[0], bot, Bq[1]], [Bq[0], top, Bq[1]], [A[0], top, A[1]], n, cl, null);
+    }
+  }
+  // the bridges: concrete parapets along both sides of each deck, piers down into the water
+  const L = (v) => v / U, pc = dLin('#7a7a74');
+  for (const dk of c.decks || []) {
+    const x0 = L(dk.x * SCL - c.sx), z0 = L(dk.y * SCL - c.sy), x1 = L((dk.x + dk.w) * SCL - c.sx), z1 = L((dk.y + dk.h) * SCL - c.sy);
+    if (dk.horiz) { dBox(K, x0, 0, z0, x1, 0.85, z0 + 0.25, pc); dBox(K, x0, 0, z1 - 0.25, x1, 0.85, z1, pc); for (let x = x0 + 3; x < x1 - 1; x += 9) { dBox(K, x - 0.4, -3, z0 + 1.2, x + 0.4, -0.5, z0 + 2, pc); dBox(K, x - 0.4, -3, z1 - 2, x + 0.4, -0.5, z1 - 1.2, pc); } }
+    else { dBox(K, x0, 0, z0, x0 + 0.25, 0.85, z1, pc); dBox(K, x1 - 0.25, 0, z0, x1, 0.85, z1, pc); for (let z = z0 + 3; z < z1 - 1; z += 9) { dBox(K, x0 + 1.2, -3, z - 0.4, x0 + 2, -0.5, z + 0.4, pc); dBox(K, x1 - 2, -3, z - 0.4, x1 - 1.2, -0.5, z + 0.4, pc); } }
+  }
+  if (!TH && K.nv) { const g = dGeom(K); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+}
+// the highways in 3D (from the SKYWAY engine's own layout): each deck a slab at its height with the engine's painting
+// of the carriageway on top (lanes, joints, snow; without its flat traffic), jersey barriers down both sides and the
+// median, light poles, a broken gap with the deck's raw ends where a span collapsed; the interchange ramps as ribbons
+// on their own heights; the cars stuck up there are real 3D vehicles
+function dPierH(c, r) {
+  const S = typeof skyInfo === 'function' ? skyInfo(c) : null; if (!S) return 0;
+  const x = r.x / SCL + r.w / SCL / 2, y = r.y / SCL + r.h / SCL / 2;   // (block units)
+  for (const d of S.decks) if (x >= d.x && x <= d.x + d.w && y >= d.y && y <= d.y + d.h) return d.h0 - 1.3;
+  let best = 0, bd = 1e9; for (const rp of S.ramps) for (let k = 0; k < rp.pts.length; k += 2) { const dd = Math.hypot(rp.pts[k] - x, rp.pts[k + 1] - y); if (dd < bd && dd < rp.w) { bd = dd; best = rp.h - 1; } }
+  return best;
+}
+function dSkyCanvas(c, S) {
+  const px = Math.min(Q.chunkScale * c.k, 2048 / CH) * 0.72 * (TOUCH ? 0.8 : 1), can = document.createElement('canvas'); can.width = can.height = Math.max(8, Math.round(CH * px));
+  const g = can.getContext('2d'); g.scale(px, px); g.translate(-c.ox, -c.oy);
+  const bio = c.bio, win = winterOn(c) || bio === 'snow', conc = bio === 'desert' ? '#8a7c66' : bio === 'snow' ? '#8e979f' : bio === 'ash' ? '#6a6a6d' : bio === 'burning' ? '#4e4a46' : '#595c62';
+  SKY.flat3 = true; try { for (const d of S.decks) skyDeck(g, c, d, conc, win); } catch (e) { coreHurt('SKYWAY', e); } finally { SKY.flat3 = false; }
+  return can;
+}
+function depthSkyway(c, G0, keep, TH) {
+  const S = typeof skyInfo === 'function' ? skyInfo(c) : null; if (!S) return;
+  const U = DEPTH.upm, ox = c.ox, oy = c.oy, bx = (x) => (x - ox) * SCL / U, bz = (y) => (y - oy) * SCL / U, mu = SCL / U;   // block units to the block's metres
+  const conc = dLin(c.bio === 'desert' ? '#8a7c66' : c.bio === 'snow' ? '#8e979f' : c.bio === 'ash' ? '#6a6a6d' : c.bio === 'burning' ? '#4e4a46' : '#62656b'), under = dLin('#3a3c40'), barC = dLin('#a9abad'), pole = dLin('#3a3d42');
+  const T = dGB(), K = TH || dGB(), H = dGB(), P = dGB(), Gl = dGB(), Tr = dGB(), BB = K, SLAB = 1.3;
+  if (S.decks.length) {
+    const can = dSkyCanvas(c, S), tex = new THREE.CanvasTexture(can); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, DEPTH.R.capabilities.getMaxAnisotropy()); keep.push(tex);
+    const sz = CH * mu;
+    for (const d of S.decks) {
+      const X0 = Math.max(d.x, ox), X1 = Math.min(d.x + d.w, ox + CH), Y0 = Math.max(d.y, oy), Y1 = Math.min(d.y + d.h, oy + CH); if (X1 <= X0 || Y1 <= Y0) continue;
+      const v = d.v, h0 = d.h0, gp = skyGap(d.ocx, d.ocy, v), o0 = v ? d.ocy * CH : d.ocx * CH;
+      // the pieces along its length either side of a collapsed span
+      const a0 = v ? Y0 : X0, a1 = v ? Y1 : X1, cuts = gp ? [[a0, Math.min(a1, o0 + gp.at)], [Math.max(a0, o0 + gp.at + gp.len), a1]] : [[a0, a1]];
+      for (const [s0, s1] of cuts) {
+        if (s1 - s0 < 1) continue;
+        const x0 = bx(v ? X0 : s0), x1 = bx(v ? X1 : s1), z0 = bz(v ? s0 : Y0), z1 = bz(v ? s1 : Y1);
+        const uv = (x, z) => [x / sz, 1 - z / sz];
+        dQuad(T, [x0, h0, z1], [x1, h0, z1], [x1, h0, z0], [x0, h0, z0], [0, 1, 0], [1, 1, 1], null, uv(x0, z1), uv(x1, z1), uv(x1, z0), uv(x0, z0));
+        dQuad(K, [x0, h0 - SLAB, z0], [x1, h0 - SLAB, z0], [x1, h0 - SLAB, z1], [x0, h0 - SLAB, z1], [0, -1, 0], under, null);
+        // the long sides (where they are in this block) and the raw ends at a gap
+        if (v) { if (d.x >= ox) dQuad(K, [x0, h0 - SLAB, z0], [x0, h0 - SLAB, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], conc, null); if (d.x + d.w <= ox + CH) dQuad(K, [x1, h0 - SLAB, z1], [x1, h0 - SLAB, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], conc, null); }
+        else { if (d.y >= oy) dQuad(K, [x1, h0 - SLAB, z0], [x0, h0 - SLAB, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], conc, null); if (d.y + d.h <= oy + CH) dQuad(K, [x0, h0 - SLAB, z1], [x1, h0 - SLAB, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], conc, null); }
+        if (gp) {
+          if (s1 === Math.min(a1, o0 + gp.at) && s1 < a1) { if (v) dQuad(K, [x0, h0 - SLAB, z1], [x1, h0 - SLAB, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], under, null); else dQuad(K, [x1, h0 - SLAB, z1], [x1, h0 - SLAB, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], under, null); }
+          if (s0 === Math.max(a0, o0 + gp.at + gp.len) && s0 > a0) { if (v) dQuad(K, [x1, h0 - SLAB, z0], [x0, h0 - SLAB, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], under, null); else dQuad(K, [x0, h0 - SLAB, z0], [x0, h0 - SLAB, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], under, null); }
+        }
+        // jersey barriers: both edges and the median (where the painting has them)
+        const W2 = v ? d.w : d.h, e0 = v ? d.x : d.y;
+        for (const [o, t] of [[1, 7], [W2 - 8, 7], [W2 / 2 - 4, 8]]) { const q0 = e0 + o, q1 = q0 + t; if (v) { if (q1 <= ox || q0 >= ox + CH) continue; dBox(BB, bx(Math.max(q0, ox)), h0, z0, bx(Math.min(q1, ox + CH)), h0 + 0.85, z1, barC); } else { if (q1 <= oy || q0 >= oy + CH) continue; dBox(BB, x0, h0, bz(Math.max(q0, oy)), x1, h0 + 0.85, bz(Math.min(q1, oy + CH)), barC); } }
+      }
+      // light poles on the barriers (the lamps are the lighting engine's)
+      const Ln = v ? d.h : d.w;
+      for (let a = (v ? 260 : 100), k = 0; a < Ln; a += 320, k++) {
+        const W2 = v ? d.w : d.h, o = k % 2 ? W2 - 6 : 6, px = v ? d.x + o : d.x + a, py = v ? d.y + a : d.y + o; if (px < ox || px >= ox + CH || py < oy || py >= oy + CH) continue;
+        if (gp && (v ? py : px) > o0 + gp.at - 10 && (v ? py : px) < o0 + gp.at + gp.len + 10) continue;
+        const X = bx(px), Zz = bz(py), dx = v ? (k % 2 ? -1 : 1) : 0, dz = v ? 0 : (k % 2 ? -1 : 1);
+        dCyl(K, X, h0 + 0.85, Zz, 0.1, 0.08, h0 + 9.5, 6, pole); dBoxR(K, X + dx * 0.9, h0 + 9.3, Zz + dz * 0.9, 0.9, 0.05, h0 + 9.45, Math.atan2(dz, dx), pole);
+        dBoxR(H, X + dx * 1.7, h0 + 9.1, Zz + dz * 1.7, 0.36, 0.16, h0 + 9.3, Math.atan2(dz, dx), [1, 1, 1]);
+      }
+      // the traffic left up here: real vehicles on this block's own stretch
+      if (d.own) {
+        const R = chunkRng(d.ocx, d.ocy, v ? 0x3d77 : 0x3d1e), n = 2 + Math.floor(R() * 5), bio = distAt(d.ocx, d.ocy).bio, W2 = v ? d.w : d.h;
+        for (let i = 0; i < n; i++) {
+          const lane = Math.floor(R() * 4), o = [W2 * 0.18, W2 * 0.37, W2 * 0.63, W2 * 0.82][lane], fd = lane < 2 ? -1 : 1, vt = vehPick(R, 'highway', 220), V = VEH[vt];
+          const a = ROAD + R() * (Ln - ROAD - V.L - 10); if (gp && a + V.L > gp.at - 10 && a < gp.at + gp.len + 10) continue;
+          const rr = v ? { x: d.x + o - V.W / 2, y: d.y + a, w: V.W, h: V.L } : { x: d.x + a, y: d.y + o - V.W / 2, w: V.L, h: V.W }, dr = vehDress(R, vt);
+          const car = { vt: dr.vt, col: dr.col, s: dr.s, fd: v ? -fd : fd, burnt: R() < (bio === 'burning' || bio === 'ash' ? 0.7 : 0.18), yb: h0, k: 'car' };
+          dVehicle(car.burnt ? K : P, Gl, Tr, car, bx(rr.x), bz(rr.y), bx(rr.x + rr.w), bz(rr.y + rr.h));
+        }
+      }
+    }
+    if (T.nv) { const g = dGeom(T); const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, roughness: 0.88, metalness: 0, envMapIntensity: 0.6 })); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g, m.material); }
+  }
+  // the interchange ramps: ribbons on their own heights (each block builds the stretches whose middle is over it)
+  for (const rp of S.ramps) {
+    const p = rp.pts, hw = rp.w / 2, h0 = rp.h;
+    for (let k = 0; k + 3 < p.length; k += 2) {
+      const ax = p[k], ay = p[k + 1], bx2 = p[k + 2], by2 = p[k + 3], mx = (ax + bx2) / 2, my = (ay + by2) / 2; if (mx < ox || mx >= ox + CH || my < oy || my >= oy + CH) continue;
+      const dx = bx2 - ax, dy = by2 - ay, ln = Math.hypot(dx, dy) || 1, nx = -dy / ln * hw, ny = dx / ln * hw, ex = dx / ln * 2, ey = dy / ln * 2;   // (2 units of overlap hides the joints on the bends)
+      const A = [bx(ax - ex + nx), bz(ay - ey + ny)], Bq = [bx(bx2 + ex + nx), bz(by2 + ey + ny)], C = [bx(bx2 + ex - nx), bz(by2 + ey - ny)], D = [bx(ax - ex - nx), bz(ay - ey - ny)];
+      const up = (P0) => [P0[0], h0, P0[1]], dn = (P0) => [P0[0], h0 - SLAB, P0[1]], cr = (q, r2) => (r2[0] - q[0]);
+      // top (counter-clockwise from above whichever way the ribbon turns), underside, both edges, barriers
+      const ccw = ((Bq[0] - A[0]) * (D[1] - A[1]) - (D[0] - A[0]) * (Bq[1] - A[1])) < 0;
+      if (ccw) dQuad(K, up(A), up(Bq), up(C), up(D), [0, 1, 0], conc, null); else dQuad(K, up(A), up(D), up(C), up(Bq), [0, 1, 0], conc, null);
+      if (ccw) dQuad(K, dn(A), dn(D), dn(C), dn(Bq), [0, -1, 0], under, null); else dQuad(K, dn(A), dn(Bq), dn(C), dn(D), [0, -1, 0], under, null);
+      for (const [E0, E1, sgn] of [[A, Bq, 1], [C, D, 1]]) { const ex2 = E1[0] - E0[0], ez2 = E1[1] - E0[1], el = Math.hypot(ex2, ez2) || 1; let n = [-ez2 / el, 0, ex2 / el]; const midx = (E0[0] + E1[0]) / 2 - bx(mx), midz = (E0[1] + E1[1]) / 2 - bz(my); let q0 = E0, q1 = E1; if (n[0] * midx + n[2] * midz < 0) { q0 = E1; q1 = E0; n = [-n[0], 0, -n[2]]; } dQuad(K, [q0[0], h0 - SLAB, q0[1]], [q1[0], h0 - SLAB, q1[1]], [q1[0], h0 + 0.85, q1[1]], [q0[0], h0 + 0.85, q0[1]], n, barC, null); void sgn; void cr; }
+    }
+  }
+  if (!TH && K.nv) { const g = dGeom(K); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+  if (H.nv) { const g = dGeom(H); const m = new THREE.Mesh(g, DEPTH.mats.lampHead); G0.add(m); keep.push(g); }
+  if (P.nv) { const g = dGeom(P); const m = new THREE.Mesh(g, DEPTH.mats.paint); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+  if (Gl.nv) { const g = dGeom(Gl); const m = new THREE.Mesh(g, DEPTH.mats.glass); G0.add(m); keep.push(g); }
+  if (Tr.nv) { const g = dGeom(Tr); const m = new THREE.Mesh(g, DEPTH.mats.rubber); G0.add(m); keep.push(g); }
 }
 // a gable roof over a rectangle, the ridge along the longer side
 function dRoofGable(B, x0, z0, x1, z1, y0, rise, alongX, col) {
@@ -40967,9 +41220,9 @@ function dVehicle(P, Gl, Tr, r, x0, z0, x1, z1) {
   const L = horiz ? x1 - x0 : z1 - z0, Wd = horiz ? z1 - z0 : x1 - x0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, a = horiz ? (r.fd < 0 ? Math.PI : 0) : (r.fd < 0 ? -Math.PI / 2 : Math.PI / 2);
   const h = V.h || 1.5, cls = dVehClass(vt), AX = D_VAX[cls], burnt = !!r.burnt, flip = !!r.flip, cab = LUX_CAB[vt];
   const col = burnt ? dLin(['#2e2420', '#3a2a22', '#26201c'][(r.s >>> 3) % 3]) : dLin(r.col || '#6b6b6b'), trim = burnt ? [0.025, 0.02, 0.018] : [0.022, 0.022, 0.025];
-  const ca = Math.cos(a), sa = Math.sin(a), drop = burnt ? AX[0] * 0.3 : 0, H0 = h + 0.04;
+  const ca = Math.cos(a), sa = Math.sin(a), drop = burnt ? AX[0] * 0.3 : 0, H0 = h + 0.04, yb = r.yb || 0;
   // local (along, up, across) to the block's metres; a flipped vehicle is turned over its long axis onto its roof
-  const W3 = (lx, ly, lz) => { let y = ly - drop, z = lz; if (flip) { y = H0 - ly; z = -lz; } return [cx + lx * ca - z * sa, Math.max(0, y), cz + lx * sa + z * ca]; };
+  const W3 = (lx, ly, lz) => { let y = ly - drop, z = lz; if (flip) { y = H0 - ly; z = -lz; } return [cx + lx * ca - z * sa, Math.max(0, y) + yb, cz + lx * sa + z * ca]; };
   const N3 = (nx, ny, nz) => { if (flip) { ny = -ny; nz = -nz; } return [nx * ca - nz * sa, ny, nx * sa + nz * ca]; };
   const quad = (B, p0, p1, p2, p3, n, c) => dQuad(B, W3(p0[0], p0[1], p0[2]), W3(p1[0], p1[1], p1[2]), W3(p2[0], p2[1], p2[2]), W3(p3[0], p3[1], p3[2]), N3(n[0], n[1], n[2]), c, null);
   const lbox = (B, ax0, ax1, ay0, ay1, az0, az1, c) => {
@@ -41084,6 +41337,18 @@ function depthTreeGeo() {
   crown.computeVertexNormals();
   return DEPTH.geo.tree = { trunk: trunk, crown: crown };
 }
+function depthBushGeo() {
+  if (DEPTH.geo.bush) return DEPTH.geo.bush;
+  const bush = new THREE.IcosahedronGeometry(1, 1), p = bush.attributes.position, R = Z.mulberry32(0xb05);
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 0.78 + 0.32 * R(); p.setXYZ(i, x * k, Math.max(-0.1, y) * k * 0.85 + 0.55, z * k); }
+  bush.computeVertexNormals();
+  // a tuft: five blades leaning out from the middle
+  const P = [], N = [], I = []; let v = 0;
+  for (let b = 0; b < 5; b++) { const a = b / 5 * TAU + 0.3, c = Math.cos(a), s = Math.sin(a), w = 0.09, lx = -s * w, lz = c * w, tx = c * 0.32, tz = s * 0.32;
+    P.push(lx, 0, lz, -lx, 0, -lz, tx, 1, tz); const nx = c, nz = s; N.push(nx, 0.4, nz, nx, 0.4, nz, nx, 0.4, nz); I.push(v, v + 1, v + 2, v, v + 2, v + 1); v += 3; }
+  const grass = new THREE.BufferGeometry(); grass.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); grass.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); grass.setIndex(I);
+  return DEPTH.geo.bush = { bush: bush, grass: grass };
+}
 function depthFlameGeo() { const g = new THREE.PlaneGeometry(1, 1); g.translate(0, 0.0, 0); return g; }
 function depthChunkDrop(k) {
   const C = DEPTH.chunks.get(k); if (!C) return;
@@ -41111,6 +41376,8 @@ function depthStream() {
   }
   want.sort((a, b) => a[3] - b[3]);
   // build the nearest missing block (two when the frame has room)
+  if (DEPTH.season !== WORLD.season) { if (DEPTH.season != null) for (const C of DEPTH.chunks.values()) C.c.stale3 = 1; DEPTH.season = WORLD.season; }
+  for (const [k, C] of DEPTH.chunks) if (C.c.stale3) { C.c.stale3 = 0; const ring = C.ring; depthChunkDrop(k); try { depthChunkBuild(C.c, ring); } catch (e) { coreHurt('DEPTH', e); } break; }
   const budget = PERF.fps && PERF.fps < targetFps() * 0.9 ? 1 : 2;
   for (let n = 0; n < Math.min(budget, want.length); n++) { const w = want[n]; try { depthChunkBuild(getChunk(w[0], w[1]), w[2]); } catch (e) { coreHurt('DEPTH', e); try { console.error(e); } catch (x) { } } }
   // drop the ones well out of the ring
@@ -41287,6 +41554,109 @@ function depthWeatherFrame(dt) {
   void lvl;
 }
 
+/* ---------- street life: the props you kick and shoot, the birds ---------- */
+// barrels, cones, bins, tyres and crates are the LIFE engine's (they move when kicked, a barrel blows up): one instanced
+// mesh per kind, posed each frame from its list; crows, pigeons and vultures peck on the street and take off when you
+// come near, climbing and flapping away
+function depthLifeBuild() {
+  const S = DEPTH.scene, mk = (geo, mat, n, shadow) => { const m = new THREE.InstancedMesh(geo, mat, n); m.count = 0; m.castShadow = !!shadow; m.receiveShadow = true; m.frustumCulled = false; S.add(m); return m; };
+  const band = (g, y0, y1, a, b) => { const p = g.attributes.position, c = new Float32Array(p.count * 3); for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = y > y0 && y < y1 ? b : a; c[i * 3] = k[0]; c[i * 3 + 1] = k[1]; c[i * 3 + 2] = k[2]; } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g; };
+  const red = dLin('#a8261e'), dk = dLin('#5a1410'), org = dLin('#e0601a'), wht = dLin('#e8e6e0'), gry = dLin('#4a524c'), gry2 = dLin('#33383a');
+  const barrel = band(new THREE.CylinderGeometry(0.29, 0.29, 0.88, 14).translate(0, 0.44, 0), 0.28, 0.32, red, dk); band(barrel, 0.56, 0.6, red, dk);
+  { const p = barrel.attributes.position, c = barrel.attributes.color; for (let i = 0; i < p.count; i++) { const y = p.getY(i); if ((y > 0.27 && y < 0.33) || (y > 0.55 && y < 0.61)) c.setXYZ(i, dk[0], dk[1], dk[2]); else c.setXYZ(i, red[0], red[1], red[2]); } }
+  const cone = band(new THREE.ConeGeometry(0.16, 0.68, 12).translate(0, 0.34, 0), 0.3, 0.44, org, wht);
+  const can = band(new THREE.CylinderGeometry(0.27, 0.23, 0.92, 12).translate(0, 0.46, 0), 0.86, 1, gry, gry2);
+  const tire = new THREE.TorusGeometry(0.29, 0.11, 8, 16).rotateX(Math.PI / 2).translate(0, 0.11, 0);
+  const crate = new THREE.BoxGeometry(0.72, 0.72, 0.72).translate(0, 0.36, 0);
+  const vm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.25, envMapIntensity: 0.8 });
+  const bird = (() => { const g = new THREE.BufferGeometry(), P = [0.18, 0, 0, -0.16, 0.02, 0.05, -0.16, 0.02, -0.05, 0.02, 0.01, 0, -0.06, 0.01, 0.32, -0.04, 0.01, 0, 0.02, 0.01, 0, -0.04, 0.01, 0, -0.06, 0.01, -0.32]; g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex([0, 1, 2, 3, 4, 5, 6, 7, 8]); g.computeVertexNormals(); return g; })();
+  const bm = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.8, side: THREE.DoubleSide });
+  const rat = (() => { const g = new THREE.SphereGeometry(0.06, 8, 6); g.scale(1.9, 0.85, 1); g.translate(0, 0.05, 0); const t = new THREE.CylinderGeometry(0.006, 0.01, 0.17, 4); t.rotateZ(Math.PI / 2); t.translate(-0.19, 0.03, 0); return THREE.BufferGeometryUtils ? THREE.BufferGeometryUtils.mergeGeometries([g.toNonIndexed(), t.toNonIndexed()]) : g; })();
+  const fm = new THREE.MeshStandardMaterial({ color: 0x3a0e10, roughness: 0.7, side: THREE.DoubleSide, emissive: 0x5a0a08, emissiveIntensity: 0.35 });
+  DEPTH.life = { barrel: mk(barrel, vm, 48, true), cone: mk(cone, vm, 64, true), can: mk(can, vm, 48, true), tire: mk(tire, DEPTH.mats.rubber, 48, true), crate: mk(crate, new THREE.MeshStandardMaterial({ color: 0x8a6a44, roughness: 0.85 }), 32, true), bird: mk(bird, bm, 96, false), flyer: mk(bird.clone().scale(2.4, 2.4, 2.4), fm, 48, true), rat: mk(rat, new THREE.MeshStandardMaterial({ color: 0x2a2624, roughness: 0.9 }), 32, true), o: new THREE.Object3D(), mats: [vm, bm, fm] };
+}
+function depthLifeFrame() {
+  if (!DEPTH.life) { try { depthLifeBuild(); } catch (e) { coreHurt('DEPTH', e); DEPTH.life = { off: true }; return; } }
+  const Lf = DEPTH.life; if (Lf.off) return;
+  const O = Lf.o, n = { barrel: 0, cone: 0, can: 0, tire: 0, crate: 0, bird: 0, flyer: 0, rat: 0 }, piv = HOVER.pivot || [0, 0, 0], U = DEPTH.upm, T = G.time || 0, far2 = Math.pow((DEPTH.fogFar || 100) * 0.8, 2);
+  const put = (k, x, y, z, ry, rx, sc) => { const M = Lf[k]; if (!M || n[k] >= M.instanceMatrix.count) return; O.position.set(x, y, z); O.rotation.set(rx || 0, ry, 0, 'YXZ'); O.scale.setScalar(sc || 1); O.updateMatrix(); M.setMatrixAt(n[k]++, O.matrix); };
+  if (typeof WD !== 'undefined') {
+    for (const p of WD.props) {
+      if (p.dead || !Lf[p.k]) continue; const x = dX(p.x), z = dZ(p.y), dx = x - piv[0], dz = z - piv[2]; if (dx * dx + dz * dz > far2) continue;
+      const gy = fleshGroundY(p);
+      if (p.down) put(p.k, x, gy + (p.k === 'can' ? 0.25 : 0.17), z, -(p.a || 0), Math.PI / 2); else put(p.k, x, gy, z, -(p.a || 0), 0);
+    }
+    for (const b of WD.birds) {
+      if (b.st > 1) continue; const x = dX(b.x), z = dZ(b.y), dx = x - piv[0], dz = z - piv[2]; if (dx * dx + dz * dz > far2) continue;
+      const big = b.kind === 'vulture' ? 1.7 : b.kind === 'pigeon' ? 0.9 : 1;
+      if (b.st === 0) put('bird', x, fleshGroundY(b) + 0.06, z, -(b.a || 0), 0, big * 0.9);
+      else { const h = Math.min(30, 0.3 + b.t * (3 + b.t * 2)), fl = Math.sin(b.t * (big > 1.2 ? 9 : 22)); put('bird', x, h, z, -Math.atan2(b.vy || 0, b.vx || 1), fl * 0.6, big * (1 + 0.1 * fl)); }
+    }
+  }
+  // rats running along the walls (the PULSE engine's), and the odd dead one
+  if (typeof PULSE !== 'undefined' && PULSE.rats) for (const r of PULSE.rats) { const x = dX(r.x), zz = dZ(r.y), dx = x - piv[0], dz = zz - piv[2]; if (dx * dx + dz * dz > far2) continue; put('rat', x, fleshGroundY(r), zz, -(r.a || 0), r.st === 'dead' ? Math.PI : 0, (r.s || 1) * 1.1); }
+  // the hive's flyers: leathery things the size of a crow's wingspan, flapping fast at head height
+  for (const z of G.zs) { if (z.dead || !z.fly) continue; const x = dX(z.x), zz = dZ(z.y), dx = x - piv[0], dz = zz - piv[2]; if (dx * dx + dz * dz > far2) continue; const fl = Math.sin(T * 26 + (z.nid | 0)); put('flyer', x, 1.7 + Math.sin(T * 3 + (z.nid | 0)) * 0.3, zz, -Math.atan2(z.vy || 0, z.vx || 1), fl * 0.7, 1 + 0.08 * fl); }
+  for (const k in n) { const M = Lf[k]; M.count = n[k]; if (n[k]) M.instanceMatrix.needsUpdate = true; }
+}
+
+/* ---------- vehicles the horde pushes ---------- */
+// a car the crowd shoves is taken out of its block (the block is rebuilt without it) and drawn here where it is now; when
+// it comes to rest its block is rebuilt with it in its new place
+function depthDynFrame() {
+  if (typeof SWDYN === 'undefined') return;
+  const M = DEPTH.dyn || (DEPTH.dyn = new Map()), U = DEPTH.upm, seen = DEPTH.dynSeen || (DEPTH.dynSeen = new Set()); seen.clear();
+  for (const [vid, r] of SWDYN) {
+    if (!r.dyn || !(r.x === r.x)) continue; seen.add(vid);
+    let e = M.get(vid);
+    if (!e) {
+      const P = dGB(), Gl = dGB(), Tr = dGB(); dVehicle(P, Gl, Tr, r, 0, 0, r.w / U, r.h / U);
+      const g = new THREE.Group(), geos = [];
+      for (const [B, mat] of [[P, r.burnt ? DEPTH.mats.thing : DEPTH.mats.paint], [Gl, DEPTH.mats.glass], [Tr, DEPTH.mats.rubber]]) if (B.nv) { const geo = dGeom(B); const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; g.add(m); geos.push(geo); }
+      DEPTH.scene.add(g); e = { g: g, geos: geos }; M.set(vid, e);
+    }
+    e.g.position.set(dX(r.x), 0, dZ(r.y));
+  }
+  for (const [vid, e] of M) if (!seen.has(vid)) { DEPTH.scene.remove(e.g); for (const g of e.geos) g.dispose(); M.delete(vid); }
+}
+
+/* ---------- the A-10 ---------- */
+// the Warthog at its real size (16.3 m long, 17.5 m across): a fuselage with its long nose and the gun's muzzle, the
+// canopy, straight wings with their stores, the two engine pods high on the rear fuselage and the twin tails, in two-tone
+// grey; it comes in low over the street, dips for its gun run, and its engines glow
+function depthJetGeo() {
+  if (DEPTH.geo.jet) return DEPTH.geo.jet;
+  const B = dGB(), up = dLin('#4a4e52'), lo = dLin('#6a6e72'), dk = dLin('#2a2c2e'), gl = [0.02, 0.025, 0.03];
+  // a tube along x (r0 at x0, r1 at x1), n sides, centred at (y, z)
+  const tube = (x0, x1, r0, r1, y, z, n, colU, colL) => { for (let i = 0; i < n; i++) { const a0 = i / n * TAU, a1 = (i + 1) / n * TAU, am = (a0 + a1) / 2, cU = Math.sin(am) > -0.1 ? colU : colL;
+    dQuad(B, [x0, y + Math.sin(a0) * r0, z + Math.cos(a0) * r0], [x0, y + Math.sin(a1) * r0, z + Math.cos(a1) * r0], [x1, y + Math.sin(a1) * r1, z + Math.cos(a1) * r1], [x1, y + Math.sin(a0) * r1, z + Math.cos(a0) * r1], [0, Math.sin(am), Math.cos(am)], cU, null); } };
+  tube(-7.4, -5.2, 0.45, 0.95, 0, 0, 10, up, lo); tube(-5.2, 3.5, 0.95, 1.05, 0, 0, 10, up, lo); tube(3.5, 7.2, 1.05, 0.5, 0.05, 0, 10, up, lo); tube(7.2, 8.0, 0.5, 0.12, 0.05, 0, 8, dk, dk);
+  tube(8.0, 8.6, 0.06, 0.06, -0.15, 0, 6, dk, dk);   // the gun's barrels
+  dBox(B, 3.6, 0.85, -0.55, 5.6, 1.45, 0.55, gl);   // the canopy
+  dBox(B, -1.6, -0.25, -8.75, 1.2, 0.1, 8.75, up);  // the wings
+  for (const zz of [-6.2, -4.4, 4.4, 6.2]) dBox(B, -0.4, -0.75, zz - 0.18, 1.6, -0.25, zz + 0.18, dk);   // the stores
+  for (const zz of [-1.25, 1.25]) { tube(-4.6, -1.0, 0.68, 0.72, 1.15, zz, 10, up, lo); dBox(B, -3.4, 0.55, zz - 0.15, -2.0, 1.0, zz + 0.15, up); }   // the engine pods on their pylons
+  dBox(B, -7.6, 0.2, -2.85, -6.0, 0.4, 2.85, up);   // the tailplane
+  for (const zz of [-2.75, 2.75]) dBox(B, -7.7, 0.2, zz - 0.12, -5.9, 3.0, zz + 0.12, up);   // the twin fins
+  return DEPTH.geo.jet = dGeom(B);
+}
+function depthJetsFrame() {
+  const J = G.jets || [];
+  if (!DEPTH.jets) DEPTH.jets = [];
+  const list = DEPTH.jets, U = DEPTH.upm;
+  while (list.length < Math.min(3, J.length)) { const m = new THREE.Mesh(depthJetGeo(), DEPTH.mats.paint); m.castShadow = true; m.frustumCulled = false; DEPTH.scene.add(m); list.push(m); }
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i], j = J[i]; if (!j) { m.visible = false; continue; }
+    m.visible = true;
+    const yaw = Math.atan2(j.uy, j.ux), dip = j.firing ? 1 : 0; j._alt = j._alt == null ? 55 : j._alt + ((dip ? 32 : 55) - j._alt) * Math.min(1, (G.rdt || 0.016) * 1.5);
+    const x = dX(j.x), z = dZ(j.y), y = j._alt;
+    m.position.set(x, y, z); m.rotation.set(0, -yaw, j.firing ? -0.18 : -0.05, 'YZX');
+    // where the nose is (for the tracers): 8.6 m ahead along its heading, down its pitch
+    const c = Math.cos(yaw), s2 = Math.sin(yaw); j._n3 = [x + c * 8.6, y - 1.5 * (j.firing ? 1 : 0.3) - 0.15, z + s2 * 8.6];
+    void U;
+  }
+}
+
 /* ---------- the frame ---------- */
 function depthRender() {
   const t0 = performance.now();
@@ -41309,6 +41679,9 @@ function depthRender() {
     if (typeof fleshFrame === 'function') fleshFrame(G.rdt || 0.016);
     if (typeof sparkFrame === 'function') sparkFrame(G.rdt || 0.016);
     depthWeatherFrame(Math.min(0.05, G.rdt || 0.016));
+    depthLifeFrame();
+    depthJetsFrame();
+    depthDynFrame();
     // the grade: the bloom by the setting, grain and vignette by the settings, flashes on the screen
     const P = DEPTH.pass;
     if (P.bloom) { P.bloom.strength = 0.22 * bloomK() + DEPTH.night * 0.14 + WX.flash * 0.4; P.bloom.threshold = 1.5 - DEPTH.night * 0.45; }
@@ -41329,8 +41702,12 @@ function depthRender() {
 }
 // the governor: frames running late step the level down (or the resolution), room to spare steps it back up
 function depthGovern(ms) {
-  if (SET.q3d && SET.q3d !== 'auto') return;
   const fps = PERF.fps || 60, tgt = targetFps();
+  // a device too weak for 3D even at the lowest level and the smallest picture: the top-down view takes over (and stays
+  // the setting, with a word about where to turn 3D back on); only in a run, only after eight seconds of it
+  if (G.mode === 'play' && depthLevelNow() === 0 && DEPTH.scale <= 0.72 && fps < Math.max(18, tgt * 0.5)) { DEPTH.slowT = (DEPTH.slowT || 0) + Math.min(0.1, G.rdt || 0.016); if (DEPTH.slowT > 8 && !DEPTH.fellBack) { DEPTH.fellBack = true; SET.view = 'top'; saveSettings(); depthSetView('top'); coreRepaired('DEPTH', '3D was too heavy for this device: the top-down view took over'); try { toast('Graphics', '3D was too heavy here: top-down view (Settings > Graphics > View)', '#e8b04a'); } catch (e) { } return; } }
+  else DEPTH.slowT = Math.max(0, (DEPTH.slowT || 0) - (G.rdt || 0.016) * 0.5);
+  if (SET.q3d && SET.q3d !== 'auto') return;
   if (fps < tgt * 0.82) { DEPTH.good = 0; DEPTH.bad = (DEPTH.bad || 0) + 1; if (DEPTH.bad > 90) { DEPTH.bad = 0; if (DEPTH.scale > 0.78) { DEPTH.scale = Math.max(0.7, DEPTH.scale - 0.08); depthResize(true); } else if (depthLevelNow() > 0) { DEPTH.adapt--; DEPTH.scale = 1; } } }
   else if (fps > tgt * 0.97) { DEPTH.bad = 0; DEPTH.good = (DEPTH.good || 0) + 1; if (DEPTH.good > 600) { DEPTH.good = 0; if (DEPTH.scale < 1) { DEPTH.scale = Math.min(1, DEPTH.scale + 0.06); depthResize(true); } else if (DEPTH.adapt < 0) DEPTH.adapt++; } }
 }
@@ -41359,13 +41736,50 @@ function depthOverlay() {
     }
     ctx.globalAlpha = 1;
   }
+  // words standing in the world (a grab's warning)
+  if (typeof SPARK !== 'undefined' && SPARK.lab.length) { ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = "bold 14px 'Share Tech Mono', monospace"; const o = [0, 0, 0]; for (const L of SPARK.lab) { depthToScreen(L.x, L.y, L.h, o); if (!o[2]) continue; ctx.fillStyle = '#000'; ctx.fillText(L.s, o[0] + 1, o[1] + 1); ctx.fillStyle = L.c; ctx.fillText(L.s, o[0], o[1]); } }
   if (play) {
     if (typeof drawScreenFx === 'function') { try { drawScreenFx(); } catch (e) { } }
     if (typeof hoverDrawAim === 'function') hoverDrawAim();
-    if (NET.started && typeof netDrawPointers === 'function') { try { netDrawPointers(); } catch (e) { } }
+    if (NET.started) { try { depthNetOverlay(); } catch (e) { coreHurt('DEPTH', e); } }
   }
 }
 
+// co-op in 3D: a name tag over each teammate (red and pulsing when they are down), an arrow at the screen's edge for
+// anyone out of view (behind you too), and the pings they drop as diamonds standing over the spot
+const D_NV = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+function depthNetOverlay() {
+  if (!G.p || SET.netArrows === false) return;
+  const list = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p && !p.away).map(p => ({ x: p.p.x, y: p.p.y, name: p.name, col: p.col, down: p.p.down, h: 2.15 }))
+    : Array.from(NET.others.values()).map(o => ({ x: o.x, y: o.y, name: o.name, col: o.col, down: o.down, h: 2.15 }));
+  for (const k of NET.marks || []) list.push({ x: k.x, y: k.y, name: k.name + '\u2019s mark', col: k.col, mark: true, h: 1.6 });
+  const C = DEPTH.cam, cx = W / 2, cy = H / 2, pad = 34;
+  ctx.save(); ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  for (const o of list) {
+    const col = o.down ? '#ff4a4a' : (o.col || '#9fd3ff'), pulse = o.down ? 0.6 + 0.4 * Math.sin(G.time * 8) : o.mark ? 0.6 + 0.35 * Math.sin(G.time * 6) : 1;
+    D_NV.set(dX(o.x), o.h, dZ(o.y)).applyMatrix4(C.matrixWorldInverse); const behind = D_NV.z > -0.1;
+    D_NV.set(dX(o.x), o.h, dZ(o.y)).project(C); let sx = (D_NV.x * 0.5 + 0.5) * W, sy = (-D_NV.y * 0.5 + 0.5) * H;
+    ctx.globalAlpha = pulse;
+    if (!behind && sx > 8 && sx < W - 8 && sy > 8 && sy < H - 8) {
+      // on screen: the tag (a diamond for a ping), smaller the further off
+      if (o.mark) { ctx.fillStyle = 'rgba(8,10,13,0.7)'; ctx.beginPath(); ctx.moveTo(sx, sy - 12); ctx.lineTo(sx + 9, sy); ctx.lineTo(sx, sy + 12); ctx.lineTo(sx - 9, sy); ctx.closePath(); ctx.fill(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(sx, sy - 9); ctx.lineTo(sx + 6, sy); ctx.lineTo(sx, sy + 9); ctx.lineTo(sx - 6, sy); ctx.closePath(); ctx.fill(); }
+      const label = (o.name || '?') + (o.down ? ' \u00b7 DOWN' : ''), tw = ctx.measureText(label).width, ty = sy - (o.mark ? 22 : 0);
+      ctx.fillStyle = 'rgba(8,10,13,0.62)'; ctx.fillRect(sx - tw / 2 - 5, ty - 8, tw + 10, 16); ctx.fillStyle = col; ctx.fillText(label, sx, ty);
+      continue;
+    }
+    // off screen: an arrow at the edge pointing the way (behind you, the way round you would turn)
+    let dx = sx - cx, dy = sy - cy; if (behind) { dx = -dx; dy = -dy; if (Math.abs(dy) < 1) dy = 1; dy = Math.abs(dy) * 1; }
+    const k = Math.min((cx - pad) / Math.abs(dx || 1e-6), (cy - pad) / Math.abs(dy || 1e-6)), px = cx + dx * k, py = cy + dy * k, a = Math.atan2(dy, dx);
+    ctx.save(); ctx.translate(px, py); ctx.rotate(a); ctx.scale(1.4, 1.4);
+    ctx.fillStyle = 'rgba(8,10,13,0.75)'; ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-9, -11); ctx.lineTo(-4, 0); ctx.lineTo(-9, 11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-6, -8); ctx.lineTo(-2, 0); ctx.lineTo(-6, 8); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = col; ctx.fillText(o.name || '', px - Math.cos(a) * 30, py - Math.sin(a) * 22);
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+  // the marks age here as they do in the top-down view
+  if (NET.marks && NET.marks.length) NET.marks = NET.marks.filter(k => (k.t = (k.t || 0) + (G.rdt || 0.016)) < k.life);
+}
 // is the next run going to be drawn in 3D? (the loader builds 3D blocks instead of painting top-down ones)
 function depthWantedNow() { return (SET.view || '3d') === '3d' && depthWanted() && (DEPTH.ok || depthInit()); }
 // the loader's jobs for the 3D view: the blocks round the start, nearest first, and two frames so the shaders are built
@@ -41403,7 +41817,7 @@ function depthSelfTest() {
   return { ok: pass === n, n: n, pass: pass, why: why };
 }
 coreDefine({ name: 'DEPTH', kind: 'render', ver: 1, does: 'The city in three dimensions: every block built in 3D from the city engine\'s own data (the ground from its painting, buildings at the lighting engine\'s heights with floors, windows and storefronts drawn by a shader, vehicles at real sizes, trees by kind and season, furniture, lamps, fires), lit by the sun and the moon with shadows, the sky by scattering, fog by the weather, the nearest real lights from the lighting engine, and finished with a filmic curve, bloom, a gritty grade, grain and anti-aliasing.',
-  provides: ['view3d', 'world3d', 'light3d'], needs: ['WORLD', 'LUX', 'WEATHER'],
+  provides: ['view3d', 'world3d', 'light3d'], needs: ['WORLD', 'LUX', 'WX'],
   feats: { need: ['webgl2'], without: 'the game is played in the top-down view' },
   state: () => !DEPTH.on ? 'off (top-down view)' : !DEPTH.ok ? (DEPTH.why || 'starting') : DQ[DEPTH.lvl].name + ' · ' + DEPTH.chunks.size + ' blocks · ' + DEPTH.calls + ' draws · ' + Math.round(DEPTH.tris / 1000) + 'k triangles',
   level: () => DEPTH.lvl, trim: () => { if (DEPTH.lvl > 0) { DEPTH.adapt--; return true; } return false; }, boost: () => { if (DEPTH.adapt < 0) { DEPTH.adapt++; return true; } return false; },
@@ -41601,11 +42015,11 @@ function fleshType(m) {
   T = { key: key, lod: [null, null], n: [0, 0] }; FLESH.types.set(key, T);
   try {
     for (let l = 0; l < 2; l++) {
-      const lm = lgModel('zombie', l === 0 ? 1 : 2, key); if (!lm) continue;
+      const lm = lgModel('zombie', l === 0 ? 1 : DEPTH.lvl <= 1 ? 3 : 2, key); if (!lm) continue;   // (the far ones: 2,500 triangles, or 780 at Low and Medium)
       const g = fleshGeoFrom(lm, true), cap = 64;
       g.setAttribute('aRow', new THREE.InstancedBufferAttribute(new Float32Array(cap), 1));
       g.setAttribute('aZ', new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4));
-      const mesh = new THREE.InstancedMesh(g, FLESH.mat, cap); mesh.customDepthMaterial = FLESH.dmat; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.count = 0;
+      const mesh = new THREE.InstancedMesh(g, FLESH.mat, cap); mesh.customDepthMaterial = FLESH.dmat; mesh.castShadow = l === 0 || DEPTH.lvl >= 3; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.count = 0;   // (the far ones cast no shadow below Ultra)
       const I4 = new THREE.Matrix4(); for (let i = 0; i < cap; i++) mesh.setMatrixAt(i, I4); mesh.instanceMatrix.needsUpdate = true;
       DEPTH.scene.add(mesh); T.lod[l] = { geo: g, mesh: mesh, cap: cap, tris: lm.tris };
     }
@@ -41616,7 +42030,7 @@ function fleshType(m) {
 function fleshGrow(L, need) {
   let cap = L.cap; while (cap < need) cap *= 2; if (cap === L.cap) return;
   const g = L.geo; g.setAttribute('aRow', new THREE.InstancedBufferAttribute(new Float32Array(cap), 1)); g.setAttribute('aZ', new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4));
-  const old = L.mesh, mesh = new THREE.InstancedMesh(g, FLESH.mat, cap); mesh.customDepthMaterial = FLESH.dmat; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.count = 0;
+  const old = L.mesh, mesh = new THREE.InstancedMesh(g, FLESH.mat, cap); mesh.customDepthMaterial = FLESH.dmat; mesh.castShadow = old.castShadow; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.count = 0;
   const I4 = new THREE.Matrix4(); for (let i = 0; i < cap; i++) mesh.setMatrixAt(i, I4); mesh.instanceMatrix.needsUpdate = true;
   DEPTH.scene.remove(old); old.dispose(); DEPTH.scene.add(mesh); L.mesh = mesh; L.cap = cap;
 }
@@ -41714,7 +42128,7 @@ function fleshGroundY(o) {
   const lx = o.x - c.sx, ly = o.y - c.sy, r0 = ROAD * SCL;
   return lx > r0 && ly > r0 ? 0.15 : 0;
 }
-function fleshHeightOf(z) { const rm = z.r / dUPM(); return z.m && z.m.ad ? z.m.ad.H * rm * 0.98 : 5.6 * rm; }
+function fleshHeightOf(z) { const rm = z.r / dUPM(); if (z.m && z.m.ad) return z.m.ad.H * rm * 0.98; const P = z.fly ? null : fleshProxy(z); return P ? P.m.ad.H * rm * 0.62 * 0.98 : z.fly ? 2.2 : 3.4 * rm; }
 const FL_LIST = [];
 function fleshFrame(dt) {
   const t0 = performance.now();
@@ -41729,7 +42143,8 @@ function fleshFrame(dt) {
     // who is in view: in front of the camera (or right beside it) and nearer than the fog
     FL_LIST.length = 0;
     for (const z of G.zs) {
-      if (z.dead || !z.m || !z.m.v2 || z.fly) continue;
+      if (z.dead || !z.m || z.fly) continue;
+      if (!z.m.v2 && !fleshProxy(z)) continue;   // (a boss, the Snatcher or an old mutation: drawn as a roster body standing in)
       const x = dX(z.x) - cx, y = dZ(z.y) - cz, d2 = x * x + y * y; if (d2 > far2) continue;
       if (x * fx + y * fz < -4 && d2 > 36) continue;
       FL_LIST.push({ z: z, d2: d2, c: null });
@@ -41743,12 +42158,12 @@ function fleshFrame(dt) {
     for (let i = 0; i < n; i++) {
       const it = FL_LIST[i];
       if (it.z) {
-        const z = it.z, T = fleshType(z.m); if (!T) continue;
+        const z0 = it.z, z = z0.m.v2 ? z0 : fleshProxy(z0), T = fleshType(z.m); if (!T) continue;
         // the nearest move every frame; further out the full pose every second or third frame
         const full = live < liveCap || ((FLESH.frame + (z.nid | 0)) % (it.d2 > 900 ? 3 : 2)) === 0;
         const A = animaTick(z, G.rdt || dt, full); if (full) live++;
         ANIMA.sev = z.sever | 0; animaFK(z.m.ad, A.pose, J); ANIMA.sev = 0;
-        const rm = z.r / U, gy = fleshGroundY(z) + (z.pz || 0) - (z.under ? 0.45 : 0);
+        const rm = z.r / U * (z0 !== z ? 0.62 : 1), gy = fleshGroundY(z) + (z.pz || 0) - (z.under ? 0.45 : 0);   // (a stand-in boss body: two and a half times a man, not five)
         let x = z.x, y = z.y; if (z.warn > 0 && z.m.an.ab === 'bomber') { x += rand(-1, 1); y += rand(-1, 1); }
         fleshBonesOf(J, z.m, z.ang, rm, dX(x), gy, dZ(y), row);
         const l = it.d2 < near0 * near0 ? 0 : 1, Lm = T.lod[l] || T.lod[0];
@@ -41869,6 +42284,19 @@ function fleshPlayerPose(p, R, mk, row) {
     const mi = fam === 'p' ? LGB.pistol : LGB.carbine, MW = W.subarray(mi * 16, mi * 16 + 16), mo = lgSockFor(fam === 'p' ? 'pistol' : 'carbine', 'muz'), mz = lgPt(MW, mo[0], mo[1], mo[2]);
     const ex = mz[0], ey = mz[2], ez = -mz[1]; FLESH.muz = [ex * c - ez * s + gx, ey + gy, ex * s + ez * c + gz];
   }
+}
+// a stand-in body for a zombie with no 3D model of its own (the fifty bosses, the Snatcher, the old mutations): one of the
+// big roster bodies, chosen by its seed so it is always the same one, animated by ANIMA like the rest (it reads the real
+// zombie through its prototype, so speed, attacks and turning are its own); its size is the boss's own
+const FL_PX = new WeakMap();
+function fleshProxy(z) {
+  let P = FL_PX.get(z); if (P) return P;
+  if (typeof ZR === 'undefined' || !ZR.length) return null;
+  if (!FLESH.big) FLESH.big = ZR.filter(m => m.v2 && m.ad).sort((a, b) => (b.size || 1) - (a.size || 1)).slice(0, 10);
+  if (!FLESH.big.length) return null;
+  const id = Math.abs((z.m && (z.m.seed != null ? z.m.seed : z.m.id)) | 0);
+  P = Object.create(z); P.m = FLESH.big[id % FLESH.big.length]; FL_PX.set(z, P);
+  return P;
 }
 function fleshHurt(e) {
   const now = performance.now(); coreHurt('FLESH', e); try { console.error(e); } catch (x) { }
@@ -42216,7 +42644,7 @@ coreDefine({ name: 'HOVER', kind: 'render', ver: 1, does: 'The third-person came
    Four draws: glowing things, dark things, marks on the ground, medkits. */
 const SPARK = {
   ok: false, scene: null, glow: null, dark: null, deco: null, med: null, medTex: null, h: new WeakMap(), col: new Map(),
-  ms: 0, msAvg: 0, n: [0, 0, 0, 0], errT: [], offUntil: 0, lit: [1, 1, 1], made: 0
+  ms: 0, msAvg: 0, n: [0, 0, 0, 0], errT: [], offUntil: 0, lit: [1, 1, 1], made: 0, lab: []
 };
 const SPARK_CAP = [7000, 3500, 1800, 64];   // glowing, dark, ground marks, medkits
 const SPARK_HOT = 3.2;                      // glowing things are brighter than white, so the bloom catches them
@@ -42446,7 +42874,7 @@ function sparkFrame(dt) {
 }
 function sparkBuild(dt) {
   const U = DEPTH.upm, Gl = SPARK.glow, Dk = SPARK.dark, De = SPARK.deco, HM = SPARK.h, T = G.time || 0, HOT = SPARK_HOT;
-  Gl.n = 0; Dk.n = 0; De.n = 0;
+  Gl.n = 0; Dk.n = 0; De.n = 0; SPARK.lab.length = 0;
   Gl.mesh.visible = Dk.mesh.visible = De.mesh.visible = SPARK.med.visible = true;
   // the light the dark things and the marks are lit by: the sun and the sky, roughly as the ground gets them
   const su = DEPTH.sun, he = DEPTH.hemi, L = SPARK.lit, sy = su ? Math.max(0.15, (su.position.y - (HOVER.pivot ? HOVER.pivot[1] : 0)) / 120) : 0.5;
@@ -42576,6 +43004,47 @@ function sparkBuild(dt) {
     }
   }
 
+  /* explosions: a fireball where every big flash of light went off (blasts, barrels, grenades, the A-10's shells), the
+     smoke that rolls up after them, and the holes and scorch they leave */
+  if (typeof LUX !== 'undefined' && LUX.fx) for (const f of LUX.fx) {
+    if (!(f.max >= 0.14) || !(f.r >= 140) || !near(f.x, f.y)) continue;
+    const c = sparkCol('rgb(' + f.col + ')'); if (c[2] > c[0] * 1.1) continue;   // (a lightning strike's light is not a fire)
+    const k = clamp(f.life / f.max, 0, 1), u = 1 - k, R = Math.min(9, f.r / U * 0.32) * (0.55 + 0.7 * Math.sqrt(u)), x = dX(f.x), z = dZ(f.y), y0 = gy(f.x, f.y);
+    sparkPut(Gl, x, y0 + R * 0.45 + u * 1.2, z, R * 2, 0, 0, 0, 0, (f.x * 0.01) % 1, c[0] * HOT * 0.9 * k, c[1] * HOT * 0.6 * k, c[2] * HOT * 0.4 * k, Math.min(1, k * 1.4));
+    sparkPut(Gl, x, y0 + R * 0.3, z, R * 1.1, 0, 0, 0, 0, 0, HOT * 1.2 * k * k, HOT * 0.95 * k * k, HOT * 0.6 * k * k, 1);
+  }
+  if (G.smoke) for (const sm of G.smoke) {
+    if (!near(sm.x, sm.y)) continue;
+    const f = clamp(sm.t / (sm.life || 1), 0, 1), r = (sm.r0 + (sm.r1 - sm.r0) * Math.sqrt(f)) / U, c = sparkCol('rgb(' + (sm.c || '70,64,58') + ')'), a = 0.42 * (1 - f) * Math.min(1, sm.t * 8);
+    sparkPut(Dk, dX(sm.x), 0.4 + r * 0.6 + f * 2.5, dZ(sm.y), r * 2.2, 0, 0, 0, 2, ((sm.x * 0.013 + sm.y * 0.007) % 1 + 1) % 1, c[0], c[1], c[2], a);
+  }
+  if (G.holes) for (const h of G.holes) {
+    if (!near(h.x, h.y)) continue;
+    const r = Math.max(0.15, (h.r || 6) / U), x = dX(h.x), z = dZ(h.y), y = gy(h.x, h.y) + 0.014;
+    sparkMark(x, y, z, r * 1.6, r * 1.6, h.rot || 0, 2, ((h.x * 0.017) % 1 + 1) % 1, 0.015, 0.012, 0.01, 0.85, 0, 0, 0);
+    if (h.hot > 0.02) sparkMark(x, y + 0.002, z, r * 0.7, r * 0.7, 0, 11, 0, 1, 0.35, 0.08, h.hot, 0, 0, 1.6);
+  }
+  /* the A-10's cannon: tracers from the nose down to where the rounds land, and a glare on the ground there */
+  for (const j of G.jets) {
+    if (!j.firing || j.lix == null || !j._n3) continue;
+    const n3 = j._n3;
+    for (const t of j.tr) { const al = Math.max(0, 1 - t.t / 0.12); if (al <= 0) continue; const tx = dX(t.x), tz = dZ(t.y);
+      sparkPut(Gl, n3[0], n3[1], n3[2], 0.12, tx - n3[0], gy(t.x, t.y) - n3[1], tz - n3[2], 1, 0, HOT * 2.4, HOT * 1.8, HOT * 0.9, al);
+      sparkPut(Gl, n3[0], n3[1], n3[2], 0.5, tx - n3[0], gy(t.x, t.y) - n3[1], tz - n3[2], 1, 0, HOT * 0.7, HOT * 0.45, HOT * 0.2, al * 0.2); }
+    sparkMark(dX(j.lix), gy(j.lix, j.liy) + 0.04, dZ(j.liy), 3.2, 3.2, 0, 11, 0, 1, 0.6, 0.25, 0.55, 0, 0, 1.8);
+    sparkPut(Gl, n3[0], n3[1], n3[2], 1.6, 0, 0, 0, 0, 0, HOT * 2.5, HOT * 2, HOT * 1.2, 0.9);
+  }
+  /* the knife's cuts: a bright arc round the survivor at chest height (and the old ones are let go here, as the top-down
+     view does when it draws them) */
+  if (typeof BLADE !== 'undefined' && BLADE.fx && BLADE.fx.length) {
+    for (let i = BLADE.fx.length - 1; i >= 0; i--) {
+      const f = BLADE.fx[i], k = (T - f.t) / 0.22; if (k > 1) { BLADE.fx.splice(i, 1); continue; } if (k < 0) continue;
+      const spread = f.mv === 'reaper' ? Math.PI * 1.9 : f.mv === 'slash' ? 1.6 : f.mv === 'whip' ? 1.1 : 0.7, a0 = f.a - spread / 2 + (f.mv === 'reaper' ? k * Math.PI : 0), a1 = a0 + spread * Math.min(1, k * 2.2), R = f.r / U * (0.75 + 0.25 * k), n = 9;
+      const cx = dX(f.x), cz = dZ(f.y), h = 1.15 - (f.mv === 'reaper' ? 0.35 : 0);
+      for (let q = 0; q < n; q++) { const b0 = a0 + (a1 - a0) * q / n, b1 = a0 + (a1 - a0) * (q + 1) / n, x0 = cx + Math.cos(b0) * R, z0 = cz + Math.sin(b0) * R, y0 = h + Math.sin(q / n * Math.PI) * 0.12;
+        sparkPut(Gl, x0, y0, z0, 0.05 + 0.07 * (1 - k), cx + Math.cos(b1) * R - x0, h + Math.sin((q + 1) / n * Math.PI) * 0.12 - y0, cz + Math.sin(b1) * R - z0, 1, 0, 0.85 * HOT, 0.9 * HOT, HOT, 0.6 * (1 - k)); }
+    }
+  }
   /* lightning: a ground strike is a jagged bolt from the clouds down to where it hit, a far one flickers off on the horizon */
   if (typeof WX !== 'undefined' && WX.bolts) for (const b of WX.bolts) {
     let st = HM.get(b); if (!st) { st = sparkBoltPath(b, U); HM.set(b, st); }
@@ -42611,7 +43080,8 @@ function sparkBuild(dt) {
     const k = s.k === 'spray' ? 1 : s.k === 'scorch' || s.k === 'zap' ? 2 : 0;
     const c = s.rgb ? sparkRgb(s.rgb) : sparkCol(s.c || '#5a0a10'), grow = s.k === 'pool' ? clamp((T - (s.t0 || 0)) / 1.6, 0.35, 1) : 1, r = (s.r || 8) / U * grow;
     const al = (s.al == null ? 0.9 : s.al) * (1 - (s.dil || 0) * 0.5) * (s.k === 'cloud' ? 0.4 : 1);
-    sparkMark(dX(s.x), gy(s.x, s.y) + 0.012 + (i % 7) * 0.0006, dZ(s.y), r * (k === 1 ? 1.5 : 1), r * (s.sq || (k === 1 ? 0.7 : 1)), s.a || s.rot || 0, k, ((s.v || 0) * 0.137 + s.x * 0.001) % 1, c[0], c[1], c[2], al, 0, 0, s.glow ? 0.6 : 0);
+    let sg = HM.get(s); if (sg === undefined) { sg = gy(s.x, s.y); HM.set(s, sg); }
+    sparkMark(dX(s.x), sg + 0.012 + (i % 7) * 0.0006, dZ(s.y), r * (k === 1 ? 1.5 : 1), r * (s.sq || (k === 1 ? 0.7 : 1)), s.a || s.rot || 0, k, ((s.v || 0) * 0.137 + s.x * 0.001) % 1, c[0], c[1], c[2], al, 0, 0, s.glow ? 0.6 : 0);
   }
   /* shock rings, quake rings, the warning circles of what is coming down, the zombies' danger auras and charge lanes */
   for (const r of G.rings) {
@@ -42633,8 +43103,29 @@ function sparkBuild(dt) {
     if (zz.st.wind > 0 && zz.st.cx != null) { const a = Math.atan2(zz.st.cy, zz.st.cx), L = 150 / U; sparkMark(x + Math.cos(a) * L, gy(zz.x, zz.y) + 0.03, z + Math.sin(a) * L, L, zz.r * 0.6 / U, a, 9, 0, 1, 0.16, 0.12, 0.3 + (0.65 - zz.st.wind) * 0.8, 0, 0, 1.4); }
     if (zz.m && zz.m.S && zz.m.S.p && zz.m.S.p.rad && !zz.st.down) sparkMark(x, 0.03, z, 90 / U, 90 / U, 0, 3, 0, 0.6, 1, 0.05, 0.35, 0.04, 0, 0.9);
     if (zz.abs && zz.abs.indexOf('chiller') >= 0) sparkMark(x, 0.03, z, 150 / U, 150 / U, 0, 3, 0, 0.5, 0.75, 1, 0.35, 0.03, 0, 0.7);
+    if (zz.rb && !zz.rb.ill) sparkBossTele(zz, x, z, gy(zz.x, zz.y), U, T);
+    if (zz.snatch && zz.snatch.state === 'grabTele') { const sn = zz.snatch, f = clamp(1 - sn.t / (typeof GRAB_TELE !== 'undefined' ? GRAB_TELE : 1.8), 0, 1), lk = sn.t <= (typeof GRAB_LOCK !== 'undefined' ? GRAB_LOCK : 0.6), R = sn.zr / U; sparkMark(dX(sn.zx), gy(sn.zx, sn.zy) + 0.04, dZ(sn.zy), R, R, 0, 4, 0, 1, 0.2, 0.18, lk ? 1 : 0.75, 0, f, 1.3); SPARK.lab.push({ x: sn.zx, y: sn.zy, h: 0.6, s: lk ? 'DASH OUT!' : 'GRAB', c: '#ffe1dc' }); }
+    if (zz.boss) { const R = zz.r / U * 1.6, pu = 0.5 + 0.5 * Math.sin(T * 3); sparkMark(x, gy(zz.x, zz.y) + 0.035, z, R, R, 0, 3, 0, 1, 0.12, 0.08, 0.45 + 0.25 * pu, 0.05, 0, 1.4); }
   }
 
+  /* what the survivor's dash leaves behind: ice, fire, toxic pools, smoke, a gravity well, holy ground, a rift */
+  if (G.dfx) for (const dz of G.dfx) {
+    const f = dz.t / (dz.max || 1), al = Math.min(1, (1 - f) * 2.2) * Math.min(1, dz.t * 6); if (al <= 0.01 || !near(dz.x, dz.y)) continue;
+    const x = dX(dz.x), z = dZ(dz.y), y = gy(dz.x, dz.y) + 0.03, R = (dz.r || 40) / U;
+    if (dz.k === 'rift') { const x2 = dX(dz.x2), z2 = dZ(dz.y2); sparkPut(Gl, x, 1.0, z, 0.25, x2 - x, 0, z2 - z, 1, 0, 0.75 * HOT, 0.6 * HOT, HOT * 1.2, al); sparkPut(Dk, x, 0.9, z, 1.1, x2 - x, 0, z2 - z, 1, 0, 0.08, 0.0, 0.14, 0.8 * al); }
+    else if (dz.k === 'ice') sparkMark(x, y, z, R, R * 0.8, 0.6, 7, 0.3, 0.45, 0.75, 0.95, al, 0, 0, 0.15);
+    else if (dz.k === 'fire') { sparkMark(x, y, z, R, R, 0, 8, 0.5, 1, 1, 1, al, 0, 0, 1.6); for (let i = 0; i < 4; i++) { const cy = ((T * 1.4 + i * 0.27) % 1), an = i * 1.9 + dz.x; sparkPut(Gl, x + Math.cos(an) * R * 0.4, y + 0.1 + cy * 1.2, z + Math.sin(an) * R * 0.4, 0.8 * (1 - cy * 0.5), 0, 0, 0, 0, 0, HOT, 0.4 * HOT, 0.08 * HOT, (1 - cy) * al * 0.8); } }
+    else if (dz.k === 'toxic') sparkMark(x, y, z, R * (1 + f * 0.2), R * (1 + f * 0.2), 0, 5, 0.7, 0.35, 0.8, 0.12, 0.8 * al, 0, 0, 0.5);
+    else if (dz.k === 'smoke') { for (let i = 0; i < 6; i++) { const an = i / 6 * TAU + T * 0.4; sparkPut(Dk, x + Math.cos(an) * R * 0.45, 1 + (i % 2) * 0.6, z + Math.sin(an) * R * 0.45, R * 1.3, 0, 0, 0, 2, (i * 0.17) % 1, 0.62, 0.64, 0.68, 0.45 * al); } }
+    else if (dz.k === 'well') { for (let i = 0; i < 3; i++) { const rr = R * ((T * 0.8 + i / 3) % 1); sparkMark(x, y, z, Math.max(0.1, rr), Math.max(0.1, rr), 0, 3, 0, 0.5, 0.5, 1, 0.6 * al, 0.06, 0, 1); } }
+    else if (dz.k === 'holy') { sparkMark(x, y, z, R, R, 0, 3, 0, 1, 0.92, 0.6, 0.75 * al, 0.05, 0, 1.4); sparkMark(x, y - 0.003, z, R, R, 0, 11, 0, 1, 0.94, 0.7, 0.18 * al, 0, 0, 1); }
+  }
+  /* the magazines and cases the guns drop (the PHYSICS engine's): lying in the street where they fell */
+  if (typeof PHY !== 'undefined' && PHY.b) { const pu = typeof physU === 'function' ? physU() : U; for (const b of PHY.b) {
+    if (!near(b.x, b.y)) continue; const K = b.K || {}, mag = b.k === 'mag' || b.k === 'moon', ln = Math.max(0.03, (K.L || (mag ? 0.18 : 0.03))), wd = Math.max(0.02, (K.W || (mag ? 0.03 : 0.012)) * 2);
+    const c = mag ? sparkCol(K.col || '#2e3033') : [0.55, 0.4, 0.12, 1], x = dX(b.x), z = dZ(b.y), y = gy(b.x, b.y) + Math.max(0.012, (b.z || 0) / pu), a = b.a || 0;
+    sparkPut(Dk, x - Math.cos(a) * ln / 2, y, z - Math.sin(a) * ln / 2, wd, Math.cos(a) * ln, 0, Math.sin(a) * ln, 1, 0, c[0], c[1], c[2], 1);
+  } }
   /* medkits: a box that spins and bobs over a soft green glow (and blinks before it is gone) */
   const M = SPARK.med; let mn = 0; const O = SPARK.o || (SPARK.o = new THREE.Object3D());
   for (const k of G.picks) {
@@ -42649,6 +43140,29 @@ function sparkBuild(dt) {
 
   sparkFlush(Gl); sparkFlush(Dk); sparkFlush(De);
   SPARK.n[0] = Gl.n; SPARK.n[1] = Dk.n; SPARK.n[2] = De.n; SPARK.n[3] = mn;
+}
+// a boss's telegraphs and its big moves in 3D: the lane of a charge, the circle of a leap or a slam, the line of a beam
+// (then the beam itself, hot and wide), the fan of a sweep, the ring of a howl, a grab's circle, a burrow's, a pull's
+function sparkBossTele(z, x, zz, y, U, T) {
+  const rb = z.rb, D = rb.d || {}, mv = rb.mv, HOT = SPARK_HOT, red = [1, 0.18, 0.15];
+  if (rb.state === 'tele') {
+    const f = clamp(1 - rb.t / (typeof BOSS_MOVES !== 'undefined' && BOSS_MOVES[mv] ? BOSS_MOVES[mv].tele || 1 : 1), 0, 1);
+    if (mv === 'charge') { const L = 540 / U / 2, a = D.a || 0; sparkMark(x + Math.cos(a) * L, y + 0.03, zz + Math.sin(a) * L, L, z.r * 0.65 / U, a, 9, 0, red[0], red[1], red[2], 0.3 + f * 0.6, 0, 0, 1.4); }
+    if (mv === 'leap' && D.tx != null) { const R = 100 / U; sparkMark(dX(D.tx), y + 0.04, dZ(D.ty), R, R, 0, 4, 0, red[0], red[1], red[2], 0.9, 0, f, 1.3); }
+    if (mv === 'slam') { const R = (z.r * 2.4 + 50) / U; sparkMark(x, y + 0.04, zz, R, R, 0, 4, 0, 1, 0.55, 0.24, 0.9, 0, f, 1.2); }
+    if (mv === 'beam') { const L = 900 / U / 2, a = D.a || 0; sparkMark(x + Math.cos(a) * L, y + 0.03, zz + Math.sin(a) * L, L, 0.25, a, 9, 0, 1, 0.24, 0.24, 0.3 + f * 0.5, 0, 0, 1.4); }
+    if (mv === 'sweep' && D.a0 != null) { for (let i = 0; i <= 6; i++) { const a = D.a0 + (D.dir || 1) * 1.8 * i / 6, L = 900 / U / 2; sparkMark(x + Math.cos(a) * L, y + 0.025, zz + Math.sin(a) * L, L, 0.35, a, 9, 0, 1, 0.24, 0.24, 0.12 + f * 0.15, 0, 0, 1); } }
+    if (mv === 'howl' || mv === 'nova' || mv === 'quake') { const R = z.r * (1.2 + f * 0.8) / U; sparkMark(x, y + 0.04, zz, R, R, 0, 3, 0, 1, 0.9, 0.78, 0.2 + f * 0.5, 0.05, 0, 1.2); }
+    if (mv === 'grab' && D.zx != null) { const R = D.zr / U, lk = D.t <= (rb.def && rb.def.overlord ? 0.45 : 0.6); sparkMark(dX(D.zx), y + 0.04, dZ(D.zy), R, R, 0, 4, 0, 1, 0.2, 0.18, lk ? 1 : 0.75, 0, clamp(1 - D.t / (D.max || 1), 0, 1), 1.3); SPARK.lab.push({ x: D.zx, y: D.zy, h: 0.6, s: lk ? 'DASH OUT!' : 'GRAB', c: '#ffe1dc' }); }
+  }
+  if (rb.state === 'act') {
+    if (mv === 'beam' || mv === 'sweep') { const a = D.cur == null ? D.a : D.cur, L = 900 / U, col = sparkCol((rb.def && rb.def.forms && rb.def.forms[rb.form] && rb.def.forms[rb.form].col[2]) || '#ff5a4a'), h = 1.4;
+      sparkPut(SPARK.glow, x, h, zz, 1.4, Math.cos(a) * L, 0, Math.sin(a) * L, 1, 0, col[0] * HOT, col[1] * HOT, col[2] * HOT, 0.45);
+      sparkPut(SPARK.glow, x, h, zz, 0.45, Math.cos(a) * L, 0, Math.sin(a) * L, 1, 0, HOT * 2, HOT * 2, HOT * 2, 0.9); }
+    if (mv === 'teleport' && D.tx != null) { const R = z.r * 1.2 / U; sparkMark(dX(D.tx), y + 0.04, dZ(D.ty), R, R, 0, 3, 0, 0.7, 0.55, 1, 0.8, 0.06, 0, 1.2); }
+    if (mv === 'burrow' && D.stage === 1) { const R = 95 / U; sparkMark(x, y + 0.04, zz, R, R, 0, 4, 0, 0.6, 0.47, 0.3, 0.8, 0, clamp(1 - rb.t / 0.55, 0, 1), 0.6); }
+    if (mv === 'pull') { const col = sparkCol((rb.def && rb.def.forms && rb.def.forms[rb.form] && rb.def.forms[rb.form].col[2]) || '#b48cff'); for (let i = 0; i < 3; i++) { const R = (120 + ((T * 260 + i * 130) % 380)) / U; sparkMark(x, y + 0.04, zz, R, R, 0, 3, 0, col[0], col[1], col[2], 0.35, 0.02, 0, 1); } }
+  }
 }
 // a bolt's path in 3D (once per bolt): jagged, thinning towards the ground, with a few forks
 function sparkBoltPath(b, U) {
@@ -47126,7 +47640,7 @@ for (const n of ['LEGEND', 'MIMATIC', 'VFXRAY']) { const e = CORE.by[n]; if (e &
    1.9.991 (CORE v3): each card also shows the engine's traits (adapts, repairs itself, learns, covers, heartbeat,
    self-test, compatible), what it has learned on this device, how much the ecosystem trusts it, its self-test and
    whether this device gives it what it needs; "About" tells who it is (engdocs.js). Forget clears what was learned. */
-const ENG_SRC = {"core":[249,27,79,29451],"learn":[363,44,83,33966],"engdocs":[388,0,4,79096],"world":[1753,88,214,162670],"garage":[515,34,79,54537],"skyway":[249,19,49,23953],"life":[538,32,50,43070],"weather":[1100,73,184,102150],"lux":[776,40,163,75579],"prism":[404,22,93,48720],"mirror":[122,9,31,13573],"texel":[500,32,125,50984],"gore":[692,49,106,65891],"muzzle":[264,13,67,30527],"tracer":[237,22,53,24052],"aura":[124,12,20,11472],"swarm":[682,66,117,59757],"roster":[176,8,40,42200],"anima":[1419,65,182,134836],"anilook":[682,42,103,108119],"horde":[229,28,66,23761],"pulse":[290,33,52,28926],"ballistics":[237,13,47,22463],"arsenal":[861,70,32,65058],"dashes":[249,36,13,31089],"physics":[269,23,50,26017],"arms":[391,37,64,43122],"knife":[236,19,39,22446],"gamecam":[46,4,32,7392],"keeper":[160,17,11,13103],"bossai":[554,41,34,49931],"perf":[347,30,50,29270],"settings":[384,23,23,42457],"legend":[1283,122,223,149018],"legmodel":[535,26,157,69205],"leggun":[420,30,119,58894],"leggun2":[249,11,92,42038],"legfire":[39,5,32,6190],"leghand":[166,17,31,13241],"leganim":[444,22,68,57821],"legloco":[235,12,99,29241],"legperf":[67,3,33,8332],"legrun":[682,43,146,77449],"vfxray":[291,27,42,34778],"mimatic":[659,50,156,88612],"legidle":[353,20,72,46740],"depth":[965,53,144,99701],"flesh":[422,25,56,37491],"hover":[247,19,59,24803],"spark":[438,19,36,36336],"curric":[47,14,21,6603],"leganat":[376,31,117,42543],"legobj":[365,25,71,40189],"legmove":[277,36,107,41490],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,58099],"engroom":[371,18,36,46130],"loader":[120,11,22,10295],"input":[527,56,37,40946],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1017,87,110,83800],"intro":[660,32,55,48828],"sfx2":[555,92,76,58181],"gunsfx":[91,9,33,14476],"cinesfx":[185,14,33,26793],"armsfx":[79,13,11,9185],"audio":[946,216,87,85598],"radio":[434,74,35,40166],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[79,7,5,5781]};
+const ENG_SRC = {"core":[249,27,79,29451],"learn":[363,44,83,33966],"engdocs":[432,0,4,86817],"world":[1753,88,214,162670],"garage":[515,34,79,54537],"skyway":[249,19,50,24052],"life":[538,32,50,43070],"weather":[1100,73,184,102150],"lux":[776,40,163,75579],"prism":[404,22,93,48720],"mirror":[122,9,31,13573],"texel":[500,32,125,50984],"gore":[692,49,106,65891],"muzzle":[264,13,67,30527],"tracer":[237,22,53,24052],"aura":[124,12,20,11472],"swarm":[682,66,117,59812],"roster":[176,8,40,42200],"anima":[1419,65,182,134836],"anilook":[682,42,103,108119],"horde":[229,28,66,23761],"pulse":[290,33,52,28926],"ballistics":[237,13,47,22463],"arsenal":[861,70,32,65058],"dashes":[249,36,13,31089],"physics":[269,23,50,26017],"arms":[391,37,64,43122],"knife":[236,19,39,22446],"gamecam":[46,4,32,7392],"keeper":[160,17,11,13103],"bossai":[554,41,34,49931],"perf":[347,30,50,29270],"settings":[384,23,23,42457],"legend":[1283,122,223,149018],"legmodel":[535,26,157,69205],"leggun":[420,30,119,58894],"leggun2":[249,11,92,42038],"legfire":[39,5,32,6190],"leghand":[166,17,31,13241],"leganim":[444,22,68,57821],"legloco":[235,12,99,29241],"legperf":[67,3,33,8332],"legrun":[682,43,146,77449],"vfxray":[291,27,42,34778],"mimatic":[659,50,156,88612],"legidle":[353,20,72,46740],"depth":[1281,66,194,137470],"flesh":[433,26,59,38828],"hover":[247,19,59,24803],"spark":[515,20,45,46700],"curric":[47,14,21,6603],"leganat":[376,31,117,42543],"legobj":[365,25,71,40189],"legmove":[277,36,107,41490],"legqual":[97,9,35,11369],"cur_legend":[166,1,14,26337],"mimcam":[59,18,38,10090],"mimcine":[106,13,42,15039],"mimdir":[104,13,35,14887],"cur_mimatic":[139,2,14,21312],"vfxlens":[95,12,34,17210],"vfxsim":[53,15,32,9814],"cur_vfxray":[136,4,13,24295],"choreo":[277,37,79,38814],"cur_choreo":[109,1,5,16060],"board":[289,27,70,47646],"cur_board":[119,1,5,17052],"mimshoot":[222,14,57,29741],"legends":[495,46,73,58099],"engroom":[371,18,36,46130],"loader":[120,11,22,10295],"input":[527,56,37,40946],"profile":[167,16,22,15003],"maint":[875,53,31,68975],"account":[469,39,53,42075],"net":[1018,87,110,83966],"intro":[660,32,55,48828],"sfx2":[555,92,76,58181],"gunsfx":[91,9,33,14476],"cinesfx":[185,14,33,26793],"armsfx":[79,13,11,9185],"audio":[946,216,87,85598],"radio":[434,74,35,40166],"mutations":[743,19,22,57975],"bosses":[318,47,12,39885],"acct-core":[230,27,31,18583],"filter":[147,10,20,10786],"filterdata":[1,0,3,10136],"game#flow":[79,7,5,5781]};
 const ENGR = { open: false, iv: 0, filter: 'all', sort: 'cost', built: false, cards: new Map(), lastLog: '' };
 const EFF_NAMES = { auto: 'Auto', eco: 'Eco', normal: 'Normal', hard: 'Hard', max: 'Max' };
 const KIND_NAMES = { render: 'Render', sim: 'Simulation', world: 'World', audio: 'Audio', net: 'Network', data: 'Data' };
@@ -50804,7 +51318,8 @@ function netMark() {
   if (!NET.started || !G.p || G.mode !== 'play') return;
   const now = performance.now(); if (now - NET.markAt < 1000) return; NET.markAt = now;
   let x = G.p.x, y = G.p.y;
-  if (DEV.kind !== 'touch' && aimMode() !== 'auto' && DEV.mIn) { x = cam.x + GCAM.kx + (DEV.mx - W / 2) / gcamZoom(); y = cam.y + GCAM.ky + (DEV.my - H / 2) / gcamZoom(); }
+  if (typeof hoverActive === 'function' && hoverActive()) { x = HOVER.aimPt[0]; y = HOVER.aimPt[1]; }   // (1.9.999: in 3D the ping goes where the crosshair is)
+  else if (DEV.kind !== 'touch' && aimMode() !== 'auto' && DEV.mIn) { x = cam.x + GCAM.kx + (DEV.mx - W / 2) / gcamZoom(); y = cam.y + GCAM.ky + (DEV.my - H / 2) / gcamZoom(); }
   x = Math.round(x); y = Math.round(y);
   if (NET.role === 'host') { netAddMark(1, x, y); hostSend('*', { t: 'mk', id: 1, x: x, y: y }); }
   else { netAddMark(NET.me, x, y); netSend({ t: 'mk', x: x, y: y }); }

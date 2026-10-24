@@ -1222,7 +1222,7 @@ function depthWeatherFrame(dt) {
 function depthLifeBuild() {
   const S = DEPTH.scene, mk = (geo, mat, n, shadow) => { const m = new THREE.InstancedMesh(geo, mat, n); m.count = 0; m.castShadow = !!shadow; m.receiveShadow = true; m.frustumCulled = false; S.add(m); return m; };
   const band = (g, y0, y1, a, b) => { const p = g.attributes.position, c = new Float32Array(p.count * 3); for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = y > y0 && y < y1 ? b : a; c[i * 3] = k[0]; c[i * 3 + 1] = k[1]; c[i * 3 + 2] = k[2]; } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g; };
-  const red = dLin('#a8261e'), dk = dLin('#5a1410'), org = dLin('#e0601a'), wht = dLin('#e8e6e0'), gry = dLin('#6e7276'), gry2 = dLin('#4a4e52');
+  const red = dLin('#a8261e'), dk = dLin('#5a1410'), org = dLin('#e0601a'), wht = dLin('#e8e6e0'), gry = dLin('#4a524c'), gry2 = dLin('#33383a');
   const barrel = band(new THREE.CylinderGeometry(0.29, 0.29, 0.88, 14).translate(0, 0.44, 0), 0.28, 0.32, red, dk); band(barrel, 0.56, 0.6, red, dk);
   { const p = barrel.attributes.position, c = barrel.attributes.color; for (let i = 0; i < p.count; i++) { const y = p.getY(i); if ((y > 0.27 && y < 0.33) || (y > 0.55 && y < 0.61)) c.setXYZ(i, dk[0], dk[1], dk[2]); else c.setXYZ(i, red[0], red[1], red[2]); } }
   const cone = band(new THREE.ConeGeometry(0.16, 0.68, 12).translate(0, 0.34, 0), 0.3, 0.44, org, wht);

@@ -7,6 +7,20 @@ window.ZC_DATA = {
 },
 "log": [
 {
+"v": "1.9.999",
+"date": "Oct 23, 2026",
+"era": "2.0",
+"slice": 16,
+"title": "Third person, in 3D",
+"bullets": [
+"The game plays behind the survivor now: a chase camera that hovers over his shoulder and swings in tight when you aim",
+"The whole city built in 3D from its own map: buildings with rooms behind the windows, cars, bridges over sunken rivers, the elevated highways",
+"A real sun and shadows, clouds, stars and the moon, fog, rain, snow and lightning, and a flashlight on the gun at night",
+"Every zombie is its sculpted 3D model on its own animations; tracers, blood, fireballs and the A-10 in 3D too",
+"Phones get twin sticks with FIRE, AIM and light aim assist; the top-down view is still there in Settings"
+]
+},
+{
 "v": "1.9.998.2",
 "date": "Oct 22, 2026",
 "era": "2.0",
