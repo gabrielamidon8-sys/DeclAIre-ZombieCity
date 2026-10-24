@@ -515,7 +515,7 @@ function swarmVehBump(r, sx, sy) {
 function swarmVehWake(r) {
   r.dyn = 1; if (r.ox0 === undefined) { r.ox0 = r.x; r.oy0 = r.y; }
   SWDYN.set(r.vid, r);
-  const c = chunks.get(r.ck); if (c) c.stale = 1;
+  const c = chunks.get(r.ck); if (c) c.stale = c.stale3 = 1;
   if (typeof carHit === 'function') carHit(r);
   SWARM.stats.cars++; coreEmit('vehicle', { r: r });
 }
@@ -527,7 +527,7 @@ function swarmVehPark() {
     const c = chunks.get(r.ck); if (!c) continue;
     if (Math.hypot(r.x + r.w / 2 - cam.x, r.y + r.h / 2 - cam.y) < CHS * 2.5) continue;
     if (r.x < c.sx || r.y < c.sy || r.x + r.w > c.sx + CHS || r.y + r.h > c.sy + CHS) continue;
-    r.dyn = 0; r.spr = null; SWDYN.delete(vid); bucketRects(c); c.stale = 1;
+    r.dyn = 0; r.spr = null; SWDYN.delete(vid); bucketRects(c); c.stale = c.stale3 = 1;
   }
 }
 // each block's vehicles get a name both players agree on; ones moved earlier are put back where the crowd left them
@@ -549,7 +549,7 @@ function swarmVehFind(vid) {
 function swarmVehNet(vid, x, y) {
   if (!NUM(x) || !NUM(y)) return;
   const r = swarmVehFind(vid); if (!r) return;
-  if (!r.dyn) { r.dyn = 1; r.ox0 = r.x; r.oy0 = r.y; SWDYN.set(r.vid, r); const c = chunks.get(r.ck); if (c) c.stale = 1; if (typeof carHit === 'function') carHit(r); r.x = x; r.y = y; }
+  if (!r.dyn) { r.dyn = 1; r.ox0 = r.x; r.oy0 = r.y; SWDYN.set(r.vid, r); const c = chunks.get(r.ck); if (c) c.stale = c.stale3 = 1; if (typeof carHit === 'function') carHit(r); r.x = x; r.y = y; }
   r.tx = x; r.ty = y; SWARM.moved.set(vid, [x, y]);
 }
 function swarmClient(dt) {
@@ -775,10 +775,10 @@ function swarmHurt(e, part) {
 // a new run: no hordes, and every vehicle back where it was parked
 function swarmReset() {
   SWARM.hordes.length = 0; SWARM.hb.clear(); SWARM.plan.length = 0; SWARM.pending = 0; SWARM.vDirty.clear();
-  for (const r of SWDYN.values()) { if (r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; } r.dyn = 0; r.ph = null; r.spr = null; r.tx = undefined; const c = chunks.get(r.ck); if (c) c.stale = 1; }
+  for (const r of SWDYN.values()) { if (r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; } r.dyn = 0; r.ph = null; r.spr = null; r.tx = undefined; const c = chunks.get(r.ck); if (c) c.stale = c.stale3 = 1; }
   for (const vid of SWARM.moved.keys()) {
     const m = /^(-?\d+),(-?\d+):(\d+)$/.exec(vid), c = m && chunks.get(m[1] + ',' + m[2]), r = c && c.rects[+m[3]];
-    if (r && r.vid === vid && r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; r.dyn = 0; r.ph = null; r.spr = null; bucketRects(c); c.stale = 1; }
+    if (r && r.vid === vid && r.ox0 !== undefined) { r.x = r.ox0; r.y = r.oy0; r.dyn = 0; r.ph = null; r.spr = null; bucketRects(c); c.stale = c.stale3 = 1; }
   }
   SWDYN.clear(); SWARM.moved.clear(); SWARM.capLive = SWARM.cap;
   SWARM.stats.hordes = SWARM.stats.droves = SWARM.stats.cars = 0; SWARM.stats.peak = 0;

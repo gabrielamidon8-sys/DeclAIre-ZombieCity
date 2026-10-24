@@ -31,7 +31,7 @@ const DEPTH = {
   on: false, ok: false, tried: false, why: '', R: null, cv: null, scene: null, cam: null, comp: null, pass: {}, lvl: 2, lvlSet: -1, adapt: 0, good: 0,
   ox: 0, oy: 0, upm: 32, chunks: new Map(), queue: [], lights: [], spot: null, sun: null, hemi: null, sky: null, stars: null, moon: null,
   env: null, envT: -99, envDay: -1, pmrem: null, mats: {}, geo: {}, tex: {}, ms: 0, msAvg: 0, frames: 0, errT: [], offUntil: 0, lost: false,
-  built: 0, buildMs: 0, dyn: {}, t: 0, calls: 0, tris: 0, scale: 1, lastW: 0, lastH: 0, lastPR: 0, fogFar: 120, dayK: 1, night: 0, wet: 0, tests: null
+  built: 0, buildMs: 0, dyn: null, t: 0, calls: 0, tris: 0, scale: 1, lastW: 0, lastH: 0, lastPR: 0, fogFar: 120, dayK: 1, night: 0, wet: 0, tests: null
 };
 // metres per world unit: 32 units are a metre at the real world scale (fewer at the classic scale)
 function dUPM() { return 32 * SCL / SCALE_REAL; }
@@ -116,7 +116,7 @@ function depthFree(soft) {
       if (DEPTH.cv && DEPTH.cv.parentNode) DEPTH.cv.parentNode.removeChild(DEPTH.cv); DEPTH.cv = null;
     }
   } catch (e) { coreHurt('DEPTH', e); }
-  DEPTH.scene = null; DEPTH.ok = false; DEPTH.lvlSet = -1; DEPTH.envDay = -1; DEPTH.wx = null; DEPTH.life = null;
+  DEPTH.scene = null; DEPTH.ok = false; DEPTH.lvlSet = -1; DEPTH.envDay = -1; DEPTH.wx = null; DEPTH.life = null; DEPTH.jets = null; DEPTH.dyn = null;
   if (soft && DEPTH.R) { DEPTH.tried = false; depthInit(); }
 }
 // the 3D view on or off (Settings > Graphics > View, the governor's fallback, a lost context)
@@ -539,6 +539,7 @@ function depthChunkBuild(c, ring) {
   const t0 = performance.now(), U = DEPTH.upm, q = DQ[DEPTH.lvl], S = DEPTH.scene, G0 = new THREE.Group();
   G0.position.set((c.sx - DEPTH.ox) / U, 0, (c.sy - DEPTH.oy) / U); G0.matrixAutoUpdate = true;
   const ox = c.sx, oy = c.sy, L = (v) => v / U, keep = [], rec = { k: depthChunkKey(c.cx, c.cy), c: c, g: G0, keep: keep, ring: ring, lit: [], fires: [], props: [] };
+  const TH = dGB();   // everything in the plain material goes into one geometry (one draw for the whole block)
   const sz = CHS / U, bio = c.bio, B0 = BIO[bio] || BIO.city, urban = bio !== 'desert' && bio !== 'snow';
   const curb = urban && !c.wm ? 0.15 : 0;
   // the ground: the block's painting at this level's resolution (nearer blocks sharper)
@@ -548,7 +549,7 @@ function depthChunkBuild(c, ring) {
   const WT = depthWaterMask(c), wtex = WT ? WT.tex : depthNoWater(), obc = DEPTH.mats.ground.onBeforeCompile;
   if (WT) keep.push(WT.tex);
   const gm = DEPTH.mats.ground.clone(); gm.map = tex; gm.onBeforeCompile = (sh, r) => { obc(sh, r); sh.uniforms.uWMask = { value: wtex }; sh.uniforms.uHasW = { value: WT ? 1 : 0 }; }; gm.customProgramCacheKey = DEPTH.mats.ground.customProgramCacheKey; keep.push(gm);
-  if (WT) { try { depthWaterBuild(c, WT, G0, keep, curb); } catch (e) { coreHurt('DEPTH', e); } }
+  if (WT) { try { depthWaterBuild(c, WT, G0, keep, curb, TH); } catch (e) { coreHurt('DEPTH', e); } }
   {
     const B = dGB(), bx = L(ROAD * SCL), BSm = L(BS * SCL), wcol = [1, 1, 1];
     // road (the whole square, the block sits on top of it), then the block raised by the curb
@@ -558,11 +559,11 @@ function depthChunkBuild(c, ring) {
     // (the ground's uv: x across, y up the texture; the painting's top row is the north edge)
     const uv = g.attributes.uv.array; for (let i = 0; i < uv.length; i += 2) { const vx = B.p[(i / 2) * 3], vz = B.p[(i / 2) * 3 + 2]; uv[i] = vx / sz; uv[i + 1] = 1 - vz / sz; }
     const m = new THREE.Mesh(g, gm); m.receiveShadow = true; m.castShadow = false; G0.add(m); keep.push(g);
-    if (curb) { const C = dGB(), cc = dLin('#8a8984', null, 0.8); dBox(C, bx, 0, bx, bx + BSm, curb, bx + BSm, cc, null, null, 't'); const cg = dGeom(C); const cm = new THREE.Mesh(cg, DEPTH.mats.thing); cm.receiveShadow = true; G0.add(cm); keep.push(cg); }
+    if (curb) { const cc = dLin('#8a8984', null, 0.8); dBox(TH, bx, 0, bx, bx + BSm, curb, bx + BSm, cc, null, null, 't'); }
   }
   // buildings
   {
-    const B = dGB(), T = dGB(), V = dGB(), roofTmp = [0, 0, 0], col = [0, 0, 0];
+    const B = dGB(), T = TH, V = TH, roofTmp = [0, 0, 0], col = [0, 0, 0];
     for (const r of c.rects) {
       const x0 = L(r.x - ox), z0 = L(r.y - oy), x1 = L(r.x + r.w - ox), z1 = L(r.y + r.h - oy);
       if (r.k === 'b') {
@@ -593,13 +594,12 @@ function depthChunkBuild(c, ring) {
       }
     }
     if (B.nv) { const g = dGeom(B, true); const m = new THREE.Mesh(g, DEPTH.mats.facade); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); rec.bld = m; }
-    if (T.nv) { const g = dGeom(T); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
-    if (V.nv) { const g = dGeom(V); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+    void T; void V;
   }
   // the things in the street: vehicles, benches, planters, fences, rubble... (boxes at their real sizes for now; the
   // vehicles get their own bodies)
   {
-    const B = dGB(), P = dGB(), Gl = dGB(), Tr = dGB(), col = [0, 0, 0];
+    const B = TH, P = dGB(), Gl = dGB(), Tr = dGB(), col = [0, 0, 0];
     for (const r of c.rects) {
       if (r.k === 'b' || r.k === 'trunk' || r.dyn) continue;
       const x0 = L(r.x - ox), z0 = L(r.y - oy), x1 = L(r.x + r.w - ox), z1 = L(r.y + r.h - oy), y0 = r.k === 'car' ? 0 : curb && x0 > L(ROAD * SCL) - 0.01 && z0 > L(ROAD * SCL) - 0.01 ? curb : 0;
@@ -614,14 +614,13 @@ function depthChunkBuild(c, ring) {
       dBox(B, x0, y0, z0, x1, y0 + h, z1, col);
     }
     for (const f of c.furn || []) dFurniture(B, Gl, f, L(f.x * SCL - ox), L(f.y * SCL - oy), curb);
-    if (B.nv) { const g = dGeom(B); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
     if (P.nv) { const g = dGeom(P); const m = new THREE.Mesh(g, DEPTH.mats.paint); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
     if (Gl.nv) { const g = dGeom(Gl); const m = new THREE.Mesh(g, DEPTH.mats.glass); m.castShadow = false; m.receiveShadow = false; G0.add(m); keep.push(g); }
     if (Tr.nv) { const g = dGeom(Tr); const m = new THREE.Mesh(g, DEPTH.mats.rubber); m.castShadow = false; G0.add(m); keep.push(g); }
   }
   // street lamps: a pole, an arm out over the road and the head (lit by the light pool at night)
   {
-    const B = dGB(), H = dGB(), pc = dLin('#3a3d42');
+    const B = TH, H = dGB(), pc = dLin('#3a3d42');
     if (!c.lights) c.lights = lightsOf(c.cx, c.cy);
     for (const l of c.lights) {
       if (l.hw) continue;
@@ -632,11 +631,10 @@ function depthChunkBuild(c, ring) {
       dBoxR(H, hx, y0 + 6.88, hz, 0.34, 0.16, y0 + 7.06, Math.atan2(dz, dx), [1, 1, 1]);
       rec.lit.push({ x: hx, y: y0 + 6.85, z: hz });
     }
-    if (B.nv) { const g = dGeom(B); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; G0.add(m); keep.push(g); }
     if (H.nv) { const g = dGeom(H); const m = new THREE.Mesh(g, DEPTH.mats.lampHead); G0.add(m); keep.push(g); }
   }
   // the elevated highways over this block: decks, ramps, barriers, lamps and the traffic stuck up there
-  try { depthSkyway(c, G0, keep); } catch (e) { coreHurt('DEPTH', e); }
+  try { depthSkyway(c, G0, keep, TH); } catch (e) { coreHurt('DEPTH', e); }
   // trees: a trunk and a crown, by kind and season (instanced per block)
   {
     const trees = c.deco.filter(d => d.k === 'tree'), n = Math.round(trees.length * q.trees);
@@ -693,6 +691,7 @@ function depthChunkBuild(c, ring) {
       im.frustumCulled = false; im.renderOrder = 5; G0.add(im); rec.flames = im;
     }
   }
+  if (TH.nv) { const g = dGeom(TH); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
   S.add(G0); DEPTH.chunks.set(rec.k, rec);
   const ms = performance.now() - t0; DEPTH.built++; DEPTH.buildMs += ms; coreCost('DEPTH', ms);
   return rec;
@@ -714,8 +713,8 @@ function depthWaterMask(c) {
 function depthNoWater() { if (!DEPTH.tex.noW) { const t = new THREE.DataTexture(new Uint8Array([255]), 1, 1, THREE.RedFormat, THREE.UnsignedByteType); t.needsUpdate = true; DEPTH.tex.noW = t; } return DEPTH.tex.noW; }
 // the water itself (a surface half a metre down, under the decks too), the banks round it (traced along the field's
 // zero line, so they meet the cut in the ground exactly), and the bridges: the decks' edges, parapets and piers
-function depthWaterBuild(c, WT, G0, keep, curb) {
-  const U = DEPTH.upm, N = WF, D = WT.d, f = c.fv, cs = WC * SCL / U, nR = ROAD / WC, WY = -0.5, B = dGB(), K = dGB();
+function depthWaterBuild(c, WT, G0, keep, curb, TH) {
+  const U = DEPTH.upm, N = WF, D = WT.d, f = c.fv, cs = WC * SCL / U, nR = ROAD / WC, WY = -0.5, B = dGB(), K = TH || dGB();
   const mv = (i, j) => (D[j * N + i] / 255 - 0.5) * 4;   // the mask's value at a corner (a field: below zero is water)
   const deep = [0.012, 0.03, 0.036], shal = [0.03, 0.07, 0.07];
   // the surface: every cell with water at a corner (the road band too, under the decks)
@@ -758,7 +757,7 @@ function depthWaterBuild(c, WT, G0, keep, curb) {
     if (dk.horiz) { dBox(K, x0, 0, z0, x1, 0.85, z0 + 0.25, pc); dBox(K, x0, 0, z1 - 0.25, x1, 0.85, z1, pc); for (let x = x0 + 3; x < x1 - 1; x += 9) { dBox(K, x - 0.4, -3, z0 + 1.2, x + 0.4, -0.5, z0 + 2, pc); dBox(K, x - 0.4, -3, z1 - 2, x + 0.4, -0.5, z1 - 1.2, pc); } }
     else { dBox(K, x0, 0, z0, x0 + 0.25, 0.85, z1, pc); dBox(K, x1 - 0.25, 0, z0, x1, 0.85, z1, pc); for (let z = z0 + 3; z < z1 - 1; z += 9) { dBox(K, x0 + 1.2, -3, z - 0.4, x0 + 2, -0.5, z + 0.4, pc); dBox(K, x1 - 2, -3, z - 0.4, x1 - 1.2, -0.5, z + 0.4, pc); } }
   }
-  if (K.nv) { const g = dGeom(K); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+  if (!TH && K.nv) { const g = dGeom(K); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
 }
 // the highways in 3D (from the SKYWAY engine's own layout): each deck a slab at its height with the engine's painting
 // of the carriageway on top (lanes, joints, snow; without its flat traffic), jersey barriers down both sides and the
@@ -778,11 +777,11 @@ function dSkyCanvas(c, S) {
   SKY.flat3 = true; try { for (const d of S.decks) skyDeck(g, c, d, conc, win); } catch (e) { coreHurt('SKYWAY', e); } finally { SKY.flat3 = false; }
   return can;
 }
-function depthSkyway(c, G0, keep) {
+function depthSkyway(c, G0, keep, TH) {
   const S = typeof skyInfo === 'function' ? skyInfo(c) : null; if (!S) return;
   const U = DEPTH.upm, ox = c.ox, oy = c.oy, bx = (x) => (x - ox) * SCL / U, bz = (y) => (y - oy) * SCL / U, mu = SCL / U;   // block units to the block's metres
   const conc = dLin(c.bio === 'desert' ? '#8a7c66' : c.bio === 'snow' ? '#8e979f' : c.bio === 'ash' ? '#6a6a6d' : c.bio === 'burning' ? '#4e4a46' : '#62656b'), under = dLin('#3a3c40'), barC = dLin('#a9abad'), pole = dLin('#3a3d42');
-  const T = dGB(), K = dGB(), H = dGB(), P = dGB(), Gl = dGB(), Tr = dGB(), BB = dGB(), TH = 1.3;
+  const T = dGB(), K = TH || dGB(), H = dGB(), P = dGB(), Gl = dGB(), Tr = dGB(), BB = K, SLAB = 1.3;
   if (S.decks.length) {
     const can = dSkyCanvas(c, S), tex = new THREE.CanvasTexture(can); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, DEPTH.R.capabilities.getMaxAnisotropy()); keep.push(tex);
     const sz = CH * mu;
@@ -796,13 +795,13 @@ function depthSkyway(c, G0, keep) {
         const x0 = bx(v ? X0 : s0), x1 = bx(v ? X1 : s1), z0 = bz(v ? s0 : Y0), z1 = bz(v ? s1 : Y1);
         const uv = (x, z) => [x / sz, 1 - z / sz];
         dQuad(T, [x0, h0, z1], [x1, h0, z1], [x1, h0, z0], [x0, h0, z0], [0, 1, 0], [1, 1, 1], null, uv(x0, z1), uv(x1, z1), uv(x1, z0), uv(x0, z0));
-        dQuad(K, [x0, h0 - TH, z0], [x1, h0 - TH, z0], [x1, h0 - TH, z1], [x0, h0 - TH, z1], [0, -1, 0], under, null);
+        dQuad(K, [x0, h0 - SLAB, z0], [x1, h0 - SLAB, z0], [x1, h0 - SLAB, z1], [x0, h0 - SLAB, z1], [0, -1, 0], under, null);
         // the long sides (where they are in this block) and the raw ends at a gap
-        if (v) { if (d.x >= ox) dQuad(K, [x0, h0 - TH, z0], [x0, h0 - TH, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], conc, null); if (d.x + d.w <= ox + CH) dQuad(K, [x1, h0 - TH, z1], [x1, h0 - TH, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], conc, null); }
-        else { if (d.y >= oy) dQuad(K, [x1, h0 - TH, z0], [x0, h0 - TH, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], conc, null); if (d.y + d.h <= oy + CH) dQuad(K, [x0, h0 - TH, z1], [x1, h0 - TH, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], conc, null); }
+        if (v) { if (d.x >= ox) dQuad(K, [x0, h0 - SLAB, z0], [x0, h0 - SLAB, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], conc, null); if (d.x + d.w <= ox + CH) dQuad(K, [x1, h0 - SLAB, z1], [x1, h0 - SLAB, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], conc, null); }
+        else { if (d.y >= oy) dQuad(K, [x1, h0 - SLAB, z0], [x0, h0 - SLAB, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], conc, null); if (d.y + d.h <= oy + CH) dQuad(K, [x0, h0 - SLAB, z1], [x1, h0 - SLAB, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], conc, null); }
         if (gp) {
-          if (s1 === Math.min(a1, o0 + gp.at) && s1 < a1) { if (v) dQuad(K, [x0, h0 - TH, z1], [x1, h0 - TH, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], under, null); else dQuad(K, [x1, h0 - TH, z1], [x1, h0 - TH, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], under, null); }
-          if (s0 === Math.max(a0, o0 + gp.at + gp.len) && s0 > a0) { if (v) dQuad(K, [x1, h0 - TH, z0], [x0, h0 - TH, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], under, null); else dQuad(K, [x0, h0 - TH, z0], [x0, h0 - TH, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], under, null); }
+          if (s1 === Math.min(a1, o0 + gp.at) && s1 < a1) { if (v) dQuad(K, [x0, h0 - SLAB, z1], [x1, h0 - SLAB, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], under, null); else dQuad(K, [x1, h0 - SLAB, z1], [x1, h0 - SLAB, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], under, null); }
+          if (s0 === Math.max(a0, o0 + gp.at + gp.len) && s0 > a0) { if (v) dQuad(K, [x1, h0 - SLAB, z0], [x0, h0 - SLAB, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], under, null); else dQuad(K, [x0, h0 - SLAB, z0], [x0, h0 - SLAB, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], under, null); }
         }
         // jersey barriers: both edges and the median (where the painting has them)
         const W2 = v ? d.w : d.h, e0 = v ? d.x : d.y;
@@ -838,16 +837,15 @@ function depthSkyway(c, G0, keep) {
       const ax = p[k], ay = p[k + 1], bx2 = p[k + 2], by2 = p[k + 3], mx = (ax + bx2) / 2, my = (ay + by2) / 2; if (mx < ox || mx >= ox + CH || my < oy || my >= oy + CH) continue;
       const dx = bx2 - ax, dy = by2 - ay, ln = Math.hypot(dx, dy) || 1, nx = -dy / ln * hw, ny = dx / ln * hw, ex = dx / ln * 2, ey = dy / ln * 2;   // (2 units of overlap hides the joints on the bends)
       const A = [bx(ax - ex + nx), bz(ay - ey + ny)], Bq = [bx(bx2 + ex + nx), bz(by2 + ey + ny)], C = [bx(bx2 + ex - nx), bz(by2 + ey - ny)], D = [bx(ax - ex - nx), bz(ay - ey - ny)];
-      const up = (P0) => [P0[0], h0, P0[1]], dn = (P0) => [P0[0], h0 - TH, P0[1]], cr = (q, r2) => (r2[0] - q[0]);
+      const up = (P0) => [P0[0], h0, P0[1]], dn = (P0) => [P0[0], h0 - SLAB, P0[1]], cr = (q, r2) => (r2[0] - q[0]);
       // top (counter-clockwise from above whichever way the ribbon turns), underside, both edges, barriers
       const ccw = ((Bq[0] - A[0]) * (D[1] - A[1]) - (D[0] - A[0]) * (Bq[1] - A[1])) < 0;
       if (ccw) dQuad(K, up(A), up(Bq), up(C), up(D), [0, 1, 0], conc, null); else dQuad(K, up(A), up(D), up(C), up(Bq), [0, 1, 0], conc, null);
       if (ccw) dQuad(K, dn(A), dn(D), dn(C), dn(Bq), [0, -1, 0], under, null); else dQuad(K, dn(A), dn(Bq), dn(C), dn(D), [0, -1, 0], under, null);
-      for (const [E0, E1, sgn] of [[A, Bq, 1], [C, D, 1]]) { const ex2 = E1[0] - E0[0], ez2 = E1[1] - E0[1], el = Math.hypot(ex2, ez2) || 1; let n = [-ez2 / el, 0, ex2 / el]; const midx = (E0[0] + E1[0]) / 2 - bx(mx), midz = (E0[1] + E1[1]) / 2 - bz(my); let q0 = E0, q1 = E1; if (n[0] * midx + n[2] * midz < 0) { q0 = E1; q1 = E0; n = [-n[0], 0, -n[2]]; } dQuad(K, [q0[0], h0 - TH, q0[1]], [q1[0], h0 - TH, q1[1]], [q1[0], h0 + 0.85, q1[1]], [q0[0], h0 + 0.85, q0[1]], n, barC, null); void sgn; void cr; }
+      for (const [E0, E1, sgn] of [[A, Bq, 1], [C, D, 1]]) { const ex2 = E1[0] - E0[0], ez2 = E1[1] - E0[1], el = Math.hypot(ex2, ez2) || 1; let n = [-ez2 / el, 0, ex2 / el]; const midx = (E0[0] + E1[0]) / 2 - bx(mx), midz = (E0[1] + E1[1]) / 2 - bz(my); let q0 = E0, q1 = E1; if (n[0] * midx + n[2] * midz < 0) { q0 = E1; q1 = E0; n = [-n[0], 0, -n[2]]; } dQuad(K, [q0[0], h0 - SLAB, q0[1]], [q1[0], h0 - SLAB, q1[1]], [q1[0], h0 + 0.85, q1[1]], [q0[0], h0 + 0.85, q0[1]], n, barC, null); void sgn; void cr; }
     }
   }
-  if (K.nv) { const g = dGeom(K); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
-  if (BB.nv) { const g = dGeom(BB); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+  if (!TH && K.nv) { const g = dGeom(K); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
   if (H.nv) { const g = dGeom(H); const m = new THREE.Mesh(g, DEPTH.mats.lampHead); G0.add(m); keep.push(g); }
   if (P.nv) { const g = dGeom(P); const m = new THREE.Mesh(g, DEPTH.mats.paint); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
   if (Gl.nv) { const g = dGeom(Gl); const m = new THREE.Mesh(g, DEPTH.mats.glass); G0.add(m); keep.push(g); }
@@ -1039,6 +1037,8 @@ function depthStream() {
   }
   want.sort((a, b) => a[3] - b[3]);
   // build the nearest missing block (two when the frame has room)
+  if (DEPTH.season !== WORLD.season) { if (DEPTH.season != null) for (const C of DEPTH.chunks.values()) C.c.stale3 = 1; DEPTH.season = WORLD.season; }
+  for (const [k, C] of DEPTH.chunks) if (C.c.stale3) { C.c.stale3 = 0; const ring = C.ring; depthChunkDrop(k); try { depthChunkBuild(C.c, ring); } catch (e) { coreHurt('DEPTH', e); } break; }
   const budget = PERF.fps && PERF.fps < targetFps() * 0.9 ? 1 : 2;
   for (let n = 0; n < Math.min(budget, want.length); n++) { const w = want[n]; try { depthChunkBuild(getChunk(w[0], w[1]), w[2]); } catch (e) { coreHurt('DEPTH', e); try { console.error(e); } catch (x) { } } }
   // drop the ones well out of the ring
@@ -1232,13 +1232,14 @@ function depthLifeBuild() {
   const vm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.25, envMapIntensity: 0.8 });
   const bird = (() => { const g = new THREE.BufferGeometry(), P = [0.18, 0, 0, -0.16, 0.02, 0.05, -0.16, 0.02, -0.05, 0.02, 0.01, 0, -0.06, 0.01, 0.32, -0.04, 0.01, 0, 0.02, 0.01, 0, -0.04, 0.01, 0, -0.06, 0.01, -0.32]; g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex([0, 1, 2, 3, 4, 5, 6, 7, 8]); g.computeVertexNormals(); return g; })();
   const bm = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.8, side: THREE.DoubleSide });
+  const rat = (() => { const g = new THREE.SphereGeometry(0.06, 8, 6); g.scale(1.9, 0.85, 1); g.translate(0, 0.05, 0); const t = new THREE.CylinderGeometry(0.006, 0.01, 0.17, 4); t.rotateZ(Math.PI / 2); t.translate(-0.19, 0.03, 0); return THREE.BufferGeometryUtils ? THREE.BufferGeometryUtils.mergeGeometries([g.toNonIndexed(), t.toNonIndexed()]) : g; })();
   const fm = new THREE.MeshStandardMaterial({ color: 0x3a0e10, roughness: 0.7, side: THREE.DoubleSide, emissive: 0x5a0a08, emissiveIntensity: 0.35 });
-  DEPTH.life = { barrel: mk(barrel, vm, 48, true), cone: mk(cone, vm, 64, true), can: mk(can, vm, 48, true), tire: mk(tire, DEPTH.mats.rubber, 48, true), crate: mk(crate, new THREE.MeshStandardMaterial({ color: 0x8a6a44, roughness: 0.85 }), 32, true), bird: mk(bird, bm, 96, false), flyer: mk(bird.clone().scale(2.4, 2.4, 2.4), fm, 48, true), o: new THREE.Object3D(), mats: [vm, bm, fm] };
+  DEPTH.life = { barrel: mk(barrel, vm, 48, true), cone: mk(cone, vm, 64, true), can: mk(can, vm, 48, true), tire: mk(tire, DEPTH.mats.rubber, 48, true), crate: mk(crate, new THREE.MeshStandardMaterial({ color: 0x8a6a44, roughness: 0.85 }), 32, true), bird: mk(bird, bm, 96, false), flyer: mk(bird.clone().scale(2.4, 2.4, 2.4), fm, 48, true), rat: mk(rat, new THREE.MeshStandardMaterial({ color: 0x2a2624, roughness: 0.9 }), 32, true), o: new THREE.Object3D(), mats: [vm, bm, fm] };
 }
 function depthLifeFrame() {
   if (!DEPTH.life) { try { depthLifeBuild(); } catch (e) { coreHurt('DEPTH', e); DEPTH.life = { off: true }; return; } }
   const Lf = DEPTH.life; if (Lf.off) return;
-  const O = Lf.o, n = { barrel: 0, cone: 0, can: 0, tire: 0, crate: 0, bird: 0, flyer: 0 }, piv = HOVER.pivot || [0, 0, 0], U = DEPTH.upm, T = G.time || 0, far2 = Math.pow((DEPTH.fogFar || 100) * 0.8, 2);
+  const O = Lf.o, n = { barrel: 0, cone: 0, can: 0, tire: 0, crate: 0, bird: 0, flyer: 0, rat: 0 }, piv = HOVER.pivot || [0, 0, 0], U = DEPTH.upm, T = G.time || 0, far2 = Math.pow((DEPTH.fogFar || 100) * 0.8, 2);
   const put = (k, x, y, z, ry, rx, sc) => { const M = Lf[k]; if (!M || n[k] >= M.instanceMatrix.count) return; O.position.set(x, y, z); O.rotation.set(rx || 0, ry, 0, 'YXZ'); O.scale.setScalar(sc || 1); O.updateMatrix(); M.setMatrixAt(n[k]++, O.matrix); };
   if (typeof WD !== 'undefined') {
     for (const p of WD.props) {
@@ -1253,9 +1254,68 @@ function depthLifeFrame() {
       else { const h = Math.min(30, 0.3 + b.t * (3 + b.t * 2)), fl = Math.sin(b.t * (big > 1.2 ? 9 : 22)); put('bird', x, h, z, -Math.atan2(b.vy || 0, b.vx || 1), fl * 0.6, big * (1 + 0.1 * fl)); }
     }
   }
+  // rats running along the walls (the PULSE engine's), and the odd dead one
+  if (typeof PULSE !== 'undefined' && PULSE.rats) for (const r of PULSE.rats) { const x = dX(r.x), zz = dZ(r.y), dx = x - piv[0], dz = zz - piv[2]; if (dx * dx + dz * dz > far2) continue; put('rat', x, fleshGroundY(r), zz, -(r.a || 0), r.st === 'dead' ? Math.PI : 0, (r.s || 1) * 1.1); }
   // the hive's flyers: leathery things the size of a crow's wingspan, flapping fast at head height
   for (const z of G.zs) { if (z.dead || !z.fly) continue; const x = dX(z.x), zz = dZ(z.y), dx = x - piv[0], dz = zz - piv[2]; if (dx * dx + dz * dz > far2) continue; const fl = Math.sin(T * 26 + (z.nid | 0)); put('flyer', x, 1.7 + Math.sin(T * 3 + (z.nid | 0)) * 0.3, zz, -Math.atan2(z.vy || 0, z.vx || 1), fl * 0.7, 1 + 0.08 * fl); }
   for (const k in n) { const M = Lf[k]; M.count = n[k]; if (n[k]) M.instanceMatrix.needsUpdate = true; }
+}
+
+/* ---------- vehicles the horde pushes ---------- */
+// a car the crowd shoves is taken out of its block (the block is rebuilt without it) and drawn here where it is now; when
+// it comes to rest its block is rebuilt with it in its new place
+function depthDynFrame() {
+  if (typeof SWDYN === 'undefined') return;
+  const M = DEPTH.dyn || (DEPTH.dyn = new Map()), U = DEPTH.upm, seen = DEPTH.dynSeen || (DEPTH.dynSeen = new Set()); seen.clear();
+  for (const [vid, r] of SWDYN) {
+    if (!r.dyn || !(r.x === r.x)) continue; seen.add(vid);
+    let e = M.get(vid);
+    if (!e) {
+      const P = dGB(), Gl = dGB(), Tr = dGB(); dVehicle(P, Gl, Tr, r, 0, 0, r.w / U, r.h / U);
+      const g = new THREE.Group(), geos = [];
+      for (const [B, mat] of [[P, r.burnt ? DEPTH.mats.thing : DEPTH.mats.paint], [Gl, DEPTH.mats.glass], [Tr, DEPTH.mats.rubber]]) if (B.nv) { const geo = dGeom(B); const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; g.add(m); geos.push(geo); }
+      DEPTH.scene.add(g); e = { g: g, geos: geos }; M.set(vid, e);
+    }
+    e.g.position.set(dX(r.x), 0, dZ(r.y));
+  }
+  for (const [vid, e] of M) if (!seen.has(vid)) { DEPTH.scene.remove(e.g); for (const g of e.geos) g.dispose(); M.delete(vid); }
+}
+
+/* ---------- the A-10 ---------- */
+// the Warthog at its real size (16.3 m long, 17.5 m across): a fuselage with its long nose and the gun's muzzle, the
+// canopy, straight wings with their stores, the two engine pods high on the rear fuselage and the twin tails, in two-tone
+// grey; it comes in low over the street, dips for its gun run, and its engines glow
+function depthJetGeo() {
+  if (DEPTH.geo.jet) return DEPTH.geo.jet;
+  const B = dGB(), up = dLin('#4a4e52'), lo = dLin('#6a6e72'), dk = dLin('#2a2c2e'), gl = [0.02, 0.025, 0.03];
+  // a tube along x (r0 at x0, r1 at x1), n sides, centred at (y, z)
+  const tube = (x0, x1, r0, r1, y, z, n, colU, colL) => { for (let i = 0; i < n; i++) { const a0 = i / n * TAU, a1 = (i + 1) / n * TAU, am = (a0 + a1) / 2, cU = Math.sin(am) > -0.1 ? colU : colL;
+    dQuad(B, [x0, y + Math.sin(a0) * r0, z + Math.cos(a0) * r0], [x0, y + Math.sin(a1) * r0, z + Math.cos(a1) * r0], [x1, y + Math.sin(a1) * r1, z + Math.cos(a1) * r1], [x1, y + Math.sin(a0) * r1, z + Math.cos(a0) * r1], [0, Math.sin(am), Math.cos(am)], cU, null); } };
+  tube(-7.4, -5.2, 0.45, 0.95, 0, 0, 10, up, lo); tube(-5.2, 3.5, 0.95, 1.05, 0, 0, 10, up, lo); tube(3.5, 7.2, 1.05, 0.5, 0.05, 0, 10, up, lo); tube(7.2, 8.0, 0.5, 0.12, 0.05, 0, 8, dk, dk);
+  tube(8.0, 8.6, 0.06, 0.06, -0.15, 0, 6, dk, dk);   // the gun's barrels
+  dBox(B, 3.6, 0.85, -0.55, 5.6, 1.45, 0.55, gl);   // the canopy
+  dBox(B, -1.6, -0.25, -8.75, 1.2, 0.1, 8.75, up);  // the wings
+  for (const zz of [-6.2, -4.4, 4.4, 6.2]) dBox(B, -0.4, -0.75, zz - 0.18, 1.6, -0.25, zz + 0.18, dk);   // the stores
+  for (const zz of [-1.25, 1.25]) { tube(-4.6, -1.0, 0.68, 0.72, 1.15, zz, 10, up, lo); dBox(B, -3.4, 0.55, zz - 0.15, -2.0, 1.0, zz + 0.15, up); }   // the engine pods on their pylons
+  dBox(B, -7.6, 0.2, -2.85, -6.0, 0.4, 2.85, up);   // the tailplane
+  for (const zz of [-2.75, 2.75]) dBox(B, -7.7, 0.2, zz - 0.12, -5.9, 3.0, zz + 0.12, up);   // the twin fins
+  return DEPTH.geo.jet = dGeom(B);
+}
+function depthJetsFrame() {
+  const J = G.jets || [];
+  if (!DEPTH.jets) DEPTH.jets = [];
+  const list = DEPTH.jets, U = DEPTH.upm;
+  while (list.length < Math.min(3, J.length)) { const m = new THREE.Mesh(depthJetGeo(), DEPTH.mats.paint); m.castShadow = true; m.frustumCulled = false; DEPTH.scene.add(m); list.push(m); }
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i], j = J[i]; if (!j) { m.visible = false; continue; }
+    m.visible = true;
+    const yaw = Math.atan2(j.uy, j.ux), dip = j.firing ? 1 : 0; j._alt = j._alt == null ? 55 : j._alt + ((dip ? 32 : 55) - j._alt) * Math.min(1, (G.rdt || 0.016) * 1.5);
+    const x = dX(j.x), z = dZ(j.y), y = j._alt;
+    m.position.set(x, y, z); m.rotation.set(0, -yaw, j.firing ? -0.18 : -0.05, 'YZX');
+    // where the nose is (for the tracers): 8.6 m ahead along its heading, down its pitch
+    const c = Math.cos(yaw), s2 = Math.sin(yaw); j._n3 = [x + c * 8.6, y - 1.5 * (j.firing ? 1 : 0.3) - 0.15, z + s2 * 8.6];
+    void U;
+  }
 }
 
 /* ---------- the frame ---------- */
@@ -1281,6 +1341,8 @@ function depthRender() {
     if (typeof sparkFrame === 'function') sparkFrame(G.rdt || 0.016);
     depthWeatherFrame(Math.min(0.05, G.rdt || 0.016));
     depthLifeFrame();
+    depthJetsFrame();
+    depthDynFrame();
     // the grade: the bloom by the setting, grain and vignette by the settings, flashes on the screen
     const P = DEPTH.pass;
     if (P.bloom) { P.bloom.strength = 0.22 * bloomK() + DEPTH.night * 0.14 + WX.flash * 0.4; P.bloom.threshold = 1.5 - DEPTH.night * 0.45; }
@@ -1301,8 +1363,12 @@ function depthRender() {
 }
 // the governor: frames running late step the level down (or the resolution), room to spare steps it back up
 function depthGovern(ms) {
-  if (SET.q3d && SET.q3d !== 'auto') return;
   const fps = PERF.fps || 60, tgt = targetFps();
+  // a device too weak for 3D even at the lowest level and the smallest picture: the top-down view takes over (and stays
+  // the setting, with a word about where to turn 3D back on); only in a run, only after eight seconds of it
+  if (G.mode === 'play' && depthLevelNow() === 0 && DEPTH.scale <= 0.72 && fps < Math.max(18, tgt * 0.5)) { DEPTH.slowT = (DEPTH.slowT || 0) + Math.min(0.1, G.rdt || 0.016); if (DEPTH.slowT > 8 && !DEPTH.fellBack) { DEPTH.fellBack = true; SET.view = 'top'; saveSettings(); depthSetView('top'); coreRepaired('DEPTH', '3D was too heavy for this device: the top-down view took over'); try { toast('Graphics', '3D was too heavy here: top-down view (Settings > Graphics > View)', '#e8b04a'); } catch (e) { } return; } }
+  else DEPTH.slowT = Math.max(0, (DEPTH.slowT || 0) - (G.rdt || 0.016) * 0.5);
+  if (SET.q3d && SET.q3d !== 'auto') return;
   if (fps < tgt * 0.82) { DEPTH.good = 0; DEPTH.bad = (DEPTH.bad || 0) + 1; if (DEPTH.bad > 90) { DEPTH.bad = 0; if (DEPTH.scale > 0.78) { DEPTH.scale = Math.max(0.7, DEPTH.scale - 0.08); depthResize(true); } else if (depthLevelNow() > 0) { DEPTH.adapt--; DEPTH.scale = 1; } } }
   else if (fps > tgt * 0.97) { DEPTH.bad = 0; DEPTH.good = (DEPTH.good || 0) + 1; if (DEPTH.good > 600) { DEPTH.good = 0; if (DEPTH.scale < 1) { DEPTH.scale = Math.min(1, DEPTH.scale + 0.06); depthResize(true); } else if (DEPTH.adapt < 0) DEPTH.adapt++; } }
 }
@@ -1331,13 +1397,50 @@ function depthOverlay() {
     }
     ctx.globalAlpha = 1;
   }
+  // words standing in the world (a grab's warning)
+  if (typeof SPARK !== 'undefined' && SPARK.lab.length) { ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = "bold 14px 'Share Tech Mono', monospace"; const o = [0, 0, 0]; for (const L of SPARK.lab) { depthToScreen(L.x, L.y, L.h, o); if (!o[2]) continue; ctx.fillStyle = '#000'; ctx.fillText(L.s, o[0] + 1, o[1] + 1); ctx.fillStyle = L.c; ctx.fillText(L.s, o[0], o[1]); } }
   if (play) {
     if (typeof drawScreenFx === 'function') { try { drawScreenFx(); } catch (e) { } }
     if (typeof hoverDrawAim === 'function') hoverDrawAim();
-    if (NET.started && typeof netDrawPointers === 'function') { try { netDrawPointers(); } catch (e) { } }
+    if (NET.started) { try { depthNetOverlay(); } catch (e) { coreHurt('DEPTH', e); } }
   }
 }
 
+// co-op in 3D: a name tag over each teammate (red and pulsing when they are down), an arrow at the screen's edge for
+// anyone out of view (behind you too), and the pings they drop as diamonds standing over the spot
+const D_NV = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+function depthNetOverlay() {
+  if (!G.p || SET.netArrows === false) return;
+  const list = NET.role === 'host' ? Array.from(NET.peers.values()).filter(p => p.p && !p.away).map(p => ({ x: p.p.x, y: p.p.y, name: p.name, col: p.col, down: p.p.down, h: 2.15 }))
+    : Array.from(NET.others.values()).map(o => ({ x: o.x, y: o.y, name: o.name, col: o.col, down: o.down, h: 2.15 }));
+  for (const k of NET.marks || []) list.push({ x: k.x, y: k.y, name: k.name + '\u2019s mark', col: k.col, mark: true, h: 1.6 });
+  const C = DEPTH.cam, cx = W / 2, cy = H / 2, pad = 34;
+  ctx.save(); ctx.font = "bold 11px 'Share Tech Mono', monospace"; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  for (const o of list) {
+    const col = o.down ? '#ff4a4a' : (o.col || '#9fd3ff'), pulse = o.down ? 0.6 + 0.4 * Math.sin(G.time * 8) : o.mark ? 0.6 + 0.35 * Math.sin(G.time * 6) : 1;
+    D_NV.set(dX(o.x), o.h, dZ(o.y)).applyMatrix4(C.matrixWorldInverse); const behind = D_NV.z > -0.1;
+    D_NV.set(dX(o.x), o.h, dZ(o.y)).project(C); let sx = (D_NV.x * 0.5 + 0.5) * W, sy = (-D_NV.y * 0.5 + 0.5) * H;
+    ctx.globalAlpha = pulse;
+    if (!behind && sx > 8 && sx < W - 8 && sy > 8 && sy < H - 8) {
+      // on screen: the tag (a diamond for a ping), smaller the further off
+      if (o.mark) { ctx.fillStyle = 'rgba(8,10,13,0.7)'; ctx.beginPath(); ctx.moveTo(sx, sy - 12); ctx.lineTo(sx + 9, sy); ctx.lineTo(sx, sy + 12); ctx.lineTo(sx - 9, sy); ctx.closePath(); ctx.fill(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(sx, sy - 9); ctx.lineTo(sx + 6, sy); ctx.lineTo(sx, sy + 9); ctx.lineTo(sx - 6, sy); ctx.closePath(); ctx.fill(); }
+      const label = (o.name || '?') + (o.down ? ' \u00b7 DOWN' : ''), tw = ctx.measureText(label).width, ty = sy - (o.mark ? 22 : 0);
+      ctx.fillStyle = 'rgba(8,10,13,0.62)'; ctx.fillRect(sx - tw / 2 - 5, ty - 8, tw + 10, 16); ctx.fillStyle = col; ctx.fillText(label, sx, ty);
+      continue;
+    }
+    // off screen: an arrow at the edge pointing the way (behind you, the way round you would turn)
+    let dx = sx - cx, dy = sy - cy; if (behind) { dx = -dx; dy = -dy; if (Math.abs(dy) < 1) dy = 1; dy = Math.abs(dy) * 1; }
+    const k = Math.min((cx - pad) / Math.abs(dx || 1e-6), (cy - pad) / Math.abs(dy || 1e-6)), px = cx + dx * k, py = cy + dy * k, a = Math.atan2(dy, dx);
+    ctx.save(); ctx.translate(px, py); ctx.rotate(a); ctx.scale(1.4, 1.4);
+    ctx.fillStyle = 'rgba(8,10,13,0.75)'; ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-9, -11); ctx.lineTo(-4, 0); ctx.lineTo(-9, 11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-6, -8); ctx.lineTo(-2, 0); ctx.lineTo(-6, 8); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = col; ctx.fillText(o.name || '', px - Math.cos(a) * 30, py - Math.sin(a) * 22);
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+  // the marks age here as they do in the top-down view
+  if (NET.marks && NET.marks.length) NET.marks = NET.marks.filter(k => (k.t = (k.t || 0) + (G.rdt || 0.016)) < k.life);
+}
 // is the next run going to be drawn in 3D? (the loader builds 3D blocks instead of painting top-down ones)
 function depthWantedNow() { return (SET.view || '3d') === '3d' && depthWanted() && (DEPTH.ok || depthInit()); }
 // the loader's jobs for the 3D view: the blocks round the start, nearest first, and two frames so the shaders are built
@@ -1375,7 +1478,7 @@ function depthSelfTest() {
   return { ok: pass === n, n: n, pass: pass, why: why };
 }
 coreDefine({ name: 'DEPTH', kind: 'render', ver: 1, does: 'The city in three dimensions: every block built in 3D from the city engine\'s own data (the ground from its painting, buildings at the lighting engine\'s heights with floors, windows and storefronts drawn by a shader, vehicles at real sizes, trees by kind and season, furniture, lamps, fires), lit by the sun and the moon with shadows, the sky by scattering, fog by the weather, the nearest real lights from the lighting engine, and finished with a filmic curve, bloom, a gritty grade, grain and anti-aliasing.',
-  provides: ['view3d', 'world3d', 'light3d'], needs: ['WORLD', 'LUX', 'WEATHER'],
+  provides: ['view3d', 'world3d', 'light3d'], needs: ['WORLD', 'LUX', 'WX'],
   feats: { need: ['webgl2'], without: 'the game is played in the top-down view' },
   state: () => !DEPTH.on ? 'off (top-down view)' : !DEPTH.ok ? (DEPTH.why || 'starting') : DQ[DEPTH.lvl].name + ' · ' + DEPTH.chunks.size + ' blocks · ' + DEPTH.calls + ' draws · ' + Math.round(DEPTH.tris / 1000) + 'k triangles',
   level: () => DEPTH.lvl, trim: () => { if (DEPTH.lvl > 0) { DEPTH.adapt--; return true; } return false; }, boost: () => { if (DEPTH.adapt < 0) { DEPTH.adapt++; return true; } return false; },

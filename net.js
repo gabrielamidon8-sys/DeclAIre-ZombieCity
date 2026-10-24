@@ -917,7 +917,8 @@ function netMark() {
   if (!NET.started || !G.p || G.mode !== 'play') return;
   const now = performance.now(); if (now - NET.markAt < 1000) return; NET.markAt = now;
   let x = G.p.x, y = G.p.y;
-  if (DEV.kind !== 'touch' && aimMode() !== 'auto' && DEV.mIn) { x = cam.x + GCAM.kx + (DEV.mx - W / 2) / gcamZoom(); y = cam.y + GCAM.ky + (DEV.my - H / 2) / gcamZoom(); }
+  if (typeof hoverActive === 'function' && hoverActive()) { x = HOVER.aimPt[0]; y = HOVER.aimPt[1]; }   // (1.9.999: in 3D the ping goes where the crosshair is)
+  else if (DEV.kind !== 'touch' && aimMode() !== 'auto' && DEV.mIn) { x = cam.x + GCAM.kx + (DEV.mx - W / 2) / gcamZoom(); y = cam.y + GCAM.ky + (DEV.my - H / 2) / gcamZoom(); }
   x = Math.round(x); y = Math.round(y);
   if (NET.role === 'host') { netAddMark(1, x, y); hostSend('*', { t: 'mk', id: 1, x: x, y: y }); }
   else { netAddMark(NET.me, x, y); netSend({ t: 'mk', x: x, y: y }); }

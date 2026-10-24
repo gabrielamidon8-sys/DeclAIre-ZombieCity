@@ -8,7 +8,7 @@
    Four draws: glowing things, dark things, marks on the ground, medkits. */
 const SPARK = {
   ok: false, scene: null, glow: null, dark: null, deco: null, med: null, medTex: null, h: new WeakMap(), col: new Map(),
-  ms: 0, msAvg: 0, n: [0, 0, 0, 0], errT: [], offUntil: 0, lit: [1, 1, 1], made: 0
+  ms: 0, msAvg: 0, n: [0, 0, 0, 0], errT: [], offUntil: 0, lit: [1, 1, 1], made: 0, lab: []
 };
 const SPARK_CAP = [7000, 3500, 1800, 64];   // glowing, dark, ground marks, medkits
 const SPARK_HOT = 3.2;                      // glowing things are brighter than white, so the bloom catches them
@@ -238,7 +238,7 @@ function sparkFrame(dt) {
 }
 function sparkBuild(dt) {
   const U = DEPTH.upm, Gl = SPARK.glow, Dk = SPARK.dark, De = SPARK.deco, HM = SPARK.h, T = G.time || 0, HOT = SPARK_HOT;
-  Gl.n = 0; Dk.n = 0; De.n = 0;
+  Gl.n = 0; Dk.n = 0; De.n = 0; SPARK.lab.length = 0;
   Gl.mesh.visible = Dk.mesh.visible = De.mesh.visible = SPARK.med.visible = true;
   // the light the dark things and the marks are lit by: the sun and the sky, roughly as the ground gets them
   const su = DEPTH.sun, he = DEPTH.hemi, L = SPARK.lit, sy = su ? Math.max(0.15, (su.position.y - (HOVER.pivot ? HOVER.pivot[1] : 0)) / 120) : 0.5;
@@ -368,6 +368,47 @@ function sparkBuild(dt) {
     }
   }
 
+  /* explosions: a fireball where every big flash of light went off (blasts, barrels, grenades, the A-10's shells), the
+     smoke that rolls up after them, and the holes and scorch they leave */
+  if (typeof LUX !== 'undefined' && LUX.fx) for (const f of LUX.fx) {
+    if (!(f.max >= 0.14) || !(f.r >= 140) || !near(f.x, f.y)) continue;
+    const c = sparkCol('rgb(' + f.col + ')'); if (c[2] > c[0] * 1.1) continue;   // (a lightning strike's light is not a fire)
+    const k = clamp(f.life / f.max, 0, 1), u = 1 - k, R = Math.min(9, f.r / U * 0.32) * (0.55 + 0.7 * Math.sqrt(u)), x = dX(f.x), z = dZ(f.y), y0 = gy(f.x, f.y);
+    sparkPut(Gl, x, y0 + R * 0.45 + u * 1.2, z, R * 2, 0, 0, 0, 0, (f.x * 0.01) % 1, c[0] * HOT * 0.9 * k, c[1] * HOT * 0.6 * k, c[2] * HOT * 0.4 * k, Math.min(1, k * 1.4));
+    sparkPut(Gl, x, y0 + R * 0.3, z, R * 1.1, 0, 0, 0, 0, 0, HOT * 1.2 * k * k, HOT * 0.95 * k * k, HOT * 0.6 * k * k, 1);
+  }
+  if (G.smoke) for (const sm of G.smoke) {
+    if (!near(sm.x, sm.y)) continue;
+    const f = clamp(sm.t / (sm.life || 1), 0, 1), r = (sm.r0 + (sm.r1 - sm.r0) * Math.sqrt(f)) / U, c = sparkCol('rgb(' + (sm.c || '70,64,58') + ')'), a = 0.42 * (1 - f) * Math.min(1, sm.t * 8);
+    sparkPut(Dk, dX(sm.x), 0.4 + r * 0.6 + f * 2.5, dZ(sm.y), r * 2.2, 0, 0, 0, 2, ((sm.x * 0.013 + sm.y * 0.007) % 1 + 1) % 1, c[0], c[1], c[2], a);
+  }
+  if (G.holes) for (const h of G.holes) {
+    if (!near(h.x, h.y)) continue;
+    const r = Math.max(0.15, (h.r || 6) / U), x = dX(h.x), z = dZ(h.y), y = gy(h.x, h.y) + 0.014;
+    sparkMark(x, y, z, r * 1.6, r * 1.6, h.rot || 0, 2, ((h.x * 0.017) % 1 + 1) % 1, 0.015, 0.012, 0.01, 0.85, 0, 0, 0);
+    if (h.hot > 0.02) sparkMark(x, y + 0.002, z, r * 0.7, r * 0.7, 0, 11, 0, 1, 0.35, 0.08, h.hot, 0, 0, 1.6);
+  }
+  /* the A-10's cannon: tracers from the nose down to where the rounds land, and a glare on the ground there */
+  for (const j of G.jets) {
+    if (!j.firing || j.lix == null || !j._n3) continue;
+    const n3 = j._n3;
+    for (const t of j.tr) { const al = Math.max(0, 1 - t.t / 0.12); if (al <= 0) continue; const tx = dX(t.x), tz = dZ(t.y);
+      sparkPut(Gl, n3[0], n3[1], n3[2], 0.12, tx - n3[0], gy(t.x, t.y) - n3[1], tz - n3[2], 1, 0, HOT * 2.4, HOT * 1.8, HOT * 0.9, al);
+      sparkPut(Gl, n3[0], n3[1], n3[2], 0.5, tx - n3[0], gy(t.x, t.y) - n3[1], tz - n3[2], 1, 0, HOT * 0.7, HOT * 0.45, HOT * 0.2, al * 0.2); }
+    sparkMark(dX(j.lix), gy(j.lix, j.liy) + 0.04, dZ(j.liy), 3.2, 3.2, 0, 11, 0, 1, 0.6, 0.25, 0.55, 0, 0, 1.8);
+    sparkPut(Gl, n3[0], n3[1], n3[2], 1.6, 0, 0, 0, 0, 0, HOT * 2.5, HOT * 2, HOT * 1.2, 0.9);
+  }
+  /* the knife's cuts: a bright arc round the survivor at chest height (and the old ones are let go here, as the top-down
+     view does when it draws them) */
+  if (typeof BLADE !== 'undefined' && BLADE.fx && BLADE.fx.length) {
+    for (let i = BLADE.fx.length - 1; i >= 0; i--) {
+      const f = BLADE.fx[i], k = (T - f.t) / 0.22; if (k > 1) { BLADE.fx.splice(i, 1); continue; } if (k < 0) continue;
+      const spread = f.mv === 'reaper' ? Math.PI * 1.9 : f.mv === 'slash' ? 1.6 : f.mv === 'whip' ? 1.1 : 0.7, a0 = f.a - spread / 2 + (f.mv === 'reaper' ? k * Math.PI : 0), a1 = a0 + spread * Math.min(1, k * 2.2), R = f.r / U * (0.75 + 0.25 * k), n = 9;
+      const cx = dX(f.x), cz = dZ(f.y), h = 1.15 - (f.mv === 'reaper' ? 0.35 : 0);
+      for (let q = 0; q < n; q++) { const b0 = a0 + (a1 - a0) * q / n, b1 = a0 + (a1 - a0) * (q + 1) / n, x0 = cx + Math.cos(b0) * R, z0 = cz + Math.sin(b0) * R, y0 = h + Math.sin(q / n * Math.PI) * 0.12;
+        sparkPut(Gl, x0, y0, z0, 0.05 + 0.07 * (1 - k), cx + Math.cos(b1) * R - x0, h + Math.sin((q + 1) / n * Math.PI) * 0.12 - y0, cz + Math.sin(b1) * R - z0, 1, 0, 0.85 * HOT, 0.9 * HOT, HOT, 0.6 * (1 - k)); }
+    }
+  }
   /* lightning: a ground strike is a jagged bolt from the clouds down to where it hit, a far one flickers off on the horizon */
   if (typeof WX !== 'undefined' && WX.bolts) for (const b of WX.bolts) {
     let st = HM.get(b); if (!st) { st = sparkBoltPath(b, U); HM.set(b, st); }
@@ -403,7 +444,8 @@ function sparkBuild(dt) {
     const k = s.k === 'spray' ? 1 : s.k === 'scorch' || s.k === 'zap' ? 2 : 0;
     const c = s.rgb ? sparkRgb(s.rgb) : sparkCol(s.c || '#5a0a10'), grow = s.k === 'pool' ? clamp((T - (s.t0 || 0)) / 1.6, 0.35, 1) : 1, r = (s.r || 8) / U * grow;
     const al = (s.al == null ? 0.9 : s.al) * (1 - (s.dil || 0) * 0.5) * (s.k === 'cloud' ? 0.4 : 1);
-    sparkMark(dX(s.x), gy(s.x, s.y) + 0.012 + (i % 7) * 0.0006, dZ(s.y), r * (k === 1 ? 1.5 : 1), r * (s.sq || (k === 1 ? 0.7 : 1)), s.a || s.rot || 0, k, ((s.v || 0) * 0.137 + s.x * 0.001) % 1, c[0], c[1], c[2], al, 0, 0, s.glow ? 0.6 : 0);
+    let sg = HM.get(s); if (sg === undefined) { sg = gy(s.x, s.y); HM.set(s, sg); }
+    sparkMark(dX(s.x), sg + 0.012 + (i % 7) * 0.0006, dZ(s.y), r * (k === 1 ? 1.5 : 1), r * (s.sq || (k === 1 ? 0.7 : 1)), s.a || s.rot || 0, k, ((s.v || 0) * 0.137 + s.x * 0.001) % 1, c[0], c[1], c[2], al, 0, 0, s.glow ? 0.6 : 0);
   }
   /* shock rings, quake rings, the warning circles of what is coming down, the zombies' danger auras and charge lanes */
   for (const r of G.rings) {
@@ -425,9 +467,29 @@ function sparkBuild(dt) {
     if (zz.st.wind > 0 && zz.st.cx != null) { const a = Math.atan2(zz.st.cy, zz.st.cx), L = 150 / U; sparkMark(x + Math.cos(a) * L, gy(zz.x, zz.y) + 0.03, z + Math.sin(a) * L, L, zz.r * 0.6 / U, a, 9, 0, 1, 0.16, 0.12, 0.3 + (0.65 - zz.st.wind) * 0.8, 0, 0, 1.4); }
     if (zz.m && zz.m.S && zz.m.S.p && zz.m.S.p.rad && !zz.st.down) sparkMark(x, 0.03, z, 90 / U, 90 / U, 0, 3, 0, 0.6, 1, 0.05, 0.35, 0.04, 0, 0.9);
     if (zz.abs && zz.abs.indexOf('chiller') >= 0) sparkMark(x, 0.03, z, 150 / U, 150 / U, 0, 3, 0, 0.5, 0.75, 1, 0.35, 0.03, 0, 0.7);
+    if (zz.rb && !zz.rb.ill) sparkBossTele(zz, x, z, gy(zz.x, zz.y), U, T);
+    if (zz.snatch && zz.snatch.state === 'grabTele') { const sn = zz.snatch, f = clamp(1 - sn.t / (typeof GRAB_TELE !== 'undefined' ? GRAB_TELE : 1.8), 0, 1), lk = sn.t <= (typeof GRAB_LOCK !== 'undefined' ? GRAB_LOCK : 0.6), R = sn.zr / U; sparkMark(dX(sn.zx), gy(sn.zx, sn.zy) + 0.04, dZ(sn.zy), R, R, 0, 4, 0, 1, 0.2, 0.18, lk ? 1 : 0.75, 0, f, 1.3); SPARK.lab.push({ x: sn.zx, y: sn.zy, h: 0.6, s: lk ? 'DASH OUT!' : 'GRAB', c: '#ffe1dc' }); }
     if (zz.boss) { const R = zz.r / U * 1.6, pu = 0.5 + 0.5 * Math.sin(T * 3); sparkMark(x, gy(zz.x, zz.y) + 0.035, z, R, R, 0, 3, 0, 1, 0.12, 0.08, 0.45 + 0.25 * pu, 0.05, 0, 1.4); }
   }
 
+  /* what the survivor's dash leaves behind: ice, fire, toxic pools, smoke, a gravity well, holy ground, a rift */
+  if (G.dfx) for (const dz of G.dfx) {
+    const f = dz.t / (dz.max || 1), al = Math.min(1, (1 - f) * 2.2) * Math.min(1, dz.t * 6); if (al <= 0.01 || !near(dz.x, dz.y)) continue;
+    const x = dX(dz.x), z = dZ(dz.y), y = gy(dz.x, dz.y) + 0.03, R = (dz.r || 40) / U;
+    if (dz.k === 'rift') { const x2 = dX(dz.x2), z2 = dZ(dz.y2); sparkPut(Gl, x, 1.0, z, 0.25, x2 - x, 0, z2 - z, 1, 0, 0.75 * HOT, 0.6 * HOT, HOT * 1.2, al); sparkPut(Dk, x, 0.9, z, 1.1, x2 - x, 0, z2 - z, 1, 0, 0.08, 0.0, 0.14, 0.8 * al); }
+    else if (dz.k === 'ice') sparkMark(x, y, z, R, R * 0.8, 0.6, 7, 0.3, 0.45, 0.75, 0.95, al, 0, 0, 0.15);
+    else if (dz.k === 'fire') { sparkMark(x, y, z, R, R, 0, 8, 0.5, 1, 1, 1, al, 0, 0, 1.6); for (let i = 0; i < 4; i++) { const cy = ((T * 1.4 + i * 0.27) % 1), an = i * 1.9 + dz.x; sparkPut(Gl, x + Math.cos(an) * R * 0.4, y + 0.1 + cy * 1.2, z + Math.sin(an) * R * 0.4, 0.8 * (1 - cy * 0.5), 0, 0, 0, 0, 0, HOT, 0.4 * HOT, 0.08 * HOT, (1 - cy) * al * 0.8); } }
+    else if (dz.k === 'toxic') sparkMark(x, y, z, R * (1 + f * 0.2), R * (1 + f * 0.2), 0, 5, 0.7, 0.35, 0.8, 0.12, 0.8 * al, 0, 0, 0.5);
+    else if (dz.k === 'smoke') { for (let i = 0; i < 6; i++) { const an = i / 6 * TAU + T * 0.4; sparkPut(Dk, x + Math.cos(an) * R * 0.45, 1 + (i % 2) * 0.6, z + Math.sin(an) * R * 0.45, R * 1.3, 0, 0, 0, 2, (i * 0.17) % 1, 0.62, 0.64, 0.68, 0.45 * al); } }
+    else if (dz.k === 'well') { for (let i = 0; i < 3; i++) { const rr = R * ((T * 0.8 + i / 3) % 1); sparkMark(x, y, z, Math.max(0.1, rr), Math.max(0.1, rr), 0, 3, 0, 0.5, 0.5, 1, 0.6 * al, 0.06, 0, 1); } }
+    else if (dz.k === 'holy') { sparkMark(x, y, z, R, R, 0, 3, 0, 1, 0.92, 0.6, 0.75 * al, 0.05, 0, 1.4); sparkMark(x, y - 0.003, z, R, R, 0, 11, 0, 1, 0.94, 0.7, 0.18 * al, 0, 0, 1); }
+  }
+  /* the magazines and cases the guns drop (the PHYSICS engine's): lying in the street where they fell */
+  if (typeof PHY !== 'undefined' && PHY.b) { const pu = typeof physU === 'function' ? physU() : U; for (const b of PHY.b) {
+    if (!near(b.x, b.y)) continue; const K = b.K || {}, mag = b.k === 'mag' || b.k === 'moon', ln = Math.max(0.03, (K.L || (mag ? 0.18 : 0.03))), wd = Math.max(0.02, (K.W || (mag ? 0.03 : 0.012)) * 2);
+    const c = mag ? sparkCol(K.col || '#2e3033') : [0.55, 0.4, 0.12, 1], x = dX(b.x), z = dZ(b.y), y = gy(b.x, b.y) + Math.max(0.012, (b.z || 0) / pu), a = b.a || 0;
+    sparkPut(Dk, x - Math.cos(a) * ln / 2, y, z - Math.sin(a) * ln / 2, wd, Math.cos(a) * ln, 0, Math.sin(a) * ln, 1, 0, c[0], c[1], c[2], 1);
+  } }
   /* medkits: a box that spins and bobs over a soft green glow (and blinks before it is gone) */
   const M = SPARK.med; let mn = 0; const O = SPARK.o || (SPARK.o = new THREE.Object3D());
   for (const k of G.picks) {
@@ -442,6 +504,29 @@ function sparkBuild(dt) {
 
   sparkFlush(Gl); sparkFlush(Dk); sparkFlush(De);
   SPARK.n[0] = Gl.n; SPARK.n[1] = Dk.n; SPARK.n[2] = De.n; SPARK.n[3] = mn;
+}
+// a boss's telegraphs and its big moves in 3D: the lane of a charge, the circle of a leap or a slam, the line of a beam
+// (then the beam itself, hot and wide), the fan of a sweep, the ring of a howl, a grab's circle, a burrow's, a pull's
+function sparkBossTele(z, x, zz, y, U, T) {
+  const rb = z.rb, D = rb.d || {}, mv = rb.mv, HOT = SPARK_HOT, red = [1, 0.18, 0.15];
+  if (rb.state === 'tele') {
+    const f = clamp(1 - rb.t / (typeof BOSS_MOVES !== 'undefined' && BOSS_MOVES[mv] ? BOSS_MOVES[mv].tele || 1 : 1), 0, 1);
+    if (mv === 'charge') { const L = 540 / U / 2, a = D.a || 0; sparkMark(x + Math.cos(a) * L, y + 0.03, zz + Math.sin(a) * L, L, z.r * 0.65 / U, a, 9, 0, red[0], red[1], red[2], 0.3 + f * 0.6, 0, 0, 1.4); }
+    if (mv === 'leap' && D.tx != null) { const R = 100 / U; sparkMark(dX(D.tx), y + 0.04, dZ(D.ty), R, R, 0, 4, 0, red[0], red[1], red[2], 0.9, 0, f, 1.3); }
+    if (mv === 'slam') { const R = (z.r * 2.4 + 50) / U; sparkMark(x, y + 0.04, zz, R, R, 0, 4, 0, 1, 0.55, 0.24, 0.9, 0, f, 1.2); }
+    if (mv === 'beam') { const L = 900 / U / 2, a = D.a || 0; sparkMark(x + Math.cos(a) * L, y + 0.03, zz + Math.sin(a) * L, L, 0.25, a, 9, 0, 1, 0.24, 0.24, 0.3 + f * 0.5, 0, 0, 1.4); }
+    if (mv === 'sweep' && D.a0 != null) { for (let i = 0; i <= 6; i++) { const a = D.a0 + (D.dir || 1) * 1.8 * i / 6, L = 900 / U / 2; sparkMark(x + Math.cos(a) * L, y + 0.025, zz + Math.sin(a) * L, L, 0.35, a, 9, 0, 1, 0.24, 0.24, 0.12 + f * 0.15, 0, 0, 1); } }
+    if (mv === 'howl' || mv === 'nova' || mv === 'quake') { const R = z.r * (1.2 + f * 0.8) / U; sparkMark(x, y + 0.04, zz, R, R, 0, 3, 0, 1, 0.9, 0.78, 0.2 + f * 0.5, 0.05, 0, 1.2); }
+    if (mv === 'grab' && D.zx != null) { const R = D.zr / U, lk = D.t <= (rb.def && rb.def.overlord ? 0.45 : 0.6); sparkMark(dX(D.zx), y + 0.04, dZ(D.zy), R, R, 0, 4, 0, 1, 0.2, 0.18, lk ? 1 : 0.75, 0, clamp(1 - D.t / (D.max || 1), 0, 1), 1.3); SPARK.lab.push({ x: D.zx, y: D.zy, h: 0.6, s: lk ? 'DASH OUT!' : 'GRAB', c: '#ffe1dc' }); }
+  }
+  if (rb.state === 'act') {
+    if (mv === 'beam' || mv === 'sweep') { const a = D.cur == null ? D.a : D.cur, L = 900 / U, col = sparkCol((rb.def && rb.def.forms && rb.def.forms[rb.form] && rb.def.forms[rb.form].col[2]) || '#ff5a4a'), h = 1.4;
+      sparkPut(SPARK.glow, x, h, zz, 1.4, Math.cos(a) * L, 0, Math.sin(a) * L, 1, 0, col[0] * HOT, col[1] * HOT, col[2] * HOT, 0.45);
+      sparkPut(SPARK.glow, x, h, zz, 0.45, Math.cos(a) * L, 0, Math.sin(a) * L, 1, 0, HOT * 2, HOT * 2, HOT * 2, 0.9); }
+    if (mv === 'teleport' && D.tx != null) { const R = z.r * 1.2 / U; sparkMark(dX(D.tx), y + 0.04, dZ(D.ty), R, R, 0, 3, 0, 0.7, 0.55, 1, 0.8, 0.06, 0, 1.2); }
+    if (mv === 'burrow' && D.stage === 1) { const R = 95 / U; sparkMark(x, y + 0.04, zz, R, R, 0, 4, 0, 0.6, 0.47, 0.3, 0.8, 0, clamp(1 - rb.t / 0.55, 0, 1), 0.6); }
+    if (mv === 'pull') { const col = sparkCol((rb.def && rb.def.forms && rb.def.forms[rb.form] && rb.def.forms[rb.form].col[2]) || '#b48cff'); for (let i = 0; i < 3; i++) { const R = (120 + ((T * 260 + i * 130) % 380)) / U; sparkMark(x, y + 0.04, zz, R, R, 0, 3, 0, col[0], col[1], col[2], 0.35, 0.02, 0, 1); } }
+  }
 }
 // a bolt's path in 3D (once per bolt): jagged, thinning towards the ground, with a few forks
 function sparkBoltPath(b, U) {

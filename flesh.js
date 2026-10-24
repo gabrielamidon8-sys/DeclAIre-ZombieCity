@@ -186,11 +186,11 @@ function fleshType(m) {
   T = { key: key, lod: [null, null], n: [0, 0] }; FLESH.types.set(key, T);
   try {
     for (let l = 0; l < 2; l++) {
-      const lm = lgModel('zombie', l === 0 ? 1 : 2, key); if (!lm) continue;
+      const lm = lgModel('zombie', l === 0 ? 1 : DEPTH.lvl <= 1 ? 3 : 2, key); if (!lm) continue;   // (the far ones: 2,500 triangles, or 780 at Low and Medium)
       const g = fleshGeoFrom(lm, true), cap = 64;
       g.setAttribute('aRow', new THREE.InstancedBufferAttribute(new Float32Array(cap), 1));
       g.setAttribute('aZ', new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4));
-      const mesh = new THREE.InstancedMesh(g, FLESH.mat, cap); mesh.customDepthMaterial = FLESH.dmat; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.count = 0;
+      const mesh = new THREE.InstancedMesh(g, FLESH.mat, cap); mesh.customDepthMaterial = FLESH.dmat; mesh.castShadow = l === 0 || DEPTH.lvl >= 3; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.count = 0;   // (the far ones cast no shadow below Ultra)
       const I4 = new THREE.Matrix4(); for (let i = 0; i < cap; i++) mesh.setMatrixAt(i, I4); mesh.instanceMatrix.needsUpdate = true;
       DEPTH.scene.add(mesh); T.lod[l] = { geo: g, mesh: mesh, cap: cap, tris: lm.tris };
     }
@@ -201,7 +201,7 @@ function fleshType(m) {
 function fleshGrow(L, need) {
   let cap = L.cap; while (cap < need) cap *= 2; if (cap === L.cap) return;
   const g = L.geo; g.setAttribute('aRow', new THREE.InstancedBufferAttribute(new Float32Array(cap), 1)); g.setAttribute('aZ', new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4));
-  const old = L.mesh, mesh = new THREE.InstancedMesh(g, FLESH.mat, cap); mesh.customDepthMaterial = FLESH.dmat; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.count = 0;
+  const old = L.mesh, mesh = new THREE.InstancedMesh(g, FLESH.mat, cap); mesh.customDepthMaterial = FLESH.dmat; mesh.castShadow = old.castShadow; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.count = 0;
   const I4 = new THREE.Matrix4(); for (let i = 0; i < cap; i++) mesh.setMatrixAt(i, I4); mesh.instanceMatrix.needsUpdate = true;
   DEPTH.scene.remove(old); old.dispose(); DEPTH.scene.add(mesh); L.mesh = mesh; L.cap = cap;
 }

@@ -387,6 +387,50 @@ const ENG_DOCS = {
     works: 'Hands CHOREO the fights and LEGEND the handling and the walks, asks MIMATIC for the cameras and the cut, and gives VFXRAY the weather. The Cinematic Studio (studio/ in the repository) runs it from a scene typed in.',
     runs: 'The processor, once per scene.',
     tune: 'Locked: nothing of it runs while a scene plays.'
+  },
+  DEPTH: {
+    title: 'The Set Builder',
+    character: 'A practical builder with a cinematographer\'s eye. It does not invent the city, it raises the one WORLD already planned, block by block, and then lights it like a film: hard low sun, grey haze, sodium lamps at night.',
+    does: 'The city in three dimensions (1.9.999). Every block is built from the city engine\'s own data: the ground from its painting (cut away where a river or a pond lies lower, with banks and moving water), buildings at the lighting engine\'s heights with floors, windows, storefronts and a room behind every window (interior mapping, blinds down on some, lit at night), gable roofs, ruins, parapets and roof clutter, vehicles shaped from a side profile of their kind (bonnet, windscreen, roof, glass, wheel arches, tyres and hubs, lamps; burnt shells, cars on their roofs), street lamps, trees, bushes and grass that sway, bridges with parapets and piers, the elevated highways with their decks, barriers, lamps, ramps and stuck traffic, fires on burning roofs. Each frame: the sun or the moon with shadows, a scattering sky with clouds, stars and the moon, fog by the weather, the nearest real lights from the lighting engine, the flashlight on the gun, rain, snow, sand, ash and embers, the street\'s kickable props and its birds and rats, the A-10 and the cars a horde is shoving; finished with a filmic curve, bloom, a gritty grade, grain and anti-aliasing.',
+    adapts: 'Four levels (Low, Medium, High, Ultra: resolution, shadow map, lights, bloom, ambient occlusion, view distance, blocks built round the camera, ground detail, plants, grain). The governor first shrinks the picture (down to 70%), then steps the level down; with room to spare it climbs back. A device too weak for 3D even at Low and 70% for eight seconds of a run is moved to the top-down view (and told where to turn 3D back on).',
+    repairs: 'Five errors in ten seconds hand the frame to the top-down view for 45 seconds, then it tries again. A lost graphics context is waited out and the scene rebuilt when it returns. Too many blocks held are dropped. A block a horde changed (a car shoved, a car come to rest) is rebuilt without the moving car, which it draws live.',
+    learns: 'Nothing of its own: the level and the resolution it settles on are the governor\'s to remember.',
+    works: 'Reads WORLD (blocks, rivers, decks), LUX (the hour, the sun, the ambient, the lights), WX (cloud, wind, rain, snow, fog, lightning), SKYWAY (the highways\' layout and painting), GARAGE (vehicle sizes), LIFE and PULSE (props, birds, rats), SWARM (the vehicles it moves). FLESH puts the bodies in its scene, HOVER moves its camera, SPARK adds the fight. The top-down engines (PRISM, TEXEL, MIRROR) rest while it draws.',
+    runs: 'The graphics chip (WebGL 2, three.js r170), one block or two built a frame on the processor.',
+    tune: 'Settings > Graphics > View (3D or top-down), 3D quality (Auto, Low, Medium, High, Ultra), field of view and camera distance.'
+  },
+  FLESH: {
+    title: 'The Prosthetics Shop',
+    character: 'Obsessive about bodies. It takes LEGEND\'s sculpted zombies and the survivors\' own models and makes them move in 3D with every animation ANIMA and LOCO already know, and it will not let a single one of the horde pop.',
+    does: 'The living and the dead in 3D. Each of the fifty zombies is LEGEND\'s model of it, stretched to its own proportions and moved by ANIMA\'s skeleton and seventy-five animations through GPU skinning (one draw per kind for the whole horde), with its own blood, char, frost and a flash when hit. Corpses finish their deaths and lie where they fell. The fifty bosses, the Snatcher and the old mutations stand in as the big roster bodies at a boss\'s size. Survivors (you and every teammate) are LEGEND\'s full models posed each frame: the legs by LOCO\'s gait, the upper body by the ARMS state (each gun\'s hold, reloads, swaps, sprint, the knife, the roll), the chest turned toward the aim, the muzzle found for the flash and the tracers.',
+    adapts: 'The nearest bodies move every frame, the rest every second or third; the far ones use the lighter model; how many it draws follows the 3D level and steps down under load.',
+    repairs: 'Six errors in ten seconds and it frees everything and rebuilds; more kinds held than it should is cleared.',
+    learns: 'Nothing of its own.',
+    works: 'ANIMA (zombie poses and corpses), LEGEND and LOCO (models, the survivors\' poses), ARMS (what the hands are doing), NET (teammates), DEPTH (the scene and the light).',
+    runs: 'The graphics chip for the skinning, the processor for the poses.',
+    tune: 'Through the 3D quality.'
+  },
+  HOVER: {
+    title: 'The Camera Operator',
+    character: 'A steadicam operator who never loses the actor. Behind and above, it floats on a spring, swings over the shoulder when you aim, and would rather pull in tight than look through a wall.',
+    does: 'The third-person camera: a high chase camera that hovers behind and above the survivor and swings over the right (or left) shoulder to aim, kept out of walls by a spring arm against the buildings, kicked by every shot and shaken by trauma. The crosshair is a ray into the 3D world that finds the zombie, its head, the wall or the street the gun points at. Movement turns with the camera. Mouse (locked to the game), controller (with acceleration) and touch (a stick to move, a drag to look, FIRE and AIM buttons, light aim assist) all drive it. On the title screen it orbits the street.',
+    adapts: 'Nothing per frame beyond its spring; the field of view and distance are settings.',
+    repairs: 'Bad angles are reset; a lost pointer lock pauses the game instead of leaving the mouse loose.',
+    learns: 'Nothing of its own.',
+    works: 'DEPTH (it moves its camera), the input engine (look, aim, fire, shoulder swap), ARMS (aim height and the head), NET (where a ping lands).',
+    runs: 'The processor.',
+    tune: 'Settings > Controls > 3D camera (look speed, invert, shoulder, aim assist, auto fire on touch) and Settings > Graphics > View.'
+  },
+  SPARK: {
+    title: 'The Pyrotechnician',
+    character: 'Loves a good bang and keeps the books on every spark. Nothing it draws is invented: it only gives height and light to what the fight already threw.',
+    does: 'The fight in 3D: tracers from the 3D muzzle to the crosshair\'s point, the muzzle flash at the real muzzle, sparks, blood and smoke that fall or rise under gravity, the zombies\' glowing shots, fireballs where the big flashes go off, the smoke and holes after, fire, acid, ice, sludge and vortices on the ground, blood and scorch marks where they landed, shock rings, warning circles, the bosses\' telegraphs and beams, grab zones with their warning, the zombies\' danger auras and charge lanes, the dash\'s zones, the knife\'s arcs, lightning bolts, brass, gun smoke, fallen magazines, the A-10\'s tracers, and medkits spinning over a glow.',
+    adapts: 'Whatever is beyond the fog is skipped; its buffers take only what fits (seven thousand glowing things, three and a half thousand dark, eighteen hundred marks on the ground).',
+    repairs: 'Five errors in ten seconds and it rests for thirty seconds; drawing into an old scene is caught and rebuilt.',
+    learns: 'Nothing of its own.',
+    works: 'Reads the game\'s lists (bullets, particles, shots, hazards, splats, pickups, rings, blasts, smoke, holes), MUZZLE (smoke and brass), GORE (gibs), PHYSICS (magazines), LUX (flashes), WX (lightning), BLADE (cuts), BOSS (telegraphs); draws into DEPTH\'s scene at FLESH\'s muzzle and HOVER\'s aim.',
+    runs: 'The graphics chip: four instanced draws.',
+    tune: 'Nothing of its own.'
   }
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = ENG_DOCS;
