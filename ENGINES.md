@@ -1,6 +1,6 @@
-# 39 engines
+# 45 engines
 
-Zombie City runs on 39 engines. Each one does one job (light, sound, the crowd, the city, co-op...) and none of them works alone: they meet in CORE, the hub, which gives them one shared frame, one time budget, a message bus, a capability registry and a watchdog.
+Zombie City runs on 45 engines. Each one does one job (light, sound, the crowd, the city, co-op...) and none of them works alone: they meet in CORE, the hub, which gives them one shared frame, one time budget, a message bus, a capability registry and a watchdog.
 
 ## How the ecosystem works (CORE v3)
 
@@ -19,6 +19,10 @@ Five engines make the films: LEGEND (the body: anatomy and how hands handle thin
 ## The 3D view (1.9.999)
 
 Four engines draw the game in third person: DEPTH builds the city in 3D from WORLD's own data and lights it (the sun and its shadows, the sky, fog and weather, the real lamps), FLESH puts every body in it (the zombies on their ANIMA animations through GPU skinning, the survivors on their LEGEND rigs), HOVER is the chase camera and the crosshair's ray, and SPARK gives the fight its height and light. The simulation is the same in both views (the city, the waves, the hits, co-op): only the drawing changes, so a player in 3D and a teammate in the top-down view play the same game. While 3D draws, the top-down engines that only draw (PRISM, TEXEL, MIRROR) rest; they take over again in the top-down view, which a weak device falls back to by itself.
+
+## The living city (1.9.9991)
+
+Six more engines dress and animate the 3D view: SURFACE bakes seventeen HD materials on the graphics chip; FACADE remakes the buildings (recessed windows, shop signs, fire escapes, roofs) and puts up the fences; FLORA grows the trees, bushes and grass that move in the wind; FAUNA brings the animals and the flocks; NIMBUS draws the sky and the storms on the horizon that drift in when the weather turns, with thunder that comes after the flash from the right distance and side; DRIFT moves what the wind carries, smoke and cloth. The 3D picture also gained contact shadows and sun shafts (LIGHTFX, in DEPTH), the dead breathe, look at you and twitch (FLESH), the survivor breathes, leans and flinches (FLESH), and the crosshair meets the zombie's real parts (HOVER and the ballistics).
 
 ## Adding an engine
 
@@ -493,3 +497,75 @@ A new engine is one file added to the module list in build.js and one coreDefine
 - **Works with:** Reads the game's lists (bullets, particles, shots, hazards, splats, pickups, rings, blasts, smoke, holes), MUZZLE (smoke and brass), GORE (gibs), PHYSICS (magazines), LUX (flashes), WX (lightning), BLADE (cuts), BOSS (telegraphs); draws into DEPTH's scene at FLESH's muzzle and HOVER's aim.
 - **Runs on:** The graphics chip: four instanced draws.
 - **In the engine room:** Nothing of its own.
+
+### SURFACE: The Materials Lab
+
+*A quiet chemist of grit. It has never seen a photograph and does not need one: brick, asphalt and bark are recipes to it, and it bakes them fresh every time the lights come on.*
+
+- **What it does:** HD materials for the 3D view (1.9.9991): seventeen surfaces (brick, concrete panels, stone, clapboard siding, stucco, logs, barn planks, asphalt, sidewalk slabs, grass, soil, roof gravel, corrugated metal, shingles, sand, painted metal, bark) baked on the graphics chip into texture arrays from tileable noise, cells and profiles: colour and roughness, a normal map, cavities, and how much of each takes the paint of what it covers (a brick takes the building's colour, its mortar stays grey). Every 3D surface samples them by name.
+- **Adapts:** Its size follows the device: 1024 pixels a tile on Ultra, 512 on most, 256 on the weakest.
+- **Repairs itself:** A bake that fails frees the arrays and the 3D view keeps its plain colours; its self-test checks the mortar against the brick, that the ground layers are baked and that every normal points out of its surface.
+- **Learns:** Nothing of its own.
+- **Works with:** DEPTH (walls, roofs, the ground, the street's things), FACADE (trim, fences), FLORA (bark).
+- **Runs on:** The graphics chip, once when the 3D view starts (a few milliseconds).
+- **In the engine room:** Through the 3D quality.
+
+### FACADE: The Set Dresser
+
+*Cannot walk past a blank wall. It hangs the signs, bolts on the fire escapes, strings the fences and leaves the posters and the graffiti a city collects, and it knows every storefront needs a name.*
+
+- **What it does:** The buildings remade for the 3D view: windows set back in the walls with sills, lintels and mullions, plinths, string courses and stepped cornices on masonry, storefront runs with pilasters, painted, lettered and neon shop signs (lit at night where there is power, some flickering, some dead) and striped awnings, fire escapes up the brick walk-ups, air conditioners in windows, water towers, roof units, antennas and billboards, porches and chimneys on houses, graffiti, the search crews' X codes and posters; and the fences: chain-link round the courts and lots, board fences between yards, white pickets, iron railings and split-rail on the ranches, cut-out panels that cast their pattern as shadow.
+- **Adapts:** The near blocks get the detail (fire escapes, air conditioners, porches); the far ones the outline.
+- **Repairs itself:** Its atlases are repainted if they go missing; a block it fails on is built plain.
+- **Learns:** Nothing of its own.
+- **Works with:** DEPTH (it builds into each block), SURFACE (its materials), DRIFT (sheets and flags it hangs, chimneys that smoke).
+- **Runs on:** The processor while a block is built; the signs and fences one draw each per block.
+- **In the engine room:** Through the 3D quality.
+
+### FLORA: The Greensman
+
+*A gardener who prunes every leaf by hand and talks to the wind. Spruces in tiers, oaks in full crowns, and grass that lies down when you walk through it.*
+
+- **What it does:** Trees, bushes and grass in 3D: trees by kind at their real size (trunks in bark, limbs, twigs, crowns of painted leaf clusters lit through from behind, spruces in tiers of drooping needle fronds), swaying and fluttering with the wind and the gusts (and the gust front of a coming storm), bare in winter, red and gold in the fall, blossom in spring, burnt in the burning districts; bushes of small leaves; a field of grass blades round the camera wherever the ground is green, short on lawns, long on the lots, browned late in the year, under the snow in winter, wildflowers in spring and summer, waves of wind across it, parting round your feet.
+- **Adapts:** Fewer trees and clumps and a smaller grass field at the lower levels; no grass at the lowest.
+- **Repairs itself:** Its leaf atlas is repainted if it goes missing; a block it fails on falls back to the old plants.
+- **Learns:** Nothing of its own.
+- **Works with:** DEPTH (the blocks and the scene), SURFACE (bark), WX and NIMBUS (the wind, the gusts, the outflow of a storm).
+- **Runs on:** The graphics chip (the wind in the vertex shader; the grass one instanced draw), the processor while a block is built.
+- **In the engine room:** Through the 3D quality.
+
+### FAUNA: The Animal Wrangler
+
+*Knows every stray by name and every deer's habits. It keeps them wary, keeps them out of the line of fire, and lets them bolt the moment anything that walks or shoots comes near.*
+
+- **What it does:** The animals of the 3D world: stray dogs and cats, foxes at night, deer at dawn and dusk, rabbits, squirrels under the trees, ducks on the water, the crows and pigeons on the ground, flocks crossing the sky and starlings wheeling at dusk. Each grazes, sniffs, sits and wanders, looks up when you come near, and bolts from you, the dead and gunfire; dogs bark at the dead; thunder scatters the flocks. Every kind is one instanced draw, its legs, head, tail and wings moved on the graphics chip. Scenery: bullets pass them by, and each player sees their own.
+- **Adapts:** How many follows the 3D level; no flocks on the weakest.
+- **Repairs itself:** It frees and rebuilds its meshes; its self-test builds every body and runs a dog through a scare.
+- **Learns:** Nothing of its own.
+- **Works with:** DEPTH (the scene), WX (rain sends them under cover), LUX (the hour), the gun's report (through the crowd engine's hearing), the sound engine (barks).
+- **Runs on:** The processor (a small state machine each), the graphics chip (the gaits).
+- **In the engine room:** Through the 3D quality.
+
+### NIMBUS: The Storm Chaser
+
+*Spends its life on the horizon. It sees the anvil before anyone, counts the seconds after every flash, and loves the moment the light goes green-grey and the wind turns.*
+
+- **What it does:** The 3D sky and storms you can watch coming: billowing cumulus lit through its depth toward the sun with silver linings, cirrus high above in fair weather, clouds lit from inside by lightning; the towers of the coming thunderstorm, squall line or showers rising far upwind and drifting in timed to the weather (the weather engine now decides what comes next), anvils spreading, rain shafts to the ground, lightning flickering inside and forking down, the thunder arriving as late and as dull as the distance says and from its side, the sky darkening and the anvil swallowing the sun as it comes, then passing on; distant summer storms on the horizon that never come.
+- **Adapts:** Four towers at most; the puffs on High and up, plainer towers on Medium, none on Low.
+- **Repairs itself:** Its sky material is put back if anything replaces it; its self-test sets a storm on the horizon and watches it arrive.
+- **Learns:** Nothing of its own.
+- **Works with:** DEPTH (the sky dome, the sun and the ambient), WX (what comes next, the wind, the flash), the sound engine (thunder by distance and side), FLORA (the gust front), LIGHTFX (sun shafts round its towers).
+- **Runs on:** The graphics chip (one sky shader), the processor for the towers.
+- **In the engine room:** Settings > Graphics > Weather.
+
+### DRIFT: The Wind Machine Operator
+
+*Stands just off set with a fan and a smoke machine. Nothing moves until it says so, and then everything does: the sheets, the flags, the smoke off every chimney and every burning roof.*
+
+- **What it does:** What the wind moves in the 3D view: smoke from the chimneys of houses where someone holds out, thick dark columns from burning buildings and street fires, leaning downwind and lit orange from below; survivors' sheets hung out of windows (SOS, HELP US) billowing off the walls; flags and banners on the roofs rippling and snapping in the wind.
+- **Adapts:** Its smoke pool follows the 3D level (none at the lowest) and is shared among the nearest fires and chimneys.
+- **Repairs itself:** It frees and repaints its atlases; its self-test weaves a sheet and a flag and raises a puff.
+- **Learns:** Nothing of its own.
+- **Works with:** DEPTH (the scene and the light), FACADE (where the sheets, flags and chimneys are), WX (the wind, the rain).
+- **Runs on:** The graphics chip (cloth in the vertex shader, smoke one instanced draw), the processor for the puffs.
+- **In the engine room:** Through the 3D quality.

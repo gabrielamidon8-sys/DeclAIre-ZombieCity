@@ -81,6 +81,9 @@ function volley(a, mul) {
       life: life, max: life, hit: null, kind: kind, col: w.color, homing: S.homing, boom: S.boomerang ? 1 : 0, heavy: w.F.key === 'sniper' || w.F.key === 'mk17', fk: w.F.key, mk: w.M.key
     });
     if (typeof balArm === 'function') balArm(G.bullets[G.bullets.length - 1], p, w, S);   // a real round: real speed and energy
+    // (1.9.9991) in the 3D view the round flies from the muzzle's height to the crosshair's: it meets the part of a body
+    // the crosshair is on (the head when you aim at the head), not a height made up for it
+    if (kind === 'bullet' && typeof DEPTH !== 'undefined' && DEPTH.on && typeof HOVER !== 'undefined' && HOVER.aimD > 0) G.bullets[G.bullets.length - 1].h3 = { h0: FLESH && FLESH.muz ? FLESH.muz[1] : fleshGroundY(p) + 1.4, h1: HOVER.aimH, d1: Math.max(0.6, HOVER.aimD), x0: p.x, y0: p.y };
     if (typeof tracerTag === 'function') tracerTag(G.bullets[G.bullets.length - 1], p.shots + i);
   }
   if (typeof balKick === 'function') balKick(p, w);

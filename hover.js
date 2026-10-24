@@ -134,8 +134,24 @@ function hoverFrame(dt) {
   // light aim assist on the controller and the touch screen: the crosshair slows over a zombie and drifts onto it
   HOVER.assistSlow = 1;
   if (mode === 'play' && (DEV.kind === 'pad' || DEV.kind === 'touch') && SET.assist3d !== false && HOVER.aimNear) {
-    const z = HOVER.aimNear, za = Math.atan2(z.y - (tg.y), z.x - (tg.x)), d = angDh(HOVER.yaw, za);
-    if (Math.abs(d) < 0.12) { HOVER.assistSlow = 0.55; if (ldx || ldy || Math.hypot(p.ivx || 0, p.ivy || 0) > 10) HOVER.yaw += d * Math.min(1, dt * (DEV.kind === 'touch' ? 5 : 3)); }
+    // (1.9.9991: measured from the camera along its own line of sight, not from the survivor: the crosshair's ray starts
+    // over the shoulder, so lining the survivor up with the zombie left the ray a shoulder's width beside it)
+    const z = HOVER.aimNear, o = HOVER.pos, f = HOVER.f3, za = Math.atan2(dZ(z.y) - o[2], dX(z.x) - o[0]), d = angDh(Math.atan2(f[2], f[0]), za);
+    // (1.9.9991: on a touch screen it also drifts while FIRE is held, gently: the hit rigs are the real body now, so a
+    // thumb holding fire a few degrees off is helped onto the zombie rather than shooting past its arm)
+    // (1.9.9991: and up and down too: the round flies on the crosshair's line now, and the chase camera's resting pitch
+    // puts the crosshair on the street a few metres ahead, so a zombie further off was shot at the asphalt in front of it)
+    if (Math.abs(d) < 0.12) {
+      HOVER.assistSlow = 0.55;
+      const fireOn = (DEV.kind === 'touch' && HOVER.fireHeld) || (DEV.kind === 'pad' && held('fire'));
+      if (ldx || ldy || Math.hypot(p.ivx || 0, p.ivy || 0) > 10 || fireOn) {
+        const k = Math.min(1, dt * (DEV.kind === 'touch' ? (fireOn && !ldx && !ldy ? 3 : 5) : 3));
+        HOVER.yaw += d * k;
+        const zx = dX(z.x), zz = dZ(z.y), hd = Math.max(0.5, Math.hypot(zx - o[0], zz - o[2])), zy = fleshGroundY(z) + fleshHeightOf(z) * 0.6;
+        const dp = Math.atan2(o[1] - zy, hd) + Math.asin(clamp(f[1], -1, 1));   // (the pitch that puts it on the chest, less the pitch it has)
+        if (Math.abs(dp) < 0.45) HOVER.pitch = clamp(HOVER.pitch + dp * k, HV.pitchMin, HV.pitchMax);
+      }
+    }
   }
   // aiming over the shoulder
   const a = p.arm || {}, sprint = a.st === 'sprint', wantAds = mode === 'play' && !sprint && !p.down && (held('ads') || (DEV.kind === 'touch' && HOVER.adsT));
@@ -174,6 +190,8 @@ function hoverFrame(dt) {
   if (Math.abs(C.fov - HOVER.fov) > 0.01) { C.fov = HOVER.fov; C.updateProjectionMatrix(); }
   const yawE = yaw + sYaw, pitE = pitch + sPit - kick;
   C.rotation.set(-pitE, Math.atan2(-Math.cos(yawE), -Math.sin(yawE)), HOVER.roll);
+  // (tests and the engine room's views: a camera set from outside, looking at a point)
+  if (HOVER.dbg) { const D = HOVER.dbg; C.position.set(D.pos[0], D.pos[1], D.pos[2]); C.lookAt(D.look[0], D.look[1], D.look[2]); if (D.fov && C.fov !== D.fov) { C.fov = D.fov; C.updateProjectionMatrix(); } }
   C.updateMatrixWorld();
   // where the crosshair points
   if (mode === 'play' || mode === 'pause') hoverAim(tg, U);
@@ -206,7 +224,7 @@ function hvRayBox(ox, oy, oz, dx, dy, dz, x0, y0, z0, x1, y1, z1) {
 // the crosshair's ray: the first zombie, wall or bit of street it meets
 function hoverAim(p, U) {
   const o = HOVER.pos, f = HOVER.f3, R = 140;
-  let best = R, hitZ = null, head = false;
+  let best = R, hitZ = null, head = false; HOVER.aimPart = null;
   // the zombies: a standing body is a cylinder (its height and girth from its size), the head a sphere on top
   const px = dX(p.x), pz = dZ(p.y); let near = null, nearA = 0.2;
   for (const z of G.zs) {
@@ -214,8 +232,18 @@ function hoverAim(p, U) {
     const zx = dX(z.x), zz = dZ(z.y), ex = zx - o[0], ez = zz - o[2]; const along = ex * f[0] + ez * f[2]; if (along < 0.5 || along > R) continue;
     const rm = z.r / U, hgt = typeof fleshHeightOf === 'function' ? fleshHeightOf(z) : 5.6 * rm, rad = Math.max(0.22, rm * 0.95);
     // (for the assist: the one nearest the crosshair's line, within a few degrees)
-    const lx = ex - f[0] * along, ly = (hgt * 0.62) - (o[1] + f[1] * along), lz = ez - f[2] * along, off = Math.hypot(lx, ly, lz) / along;
+    const lx = ex - f[0] * along, ly = (hgt * 0.62) - (o[1] + f[1] * along), lz = ez - f[2] * along, off = Math.hypot(lx, ly * 0.5, lz) / along;   // (a miss up or down counts for half: the assist mends the pitch too)
     if (off < nearA && !z.st.down) { nearA = off; near = z; }
+    // (1.9.9991) a body with a skeleton is hit where its parts are this frame: the ray against the hit rig's capsules
+    // (head, torso, arms, legs), so the arms it reaches out with stop a bullet and a crawler is low, and what is under the
+    // crosshair is the part the round meets
+    if (z.m && z.m.v2 && !z.boss && typeof animaRig === 'function' && Math.hypot(lx, lz) < 3.5) {
+      const Rg = animaRig(z), gy = fleshGroundY(z); let tb = -1, part = -1;
+      for (let i = 0; i < RIG_PARTS.length; i++) { const q = i * RIG_N, rad = Rg[q + 7]; if (!(rad > 0)) continue;
+        const t2 = hvRayCap(o, f, dX(Rg[q]), Rg[q + 2] + gy, dZ(Rg[q + 1]), dX(Rg[q + 3]), Rg[q + 5] + gy, dZ(Rg[q + 4]), rad * 1.06); if (t2 >= 0 && (tb < 0 || t2 < tb)) { tb = t2; part = i; } }
+      if (tb >= 0 && tb < best) { best = tb; hitZ = z; head = part === 0; HOVER.aimPart = RIG_REG[RIG_PARTS[part][4]]; }
+      continue;
+    }
     // the ray against the cylinder (in the ground plane), then the height at the hit
     const dxz = Math.hypot(f[0], f[2]); if (dxz < 1e-4) continue;
     const t = hvRayCyl(o[0], o[2], f[0], f[2], zx, zz, rad); if (t < 0 || t > best) continue;
@@ -231,6 +259,17 @@ function hoverAim(p, U) {
   HOVER.aimPt[0] = hx * U + DEPTH.ox; HOVER.aimPt[1] = hz * U + DEPTH.oy; HOVER.aimH = hy; HOVER.aimZ = hitZ; HOVER.aimHead = head; HOVER.aimD = Math.hypot(hx - px, hz - pz);
   // the head under the crosshair is what the bullet meets (the ballistics engine reads this for the hit region)
   if (p === G.p) { p.aimH = hy; p.aimHead = head; p.aimZ = hitZ; }
+}
+// a ray (o, unit d) against a capsule from a to b of radius r: the distance along the ray, or -1
+function hvRayCap(o, d, ax, ay, az, bx, by, bz, r) {
+  const bax = bx - ax, bay = by - ay, baz = bz - az, oax = o[0] - ax, oay = o[1] - ay, oaz = o[2] - az;
+  const baba = bax * bax + bay * bay + baz * baz, bard = bax * d[0] + bay * d[1] + baz * d[2], baoa = bax * oax + bay * oay + baz * oaz, rdoa = d[0] * oax + d[1] * oay + d[2] * oaz, oaoa = oax * oax + oay * oay + oaz * oaz;
+  const a = baba - bard * bard; let b = baba * rdoa - baoa * bard, c = baba * oaoa - baoa * baoa - r * r * baba, h = b * b - a * c;
+  if (h >= 0 && a > 1e-9) { const t = (-b - Math.sqrt(h)) / a, y = baoa + t * bard; if (y > 0 && y < baba && t >= 0) return t; }
+  // the caps
+  for (let e = 0; e < 2; e++) { const cx = e ? bx : ax, cy = e ? by : ay, cz = e ? bz : az, ocx = o[0] - cx, ocy = o[1] - cy, ocz = o[2] - cz;
+    const bb = d[0] * ocx + d[1] * ocy + d[2] * ocz, cc = ocx * ocx + ocy * ocy + ocz * ocz - r * r, hh = bb * bb - cc; if (hh >= 0) { const t = -bb - Math.sqrt(hh); if (t >= 0) return t; } }
+  return -1;
 }
 function hvRayCyl(ox, oz, dx, dz, cx, cz, r) {
   const fx = ox - cx, fz = oz - cz, a = dx * dx + dz * dz, b = 2 * (fx * dx + fz * dz), c = fx * fx + fz * fz - r * r, disc = b * b - 4 * a * c;

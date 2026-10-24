@@ -7,6 +7,21 @@ window.ZC_DATA = {
 },
 "log": [
 {
+"v": "1.9.9991",
+"date": "Oct 24, 2026",
+"era": "2.0",
+"slice": 17,
+"title": "The living city",
+"bullets": [
+"Buildings remade with HD materials: windows set into the walls, shop and neon signs, awnings, fire escapes, cornices, porches and chimneys",
+"Trees with full crowns that sway in the wind, grass that parts round your feet, fences of chain-link, boards, pickets and iron",
+"Animals: strays, cats, foxes, deer, rabbits, squirrels and ducks that look up at you and bolt, and flocks wheeling at dusk",
+"Storms you can watch coming: towers with anvils on the horizon, lightning inside them, thunder that arrives late from the right side",
+"Smoke from chimneys and burning buildings, survivors' SOS sheets in the windows, birdsong by day and crickets at night",
+"The dead breathe, turn their heads after you and twitch; the survivor breathes, leans and flinches; hits land where you aim"
+]
+},
+{
 "v": "1.9.999",
 "date": "Oct 23, 2026",
 "era": "2.0",

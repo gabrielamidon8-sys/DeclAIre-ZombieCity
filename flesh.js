@@ -55,7 +55,7 @@ function fleshMaterial(o) {
   const fHead = `
     uniform sampler2D uA, uH, uAL; uniform vec2 uGrid; uniform float uTx, uTT, uGlow, uWet2; uniform vec3 uAcc;
     varying vec4 vC; varying vec4 vM; varying vec2 vX; varying vec2 vU2; varying vec3 vObj; varying vec4 vZ;
-    float fR, fAO, fTile, fCut; vec4 fTh; vec3 fAlb;
+    float fR, fAO, fTile, fCut, fSkin = 0.0; vec4 fTh; vec3 fAlb;
     vec2 fTuv(float t, vec2 u) { vec2 f = clamp(fract(u), uTx, 1.0 - uTx); float r = floor(t / uGrid.x + 0.001); return (vec2(t - r * uGrid.x, r) + f) / uGrid; }
     float fHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
     float fNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -84,7 +84,16 @@ function fleshMaterial(o) {
           fAlb = mix(fAlb, vec3(0.025, 0.02, 0.018), vZ.z * smoothstep(0.25, 0.65, n1));
           fAlb = mix(fAlb, vec3(0.7, 0.84, 0.95), vZ.w * 0.55 * smoothstep(0.4, 0.7, n2));
           fAlb *= 1.0 - uWet2 * 0.25 * vX.y;
-          diffuseColor.rgb = fAlb * fAO; }`)
+` + (o.inst ? `          // (1.9.9991) dead skin that looks it: livid and greenish mottling, veins under it, a waxy sheen in patches; grime
+          // worked into the clothes toward the hems
+          fSkin = abs(fTile - 11.0) < 0.5 ? 1.0 : 0.0;
+          { float m1 = fNoise(vObj * 4.2 + 1.7), m2 = fNoise(vObj * 14.0 + 3.3), vn = abs(fNoise(vObj * 10.5 + vec3(4.1, 2.2, 7.3)) - 0.5);
+            fAlb = mix(fAlb, fAlb * vec3(0.8, 0.7, 0.88), fSkin * smoothstep(0.52, 0.74, m1) * 0.75);
+            fAlb = mix(fAlb, fAlb * vec3(0.86, 1.02, 0.76), fSkin * smoothstep(0.58, 0.8, m2) * 0.55);
+            fAlb = mix(fAlb, fAlb * vec3(0.42, 0.3, 0.46), fSkin * (1.0 - smoothstep(0.01, 0.032, vn)) * 0.6);
+            fR = mix(fR, 0.32, fSkin * smoothstep(0.55, 0.72, m2) * 0.7);
+            fAlb *= mix(1.0, 0.72 + 0.28 * smoothstep(-0.2, 0.9, vObj.z), (1.0 - fSkin) * 0.8); }
+` : '') + `          diffuseColor.rgb = fAlb * fAO; }`)
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(fR, mix(0.12, 0.42, vX.y), uWet2 * 0.7);')
       .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n metalnessFactor = vM.z;')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -93,10 +102,10 @@ function fleshMaterial(o) {
           vec3 Tg = p2 * du1.x + p1 * du2.x, Bg = p2 * du1.y + p1 * du2.y; float im = inversesqrt(max(max(dot(Tg, Tg), dot(Bg, Bg)), 1e-12));
           vec2 dx2 = dFdx(vU2 * uTT); float fadeN = 1.0 - clamp((log2(max(length(dx2), 1e-4)) - 0.8) * 0.5, 0.0, 1.0);
           normal = normalize(normal - (Tg * im * (hx - fTh.r) + Bg * im * (hy - fTh.r)) * vX.x * 3.0 * fadeN); }`)
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n { float sl = vC.a - 4.0 * fCut; totalEmissiveRadiance += ((sl > 1.5 && sl < 2.5) ? uAcc * uGlow : fAlb) * vM.w + vec3(1.0, 0.82, 0.72) * vZ.x * 0.32; }');
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n { float sl = vC.a - 4.0 * fCut; totalEmissiveRadiance += ((sl > 1.5 && sl < 2.5) ? uAcc * uGlow : fAlb) * vM.w + vec3(1.0, 0.82, 0.72) * vZ.x * 0.32; }' + (o.inst ? '\n { float fr = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 3.0); totalEmissiveRadiance += fAlb * vec3(0.95, 0.42, 0.36) * fSkin * fr * 0.22; }' : ''));
     m._sh = sh;
   };
-  m.customProgramCacheKey = () => 'flesh' + (o.inst ? 'I' : 'P') + o.bones;
+  m.customProgramCacheKey = () => 'flesh2' + (o.inst ? 'I' : 'P') + o.bones;
   return m;
 }
 // the same bones for the shadow pass
@@ -141,7 +150,7 @@ function fleshFree() {
 }
 // LEGEND's texture atlas on the graphics chip (it asks for a sharper one for the 3D view and swaps it in when painted)
 function fleshAtlas() {
-  const want = DEPTH.lvl >= 2 ? 256 : 128;
+  const want = DEPTH.lvl >= 3 && !TOUCH ? 512 : DEPTH.lvl >= 2 ? 256 : 128;   // (1.9.9991: twice as sharp on Ultra)
   if ((!LG.atlas || LG.atlas.T < want) && !LG.atlasBusy && typeof lgAtlasGet === 'function') lgAtlasGet(want);
   const at = LG.atlas; if (!at || !at.done || at.ver === FLESH.atlasVer) return;
   for (const k of ['tA', 'tH', 'tL']) if (FLESH[k]) FLESH[k].dispose();
@@ -242,9 +251,65 @@ function fBone(D, row, bi, o, main, fwd, mode, sx, sy, sz) {
   A[p + 8] = X[2] * sx; A[p + 9] = Y[2] * sy; A[p + 10] = Zc[2] * sz; A[p + 11] = o[2];
 }
 const FDW = { a: null, w: FBN * 3 };
+/* ---------- (1.9.9991) LIFE: what makes the dead look alive between ANIMA's frames ----------
+   Worked onto the joints in the world before the bones are made, only for the nearer ones and gently, so ANIMA's own
+   motion (the gait, the lunge, the hit) stays what it is: ragged breathing that heaves the chest and shoulders, a head
+   that tilts the way it always does and turns to follow you when you are close (and snaps round in a twitch now and
+   then), and arms that are each its own: some reach with the elbows bent and the hands drooping, some drag one arm
+   limp, some let both hang and swing; a slow sway through all of it. */
+function fRot(P, i, C, ax, ang) {
+  const x = P[i] - C[0], y = P[i + 1] - C[1], z = P[i + 2] - C[2], c = Math.cos(ang), s = Math.sin(ang), d = (ax[0] * x + ax[1] * y + ax[2] * z) * (1 - c);
+  P[i] = C[0] + x * c + (ax[1] * z - ax[2] * y) * s + ax[0] * d; P[i + 1] = C[1] + y * c + (ax[2] * x - ax[0] * z) * s + ax[1] * d; P[i + 2] = C[2] + z * c + (ax[0] * y - ax[1] * x) * s + ax[2] * d;
+}
+const FLZ = { C: [0, 0, 0], O: [0, 0, 0], ax: [0, 0, 0], d: [0, 0, 0], dn: [0, -1, 0], up: [0, 1, 0], t: [0, 0, 0] };
+// turn the arm (elbow and hand) about the shoulder toward hanging by a share k of the way, and bend the hand down at the elbow
+function fArm(P, sh, el, ha, k, bend) {
+  const S = FLZ.C, d = FLZ.d, ax = FLZ.ax, i = sh * 3, e = el * 3, h = ha * 3;
+  S[0] = P[i]; S[1] = P[i + 1]; S[2] = P[i + 2]; d[0] = P[e] - S[0]; d[1] = P[e + 1] - S[1]; d[2] = P[e + 2] - S[2]; fNorm(d);
+  const cosA = clamp(-d[1], -1, 1), ang = Math.acos(cosA) * k;
+  fCross(ax, d, FLZ.dn); if (fLen(ax) > 1e-4 && Math.abs(ang) > 1e-3) { fNorm(ax); fRot(P, e, S, ax, ang); fRot(P, h, S, ax, ang); }
+  if (bend) { const E = FLZ.O; E[0] = P[e]; E[1] = P[e + 1]; E[2] = P[e + 2]; d[0] = P[h] - E[0]; d[1] = P[h + 1] - E[1]; d[2] = P[h + 2] - E[2]; fNorm(d); fCross(ax, d, FLZ.dn); if (fLen(ax) > 1e-4) { fNorm(ax); fRot(P, h, E, ax, bend); } }
+}
+function fleshLife(z, P, rm) {
+  const A = z.an; if (!A) return;
+  const t = (G.time || 0) + (A.t0 || 0), nid = (z.nid | 0) + 1, h = ((nid * 2654435761) >>> 0) / 4294967296, h2 = ((nid * 1597334677 + 99) >>> 0) / 4294967296;
+  const k = A.one >= 0 ? 0.2 : 1, s = rm / 0.31, J3 = j => j * 3;
+  // breathing: a ragged heave (chest, shoulders, arms and head rise with it)
+  const br = Math.pow(Math.sin(t * (1.6 + h * 0.9) + h * 9) * 0.5 + 0.5, 2) * (0.75 + 0.25 * Math.sin(t * 0.37 + h2 * 5)), heave = br * 0.016 * s * k;
+  for (const j of [JN.neck, JN.head, JN.shL, JN.elL, JN.haL, JN.shR, JN.elR, JN.haR]) P[J3(j) + 1] += heave;
+  P[J3(JN.chest) + 1] += heave * 0.6; FLESH.breath = br * k;
+  // the arms, each zombie its own (not while ANIMA plays an attack or a hit)
+  const sway = Math.sin(t * 1.1 + h * 20) * 0.07;
+  if (k > 0.5) {
+    const style = h < 0.42 ? 0 : h < 0.74 ? 1 : 2, limpL = h2 < 0.5;
+    if (style === 0) {
+      // a reach: the arms brought in toward the front (not flung wide), one a little lower, elbows bent, hands drooping
+      const fw = FLZ.t, lt = FLZ.d; lt[0] = P[J3(JN.hipL)] - P[J3(JN.hipR)]; lt[1] = 0; lt[2] = P[J3(JN.hipL) + 2] - P[J3(JN.hipR) + 2]; fNorm(lt); fCross(fw, lt, FLZ.up); fNorm(fw);
+      for (const [sh, el, ha] of [[JN.shL, JN.elL, JN.haL], [JN.shR, JN.elR, JN.haR]]) { const S = FLZ.C; S[0] = P[J3(sh)]; S[1] = P[J3(sh) + 1]; S[2] = P[J3(sh) + 2];
+        const ex = P[J3(el)] - S[0], ez = P[J3(el) + 2] - S[2], hl = Math.hypot(ex, ez); if (hl < 1e-4) continue; const c = clamp((ex * fw[0] + ez * fw[2]) / hl, -1, 1), sgn = (ex * fw[2] - ez * fw[0]) > 0 ? -1 : 1, ang = Math.acos(c) * 0.55 * sgn;
+        fRot(P, J3(el), S, FLZ.up, ang); fRot(P, J3(ha), S, FLZ.up, ang); }
+      fArm(P, JN.shL, JN.elL, JN.haL, 0.12 + 0.18 * h2 + sway, 0.35 + 0.2 * h); fArm(P, JN.shR, JN.elR, JN.haR, 0.08 + 0.1 * (1 - h2) - sway, 0.3 + 0.25 * h2); }
+    else if (style === 1) { fArm(P, limpL ? JN.shL : JN.shR, limpL ? JN.elL : JN.elR, limpL ? JN.haL : JN.haR, 0.82 + sway, 0.12); fArm(P, limpL ? JN.shR : JN.shL, limpL ? JN.elR : JN.elL, limpL ? JN.haR : JN.haL, 0.1 - sway, 0.4); }
+    else { fArm(P, JN.shL, JN.elL, JN.haL, 0.78 + sway, 0.18); fArm(P, JN.shR, JN.elR, JN.haR, 0.74 - sway, 0.22); }
+  }
+  // the head: its tilt, turning after you when you are near, and a twitch now and then
+  const fd = FLZ.t; fd[0] = P[J3(JN.fdir)]; fd[1] = P[J3(JN.fdir) + 1]; fd[2] = P[J3(JN.fdir) + 2]; fNorm(fd);
+  const hx = P[J3(JN.head)], hy = P[J3(JN.head) + 1], hz = P[J3(JN.head) + 2], O = FLZ.O; O[0] = 0; O[1] = 0; O[2] = 0;
+  if (G.p && !G.p.down) {
+    const tx = dX(G.p.x) - hx, ty = fleshGroundY(G.p) + 1.55 - hy, tz = dZ(G.p.y) - hz, dist = Math.hypot(tx, tz);
+    if (dist < 16) { const d = FLZ.d; d[0] = tx; d[1] = ty; d[2] = tz; fNorm(d); const ca = clamp(fd[0] * d[0] + fd[1] * d[1] + fd[2] * d[2], -1, 1), ang = Math.acos(ca);
+      if (ang < 1.9 && ang > 0.02) { const ax = FLZ.ax; fCross(ax, fd, d); if (fLen(ax) > 1e-5) { fNorm(ax); const turn = Math.min(ang, 1.15) * 0.8 * (1 - dist / 16) * k; fRot(P, J3(JN.fdir), O, ax, turn); fRot(P, J3(JN.hup), O, ax, turn); } } }
+  }
+  fd[0] = P[J3(JN.fdir)]; fd[1] = P[J3(JN.fdir) + 1]; fd[2] = P[J3(JN.fdir) + 2]; fNorm(fd);
+  const tc = t * 0.55 + h * 13, fr = tc - Math.floor(tc), on = (((Math.floor(tc) * 7919 + nid * 104729) % 1000) / 1000) > 0.72 ? 1 : 0;
+  const twitch = on * Math.exp(-fr * 9) * Math.sin(fr * 46) * 0.32;
+  fRot(P, J3(JN.hup), O, fd, (h2 - 0.5) * 0.55 + twitch * 0.6);
+  if (twitch) { fRot(P, J3(JN.fdir), O, FLZ.up, twitch); fRot(P, J3(JN.hup), O, FLZ.up, twitch); }
+}
 // a zombie's seventeen bones from its joints (J in its own units), into row `row` of the bone texture
 function fleshBonesOf(J, m, ang, rm, X0, Y0, Z0, row) {
-  const D = m.ad; fleshJointsWorld(J, ang, rm, X0, Y0, Z0);
+  const D = m.ad; fleshJointsWorld(J, ang, rm, X0, Y0, Z0); FLESH.breath = 0;
+  if (FLESH.lifeZ) { try { fleshLife(FLESH.lifeZ, FP, rm); } catch (e) { FLESH.lifeZ = null; } }
   const P = FP, o = FV.o, mn = FV.m, f = FV.f, l = FV.l, a = FV.a, up = FV.up, W = FDW; W.a = FLESH.data;
   const kS = rm / 0.31 * 0.97, kW = D.chW / 0.78 * kS, kD = (D.chD / 0.4 + D.belly * 0.35) * kS, kA = D.limb / 0.32 * kS, kL = D.leg / 0.5 * kS, kH = D.headR / 0.26 * kS;
   const J3 = i => i * 3;
@@ -260,7 +325,7 @@ function fleshBonesOf(J, m, ang, rm, X0, Y0, Z0, row) {
   fSub(l, P, J3(JN.shL), P, J3(JN.shR)); fSub(mn, P, J3(JN.neck), P, J3(JN.chest)); const chL = fLen(mn); fNorm(mn); fCross(f, l, mn); fNorm(f);
   const cf = [f[0], f[1], f[2]];
   o[0] = P[J3(JN.chest)]; o[1] = P[J3(JN.chest) + 1]; o[2] = P[J3(JN.chest) + 2];
-  fBone(W, row, 2, o, mn, f, 1, kD, kW, chL / 0.25);
+  fBone(W, row, 2, o, mn, f, 1, kD * (1 + 0.035 * FLESH.breath), kW * (1 + 0.025 * FLESH.breath), chL / 0.25);
   // the head: where it faces and which way is up; the neck reaches from the top of the spine to the base of the skull
   const fd = [P[J3(JN.fdir)], P[J3(JN.fdir) + 1], P[J3(JN.fdir) + 2]], hu = [P[J3(JN.hup)], P[J3(JN.hup) + 1], P[J3(JN.hup) + 2]]; fNorm(fd); fNorm(hu);
   const hb = [P[J3(JN.head)] - hu[0] * 0.095 * kH, P[J3(JN.head) + 1] - hu[1] * 0.095 * kH, P[J3(JN.head) + 2] - hu[2] * 0.095 * kH];
@@ -336,7 +401,8 @@ function fleshFrame(dt) {
         ANIMA.sev = z.sever | 0; animaFK(z.m.ad, A.pose, J); ANIMA.sev = 0;
         const rm = z.r / U * (z0 !== z ? 0.62 : 1), gy = fleshGroundY(z) + (z.pz || 0) - (z.under ? 0.45 : 0);   // (a stand-in boss body: two and a half times a man, not five)
         let x = z.x, y = z.y; if (z.warn > 0 && z.m.an.ab === 'bomber') { x += rand(-1, 1); y += rand(-1, 1); }
-        fleshBonesOf(J, z.m, z.ang, rm, dX(x), gy, dZ(y), row);
+        FLESH.lifeZ = it.d2 < 1600 && FLESH.lifeOn !== false ? z : null;
+        fleshBonesOf(J, z.m, z.ang, rm, dX(x), gy, dZ(y), row); FLESH.lifeZ = null;
         const l = it.d2 < near0 * near0 ? 0 : 1, Lm = T.lod[l] || T.lod[0];
         fleshPut(T, Lm, l, row, Math.min(1, (z.flash || 0) * 9), clamp(1 - z.hp / Math.max(1, z.maxHp), 0, 1) * 0.9 + (z.wnd ? 0.15 : 0), z.charK || (z.burnT > 0 ? 0.4 : 0), z.frostK || 0);
         A.J3 = frameNo;
@@ -433,6 +499,7 @@ function fleshPlayerPose(p, R, mk, row) {
     lgJadd(P, 'spine', 0, 0, tw * 0.4); lgJadd(P, 'chest', 0, 0, tw * 0.6);
     lgJadd(P, 'chest', 0, -(B.kick.x || 0) * 3, 0);
     yaw = B.leg;
+    try { fleshPlayerLife(p, R, P, B, st); } catch (e) { }
   }
   P.root[3] = 0;
   const W = lgSolve(P, R.L, R.W, lgRootM(P, R.M4)); lgGunSet(null, null);
@@ -455,6 +522,39 @@ function fleshPlayerPose(p, R, mk, row) {
     const mi = fam === 'p' ? LGB.pistol : LGB.carbine, MW = W.subarray(mi * 16, mi * 16 + 16), mo = lgSockFor(fam === 'p' ? 'pistol' : 'carbine', 'muz'), mz = lgPt(MW, mo[0], mo[1], mo[2]);
     const ex = mz[0], ey = mz[2], ez = -mz[1]; FLESH.muz = [ex * c - ez * s + gx, ey + gy, ex * s + ez * c + gz];
   }
+}
+// (1.9.9991) the survivor alive: breathing (deep and fast after a sprint, settling over a few seconds), the weight going
+// from foot to foot and a look round when he stands a while, a lean into turns and into speed (forward as he sets off, back
+// as he pulls up), the chest, neck and head pitched to the height of what he aims at, and a flinch when he is hit.
+// LEGEND's frame: x forward, y left, z up; a turn about y pitches, about x rolls, about z turns.
+function fleshPlayerLife(p, R, P, B, st) {
+  const dt = Math.min(0.05, G.rdt || 0.016), t = G.time || 0, U = dUPM();
+  const L = R.lf || (R.lf = { yaw: B.leg, v: 0, a: 0, w: 0, ex: 0, idle: 0, fl: 0, hp: p.hp, px: p.x, py: p.y });
+  const v = Math.hypot(p.x - L.px, p.y - L.py) / U / Math.max(1e-3, dt); L.px = p.x; L.py = p.y;
+  const vs = L.v + (Math.min(v, 12) - L.v) * Math.min(1, dt * 6), acc = (vs - L.v) / Math.max(1e-3, dt); L.v = vs; L.a += (acc - L.a) * Math.min(1, dt * 5);
+  const dy = angD(B.leg, L.yaw); L.yaw = B.leg; L.w += (dy / Math.max(1e-3, dt) - L.w) * Math.min(1, dt * 6);
+  // breathing
+  L.ex = st === 'sprint' ? Math.min(1, L.ex + dt * 0.25) : Math.max(0, L.ex - dt * 0.12);
+  const rate = 0.26 + 0.55 * L.ex, amp = 0.018 + 0.035 * L.ex, br = Math.sin(t * rate * TAU);
+  lgJadd(P, 'spine', 0, -br * amp * 0.5, 0); lgJadd(P, 'chest', 0, -br * amp, 0); lgJadd(P, 'neck', 0, br * amp * 0.8, 0);
+  // standing a while: weight from foot to foot, a look round (not with the gun up)
+  const still = vs < 0.35 && (st === 'relaxed' || st === 'ready');
+  L.idle = still ? L.idle + dt : 0;
+  if (still) { const ws = Math.sin(t * 0.42 + 1.3); lgJadd(P, 'spine', ws * 0.035, 0, 0); lgJadd(P, 'neck', -ws * 0.025, 0, 0);
+    const lk = wxSmooth(3, 5, L.idle) * (st === 'relaxed' ? 1 : 0.4), look = (Math.sin(t * 0.29) * 0.7 + Math.sin(t * 0.71 + 2) * 0.3) * 0.55 * lk;
+    lgJadd(P, 'neck', 0, 0, look * 0.45); lgJadd(P, 'head', 0, Math.sin(t * 0.23) * 0.06 * lk, look * 0.55); }
+  // leaning into turns and into speed
+  const roll = clamp(-L.w * vs * 0.011, -0.22, 0.22), pitch = clamp(L.a * 0.016, -0.14, 0.14);
+  lgJadd(P, 'spine', roll * 0.6, pitch * 0.6, 0); lgJadd(P, 'chest', roll * 0.4, pitch * 0.4, 0);
+  // the aim's height (the local player's crosshair in the 3D view)
+  if (p === G.p && typeof HOVER !== 'undefined' && DEPTH.on && (st === 'ready' || st === 'shot' || st === 'pump' || st === 'raise')) {
+    const el = clamp(Math.atan2((HOVER.aimH || 1.35) - (fleshGroundY(p) + 1.4), Math.max(1.2, HOVER.aimD || 10)), -0.55, 0.55);
+    L.el = (L.el || 0) + (el - (L.el || 0)) * Math.min(1, dt * 10);
+    lgJadd(P, 'spine', 0, -L.el * 0.3, 0); lgJadd(P, 'chest', 0, -L.el * 0.4, 0); lgJadd(P, 'neck', 0, -L.el * 0.2, 0); lgJadd(P, 'head', 0, -L.el * 0.15, 0);
+  } else L.el = (L.el || 0) * (1 - Math.min(1, dt * 6));
+  // hit: a flinch, the chest snapping back and the head turning from it
+  if (p.hp < L.hp - 0.5) L.fl = 1; L.hp = p.hp; L.fl = Math.max(0, L.fl - dt * 3.2);
+  if (L.fl > 0) { const f = L.fl * L.fl; lgJadd(P, 'chest', 0, -f * 0.22, 0); lgJadd(P, 'neck', 0, -f * 0.18, f * 0.15); lgJadd(P, 'head', f * 0.1, -f * 0.12, 0); }
 }
 // a stand-in body for a zombie with no 3D model of its own (the fifty bosses, the Snatcher, the old mutations): one of the
 // big roster bodies, chosen by its seed so it is always the same one, animated by ANIMA like the rest (it reads the real

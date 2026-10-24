@@ -331,6 +331,7 @@ function swarmUnstick() {
 // metres, a rifle 90, a sniper rifle 120; a flamethrower hardly at all)
 const SW_EAR = { pistol: 60, smg: 55, rifle: 90, shotgun: 80, sniper: 120, revolver: 75, lmg: 95, burst: 90, launcher: 110, flamer: 25 };
 function swarmHear(x, y, fk) {
+  if (typeof faunaHear === 'function') { try { faunaHear(x, y, fk); } catch (e) { } }   // (the animals bolt too)
   if (!swarmUp() || NET.role === 'client' || !SWARM.hordes.length) return;
   const R = (SW_EAR[fk] || 60) * 32 * SCL / SCALE_REAL;
   for (const Hd of SWARM.hordes) if (Hd.state === 'march' && Hd.k && Math.hypot(Hd.cx - x, Hd.cy - y) < R) { Hd.state = 'surge'; Hd.surgeT = 3; Hd.heard = 1; SWARM.stats.heard = (SWARM.stats.heard || 0) + 1; }

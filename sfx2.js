@@ -181,7 +181,42 @@
   // 1.9.925: the wind is a soft breeze that swells with each gust and rises in pitch as it strengthens, it whistles
   // between buildings when it picks up, and there are quiet beds under everything: the low drone of a dead city,
   // and crickets or cicadas out in the suburbs and the desert.
-  var AMB = null, ambLv = { rain: 0, wind: 0, river: 0, fire: 0, ash: 0, whistle: 0, hum: 0, bugs: 0 }, ambIdle = 0, crackT = 0, AMBK = ['rain', 'wind', 'river', 'fire', 'ash', 'whistle', 'hum', 'bugs'];
+  var AMB = null, ambLv = { rain: 0, wind: 0, river: 0, fire: 0, ash: 0, whistle: 0, hum: 0, bugs: 0, birds: 0, crickets: 0, frogs: 0, leaves: 0 }, ambIdle = 0, crackT = 0, AMBK = ['rain', 'wind', 'river', 'fire', 'ash', 'whistle', 'hum', 'bugs', 'birds', 'crickets', 'frogs', 'leaves'];
+  // (1.9.9991) three more beds written straight into loops: the day's birdsong (warblers, sparrows, a finch's trill, a
+  // dove far off), the night's crickets (each at its own pace and pitch, a tree cricket's trill under them) and the frog
+  // chorus by the water (peepers, a bullfrog's drone, the rattle of chorus frogs). Each loop's ends are crossfaded.
+  function loopEnds(d, n, sr) { var f = Math.floor(sr * 0.08); for (var k = 0; k < f; k++) { var q = k / f; d[k] = d[k] * q + d[n - f + k] * (1 - q); } }
+  function tone(d, sr, t0, dur, f0, f1, amp, vib, harm) {
+    var s0 = Math.floor(t0 * sr), len = Math.floor(dur * sr), ph = 0, n = d.length;
+    for (var i = 0; i < len && s0 + i < n; i++) { var u = i / len, f = f0 + (f1 - f0) * u + (vib ? Math.sin(i / sr * vib[0] * 6.2832) * vib[1] : 0); ph += 6.2832 * f / sr;
+      var e = Math.sin(Math.PI * u); e = e * e * (u < 0.1 ? u / 0.1 : 1); d[s0 + i] += (Math.sin(ph) + (harm || 0) * Math.sin(ph * 2)) * amp * e; }
+  }
+  function birdBuf(sec) {
+    var sr = ac.sampleRate, n = Math.floor(sr * sec), b = ac.createBuffer(1, n, sr), d = b.getChannelData(0), R = Z2(4141);
+    for (var w = 0; w < 7; w++) {   // warblers: phrases of three to seven notes
+      var t = R() * sec * 0.8, a = 0.05 + R() * 0.1, base = 2300 + R() * 1800;
+      for (var j = 0, nn = 3 + Math.floor(R() * 5); j < nn && t < sec - 0.3; j++) { var f = base * (0.85 + R() * 0.4), dd = 0.06 + R() * 0.1; tone(d, sr, t, dd, f, f * (R() < 0.5 ? 1.3 : 0.75), a, [30 + R() * 30, f * 0.04], 0.15); t += dd + 0.03 + R() * 0.08; }
+    }
+    for (var c = 0; c < 9; c++) { var t2 = R() * (sec - 0.5), a2 = 0.04 + R() * 0.08; for (var k = 0, m = 2 + Math.floor(R() * 4); k < m; k++) { tone(d, sr, t2, 0.045, 5200 + R() * 600, 3400, a2, null, 0.1); t2 += 0.09 + R() * 0.05; } }
+    for (var fi = 0; fi < 2; fi++) { var t3 = R() * (sec - 1.5), f3 = 3600 + R() * 900, a3 = 0.05 + R() * 0.05; for (var q = 0; q < 14; q++) { tone(d, sr, t3, 0.03, f3, f3 * 0.92, a3, null, 0); t3 += 0.062; } tone(d, sr, t3 + 0.05, 0.22, f3 * 0.8, f3 * 1.15, a3, null, 0.1); }
+    var t4 = 1 + R() * (sec - 4); for (var v = 0; v < 3; v++) { tone(d, sr, t4, v === 1 ? 0.55 : 0.3, 540, 500, 0.05, [5, 6], 0.3); t4 += v === 1 ? 0.75 : 0.42; }
+    loopEnds(d, n, sr); return b;
+  }
+  function cricketBuf(sec) {
+    var sr = ac.sampleRate, n = Math.floor(sr * sec), b = ac.createBuffer(1, n, sr), d = b.getChannelData(0), R = Z2(919);
+    for (var c = 0; c < 6; c++) { var f = 4100 + R() * 1100, per = 0.45 + R() * 0.5, a = 0.05 + R() * 0.12, pul = 3 + Math.floor(R() * 2);
+      for (var t = R() * per; t < sec - 0.2; t += per * (0.94 + R() * 0.12)) for (var p = 0; p < pul; p++) tone(d, sr, t + p * 0.03, 0.02, f, f, a, null, 0); }
+    // a tree cricket's soft trill under them, swelling and fading
+    var ph = 0; for (var i = 0; i < n; i++) { ph += 6.2832 * 2850 / sr; d[i] += Math.sin(ph) * 0.03 * (Math.sin(6.2832 * 45 * i / sr) > 0 ? 1 : 0.2) * (0.6 + 0.4 * Math.sin(6.2832 * i / n * 3)); }
+    loopEnds(d, n, sr); return b;
+  }
+  function frogBuf(sec) {
+    var sr = ac.sampleRate, n = Math.floor(sr * sec), b = ac.createBuffer(1, n, sr), d = b.getChannelData(0), R = Z2(7007);
+    for (var c = 0; c < 8; c++) { var f = 2600 + R() * 600, per = 0.8 + R() * 0.9, a = 0.04 + R() * 0.07; for (var t = R() * per; t < sec - 0.3; t += per * (0.9 + R() * 0.2)) tone(d, sr, t, 0.13, f * 0.88, f * 1.08, a, null, 0.05); }
+    for (var g = 0; g < 2; g++) { var t2 = R() * (sec - 1.4), a2 = 0.12; for (var k = 0; k < 2; k++) { var s0 = Math.floor((t2 + k * 0.62) * sr), len = Math.floor(0.42 * sr); for (var i = 0; i < len && s0 + i < n; i++) { var u = i / len; d[s0 + i] += Math.sin(6.2832 * 105 * i / sr) * Math.sin(6.2832 * 18 * i / sr) * a2 * Math.sin(Math.PI * u); } } }
+    for (var r = 0; r < 4; r++) { var t3 = R() * (sec - 1), f3 = 1900 + R() * 500; for (var q = 0; q < 12; q++) tone(d, sr, t3 + q * 0.045, 0.02, f3 * (0.9 + q * 0.01), f3, 0.035, null, 0); }
+    loopEnds(d, n, sr); return b;
+  }
   // insects, written straight into a loop: a couple of crickets chirping at their own pace, or the buzz of cicadas
   function bugBuf(sec) {
     var sr = ac.sampleRate, n = Math.floor(sr * sec), b = ac.createBuffer(1, n, sr), d = b.getChannelData(0);
@@ -223,6 +258,10 @@
       whistle: mk(white, [wh, f('peaking', 1800, 3)]),
       hum: mk(brown, [f('lowpass', 140), f('peaking', 60, 4)]),
       bugs: mk(bugBuf(5.3), [f('highpass', 2000)]),
+      birds: mk(birdBuf(9.7), [f('highpass', 1200)]),
+      crickets: mk(cricketBuf(6.1), [f('highpass', 2200)]),
+      frogs: mk(frogBuf(7.3), [f('lowpass', 4200)]),
+      leaves: mk(white, [f('bandpass', 2600, 0.5), f('highpass', 1400)]),
       windBp: windBp, windLp: windLp, wh: wh, pitch: -1,
       lfos: [wl, rl, whl]
     };
@@ -232,7 +271,7 @@
     AMBK.forEach(function (k) { try { a[k].s.stop(); a[k].g.disconnect(); } catch (e) { } });
     a.lfos.forEach(function (o) { try { o.stop(); } catch (e) { } });
   }
-  var AMAX = { rain: 0.34, wind: 0.42, river: 0.3, fire: 0.3, ash: 0.18, whistle: 0.07, hum: 0.16, bugs: 0.1 };
+  var AMAX = { rain: 0.34, wind: 0.42, river: 0.3, fire: 0.3, ash: 0.18, whistle: 0.07, hum: 0.16, bugs: 0.1, birds: 0.22, crickets: 0.13, frogs: 0.16, leaves: 0.1 };
   function ambSet(lv) {
     if (!ac || ac.state !== 'running') return;
     var any = false;
@@ -348,6 +387,12 @@
       else { for (var j = 0; j < 8; j++) { osc('sine', base * 1.1, base * 0.85, tt, 0.035, 0.04, b, 0.003); tt += 0.05; } tt += 0.2; osc('sine', base * 0.8, base * 1.3, tt, 0.18, 0.05, b, 0.01); tt += 0.2; }
       return tt - t + 0.3;
     },
+    // (1.9.9991) the night's owl, a woodpecker, ducks and gulls by the water, a dog's bark close by (FAUNA's strays)
+    owl: function (t, b, R) { var f = 330 + R() * 60, tt = t; [0.18, 0.12, 0.5].forEach(function (d, i) { glide('sine', [[0, f * (i === 2 ? 1.04 : 1)], [d * 0.4, f * 1.08], [d, f * 0.92]], tt, 0.09, b, 3, 6); tt += d + (i === 0 ? 0.08 : 0.22); }); return tt - t + 0.4; },
+    woodpecker: function (t, b, R) { var n = 14 + Math.floor(R() * 10), hz = 16 + R() * 6; for (var i = 0; i < n; i++) noise(t + i / hz, 0.012, 0.22 * (1 - i / (n + 4)), 'bandpass', 1100 + R() * 200, 4, null, b); return n / hz + 0.4; },
+    duck: function (t, b, R) { var bp = flt('bandpass', 1100, 3, b), n = 2 + Math.floor(R() * 4), tt = t; for (var i = 0; i < n; i++) { hold('sawtooth', 460, 380, tt, 0.14, 0.18, bp, 0.01, 0.05); tt += 0.17 + R() * 0.12; } return tt - t + 0.3; },
+    gull: function (t, b, R) { var n = 2 + Math.floor(R() * 3), tt = t; for (var i = 0; i < n; i++) { glide('sawtooth', [[0, 1700], [0.12, 2100], [0.45, 1300]], tt, 0.035, flt('bandpass', 1900, 2, b), 30, 9); tt += 0.5 + R() * 0.3; } return tt - t + 0.4; },
+    bark: function (t, b, R) { var bp = flt('bandpass', 1000, 1.4, b), n = 1 + Math.floor(R() * 3), tt = t, f = 0.8 + R() * 0.5; for (var i = 0; i < n; i++) { hold('sawtooth', 620 * f, 300 * f, tt, 0.11, 0.3, bp, 0.006, 0.04); noise(tt, 0.08, 0.22, 'bandpass', 1500 * f, 1.3, 600, b); osc('sine', 260 * f, 150 * f, tt, 0.1, 0.18, b, 0.004); tt += 0.2 + R() * 0.12; } return tt - t + 0.3; },
     crow: function (t, b, R) {
       var bp = flt('bandpass', 1300, 2.5, b), n = 2 + Math.floor(R() * 3), tt = t;
       for (var i = 0; i < n; i++) { hold('sawtooth', 660, 520, tt, 0.26, 0.14, bp, 0.02, 0.08); noise(tt, 0.26, 0.05, 'bandpass', 1900, 2, 1400, b); tt += 0.42 + R() * 0.2; }
@@ -448,6 +493,23 @@
       if (!ok()) return; var t = ac.currentTime + (delay || 0);
       var name = close ? 'thunderC' + Math.floor(Math.random() * 3) : 'thunderF';
       if (!play(name, t, close ? 0.95 : 0.55 + Math.random() * 0.3, 0.9 + Math.random() * 0.2, close ? sfxBus : ambBus)) { if (close) noise(t, 0.4, 0.5, 'lowpass', 900, 0.7, 120); noise(t, 2.5, 0.3, 'lowpass', 300, 0.8, 60, ambBus); }
+    },
+    // (1.9.9991) thunder from where the flash was: it arrives after the light at the speed of sound (343 m/s), quieter
+    // and duller with distance (the air takes the highs first: a crack overhead, a long low roll from ten kilometres),
+    // slower and longer the farther it rolled, from the side it came from; past about twenty kilometres it is not heard
+    thunderAt: function (dm, pan) {
+      if (!ok()) return false; dm = Math.max(0, dm || 0); if (dm > 21000) return false;
+      var close = dm < 900, name = close ? 'thunderC' + Math.floor(Math.random() * 3) : 'thunderF', bf = BANK[name];
+      if (!bf) { this.thunder(dm / 343, close); return true; }
+      var t = ac.currentTime + Math.min(62, dm / 343), src = ac.createBufferSource(), lp = ac.createBiquadFilter(), g = ac.createGain(), out = g;
+      src.buffer = bf; src.playbackRate.value = close ? 0.94 + Math.random() * 0.12 : Math.max(0.52, 0.96 - dm / 26000) * (0.92 + Math.random() * 0.12);
+      lp.type = 'lowpass'; lp.frequency.value = close ? 14000 : Math.max(140, 5400 * Math.exp(-dm / 2300)); lp.Q.value = 0.45;
+      g.gain.value = close ? 0.95 : Math.min(0.85, 1.7 / (1 + dm / 1000));
+      src.connect(lp); lp.connect(g);
+      if (ac.createStereoPanner) { var pn = ac.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, (pan || 0) * (close ? 0.45 : 0.85))); g.connect(pn); out = pn; }
+      out.connect(close ? sfxBus : ambBus); src.start(t);
+      src.onended = function () { try { g.disconnect(); lp.disconnect(); if (out !== g) out.disconnect(); } catch (e) { } };
+      return true;
     },
     static: function () { if (!ok()) return; play('static', ac.currentTime, 0.8, 1, sfxBus); },
     rustle: function (v, dry) { if (!ok() || !throttle('rustle', 110)) return; play(dry ? 'rustleD' : 'rustleA', ac.currentTime, 0.5 * (v || 1), 0.9 + Math.random() * 0.2, sfxBus); },

@@ -11,7 +11,7 @@ const NET = {
   hits: [], zfx: [], shots: [], kills: [], evs: [], blastsDone: new Set(), cardsAt: 0, picked: new Set(), found: [], shotSfx: new Map(),
   // 1.9.90: card rounds, ping, reconnects
   round: 0, roundDl: 0, acked: new Set(), cardsT: 0, myRound: 0, myPicked: 0, roundPicked: [],
-  marks: [], markAt: 0, rtt: 0, pings: new Map(), piT: 0, pgT: 0, lastRx: 0, key: '', target: null, recon: 0, reconT: 0, hostVer: '',
+  marks: [], markAt: 0, rtt: 0, pings: new Map(), piT: 0, pgT: 0, lastRx: 0, tickAt: 0, key: '', target: null, recon: 0, reconT: 0, hostVer: '',
   // 1.9.970: compact snapshots for big crowds (what each zombie is, sent once; where it is, every time)
   zsent: new Map(), zst: new Map(), snapN: 0
 };
@@ -60,7 +60,7 @@ const netCan = {
 function netReset() {
   if (NET.ws) { try { NET.ws.onclose = null; NET.ws.close(); } catch (e) { } }
   Object.assign(NET, { role: null, ws: null, me: 1, status: 'off', started: false, hold: 0, md: 0, local: null, finishing: false, hits: [], zfx: [], shots: [], kills: [], evs: [],
-    round: 0, roundDl: 0, myRound: 0, myPicked: 0, roundPicked: [], rtt: 0, recon: 0, reconT: 0, target: null, hostVer: '', hostOk: false, hostNonce: '', lobbyRaw: [], snapAt: 0, ivMs: 0, jitMs: null });
+    round: 0, roundDl: 0, myRound: 0, myPicked: 0, roundPicked: [], rtt: 0, recon: 0, reconT: 0, tickAt: 0, target: null, hostVer: '', hostOk: false, hostNonce: '', lobbyRaw: [], snapAt: 0, ivMs: 0, jitMs: null });
   NET.peers.clear(); NET.others.clear(); NET.zmap.clear(); NET.zsent.clear(); NET.zst.clear(); NET.snapN = 0; NET.picked.clear(); NET.acked.clear(); NET.blastsDone.clear(); NET.pings.clear(); NET.marks = []; NET.lobby = [];
   $('app').classList.remove('coop'); netReconBanner(false);
 }
@@ -112,7 +112,7 @@ function netDropped(ws, opened, again) {
     NET.ws = null; ws.onclose = ws.onmessage = null;
     if (!opened && !again && !NET.started) { NET.status = 'off'; NET.err = 'Could not reach a game at ' + T.host + '. Check that the host is hosting, you are on the same Wi-Fi, and Windows allowed Zombie City through its firewall.'; renderCoop(); return; }
     // mid-game: keep trying for a while before giving up (phones drop off the Wi-Fi for a moment, or go to sleep)
-    if (NET.role === 'client' && NET.started) { if (!NET.recon) { NET.recon = performance.now(); netReconBanner(true); } NET.reconT = 1.2; return; }
+    if (NET.role === 'client' && NET.started) { if (!NET.recon) { NET.recon = performance.now(); netReconBanner(true); } NET.reconT = performance.now() + 1200; return; }
     if (NET.role === 'client') netEnd('Lost the connection to the host.');
   }
 }
@@ -126,12 +126,17 @@ function netReconTick(rdt) {
   if (NET.role !== 'client') return;
   const now = performance.now();
   // nothing from the host for a while: the connection is stuck, so drop it and connect again
-  if (NET.started && NET.ws && NET.ws.readyState === 1 && now - NET.lastRx > 5000) { const w = NET.ws; NET.lastRx = now; try { w.close(); } catch (e) { } netDropped(w, true, true); }
+  // (1.9.9991: every clock here is the wall clock. The retry used to count the frame's clamped time, so on a device
+  // drawing a few frames a second the next try never came before the 25-second give-up; and this device's own long
+  // frame, during which the host's messages sit unread in the queue, no longer counts as the host going quiet)
+  const own = NET.tickAt ? now - NET.tickAt : 0; NET.tickAt = now;
+  const quiet = Math.max(5000, 4 * (NET.ivMs || 0)) + Math.min(own, 10000);
+  if (NET.started && NET.ws && NET.ws.readyState === 1 && now - NET.lastRx > quiet) { const w = NET.ws; NET.lastRx = now; try { w.close(); } catch (e) { } netDropped(w, true, true); }
   if (!NET.recon) return;
   if (now - NET.recon > NET_RECON_SECS * 1000) { NET.recon = 0; netEnd('Lost the connection to ' + (NET.hostName || 'the host') + '.'); return; }
   if (NET.ws) return;
-  NET.reconT -= rdt; if (NET.reconT > 0) return;
-  NET.reconT = 2; netConnect(true);
+  if (now < NET.reconT) return;
+  NET.reconT = now + 2000; netConnect(true);
 }
 function netLeave() {
   const wasHost = NET.role === 'host';

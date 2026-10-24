@@ -96,6 +96,8 @@ function wxBegin(k, hold) {
   const R0 = WX_REG[k] || WX_REG.clear;
   for (const q in WX_REG) WX.since[q] = (WX.since[q] || 0) + 1; WX.since[k] = 0;
   WX.kind = k; WX.rt = 0; WX.rd = R0.d[0] + Math.random() * (R0.d[1] - R0.d[0]); WX.t = WX.rd; WX.hold = hold == null ? -1 : hold;
+  // (1.9.9991) what comes after this is decided now, so the sky can show it coming (a storm's tower on the horizon)
+  WX.nextK = WX.hold < 0 && !wxIsClient() ? wxPick(k) : null;
   WX.front = null;
   // the moving lines: a warm front's broad leading edge, a cold front's squall line, a haboob's dust wall. Each starts
   // upwind of the camera and crosses it at the speed real ones do (a cold front 12 m/s, a warm front half that).
@@ -121,7 +123,7 @@ function wxForce(mode) { const f = WX_FIXED[mode]; if (f) wxBegin(f[0], f[1]); e
 function wxNext() {
   if (wxIsClient()) { WX.t = 999; return; }
   if (SET.wxMode && SET.wxMode !== 'dynamic') { wxForce(SET.wxMode); return; }
-  wxBegin(wxPick(WX.kind));
+  wxBegin(WX.nextK && WX_REG[WX.nextK] && wxWeight(WX.nextK) > 0 ? WX.nextK : wxPick(WX.kind));
 }
 /* ---------- temperature: what falls ---------- */
 const WX_TBASE = [12, 25, 13, -3], WX_TOFF = { snow: -30, desert: 12, burning: 5, ash: 1 };
@@ -300,6 +302,7 @@ function updWeather(dt, rdt) {
     WX.sampleT = 0.5;
     let wn = 0; for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; if (isWater(waterAt(x + Math.cos(a) * 140, y + Math.sin(a) * 140))) wn++; if (isWater(waterAt(x + Math.cos(a) * 280, y + Math.sin(a) * 280))) wn += 0.5; }
     WX.river = Math.min(1, wn / 7);
+    { let tr = 0; for (const d of WD.act) if ((d.k === 'tree' || d.k === 'bush') && Math.abs(d.x - x) < 420 && Math.abs(d.y - y) < 420) tr++; WX.trees = tr; }
     let fd = 1e9; for (const f2 of WD.fires) { const d = Math.hypot(f2.x - x, f2.y - y); if (d < fd) fd = d; }
     WX.fireLv = fd < 600 ? (1 - fd / 600) : 0;
     SFX.setEnv(bio);
@@ -307,7 +310,7 @@ function updWeather(dt, rdt) {
   }
   if (lv > 0) {
     const bio2 = WORLD.cur ? WORLD.cur.bio : 'city', town = bio2 === 'city' || bio2 === 'chaos' || bio2 === 'burning' || bio2 === 'ruins' || bio2 === 'ash';
-    SFX.amb({
+    SFX.amb(Object.assign({
       rain: clamp(WX.rain * (0.55 + WX.drop * 0.6) + WX.sleet * 0.3 + WX.hail * 0.3, 0, 1.2), river: WX.river, fire: WX.fireLv, ash: WX.ash * 0.4,
       // a breeze is a soft hush; gusts swell it, storms and blizzards roar
       wind: clamp(0.1 + WX.wbase * 0.45 + WX.gust * 0.75 + WX.gfk * 0.5 + WX.sand * 0.3 + WX.snow * WX.wbase * 0.3 + WX.storm * 0.2, 0, 1),
@@ -315,8 +318,9 @@ function updWeather(dt, rdt) {
       // wind whistling between buildings once it picks up
       whistle: town ? clamp((WX.wind - 0.45) * 1.4, 0, 1) : clamp((WX.wind - 0.7) * 0.8, 0, 0.5),
       hum: town && bio2 !== 'ruins' ? (bio2 === 'city' ? 0.5 : 0.3) : 0,
-      bugs: (bio2 === 'suburb' || bio2 === 'desert') && WORLD.season !== 3 && WX.rain < 0.2 && WX.wind < 0.6 ? (bio2 === 'desert' ? 0.6 + WX.heat * 0.3 : 0.4) : 0
-    });
+      // cicadas in the heat of the day (1.9.9991: the night has its crickets)
+      bugs: (bio2 === 'suburb' || bio2 === 'desert') && WORLD.season !== 3 && WX.rain < 0.2 && WX.wind < 0.6 ? (bio2 === 'desert' ? 0.6 + WX.heat * 0.3 : 0.4) * (h > 9 && h < 19.5 ? (WORLD.season === 1 ? 1 : 0.45) : 0.12) : 0,
+    }, wxBeds(bio2, h)));
   } else SFX.amb(null);
   // the far-off sounds of the world play whatever the weather setting
   ambienceTick(rdt, WORLD.cur ? WORLD.cur.bio : 'city');
@@ -365,17 +369,30 @@ function wxSync() {
   const F = WX.front, r = v => Math.round(v);
   return [WX.kind, Math.round(WX.rt * 10), Math.round(WX.rd * 10), WX.hold < 0 ? -1 : Math.round(WX.hold * 100), Math.round(WX.wdir * 1000),
     F ? [F.k, Math.round(F.dir * 1000), r(F.v), r(F.w), r(F.pos), Math.round((F.peak || 0) * 100), F.hail ? 1 : 0] : 0,
-    WX.cells.map(c => [r(c.x), r(c.y), r(c.vx), r(c.vy), r(c.r), Math.round(c.age * 10), Math.round(c.life * 10), Math.round(c.peak * 100), c.k === 'storm' ? 't' : c.k === 'snow' ? 'n' : 'h', c.hail ? 1 : 0, Math.round(c.seed * 100)])];
+    WX.cells.map(c => [r(c.x), r(c.y), r(c.vx), r(c.vy), r(c.r), Math.round(c.age * 10), Math.round(c.life * 10), Math.round(c.peak * 100), c.k === 'storm' ? 't' : c.k === 'snow' ? 'n' : 'h', c.hail ? 1 : 0, Math.round(c.seed * 100)]), WX.nextK || 0];
 }
 function wxApply(s) {
   if (!Array.isArray(s) || !WX_REG[s[0]]) return;
   WX.kind = s[0]; WX.rt = s[1] / 10; WX.rd = Math.max(1, s[2] / 10); WX.hold = s[3] < 0 ? -1 : s[3] / 100; WX.t = 999;
+  WX.nextK = s[7] && WX_REG[s[7]] ? s[7] : null; WX.tLeft = Math.max(0, WX.rd - WX.rt);
   const dd = s[4] / 1000 - WX.wdir; if (Math.abs(dd) > 0.05) WX.wdir += dd * 0.5;
   const F = s[5]; WX.front = F ? { k: F[0], dir: F[1] / 1000, v: F[2], w: F[3], pos: F[4], peak: F[5] / 100, hail: !!F[6] } : null;
   const K = { h: 'shower', t: 'storm', n: 'snow' };
   WX.cells = (s[6] || []).map(c => ({ x: c[0], y: c[1], vx: c[2], vy: c[3], r: c[4], age: c[5] / 10, life: c[6] / 10, peak: c[7] / 100, k: K[c[8]] || 'shower', hail: !!c[9], seed: c[10] / 100, gst: 0 }));
 }
 
+/* ---------- (1.9.9991) the living beds: birdsong by day, crickets by night, frogs by the water, leaves in the wind ---------- */
+function wxBeds(bio, h) {
+  const sea = WORLD.season, wet = clamp(WX.rain * 1.4 + WX.storm + WX.snow * 0.6 + WX.sand, 0, 1), calm = clamp(1 - (WX.wind - 0.5) * 1.6, 0, 1);
+  const day = h > 5.2 && h < 20.2, dawn = h > 5 && h < 8.5, eve = h > 17 && h < 19.8, night = h < 5.4 || h > 20.4;
+  const bk = { suburb: 0.85, city: 0.35, ruins: 0.3, snow: 0.22, desert: 0.18, chaos: 0.15, ash: 0.04, burning: 0 }[bio] || 0.2;
+  const birds = day ? bk * (dawn ? 1.35 : eve ? 1.1 : 0.75) * (sea === 3 ? 0.3 : sea === 0 ? 1.15 : 1) * (1 - wet * 0.92) * calm : 0;
+  const ck = { suburb: 0.85, desert: 0.65, city: 0.3, ruins: 0.45, chaos: 0.2, ash: 0.1 }[bio] || 0;
+  const crickets = night || (h > 19.6 && h < 21) ? ck * (sea === 1 ? 1 : sea === 2 ? 0.8 : sea === 0 ? 0.45 : 0) * (1 - wet * 0.85) * calm * (night ? 1 : 0.5) : 0;
+  const frogs = WX.river > 0.04 && (night || eve) ? clamp(WX.river * 2, 0, 1) * (sea === 0 ? 1.1 : sea === 1 ? 1 : sea === 2 ? 0.3 : 0) * (1 - WX.snow) * (1 - WX.storm * 0.5) : 0;
+  const leaves = (WX.trees || 0) > 2 && !(sea === 3 && TEMPERATE[bio]) ? clamp(Math.min(1, WX.trees * 0.06) * (0.15 + WX.wind * 0.7 + WX.gust * 0.6), 0, 1) : 0;
+  return { birds: birds, crickets: crickets, frogs: frogs, leaves: leaves };
+}
 /* ---------- ambience ---------- */
 // Every few seconds something happens somewhere out of sight: a siren across downtown, a dog in the suburbs, crows
 // over the ruins, a coyote in the desert, wolves and cracking ice up north. Each district has its own list, the
@@ -384,19 +401,23 @@ function wxApply(s) {
 // sign rattling in town, sand or snow hissing past.
 const AMBI = { t: 3, gust: 0 };
 const AMB_LIST = {
-  city: [['siren', 3], ['horn', 2], ['heli', 1], ['gunfar', 2], ['eas', 1], ['glass', 2], ['dog', 1], ['moan', 2], ['bird', 1.5], ['creak', 1]],
+  city: [['siren', 3], ['horn', 2], ['heli', 1], ['gunfar', 2], ['eas', 1], ['glass', 2], ['dog', 1], ['moan', 2], ['bird', 1.5], ['creak', 1], ['gull', 1.5], ['owl', 0.6], ['duck', 0.8]],
   chaos: [['siren', 4], ['gunfar', 4], ['heli', 2], ['boomfar', 2], ['horn', 2], ['glass', 2], ['eas', 1], ['moan', 2]],
   burning: [['creak', 3], ['collapse', 2], ['glass', 2], ['boomfar', 2], ['siren', 1], ['moan', 1]],
-  ruins: [['crow', 3], ['metal', 3], ['bellfar', 1], ['collapse', 1], ['creak', 2], ['moan', 2], ['dog', 1]],
+  ruins: [['crow', 3], ['metal', 3], ['bellfar', 1], ['collapse', 1], ['creak', 2], ['moan', 2], ['dog', 1], ['owl', 1.5]],
   ash: [['crow', 2], ['metal', 2], ['creak', 1], ['moan', 1], ['bellfar', 1]],
-  suburb: [['dog', 4], ['bird', 4], ['chime', 2], ['crow', 1], ['branch', 1], ['siren', 1], ['moan', 1], ['frog', 2]],
+  suburb: [['dog', 4], ['bird', 4], ['chime', 2], ['crow', 1], ['branch', 1], ['siren', 1], ['moan', 1], ['frog', 2], ['owl', 2], ['woodpecker', 1.5], ['duck', 1.5]],
   desert: [['coyote', 3], ['hawk', 3], ['rattle', 1], ['gunfar', 1], ['dog', 0.5], ['metal', 1]],
-  snow: [['wolf', 3], ['ice', 2], ['branch', 3], ['crow', 2], ['creak', 1]]
+  snow: [['wolf', 3], ['ice', 2], ['branch', 3], ['crow', 2], ['creak', 1], ['owl', 1.5], ['woodpecker', 1]]
 };
 function ambOk(k, bio) {
   const sea = WORLD.season, wet = WX.rain > 0.3 || WX.storm > 0.3 || WX.snow > 0.6 || WX.sand > 0.4;
   switch (k) {
-    case 'bird': return !wet && WX.wbase < 0.6 && sea !== 3;
+    case 'bird': return !wet && WX.wbase < 0.6 && sea !== 3 && wxHour() > 5 && wxHour() < 20.5;
+    case 'owl': return !wet && (wxHour() < 5.2 || wxHour() > 20.3);
+    case 'woodpecker': return !wet && sea !== 3 && wxHour() > 6 && wxHour() < 18;
+    case 'duck': return WX.river > 0.08 && !wet && wxHour() > 5.5 && wxHour() < 20;
+    case 'gull': return WX.river > 0.15 && WX.storm < 0.4 && wxHour() > 5.5 && wxHour() < 20;
     case 'frog': return WX.river > 0.05 && (sea === 0 || sea === 1) && WX.snow < 0.2;
     case 'chime': return WX.wind > 0.12;
     case 'crow': return bio !== 'suburb' || sea >= 2;
@@ -602,7 +623,7 @@ function wxFlash(x, y, d, near, view) {
   const ang = Math.atan2(y - cam.y, x - cam.x), r = Math.min(d, view * 0.9);
   luxFlash(cam.x + Math.cos(ang) * r, cam.y + Math.sin(ang) * r, view * 2.6, '190,210,255', rf ? 0.3 : near ? 1.1 : 0.7, 0.3, { shade: true });
   if (d < view * 3 && Math.random() < 0.45) WX.bolts.push(skyBolt(ang));
-  SFX.thunder(delay, d < view * 1.2);
+  if (SFX.thunderAt && typeof nbPan === 'function') SFX.thunderAt(dm, nbPan(x, y)); else SFX.thunder(delay, d < view * 1.2);   // (1.9.9991: from where it flashed)
 }
 function wxFlashTick(rdt) {
   let f = 0;

@@ -163,7 +163,8 @@ function balStep(b, dt) {
     if (d2 > rr * rr || u * len > lim + rr) return;
     if (rig) {
       try {
-        animaRigAim(z, BAL_AIM); const hb = (b.crit ? BAL_AIM[1] : BAL_AIM[0]) + b.hn * hsd;
+        animaRigAim(z, BAL_AIM); let hb = (b.crit ? BAL_AIM[1] : BAL_AIM[0]) + b.hn * hsd;
+        if (b.h3) { const dm = Math.hypot(z.x - b.h3.x0, z.y - b.h3.y0) / balUPM(); hb = b.h3.h0 + (b.h3.h1 - b.h3.h0) * clamp(dm / b.h3.d1, 0, 3) - fleshGroundY(z) + b.hn * hsd * 0.3; }   // (1.9.9991: the 3D crosshair's line)
         if (!animaRigHit(z, sx, sy, dx, dy, hb, 0.05, !!b.crit, BAL_RH)) { BAL.rigMiss++; return; }
         if (BAL_RH[0] * len > lim + 1) return;
         BAL_C.push(z, BAL_RH[0], BAL_RH[3], -ox, -oy, BAL_RH[1], BAL_RH[2]); BAL.rigHit++; return;

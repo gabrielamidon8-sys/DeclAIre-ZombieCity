@@ -77,6 +77,7 @@ function depthInit() {
     R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; R.shadowMap.autoUpdate = true;
     R.info.autoReset = false;
     DEPTH.R = R; DEPTH.cv = c;
+    if (typeof surfBake === 'function') surfBake(R, true);   // (1.9.9991: SURFACE's HD materials, begun here and finished over the next frames)
     c.addEventListener('webglcontextlost', e => { e.preventDefault(); DEPTH.lost = true; coreHurt('DEPTH', 'GPU context lost'); coreRepaired('DEPTH', '3D: the graphics chip reset, the top-down view covers until it is back'); }, false);
     c.addEventListener('webglcontextrestored', () => { DEPTH.lost = false; depthFree(true); coreRepaired('DEPTH', '3D: rebuilt after the graphics chip came back'); }, false);
     const S = new THREE.Scene(); DEPTH.scene = S;
@@ -100,6 +101,12 @@ function depthInit() {
 // everything handed back to the graphics chip (soft: the canvas and the renderer stay, the scene is rebuilt)
 function depthFree(soft) {
   try {
+    if (typeof surfFree === 'function') surfFree();
+    if (typeof facadeFree === 'function') facadeFree();
+    if (typeof floraFree === 'function') floraFree();
+    if (typeof faunaFree === 'function') faunaFree();
+    if (typeof nimbusFree === 'function') nimbusFree();
+    if (typeof driftFree === 'function') driftFree();
     for (const k of DEPTH.chunks.keys()) depthChunkDrop(k);
     DEPTH.chunks.clear(); DEPTH.queue.length = 0;
     if (typeof fleshFree === 'function') fleshFree();
@@ -159,6 +166,16 @@ function depthNoiseTex() {
 }
 // global uniforms every DEPTH shader shares (time, night, wetness, snow cover, the noise)
 const DU = { uTime: { value: 0 }, uNight: { value: 0 }, uWet: { value: 0 }, uSnow: { value: 0 }, uNoise: { value: null }, uDust: { value: 0 } };
+// (1.9.9991) where the HD materials' tiles start: the world's origin moves with the player in steps of four blocks, so each
+// material's repeat is offset by that origin, modulo its tile, and the patterns stay nailed to the world
+const DU_GQ = { value: 1 };
+const D_NL = typeof SURF_N !== 'undefined' ? SURF_N : 17;
+const DU_OFF = { value: typeof THREE !== 'undefined' ? Array.from({ length: D_NL }, () => new THREE.Vector2()) : [] };
+const D_TILES = 'const float dTile[' + D_NL + '] = float[' + D_NL + '](' + (typeof SURF_TILE !== 'undefined' ? SURF_TILE : [1.8, 3, 1.8, 1.8, 2, 1.68, 1.6, 4, 3, 2, 2, 1.5, 1.5, 2, 3, 1, 1.2]).map(v => v.toFixed(3)).join(', ') + ');\nuniform vec2 uOff[' + D_NL + '];\n';
+function depthTileOffsets() {
+  const U = DEPTH.upm || dUPM(), ox = DEPTH.ox / U, oy = DEPTH.oy / U, T = typeof SURF_TILE !== 'undefined' ? SURF_TILE : null; if (!T) return;
+  for (let i = 0; i < D_NL; i++) { const t = T[i]; DU_OFF.value[i].set(((ox % t) + t) % t, ((oy % t) + t) % t); }
+}
 const D_GLSL_COMMON = `
 uniform float uTime, uNight, uWet, uSnow, uDust; uniform sampler2D uNoise;
 float dH12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -188,53 +205,76 @@ function depthMats() {
   const M = DEPTH.mats;
   // the ground: the block's painting, with relief and wear from noise, darker and glossier when it is wet (puddles in the
   // low spots shine), and snow settling on it in the north and in winter
+  // the ground: the block's painting, with SURFACE's HD detail by what the painting shows there (asphalt on the roads,
+  // slabs on the sidewalks and lots, grass, soil and sand by their colour: the two strongest blended), darker and
+  // glossier when it is wet (puddles in the low spots shine), and snow settling on it in the north and in winter
   M.ground = dPatch(new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0, envMapIntensity: 0.6 }), {
-    key: 'ground4',
+    key: 'ground5', uniforms: surfUniforms({ uOff: DU_OFF, uGQ: DU_GQ }),
     vHead: 'varying vec3 vWp;\n', vMain: 'vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;',
-    fHead: 'varying vec3 vWp; float dPud; uniform sampler2D uWMask; uniform float uHasW;\n',
+    fHead: SURF_GLSL + D_TILES + 'varying vec3 vWp; float dPud, dGR; vec4 dGN; uniform sampler2D uWMask; uniform float uHasW, uGQ;\n',
     fColor: `
       // a river or a pond: the ground is cut away where the water is (the water lies lower, with banks round it)
       if (uHasW > 0.5) { vec2 wu = vec2(vMapUv.x, 1.0 - vMapUv.y) * (80.0 / 81.0) + 0.5 / 81.0; if (texture2D(uWMask, wu).r < 0.5) discard; }
-      { float n1 = dFbm(vWp.xz * 0.045); float n2 = dN(vWp.xz * 0.6); float n3 = dN(vWp.xz * 2.7 + 0.5);
-        diffuseColor.rgb *= 0.82 + 0.3 * n1 + 0.12 * (n2 - 0.5) + 0.07 * (n3 - 0.5);
+      dGR = 0.92; dGN = vec4(0.0, 0.0, 1.0, 1.0);
+      if (uSOn > 0.5) {
+        vec3 pc = diffuseColor.rgb; float mx = max(pc.r, max(pc.g, pc.b)), mn = min(pc.r, min(pc.g, pc.b)), lum = dot(pc, vec3(0.2126, 0.7152, 0.0722)), sa = (mx - mn) / max(mx, 1e-3);
+        float wGr = smoothstep(0.03, 0.12, (pc.g - max(pc.r, pc.b)) / max(mx, 1e-3));
+        float warm = smoothstep(0.1, 0.22, sa) * step(pc.b, pc.g) * (1.0 - wGr);
+        float wSa = warm * smoothstep(0.1, 0.2, lum), wDi = warm - wSa, grey = (1.0 - wGr) * (1.0 - warm);
+        float wAs = grey * (1.0 - smoothstep(0.03, 0.065, lum)), wPa = grey - wAs;
+        float W5[5] = float[5](wAs, wPa, wGr, wDi, wSa); float L5[5] = float[5](7.0, 8.0, 9.0, 10.0, 14.0);
+        int i1 = 0; for (int i = 1; i < 5; i++) if (W5[i] > W5[i1]) i1 = i;
+        int i2 = i1 == 0 ? 1 : 0; for (int i = 0; i < 5; i++) if (i != i1 && W5[i] > W5[i2]) i2 = i;
+        float l1 = L5[i1], w1 = W5[i1], l2 = L5[i2], w2 = W5[i2];
+        vec2 u1 = (vWp.xz + uOff[int(l1)]) / dTile[int(l1)]; vec4 a = sA(u1, l1); dGN = sN(u1, l1);
+        if (uGQ > 0.5 && w2 > 0.03) { vec2 u2 = (vWp.xz + uOff[int(l2)]) / dTile[int(l2)]; float k = w2 / max(1e-3, w1 + w2); a = mix(a, sA(u2, l2), k); dGN = mix(dGN, sN(u2, l2), k); }
+        diffuseColor.rgb = pc * (1.0 + 0.6 * wAs) * a.rgb * 2.1 * mix(1.0, dGN.z, 0.7); dGR = a.a;   // (old asphalt is greyer than the map paints it)
+      }
+      { float n1 = dFbm(vWp.xz * 0.045); float n2 = dN(vWp.xz * 0.6);
+        diffuseColor.rgb *= 0.86 + 0.24 * n1 + 0.06 * (n2 - 0.5);
         dPud = smoothstep(0.62 - uWet * 0.22, 0.7 - uWet * 0.2, dFbm(vWp.xz * 0.11 + 3.3)) * uWet;
         diffuseColor.rgb *= 1.0 - uWet * 0.38 - dPud * 0.25;
         float sn = uSnow * smoothstep(0.3, 0.7, dFbm(vWp.xz * 0.07 + 7.1) + uSnow * 0.5);
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.95), sn * 0.85); }`,
-    fRough: 'roughnessFactor = mix(roughnessFactor, 0.32, uWet * 0.7); roughnessFactor = mix(roughnessFactor, 0.04, dPud);',
-    fNormal: '{ vec2 q = vWp.xz * 1.9; float hC = dN(q), hX = dN(q + vec2(0.02, 0.0)), hZ = dN(q + vec2(0.0, 0.02)); vec3 bump = vec3(hC - hX, 0.0, hC - hZ) * (2.4 * (1.0 - dPud)); normal = normalize(normal + (viewMatrix * vec4(bump, 0.0)).xyz); }'
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.95), sn * 0.85); dGN.xy *= 1.0 - sn; }`,
+    fRough: 'roughnessFactor = dGR; roughnessFactor = mix(roughnessFactor, 0.32, uWet * 0.7); roughnessFactor = mix(roughnessFactor, 0.04, dPud);',
+    fNormal: '{ vec2 b = dGN.xy * (1.0 - dPud) * 1.15; if (uSOn < 0.5) { vec2 q = vWp.xz * 1.9; float hC = dN(q), hX = dN(q + vec2(0.02, 0.0)), hZ = dN(q + vec2(0.0, 0.02)); b = vec2(hC - hX, hC - hZ) * 2.4 * (1.0 - dPud); } normal = normalize((viewMatrix * vec4(normalize(vec3(b.x, 1.0, b.y)), 0.0)).xyz); }'
   });
-  // the buildings: walls with floors and windows drawn by the shader, storefronts at street level, lit windows at night,
-  // roofs in their own colour; aS = style, seed, lit share, roof flag; aF = metres along the wall, metres up
+  // the buildings (1.9.9991): SURFACE's HD materials (brick, concrete panels, stone, siding, stucco, logs, planks; gravel on
+  // the flat roofs) under the building's own paint, floors and windows by the shader, the windows set back in the wall
+  // (the reveal shows on the side away from you: the jambs, the dark soffit, the sill catching the sky), a stone sill
+  // under each and a lintel over it on masonry, frames and mullions at the glass, the room behind it (interior mapping),
+  // storefronts at street level, lit at night where the city has power, soot where it burned.
+  // aS = style, seed, lit share, roof flag; aF = metres along the wall, metres up
   M.facade = dPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, envMapIntensity: 0.8 }), {
-    key: 'facade4',
+    key: 'facade5', uniforms: surfUniforms({ uOff: DU_OFF }),
     vHead: 'attribute vec4 aS; attribute vec2 aF; varying vec4 vS; varying vec2 vF; varying vec3 vWp2; varying vec3 vWN;\n',
     vMain: 'vS = aS; vF = aF; vWp2 = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);',
-    fHead: `varying vec4 vS; varying vec2 vF; varying vec3 vWp2; varying vec3 vWN; float dWin, dLit, dFrame, dRoomK; vec3 dLitC;
+    fHead: SURF_GLSL + D_TILES + `varying vec4 vS; varying vec2 vF; varying vec3 vWp2; varying vec3 vWN; float dWin, dLit, dFrame, dRoomK, dTR, dRev, dSill; vec3 dLitC, dNrev; vec4 dTN;
       vec2 dCellOf(float st, out vec2 f, out vec2 sz) {
         float fh = st < 0.5 ? 3.3 : st < 1.5 ? 3.5 : st < 2.5 ? 3.9 : st < 3.5 ? 3.6 : st < 5.5 ? 3.0 : 3.2;
         float ws = st < 0.5 ? 2.6 : st < 1.5 ? 3.1 : st < 2.5 ? 1.6 : st < 3.5 ? 2.9 : st < 4.5 ? 3.4 : 3.8;
         sz = vec2(ws, fh); vec2 g = vF / sz; f = fract(g); return floor(g); }
+      float dLayerOf(float st, float seed) { return st < 0.5 ? 0.0 : st < 1.5 ? 1.0 : st < 2.5 ? 15.0 : st < 3.5 ? 2.0 : st < 4.5 ? 3.0 : st < 5.5 ? 4.0 : st < 6.5 ? 5.0 : st < 7.5 ? 6.0 : (fract(seed * 7.13) < 0.5 ? 1.0 : 0.0); }
       `,
     fColor: `
-      dWin = 0.0; dLit = 0.0; dFrame = 0.0; dLitC = vec3(0.0); dRoomK = 1.0;
-      { float st = vS.x, seed = vS.y, litK = vS.z, roof = vS.w;
+      dWin = 0.0; dLit = 0.0; dFrame = 0.0; dLitC = vec3(0.0); dRoomK = 1.0; dTR = 0.85; dRev = 0.0; dSill = 0.0; dNrev = vec3(0.0, 1.0, 0.0); dTN = vec4(0.0, 0.0, 1.0, 1.0);
+      { float st = vS.x, seed = vS.y, litK = vS.z, roof = vS.w; vec3 paint = diffuseColor.rgb;
         float grime = dFbm(vec2(vF.x * 0.13 + seed * 17.0, vF.y * 0.035));
         if (roof > 0.5) {
-          float g1 = dN(vWp2.xz * 1.7), g2 = dN(vWp2.xz * 7.0 + 0.3);
-          diffuseColor.rgb *= 0.78 + 0.28 * g1 + 0.1 * g2;
+          if (uSOn > 0.5) { vec2 ru = (vWp2.xz + uOff[11]) / dTile[11]; vec4 ta = sA(ru, 11.0); dTN = sN(ru, 11.0); diffuseColor.rgb = paint * ta.rgb * 2.0 * mix(1.0, dTN.z, 0.7); dTR = ta.a; }
+          else { float g1 = dN(vWp2.xz * 1.7), g2 = dN(vWp2.xz * 7.0 + 0.3); diffuseColor.rgb *= 0.78 + 0.28 * g1 + 0.1 * g2; }
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.88, 0.91, 0.95), uSnow * 0.9);
         } else {
           vec2 f, sz; vec2 cell = dCellOf(st, f, sz);
-          // brick courses, concrete panels, log rounds: the wall's own pattern
-          if (st < 0.5) { vec2 b = vec2(vF.x / 0.24 + mod(floor(vF.y / 0.075), 2.0) * 0.5, vF.y / 0.075); vec2 bf = fract(b); float mortar = step(bf.x, 0.06) + step(bf.y, 0.14);
-            diffuseColor.rgb *= (0.86 + 0.24 * dH12(floor(b) + seed * 31.0)) * (1.0 - 0.22 * clamp(mortar, 0.0, 1.0)); }
-          else if (st < 1.5 || st > 7.5) { vec2 pf = fract(vF / vec2(3.1, 1.75)); diffuseColor.rgb *= 0.9 + 0.15 * dH12(floor(vF / vec2(3.1, 1.75)) + seed * 7.0) - 0.12 * (step(pf.x, 0.012) + step(pf.y, 0.02)); }
-          else if (st > 5.5 && st < 6.5) { float lg = fract(vF.y / 0.28); diffuseColor.rgb *= 0.78 + 0.3 * sin(lg * 3.1416) + 0.08 * dN(vF * vec2(0.4, 3.0)); }
-          else if (st > 3.5 && st < 4.5) { float sd = fract(vF.y / 0.2); diffuseColor.rgb *= 0.9 + 0.12 * smoothstep(0.0, 0.15, sd) - 0.08 * step(0.92, sd); }
+          float L = dLayerOf(st, seed);
+          vec3 wallAlb = paint;
+          if (uSOn > 0.5) { vec2 wu = vF / dTile[int(L)]; vec4 ta = sA(wu, L); dTN = sN(wu, L); wallAlb = mix(ta.rgb, paint * ta.rgb * 2.0, dTN.w);
+            if (st > 1.5 && st < 2.5) { wallAlb = paint * (0.8 + 0.5 * ta.g); dTN.xy *= 0.3; }   // (a curtain wall's spandrels: painted metal panels, no rust)
+            diffuseColor.rgb = wallAlb * mix(1.0, dTN.z, 0.85); dTR = ta.a; }
+          else if (st < 0.5) { vec2 b = vec2(vF.x / 0.24 + mod(floor(vF.y / 0.075), 2.0) * 0.5, vF.y / 0.075); vec2 bf = fract(b); float mortar = step(bf.x, 0.06) + step(bf.y, 0.14); diffuseColor.rgb *= (0.86 + 0.24 * dH12(floor(b) + seed * 31.0)) * (1.0 - 0.22 * clamp(mortar, 0.0, 1.0)); }
           // grime: streaks running down from the sills and the roof, darker toward the street
-          diffuseColor.rgb *= 0.78 + 0.34 * grime;
-          diffuseColor.rgb *= 0.75 + 0.25 * smoothstep(0.0, 2.4, vF.y);
+          diffuseColor.rgb *= 0.8 + 0.3 * grime;
+          diffuseColor.rgb *= 0.72 + 0.28 * smoothstep(0.0, 2.2, vF.y);
           // windows (none on barns, few on adobe); downtown the street level is a storefront
           float shop = (st < 3.5 && cell.y < 0.5 && litK > 0.0) ? 1.0 : 0.0;
           vec2 wlo = st > 1.5 && st < 2.5 ? vec2(0.06, 0.08) : st > 4.5 && st < 5.5 ? vec2(0.36, 0.3) : vec2(0.2, 0.26);
@@ -243,56 +283,100 @@ function depthMats() {
           vec2 aw = fwidth(vF / sz) * 1.5;
           vec2 a = smoothstep(wlo - aw, wlo + aw, f) * (1.0 - smoothstep(whi - aw, whi + aw, f));
           float w = a.x * a.y * (st > 6.5 && st < 7.5 ? 0.0 : 1.0);
-          // the frame round the glass, and the sill under it
-          vec2 a2 = smoothstep(wlo - 0.05 - aw, wlo - 0.05 + aw, f) * (1.0 - smoothstep(whi + 0.04 - aw, whi + 0.04 + aw, f));
-          dFrame = clamp(a2.x * a2.y - w, 0.0, 1.0);
+          float far = clamp(max(aw.x, aw.y) * 3.0 - 0.4, 0.0, 1.0);
+          // a stone sill under the window and a lintel over it (on brick, concrete, stone and the ruins); on brick the
+          // lintel is a soldier course, bricks stood on end
+          float trimOk = (st < 1.5 || (st > 2.5 && st < 3.5) || st > 7.5) && shop < 0.5 ? 1.0 - far : 0.0;
+          float sx = step(wlo.x - 0.05 / sz.x, f.x) * step(f.x, whi.x + 0.05 / sz.x), lx = step(wlo.x - 0.07 / sz.x, f.x) * step(f.x, whi.x + 0.07 / sz.x);
+          float sill = trimOk * sx * step(wlo.y - 0.075 / sz.y, f.y) * step(f.y, wlo.y);
+          float lint = trimOk * lx * step(whi.y, f.y) * step(f.y, whi.y + 0.17 / sz.y);
+          vec3 stoneC = vec3(0.56, 0.54, 0.5) * (0.85 + 0.25 * dN(vF * 3.1));
+          if (st < 0.5 && lint > 0.5) { float k = floor(vF.x / 0.075); diffuseColor.rgb = mix(paint * 1.5 * (0.75 + 0.35 * dH12(vec2(k, seed * 9.0))), vec3(0.5, 0.48, 0.45), step(0.86, fract(vF.x / 0.075))); }
+          else diffuseColor.rgb = mix(diffuseColor.rgb, stoneC, lint * 0.9);
+          diffuseColor.rgb = mix(diffuseColor.rgb, stoneC * 1.08, sill); dSill = sill;
           // far away the pattern averages out instead of shimmering
-          float far = clamp(max(aw.x, aw.y) * 3.0 - 0.4, 0.0, 1.0); w = mix(w, 0.32, far); dFrame *= 1.0 - far;
+          w = mix(w, 0.32, far);
           dWin = w;
           vec3 glass = mix(vec3(0.05, 0.06, 0.07), vec3(0.14, 0.17, 0.2), dH12(cell + seed * 5.0));
           if (st < 0.5 || st > 7.5) glass *= 0.8;
-          // a room behind every window (interior mapping): the view ray runs into a box the size of the glass and three
-          // metres deep, and finds its back wall, side walls, floor or ceiling; some windows have their blinds down
-          dRoomK = 1.0;
+          vec3 winC = glass;
           if (w > 0.01 && far < 0.98) {
             vec3 nW = normalize(vWN), tW = normalize(cross(vec3(0.0, 1.0, 0.0), nW) + vec3(1e-5)), V = normalize(vWp2 - cameraPosition);
             vec3 vt = vec3(dot(V, tW), V.y, -dot(V, nW));
-            vec2 rs = sz * (whi - wlo), p0 = clamp((f - wlo) / (whi - wlo), 0.0, 1.0) * rs; float RD = shop > 0.5 ? 5.0 : 3.2;
-            float tx = vt.x > 0.0 ? (rs.x - p0.x) / max(vt.x, 1e-4) : p0.x / max(-vt.x, 1e-4);
-            float ty = vt.y > 0.0 ? (rs.y - p0.y) / max(vt.y, 1e-4) : p0.y / max(-vt.y, 1e-4);
-            float tz = RD / max(vt.z, 1e-3), tt = min(min(tx, ty), tz), dz = clamp(vt.z * tt / RD, 0.0, 1.0);
-            float rh = dH12(cell * 1.31 + seed * 17.0);
-            vec3 wallC = mix(vec3(0.46, 0.41, 0.34), vec3(0.32, 0.35, 0.38), step(0.5, rh)) * (0.65 + 0.5 * dH12(cell + 3.7));
-            vec3 ic = tt == tz ? wallC : tt == ty ? (vt.y > 0.0 ? vec3(0.5, 0.5, 0.47) : vec3(0.16, 0.12, 0.09)) : wallC * 0.72;
-            if (tt == tz && shop < 0.5) ic *= 0.8 + 0.4 * step(0.55, fract((p0.x + vt.x * tt) / max(rs.x, 0.1) * 2.0 + rh));   // a door or a picture on the far wall
-            dRoomK = 1.0 - 0.6 * dz; ic *= dRoomK;
-            float bl = step(0.62, dH12(cell * 2.9 + seed)) * step(1.0 - (0.25 + 0.6 * dH12(cell * 5.1 + seed)), clamp((f.y - wlo.y) / (whi.y - wlo.y), 0.0, 1.0));
-            ic = mix(ic, vec3(0.5, 0.47, 0.4) * (0.8 + 0.2 * sin(vF.y * 60.0)), bl); dRoomK = mix(dRoomK, 0.9, bl);
-            glass = mix(glass, ic * 0.24 * (1.0 - 0.75 * uNight), (1.0 - far) * (st > 7.5 ? 0.5 : 0.9));
+            vec2 rs = sz * (whi - wlo), p0 = clamp((f - wlo) / (whi - wlo), 0.0, 1.0) * rs;
+            // the window is set back in the wall: the ray may meet a jamb, the soffit or the sill before it meets the glass
+            float Dr = (st > 1.5 && st < 2.5) ? 0.035 : ((st > 3.5 && st < 4.5) || (st > 5.5 && st < 7.5)) ? 0.07 : 0.17; if (shop > 0.5) Dr = 0.12;
+            vec2 q = p0 + vt.xy / max(vt.z, 0.05) * Dr;
+            if (q.x < 0.0 || q.x > rs.x || q.y < 0.0 || q.y > rs.y) {
+              float tx = vt.x > 0.0 ? (rs.x - p0.x) / max(vt.x, 1e-4) : p0.x / max(-vt.x, 1e-4), ty = vt.y > 0.0 ? (rs.y - p0.y) / max(vt.y, 1e-4) : p0.y / max(-vt.y, 1e-4);
+              bool side = tx < ty;
+              float sh = side ? 0.6 : (vt.y > 0.0 ? 0.4 : 0.9);
+              winC = (side || vt.y > 0.0 || trimOk < 0.5 ? wallAlb : stoneC) * sh;
+              dRev = 1.0 - far; dNrev = side ? (vt.x > 0.0 ? -tW : tW) : (vt.y > 0.0 ? vec3(0.0, -1.0, 0.0) : vec3(0.0, 1.0, 0.0));
+            } else {
+              p0 = q;
+              float tx = vt.x > 0.0 ? (rs.x - p0.x) / max(vt.x, 1e-4) : p0.x / max(-vt.x, 1e-4);
+              float ty = vt.y > 0.0 ? (rs.y - p0.y) / max(vt.y, 1e-4) : p0.y / max(-vt.y, 1e-4);
+              float RD = shop > 0.5 ? 5.0 : 3.2;
+              float tz = RD / max(vt.z, 1e-3), tt = min(min(tx, ty), tz), dz = clamp(vt.z * tt / RD, 0.0, 1.0);
+              float rh = dH12(cell * 1.31 + seed * 17.0);
+              vec3 wallC = mix(vec3(0.46, 0.41, 0.34), vec3(0.32, 0.35, 0.38), step(0.5, rh)) * (0.65 + 0.5 * dH12(cell + 3.7));
+              vec3 ic = tt == tz ? wallC : tt == ty ? (vt.y > 0.0 ? vec3(0.5, 0.5, 0.47) : vec3(0.16, 0.12, 0.09)) : wallC * 0.72;
+              if (tt == tz && shop < 0.5) ic *= 0.8 + 0.4 * step(0.55, fract((p0.x + vt.x * tt) / max(rs.x, 0.1) * 2.0 + rh));   // a door or a picture on the far wall
+              if (shop > 0.5 && tt != ty) { float sh2 = step(0.3, fract((p0.y + vt.y * tt) / 0.55)) * step(0.15, fract((p0.x + vt.x * tt) / 1.3)); ic = mix(ic, vec3(0.3, 0.26, 0.2) * (0.6 + 0.8 * dH12(floor(vec2(p0.x + vt.x * tt, p0.y + vt.y * tt) / vec2(0.25, 0.55)) + seed)), sh2 * 0.8); }   // shelves of stock
+              dRoomK = 1.0 - 0.6 * dz; ic *= dRoomK;
+              float bl = step(0.62, dH12(cell * 2.9 + seed)) * step(1.0 - (0.25 + 0.6 * dH12(cell * 5.1 + seed)), p0.y / rs.y) * (1.0 - shop);
+              ic = mix(ic, vec3(0.5, 0.47, 0.4) * (0.8 + 0.2 * sin(vF.y * 60.0)), bl); dRoomK = mix(dRoomK, 0.9, bl);
+              winC = mix(glass, ic * 0.24 * (1.0 - 0.75 * uNight), (1.0 - far) * (st > 7.5 ? 0.5 : st > 1.5 && st < 2.5 ? 0.35 : 0.9));
+              // the frame at the glass and a mullion (a transom on the wider ones)
+              float fw = 0.045, e = min(min(p0.x, rs.x - p0.x), min(p0.y, rs.y - p0.y));
+              float mull = (rs.x > 1.1 && st > 2.5 || st < 1.5) ? 1.0 - smoothstep(0.018, 0.03, abs(p0.x - rs.x * 0.5)) : 0.0;
+              float tran = shop < 0.5 && rs.y > 1.4 ? 1.0 - smoothstep(0.018, 0.03, abs(p0.y - rs.y * 0.72)) : 0.0;
+              dFrame = max(1.0 - smoothstep(fw * 0.7, fw, e), max(mull, tran)) * (1.0 - far) * (st > 1.5 && st < 2.5 ? 0.6 : 1.0);
+              vec3 frC = dH12(vec2(seed * 13.0, 2.0)) < 0.5 ? vec3(0.62, 0.6, 0.56) : vec3(0.05, 0.05, 0.055);
+              winC = mix(winC, frC, dFrame);
+            }
           }
-          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, dFrame * 0.8);
-          diffuseColor.rgb = mix(diffuseColor.rgb, glass, w);
+          diffuseColor.rgb = mix(diffuseColor.rgb, winC, w);
           // lit at night: warm rooms, cold screens, a few that flicker; a burnt or ruined building has none
           float h = dH12(cell * 1.7 + seed * 91.0), on = step(h, litK) * uNight;
           float fl = step(0.985, dH12(cell + floor(uTime * 7.0))) * step(0.9, dH12(cell * 3.1 + seed));
           dLitC = mix(vec3(1.0, 0.72, 0.42), vec3(0.62, 0.78, 1.0), step(0.75, dH12(cell * 2.3 + seed)));
           if (shop > 0.5) dLitC = vec3(1.0, 0.86, 0.66);
-          dLit = on * w * (1.0 - fl) * (0.55 + 0.6 * dH12(cell * 4.3 + seed));
+          dLit = on * w * (1.0 - dRev) * (1.0 - dFrame) * (1.0 - fl) * (0.55 + 0.6 * dH12(cell * 4.3 + seed));
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.95), uSnow * 0.25 * step(0.85, fract(vF.y / sz.y)) * (1.0 - w));
           if (st > 7.5) diffuseColor.rgb *= 0.55 + 0.45 * smoothstep(0.0, 9.0, vF.y) * grime;   // soot
+          dWin = w * (1.0 - dRev) * (1.0 - dFrame);
         }
         diffuseColor.rgb *= 1.0 - uWet * 0.18 * (1.0 - dWin);
       }`,
-    fRough: 'roughnessFactor = mix(roughnessFactor, 0.06, dWin); roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.6, uWet);',
+    fRough: 'roughnessFactor = mix(dTR, 0.06, dWin); roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.6, uWet);',
     fMetal: 'metalnessFactor = mix(metalnessFactor, 0.2, dWin * 0.6);',
+    fNormal: `{ vec3 nW = normalize(vWN), Nw;
+      if (vS.w > 0.5) Nw = normalize(vec3(dTN.x, 1.0, dTN.y));
+      else { vec3 tW = normalize(cross(vec3(0.0, 1.0, 0.0), nW) + vec3(1e-5)); float k = 1.0 - dWin; Nw = normalize(nW + (tW * dTN.x + vec3(0.0, 1.0, 0.0) * dTN.y) * k);
+        if (dSill > 0.5) Nw = normalize(nW * 0.6 + vec3(0.0, 1.0, 0.0));
+        Nw = normalize(mix(Nw, dNrev, dRev)); }
+      normal = normalize((viewMatrix * vec4(Nw, 0.0)).xyz); }`,
     fEmis: 'totalEmissiveRadiance += dLitC * dLit * 2.4 * (0.35 + 0.75 * dRoomK);'
   });
-  // plain materials for the things in the street (colour by vertex), with a little wear from the noise
+  // the things in the street (colour by vertex): with a SURFACE material where the builder named one (aS.x: its layer + 1,
+  // projected along the face's main axis: concrete curbs and barriers, painted metal poles and boxes, planks, shingled and
+  // tin roofs), a little wear from the noise everywhere
   M.thing = dPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0.05, envMapIntensity: 0.7 }), {
-    key: 'thing2', vHead: 'varying vec3 vWp3;\n', vMain: 'vWp3 = (modelMatrix * vec4(transformed, 1.0)).xyz;',
-    fHead: 'varying vec3 vWp3;\n',
-    fColor: '{ float n = dFbm(vWp3.xz * 0.5 + vWp3.y * 0.3); diffuseColor.rgb *= 0.8 + 0.35 * n; diffuseColor.rgb *= 1.0 - uWet * 0.2; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.88, 0.91, 0.95), uSnow * smoothstep(0.6, 0.95, vNormal.y * 0.5 + 0.5) * 0.0); }',
-    fRough: 'roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.55, uWet);'
+    key: 'thing3', uniforms: surfUniforms({ uOff: DU_OFF }),
+    vHead: 'attribute vec4 aS; varying vec4 vS3; varying vec3 vWp3; varying vec3 vWN3;\n', vMain: 'vS3 = aS; vWp3 = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN3 = normalize(mat3(modelMatrix) * objectNormal);',
+    fHead: SURF_GLSL + D_TILES + 'varying vec4 vS3; varying vec3 vWp3; varying vec3 vWN3; float dTR3; vec4 dTN3; vec3 dT3, dB3;\n',
+    fColor: `{ dTR3 = -1.0; float n = dFbm(vWp3.xz * 0.5 + vWp3.y * 0.3);
+      if (vS3.x > 0.5 && uSOn > 0.5) { float L = floor(vS3.x - 0.5); int li = int(L + 0.5); vec3 an = abs(vWN3); vec2 uv;
+        if (an.y >= an.x && an.y >= an.z) { uv = vWp3.xz + uOff[li]; dT3 = vec3(1.0, 0.0, 0.0); dB3 = vec3(0.0, 0.0, 1.0); }
+        else if (an.x >= an.z) { uv = vec2(vWp3.z + uOff[li].y, vWp3.y); dT3 = vec3(0.0, 0.0, 1.0); dB3 = vec3(0.0, 1.0, 0.0); }
+        else { uv = vec2(vWp3.x + uOff[li].x, vWp3.y); dT3 = vec3(1.0, 0.0, 0.0); dB3 = vec3(0.0, 1.0, 0.0); }
+        uv /= dTile[li]; vec4 ta = sA(uv, L); dTN3 = sN(uv, L);
+        diffuseColor.rgb = mix(ta.rgb, diffuseColor.rgb * ta.rgb * 2.0, dTN3.w) * mix(1.0, dTN3.z, 0.75); dTR3 = ta.a; n = 0.55 + 0.45 * n; }
+      diffuseColor.rgb *= 0.8 + 0.35 * n; diffuseColor.rgb *= 1.0 - uWet * 0.2; }`,
+    fRough: 'if (dTR3 >= 0.0) roughnessFactor = dTR3; roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.55, uWet);',
+    fNormal: 'if (dTR3 >= 0.0) { vec3 N = normalize(vWN3); vec3 Nw = normalize(N + (dT3 * dTN3.x + dB3 * dTN3.y)); normal = normalize((viewMatrix * vec4(Nw, 0.0)).xyz); }'
   });
   // car paint: glossy, with the city's dust on it
   M.paint = dPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.32, metalness: 0.35, envMapIntensity: 1.1 }), {
@@ -326,6 +410,9 @@ function depthMats() {
     fragmentShader: 'varying vec2 vUv; varying vec3 vC; void main() { float d = length(vUv - 0.5) * 2.0; float a = pow(clamp(1.0 - d, 0.0, 1.0), 2.2); gl_FragColor = vec4(vC * a, a); }'
   });
   M.lampHead = new THREE.MeshStandardMaterial({ color: 0x222326, roughness: 0.6, metalness: 0.5, emissive: 0xffc890, emissiveIntensity: 0 });
+  if (typeof facadeMats === 'function') { try { facadeMats(); } catch (e) { coreHurt('FACADE', e); } }
+  if (typeof floraMats === 'function') { try { floraMats(); } catch (e) { coreHurt('FLORA', e); } }
+  if (typeof driftMats === 'function') { try { driftMats(); } catch (e) { coreHurt('DRIFT', e); } }
 }
 
 /* ---------- the sky, the sun, the moon and the stars ---------- */
@@ -401,6 +488,38 @@ function depthPostBuild() {
   comp.addPass(new THREE.RenderPass(DEPTH.scene, DEPTH.cam));
   const P = DEPTH.pass = {};
   if (q.ao) { try { P.ao = new THREE.GTAOPass(DEPTH.scene, DEPTH.cam, W, H); P.ao.output = 0; P.ao.blendIntensity = 0.85; comp.addPass(P.ao); } catch (e) { P.ao = null; } }
+  // (1.9.9991) LIGHTFX: contact shadows from the depth (ambient occlusion where walls meet the street, under cars, in
+  // doorways and between the dead in a crowd) on High, where Ultra has its own; and sun shafts: light streaming past the
+  // buildings, the trees and a storm's towers when the sun is low or the air is thick (fog, dust, a coming storm)
+  if (DEPTH.lvl >= 1) { try {
+    const dt1 = new THREE.DepthTexture(1, 1), dt2 = new THREE.DepthTexture(1, 1); dt1.type = dt2.type = THREE.UnsignedIntType;
+    comp.renderTarget1.depthTexture = dt1; comp.renderTarget2.depthTexture = dt2;
+    P.fx = new THREE.ShaderPass({
+      uniforms: { tDiffuse: { value: null }, tDepth: { value: dt1 }, uRes: { value: new THREE.Vector2(W, H) }, uPI: { value: new THREE.Matrix4() }, uP11: { value: 1 }, uAO: { value: !q.ao && DEPTH.lvl >= 2 ? 1 : 0 },
+        uRad: { value: 0.75 }, uAOK: { value: 1.1 }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uSunK: { value: 0 }, uSunC: { value: new THREE.Color(1, 0.9, 0.75) }, uTime: { value: 0 }, uSkyK: { value: 1 } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; uniform highp sampler2D tDepth; uniform vec2 uRes, uSun; uniform mat4 uPI; uniform float uP11, uAO, uRad, uAOK, uSunK, uTime, uSkyK; uniform vec3 uSunC; varying vec2 vUv;
+        vec3 vpos(vec2 uv) { float d = texture2D(tDepth, uv).r; vec4 c = uPI * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); return c.xyz / c.w; }
+        float hh(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+        void main() {
+          vec3 col = texture2D(tDiffuse, vUv).rgb; float d0 = texture2D(tDepth, vUv).r;
+          if (uAO > 0.5 && d0 < 0.99995) {
+            vec3 P = vpos(vUv), N = normalize(cross(dFdx(P), dFdy(P)));
+            float rs = uRad * uP11 / max(0.2, -P.z) * 0.5, occ = 0.0, a0 = hh(gl_FragCoord.xy) * 6.2831853, r0 = hh(gl_FragCoord.yx + 7.0);
+            for (int i = 0; i < 10; i++) { float fi = float(i), a = a0 + fi * 2.39996, r = (fi + r0) / 10.0; vec2 uv2 = vUv + vec2(cos(a), sin(a)) * rs * r * vec2(uRes.y / uRes.x, 1.0);
+              vec3 Q = vpos(clamp(uv2, 0.001, 0.999)), v = Q - P; float l = length(v); occ += max(0.0, dot(N, v / max(l, 1e-4)) - 0.08) * (1.0 - smoothstep(uRad * 0.6, uRad * 2.0, l)); }
+            float ao = clamp(1.0 - uAOK * occ / 10.0, 0.25, 1.0); col *= mix(1.0, ao, smoothstep(140.0, 40.0, -P.z));
+          }
+          if (uSunK > 0.002) {
+            vec2 dlt = (uSun - vUv) / 28.0; vec2 uv = vUv + dlt * hh(gl_FragCoord.xy + uTime); float w = 1.0, acc = 0.0;
+            for (int i = 0; i < 28; i++) { float sky = step(0.99995, texture2D(tDepth, clamp(uv, 0.001, 0.999)).r); acc += sky * w; w *= 0.95; uv += dlt; }
+            float fall = 1.0 - smoothstep(0.0, 0.75, length((vUv - uSun) * vec2(uRes.x / uRes.y, 1.0)));
+            col += uSunC * acc / 15.3 * uSunK * 0.65 * fall * fall * uSkyK;
+          }
+          gl_FragColor = vec4(col, 1.0); }`
+    });
+    comp.addPass(P.fx);
+  } catch (e) { P.fx = null; coreHurt('DEPTH', e); } }
   if (q.bloom) { P.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(W, H), 0.55, 0.62, 0.86); comp.addPass(P.bloom); }
   P.out = new THREE.OutputPass(); comp.addPass(P.out);
   P.grade = new THREE.ShaderPass({
@@ -532,6 +651,9 @@ const D_THING = {
   bags: ['#2a2a2c', 0.55], pallets: ['#8a6a44', 0.5], rolloff: ['#a65a22', 1.3], rail: ['#6a6d70', 0.95], tanker: ['#c8c8c4', 3.3], plow: ['#c88a22', 2.8], pillar: ['#8c8a84', 7.5], wreck: ['#6a6e72', 3],
   trunk: null, b: null, car: null, lm: ['#7a7c78', 1.6]
 };
+// (1.9.9991) SURFACE layers for the plain material: [layer + 1, ...] in the aS attribute (0: none)
+const DL = k => [(typeof SURF_L !== 'undefined' ? SURF_L[k] : 0) + 1, 0, 0, 0];
+const DL_CON = DL('concrete'), DL_MET = DL('metal'), DL_PLK = DL('planks'), DL_ASP = DL('asphalt'), DL_STU = DL('stucco'), DL_STO = DL('stone'), DL_SHI = DL('shingle'), DL_TIN = DL('metalc');
 const D_UP = 1;   // the sidewalk curb (in centimetres it is 15; this is a scale on it)
 function depthChunkKey(cx, cy) { return cx + ',' + cy; }
 // build the 3D block for chunk c (its data must exist); returns the record kept in DEPTH.chunks
@@ -545,7 +667,7 @@ function depthChunkBuild(c, ring) {
   // the ground: the block's painting at this level's resolution (nearer blocks sharper)
   const px = q.gpx * (ring <= 0 ? 1.4 : ring === 1 ? 1 : 0.55) * (TOUCH ? 0.8 : 1), can = chunkPaint(c, { ground: true, px: Math.max(0.35, Math.min(2.4, px)) });
   const tex = new THREE.CanvasTexture(can); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, DEPTH.R.capabilities.getMaxAnisotropy()); tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
-  keep.push(tex);
+  keep.push(tex); rec.groundCan = can;
   const WT = depthWaterMask(c), wtex = WT ? WT.tex : depthNoWater(), obc = DEPTH.mats.ground.onBeforeCompile;
   if (WT) keep.push(WT.tex);
   const gm = DEPTH.mats.ground.clone(); gm.map = tex; gm.onBeforeCompile = (sh, r) => { obc(sh, r); sh.uniforms.uWMask = { value: wtex }; sh.uniforms.uHasW = { value: WT ? 1 : 0 }; }; gm.customProgramCacheKey = DEPTH.mats.ground.customProgramCacheKey; keep.push(gm);
@@ -559,11 +681,13 @@ function depthChunkBuild(c, ring) {
     // (the ground's uv: x across, y up the texture; the painting's top row is the north edge)
     const uv = g.attributes.uv.array; for (let i = 0; i < uv.length; i += 2) { const vx = B.p[(i / 2) * 3], vz = B.p[(i / 2) * 3 + 2]; uv[i] = vx / sz; uv[i + 1] = 1 - vz / sz; }
     const m = new THREE.Mesh(g, gm); m.receiveShadow = true; m.castShadow = false; G0.add(m); keep.push(g);
-    if (curb) { const cc = dLin('#8a8984', null, 0.8); dBox(TH, bx, 0, bx, bx + BSm, curb, bx + BSm, cc, null, null, 't'); }
+    if (curb) { const cc = dLin('#8a8984', null, 0.8); dBox(TH, bx, 0, bx, bx + BSm, curb, bx + BSm, cc, DL_CON, null, 't'); }
   }
   // buildings
   {
     const B = dGB(), T = TH, V = TH, roofTmp = [0, 0, 0], col = [0, 0, 0];
+    // (1.9.9991) FACADE dresses each building: trim, shops and their signs, fire escapes, roofs, porches, marks on the walls
+    const fctx = typeof facadeBuilding === 'function' && FAC.ok ? { TH: TH, SG: dGB(), DG: dGB(), bx: L(ROAD * SCL), bs: L(BS * SCL), curb: curb, bio: bio, ring: ring, c: c } : null; rec.fctx = fctx;
     for (const r of c.rects) {
       const x0 = L(r.x - ox), z0 = L(r.y - oy), x1 = L(r.x + r.w - ox), z1 = L(r.y + r.h - oy);
       if (r.k === 'b') {
@@ -576,24 +700,29 @@ function depthChunkBuild(c, ring) {
           const h1 = h * (0.68 + u * 0.12), ins = Math.min(x1 - x0, z1 - z0) * 0.14;
           dBox(B, x0, y0, z0, x1, y0 + h1, z1, col, [style, seed, lit], roofTmp);
           dBox(B, x0 + ins, y0 + h1, z0 + ins, x1 - ins, y0 + h, z1 - ins, col, [style, seed + 0.31, lit], roofTmp);
+          if (fctx) facadeBuilding(fctx, r, x0, z0, x1, z1, y0, h1, style, col, seed, lit, 'tower');
         } else if (style === D_STYLE.siding || style === D_STYLE.logs || style === D_STYLE.barn) {
           const ridge = Math.min(x1 - x0, z1 - z0) * (style === D_STYLE.logs ? 0.42 : 0.3), alongX = (x1 - x0) >= (z1 - z0);
           dBox(B, x0, y0, z0, x1, y0 + h - ridge * 0.6, z1, col, [style, seed, lit], roofTmp, 't');
-          dRoofGable(T, x0, z0, x1, z1, y0 + h - ridge * 0.6, ridge, alongX, roofTmp);
+          dRoofGable(T, x0, z0, x1, z1, y0 + h - ridge * 0.6, ridge, alongX, roofTmp, style === D_STYLE.barn ? DL_TIN : style === D_STYLE.logs ? DL_PLK : DL_SHI);
+          if (fctx) facadeBuilding(fctx, r, x0, z0, x1, z1, y0, h - ridge * 0.6, style, col, seed, lit, 'gable');
         } else if (style === D_STYLE.ruin) {
           // a ruin: the walls broken off at uneven heights
           const nx = Math.max(1, Math.round((x1 - x0) / 6)), nz = Math.max(1, Math.round((z1 - z0) / 6)), R2 = Z.mulberry32(r.s || 9);
           for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { if (i > 0 && i < nx - 1 && j > 0 && j < nz - 1 && R2() < 0.7) continue; const hh = h * (0.35 + R2() * 0.65); const ax = x0 + (x1 - x0) * i / nx, az = z0 + (z1 - z0) * j / nz; dBox(B, ax, y0, az, ax + (x1 - x0) / nx, y0 + hh, az + (z1 - z0) / nz, col, [style, seed + i * 0.13 + j * 0.07, 0], roofTmp); }
         } else {
           dBox(B, x0, y0, z0, x1, y0 + h, z1, col, [style, seed, lit], roofTmp);
-          // a parapet and something on the roof (a water tank, a vent, the stair house)
-          if (h > 9 && (x1 - x0) > 8) { const pc = dLin('#4a4c50', null, 0.9); const rh = y0 + h; dBox(V, x0, rh, z0, x1, rh + 0.6, z0 + 0.25, pc); dBox(V, x0, rh, z1 - 0.25, x1, rh + 0.6, z1, pc); dBox(V, x0, rh, z0, x0 + 0.25, rh + 0.6, z1, pc); dBox(V, x1 - 0.25, rh, z0, x1, rh + 0.6, z1, pc);
-            const R2 = Z.mulberry32((r.s || 5) ^ 0x77); const n = 1 + Math.floor(R2() * 3); for (let i = 0; i < n; i++) { const cx = x0 + 2 + R2() * (x1 - x0 - 4), cz = z0 + 2 + R2() * (z1 - z0 - 4), k = R2(); if (k < 0.35) dCyl(V, cx, rh, cz, 1.4, 1.4, rh + 2.6, 10, dLin('#5a4a3a')); else if (k < 0.7) dBox(V, cx - 1.6, rh, cz - 1.1, cx + 1.6, rh + 1.4, cz + 1.1, dLin('#9aa0a4')); else dBox(V, cx - 1.5, rh, cz - 1.5, cx + 1.5, rh + 2.8, cz + 1.5, col); } }
+          // a parapet round the flat roof (FACADE puts its coping on, and what stands on the roof)
+          if (h > 9 && (x1 - x0) > 8) { const pc = dLin('#4a4c50', null, 0.9); const rh = y0 + h; dBox(V, x0, rh, z0, x1, rh + 0.6, z0 + 0.25, pc, DL_CON); dBox(V, x0, rh, z1 - 0.25, x1, rh + 0.6, z1, pc, DL_CON); dBox(V, x0, rh, z0, x0 + 0.25, rh + 0.6, z1, pc, DL_CON); dBox(V, x1 - 0.25, rh, z0, x1, rh + 0.6, z1, pc, DL_CON);
+            if (!fctx) { const R2 = Z.mulberry32((r.s || 5) ^ 0x77); const n = 1 + Math.floor(R2() * 3); for (let i = 0; i < n; i++) { const cx = x0 + 2 + R2() * (x1 - x0 - 4), cz = z0 + 2 + R2() * (z1 - z0 - 4), k = R2(); if (k < 0.35) dCyl(V, cx, rh, cz, 1.4, 1.4, rh + 2.6, 10, dLin('#5a4a3a'), DL_PLK); else if (k < 0.7) dBox(V, cx - 1.6, rh, cz - 1.1, cx + 1.6, rh + 1.4, cz + 1.1, dLin('#9aa0a4'), DL_MET); else dBox(V, cx - 1.5, rh, cz - 1.5, cx + 1.5, rh + 2.8, cz + 1.5, col, DL_CON); } } }
+          if (fctx) facadeBuilding(fctx, r, x0, z0, x1, z1, y0, h, style, col, seed, lit, 'box');
         }
         if (r.burn) rec.fires.push({ x: (x0 + x1) / 2, z: (z0 + z1) / 2, y: y0 + h * 0.6, r: Math.min(x1 - x0, z1 - z0) * 0.4, roof: y0 + h });
       }
     }
     if (B.nv) { const g = dGeom(B, true); const m = new THREE.Mesh(g, DEPTH.mats.facade); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); rec.bld = m; }
+    if (fctx) { try { facadeChunkEnd(fctx, G0, keep); } catch (e) { coreHurt('FACADE', e); } }
+    if (fctx && fctx.smoke) rec.smoke = fctx.smoke;
     void T; void V;
   }
   // the things in the street: vehicles, benches, planters, fences, rubble... (boxes at their real sizes for now; the
@@ -606,17 +735,20 @@ function depthChunkBuild(c, ring) {
       if (r.k === 'car') { dVehicle(r.burnt ? B : P, Gl, Tr, r, x0, z0, x1, z1); continue; }   // (a burnt shell is matt: the plain material)
       const T = D_THING[r.k], h = luxHeight(r) || (T ? T[1] : 1);
       dLin(T ? T[0] : '#6a6a6a', col);
-      if (r.k === 'fence') { dBox(B, x0, y0, z0, x1, y0 + h, z1, dLin('#3e4246', col)); continue; }
-      if (r.k === 'rub' || r.k === 'rock') { const R2 = Z.mulberry32(r.s || ((r.x * 7 + r.y) | 0)); const n = r.k === 'rock' ? 2 : 4; for (let i = 0; i < n; i++) { const w = (x1 - x0), d = (z1 - z0), cx = x0 + w * (0.25 + R2() * 0.5), cz = z0 + d * (0.25 + R2() * 0.5); dBoxR(B, cx, y0, cz, w * (0.2 + R2() * 0.3), d * (0.2 + R2() * 0.3), y0 + h * (0.4 + R2() * 0.6), R2() * 3, col); } continue; }
-      if (r.k === 'pillar') { const ph = dPierH(c, r) || h; dBox(B, x0, 0, z0, x1, ph, z1, col); const e = 0.35; dBox(B, x0 - e, ph - 0.6, z0 - e, x1 + e, ph, z1 + e, col); continue; }
-      if (r.k === 'planter') { dBox(B, x0, y0, z0, x1, y0 + 0.75, z1, col); dBox(B, x0 + 0.15, y0 + 0.75, z0 + 0.15, x1 - 0.15, y0 + 0.82, z1 - 0.15, dLin('#2e2418')); continue; }
-      if (r.k === 'bench') { const bc = dLin('#5a4632'); dBox(B, x0, y0 + 0.4, z0, x1, y0 + 0.47, z1, bc); continue; }
-      dBox(B, x0, y0, z0, x1, y0 + h, z1, col);
+      if (r.k === 'fence') { if (!(rec.fctx && facFence(rec.fctx, r, x0, z0, x1, z1, y0))) dBox(B, x0, y0, z0, x1, y0 + h, z1, dLin('#3e4246', col), DL_MET); continue; }
+      if (r.k === 'rub' || r.k === 'rock') { const R2 = Z.mulberry32(r.s || ((r.x * 7 + r.y) | 0)); const n = r.k === 'rock' ? 2 : 4; for (let i = 0; i < n; i++) { const w = (x1 - x0), d = (z1 - z0), cx = x0 + w * (0.25 + R2() * 0.5), cz = z0 + d * (0.25 + R2() * 0.5); dBoxR(B, cx, y0, cz, w * (0.2 + R2() * 0.3), d * (0.2 + R2() * 0.3), y0 + h * (0.4 + R2() * 0.6), R2() * 3, col, r.k === 'rock' ? DL_STU : DL_CON); } continue; }
+      if (r.k === 'pillar') { const ph = dPierH(c, r) || h; dBox(B, x0, 0, z0, x1, ph, z1, col, DL_CON); const e = 0.35; dBox(B, x0 - e, ph - 0.6, z0 - e, x1 + e, ph, z1 + e, col, DL_CON); continue; }
+      if (r.k === 'planter') { dBox(B, x0, y0, z0, x1, y0 + 0.75, z1, col, DL_CON); dBox(B, x0 + 0.15, y0 + 0.75, z0 + 0.15, x1 - 0.15, y0 + 0.82, z1 - 0.15, dLin('#2e2418'), DL('dirt')); continue; }
+      if (r.k === 'bench') { const bc = dLin('#5a4632'); dBox(B, x0, y0 + 0.4, z0, x1, y0 + 0.47, z1, bc, DL_PLK); continue; }
+      const tl = r.k === 'barrier' || r.k === 'checkpoint' ? DL_CON : r.k === 'statue' || r.k === 'mesa' ? DL_STU : r.k === 'pallets' || r.k === 'wood' || r.k === 'log' || r.k === 'stall' ? DL_PLK : r.k === 'bags' || r.k === 'cactus' || r.k === 'pool' ? null : DL_MET;
+      dBox(B, x0, y0, z0, x1, y0 + h, z1, col, tl);
     }
     for (const f of c.furn || []) dFurniture(B, Gl, f, L(f.x * SCL - ox), L(f.y * SCL - oy), curb);
     if (P.nv) { const g = dGeom(P); const m = new THREE.Mesh(g, DEPTH.mats.paint); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
     if (Gl.nv) { const g = dGeom(Gl); const m = new THREE.Mesh(g, DEPTH.mats.glass); m.castShadow = false; m.receiveShadow = false; G0.add(m); keep.push(g); }
     if (Tr.nv) { const g = dGeom(Tr); const m = new THREE.Mesh(g, DEPTH.mats.rubber); m.castShadow = false; G0.add(m); keep.push(g); }
+    if (rec.fctx) { try { facFenceEnd(rec.fctx, G0, keep); } catch (e) { coreHurt('FACADE', e); } }
+    rec.fctx = null;   // (the builders are done with)
   }
   // street lamps: a pole, an arm out over the road and the head (lit by the light pool at night)
   {
@@ -625,9 +757,9 @@ function depthChunkBuild(c, ring) {
     for (const l of c.lights) {
       if (l.hw) continue;
       const x = L(l.x - ox), z = L(l.y - oy), hx = L((l.hx == null ? l.x : l.hx) - ox), hz = L((l.hy == null ? l.y : l.hy) - oy), y0 = curb;
-      dCyl(B, x, y0, z, 0.09, 0.07, y0 + 7.2, 6, pc);
+      dCyl(B, x, y0, z, 0.09, 0.07, y0 + 7.2, 6, pc, DL_MET);
       const dx = hx - x, dz = hz - z, len = Math.hypot(dx, dz);
-      if (len > 0.2) dBoxR(B, (x + hx) / 2, y0 + 7.05, (z + hz) / 2, len / 2, 0.05, y0 + 7.2, Math.atan2(dz, dx), pc);
+      if (len > 0.2) dBoxR(B, (x + hx) / 2, y0 + 7.05, (z + hz) / 2, len / 2, 0.05, y0 + 7.2, Math.atan2(dz, dx), pc, DL_MET);
       dBoxR(H, hx, y0 + 6.88, hz, 0.34, 0.16, y0 + 7.06, Math.atan2(dz, dx), [1, 1, 1]);
       rec.lit.push({ x: hx, y: y0 + 6.85, z: hz });
     }
@@ -635,8 +767,10 @@ function depthChunkBuild(c, ring) {
   }
   // the elevated highways over this block: decks, ramps, barriers, lamps and the traffic stuck up there
   try { depthSkyway(c, G0, keep, TH); } catch (e) { coreHurt('DEPTH', e); }
+  // trees, bushes and grass: FLORA grows them (1.9.9991); the old instanced ones if it is not up
+  const floraDone = typeof floraChunk === 'function' && FLORA.ok ? (() => { try { return floraChunk(c, G0, keep, TH, ox, oy, curb, ring); } catch (e) { coreHurt('FLORA', e); return false; } })() : false;
   // trees: a trunk and a crown, by kind and season (instanced per block)
-  {
+  if (!floraDone) {
     const trees = c.deco.filter(d => d.k === 'tree'), n = Math.round(trees.length * q.trees);
     if (n) {
       const geo = depthTreeGeo(), tm = new THREE.InstancedMesh(geo.trunk, DEPTH.mats.thing, n), cm = new THREE.InstancedMesh(geo.crown, DEPTH.mats.foliage, n);
@@ -659,7 +793,7 @@ function depthChunkBuild(c, ring) {
     }
   }
   // bushes and grass: instanced per block, swaying in the wind like the trees; flattened and browned by the season
-  {
+  if (!floraDone) {
     const bush = c.deco.filter(d => d.k === 'bush'), grass = c.deco.filter(d => d.k === 'grass'), sea = WORLD.season, win = winterOn(c) || bio === 'snow';
     const M4 = new THREE.Matrix4(), Q4 = new THREE.Quaternion(), V3 = new THREE.Vector3(), S3 = new THREE.Vector3(), C3 = new THREE.Color(), YA = new THREE.Vector3(0, 1, 0), geo = depthBushGeo();
     const nb = Math.round(bush.length * q.trees), ng = Math.round(grass.length * q.trees * (DEPTH.lvl >= 2 ? 1 : 0.5));
@@ -691,7 +825,7 @@ function depthChunkBuild(c, ring) {
       im.frustumCulled = false; im.renderOrder = 5; G0.add(im); rec.flames = im;
     }
   }
-  if (TH.nv) { const g = dGeom(TH); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+  if (TH.nv) { const g = dGeom(TH, true); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
   S.add(G0); DEPTH.chunks.set(rec.k, rec);
   const ms = performance.now() - t0; DEPTH.built++; DEPTH.buildMs += ms; coreCost('DEPTH', ms);
   return rec;
@@ -757,7 +891,7 @@ function depthWaterBuild(c, WT, G0, keep, curb, TH) {
     if (dk.horiz) { dBox(K, x0, 0, z0, x1, 0.85, z0 + 0.25, pc); dBox(K, x0, 0, z1 - 0.25, x1, 0.85, z1, pc); for (let x = x0 + 3; x < x1 - 1; x += 9) { dBox(K, x - 0.4, -3, z0 + 1.2, x + 0.4, -0.5, z0 + 2, pc); dBox(K, x - 0.4, -3, z1 - 2, x + 0.4, -0.5, z1 - 1.2, pc); } }
     else { dBox(K, x0, 0, z0, x0 + 0.25, 0.85, z1, pc); dBox(K, x1 - 0.25, 0, z0, x1, 0.85, z1, pc); for (let z = z0 + 3; z < z1 - 1; z += 9) { dBox(K, x0 + 1.2, -3, z - 0.4, x0 + 2, -0.5, z + 0.4, pc); dBox(K, x1 - 2, -3, z - 0.4, x1 - 1.2, -0.5, z + 0.4, pc); } }
   }
-  if (!TH && K.nv) { const g = dGeom(K); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+  if (!TH && K.nv) { const g = dGeom(K, true); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
 }
 // the highways in 3D (from the SKYWAY engine's own layout): each deck a slab at its height with the engine's painting
 // of the carriageway on top (lanes, joints, snow; without its flat traffic), jersey barriers down both sides and the
@@ -795,17 +929,17 @@ function depthSkyway(c, G0, keep, TH) {
         const x0 = bx(v ? X0 : s0), x1 = bx(v ? X1 : s1), z0 = bz(v ? s0 : Y0), z1 = bz(v ? s1 : Y1);
         const uv = (x, z) => [x / sz, 1 - z / sz];
         dQuad(T, [x0, h0, z1], [x1, h0, z1], [x1, h0, z0], [x0, h0, z0], [0, 1, 0], [1, 1, 1], null, uv(x0, z1), uv(x1, z1), uv(x1, z0), uv(x0, z0));
-        dQuad(K, [x0, h0 - SLAB, z0], [x1, h0 - SLAB, z0], [x1, h0 - SLAB, z1], [x0, h0 - SLAB, z1], [0, -1, 0], under, null);
+        dQuad(K, [x0, h0 - SLAB, z0], [x1, h0 - SLAB, z0], [x1, h0 - SLAB, z1], [x0, h0 - SLAB, z1], [0, -1, 0], under, DL_CON);
         // the long sides (where they are in this block) and the raw ends at a gap
-        if (v) { if (d.x >= ox) dQuad(K, [x0, h0 - SLAB, z0], [x0, h0 - SLAB, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], conc, null); if (d.x + d.w <= ox + CH) dQuad(K, [x1, h0 - SLAB, z1], [x1, h0 - SLAB, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], conc, null); }
-        else { if (d.y >= oy) dQuad(K, [x1, h0 - SLAB, z0], [x0, h0 - SLAB, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], conc, null); if (d.y + d.h <= oy + CH) dQuad(K, [x0, h0 - SLAB, z1], [x1, h0 - SLAB, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], conc, null); }
+        if (v) { if (d.x >= ox) dQuad(K, [x0, h0 - SLAB, z0], [x0, h0 - SLAB, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], conc, DL_CON); if (d.x + d.w <= ox + CH) dQuad(K, [x1, h0 - SLAB, z1], [x1, h0 - SLAB, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], conc, DL_CON); }
+        else { if (d.y >= oy) dQuad(K, [x1, h0 - SLAB, z0], [x0, h0 - SLAB, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], conc, DL_CON); if (d.y + d.h <= oy + CH) dQuad(K, [x0, h0 - SLAB, z1], [x1, h0 - SLAB, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], conc, DL_CON); }
         if (gp) {
-          if (s1 === Math.min(a1, o0 + gp.at) && s1 < a1) { if (v) dQuad(K, [x0, h0 - SLAB, z1], [x1, h0 - SLAB, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], under, null); else dQuad(K, [x1, h0 - SLAB, z1], [x1, h0 - SLAB, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], under, null); }
-          if (s0 === Math.max(a0, o0 + gp.at + gp.len) && s0 > a0) { if (v) dQuad(K, [x1, h0 - SLAB, z0], [x0, h0 - SLAB, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], under, null); else dQuad(K, [x0, h0 - SLAB, z0], [x0, h0 - SLAB, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], under, null); }
+          if (s1 === Math.min(a1, o0 + gp.at) && s1 < a1) { if (v) dQuad(K, [x0, h0 - SLAB, z1], [x1, h0 - SLAB, z1], [x1, h0, z1], [x0, h0, z1], [0, 0, 1], under, DL_CON); else dQuad(K, [x1, h0 - SLAB, z1], [x1, h0 - SLAB, z0], [x1, h0, z0], [x1, h0, z1], [1, 0, 0], under, DL_CON); }
+          if (s0 === Math.max(a0, o0 + gp.at + gp.len) && s0 > a0) { if (v) dQuad(K, [x1, h0 - SLAB, z0], [x0, h0 - SLAB, z0], [x0, h0, z0], [x1, h0, z0], [0, 0, -1], under, DL_CON); else dQuad(K, [x0, h0 - SLAB, z0], [x0, h0 - SLAB, z1], [x0, h0, z1], [x0, h0, z0], [-1, 0, 0], under, DL_CON); }
         }
         // jersey barriers: both edges and the median (where the painting has them)
         const W2 = v ? d.w : d.h, e0 = v ? d.x : d.y;
-        for (const [o, t] of [[1, 7], [W2 - 8, 7], [W2 / 2 - 4, 8]]) { const q0 = e0 + o, q1 = q0 + t; if (v) { if (q1 <= ox || q0 >= ox + CH) continue; dBox(BB, bx(Math.max(q0, ox)), h0, z0, bx(Math.min(q1, ox + CH)), h0 + 0.85, z1, barC); } else { if (q1 <= oy || q0 >= oy + CH) continue; dBox(BB, x0, h0, bz(Math.max(q0, oy)), x1, h0 + 0.85, bz(Math.min(q1, oy + CH)), barC); } }
+        for (const [o, t] of [[1, 7], [W2 - 8, 7], [W2 / 2 - 4, 8]]) { const q0 = e0 + o, q1 = q0 + t; if (v) { if (q1 <= ox || q0 >= ox + CH) continue; dBox(BB, bx(Math.max(q0, ox)), h0, z0, bx(Math.min(q1, ox + CH)), h0 + 0.85, z1, barC, DL_CON); } else { if (q1 <= oy || q0 >= oy + CH) continue; dBox(BB, x0, h0, bz(Math.max(q0, oy)), x1, h0 + 0.85, bz(Math.min(q1, oy + CH)), barC, DL_CON); } }
       }
       // light poles on the barriers (the lamps are the lighting engine's)
       const Ln = v ? d.h : d.w;
@@ -813,7 +947,7 @@ function depthSkyway(c, G0, keep, TH) {
         const W2 = v ? d.w : d.h, o = k % 2 ? W2 - 6 : 6, px = v ? d.x + o : d.x + a, py = v ? d.y + a : d.y + o; if (px < ox || px >= ox + CH || py < oy || py >= oy + CH) continue;
         if (gp && (v ? py : px) > o0 + gp.at - 10 && (v ? py : px) < o0 + gp.at + gp.len + 10) continue;
         const X = bx(px), Zz = bz(py), dx = v ? (k % 2 ? -1 : 1) : 0, dz = v ? 0 : (k % 2 ? -1 : 1);
-        dCyl(K, X, h0 + 0.85, Zz, 0.1, 0.08, h0 + 9.5, 6, pole); dBoxR(K, X + dx * 0.9, h0 + 9.3, Zz + dz * 0.9, 0.9, 0.05, h0 + 9.45, Math.atan2(dz, dx), pole);
+        dCyl(K, X, h0 + 0.85, Zz, 0.1, 0.08, h0 + 9.5, 6, pole, DL_MET); dBoxR(K, X + dx * 0.9, h0 + 9.3, Zz + dz * 0.9, 0.9, 0.05, h0 + 9.45, Math.atan2(dz, dx), pole, DL_MET);
         dBoxR(H, X + dx * 1.7, h0 + 9.1, Zz + dz * 1.7, 0.36, 0.16, h0 + 9.3, Math.atan2(dz, dx), [1, 1, 1]);
       }
       // the traffic left up here: real vehicles on this block's own stretch
@@ -840,30 +974,30 @@ function depthSkyway(c, G0, keep, TH) {
       const up = (P0) => [P0[0], h0, P0[1]], dn = (P0) => [P0[0], h0 - SLAB, P0[1]], cr = (q, r2) => (r2[0] - q[0]);
       // top (counter-clockwise from above whichever way the ribbon turns), underside, both edges, barriers
       const ccw = ((Bq[0] - A[0]) * (D[1] - A[1]) - (D[0] - A[0]) * (Bq[1] - A[1])) < 0;
-      if (ccw) dQuad(K, up(A), up(Bq), up(C), up(D), [0, 1, 0], conc, null); else dQuad(K, up(A), up(D), up(C), up(Bq), [0, 1, 0], conc, null);
-      if (ccw) dQuad(K, dn(A), dn(D), dn(C), dn(Bq), [0, -1, 0], under, null); else dQuad(K, dn(A), dn(Bq), dn(C), dn(D), [0, -1, 0], under, null);
+      if (ccw) dQuad(K, up(A), up(Bq), up(C), up(D), [0, 1, 0], conc, DL_ASP); else dQuad(K, up(A), up(D), up(C), up(Bq), [0, 1, 0], conc, DL_ASP);
+      if (ccw) dQuad(K, dn(A), dn(D), dn(C), dn(Bq), [0, -1, 0], under, DL_CON); else dQuad(K, dn(A), dn(Bq), dn(C), dn(D), [0, -1, 0], under, DL_CON);
       for (const [E0, E1, sgn] of [[A, Bq, 1], [C, D, 1]]) { const ex2 = E1[0] - E0[0], ez2 = E1[1] - E0[1], el = Math.hypot(ex2, ez2) || 1; let n = [-ez2 / el, 0, ex2 / el]; const midx = (E0[0] + E1[0]) / 2 - bx(mx), midz = (E0[1] + E1[1]) / 2 - bz(my); let q0 = E0, q1 = E1; if (n[0] * midx + n[2] * midz < 0) { q0 = E1; q1 = E0; n = [-n[0], 0, -n[2]]; } dQuad(K, [q0[0], h0 - SLAB, q0[1]], [q1[0], h0 - SLAB, q1[1]], [q1[0], h0 + 0.85, q1[1]], [q0[0], h0 + 0.85, q0[1]], n, barC, null); void sgn; void cr; }
     }
   }
-  if (!TH && K.nv) { const g = dGeom(K); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
+  if (!TH && K.nv) { const g = dGeom(K, true); const m = new THREE.Mesh(g, DEPTH.mats.thing); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
   if (H.nv) { const g = dGeom(H); const m = new THREE.Mesh(g, DEPTH.mats.lampHead); G0.add(m); keep.push(g); }
   if (P.nv) { const g = dGeom(P); const m = new THREE.Mesh(g, DEPTH.mats.paint); m.castShadow = true; m.receiveShadow = true; G0.add(m); keep.push(g); }
   if (Gl.nv) { const g = dGeom(Gl); const m = new THREE.Mesh(g, DEPTH.mats.glass); G0.add(m); keep.push(g); }
   if (Tr.nv) { const g = dGeom(Tr); const m = new THREE.Mesh(g, DEPTH.mats.rubber); G0.add(m); keep.push(g); }
 }
 // a gable roof over a rectangle, the ridge along the longer side
-function dRoofGable(B, x0, z0, x1, z1, y0, rise, alongX, col) {
+function dRoofGable(B, x0, z0, x1, z1, y0, rise, alongX, col, aux) {
   const xm = (x0 + x1) / 2, zm = (z0 + z1) / 2, y1 = y0 + rise, o = 0.4, c2 = [col[0] * 0.8, col[1] * 0.8, col[2] * 0.8];
   if (alongX) {
     const nz = rise / Math.hypot(rise, (z1 - z0) / 2), ny = (z1 - z0) / 2 / Math.hypot(rise, (z1 - z0) / 2);
-    dQuad(B, [x1 + o, y0, z0 - o], [x0 - o, y0, z0 - o], [x0 - o, y1, zm], [x1 + o, y1, zm], [0, ny, -nz], col, null);
-    dQuad(B, [x0 - o, y0, z1 + o], [x1 + o, y0, z1 + o], [x1 + o, y1, zm], [x0 - o, y1, zm], [0, ny, nz], col, null);
-    for (const [x, n] of [[x0, -1], [x1, 1]]) { const v0 = B.nv; B.p.push(x, y0, n < 0 ? z1 : z0, x, y0, n < 0 ? z0 : z1, x, y1, zm); for (let k = 0; k < 3; k++) { B.n.push(n, 0, 0); B.c.push(c2[0], c2[1], c2[2]); B.a.push(0, 0, 0, 0); B.f.push(0, 0); B.u.push(0, 0); } B.i.push(v0, v0 + 1, v0 + 2); B.nv += 3; }
+    dQuad(B, [x1 + o, y0, z0 - o], [x0 - o, y0, z0 - o], [x0 - o, y1, zm], [x1 + o, y1, zm], [0, ny, -nz], col, aux);
+    dQuad(B, [x0 - o, y0, z1 + o], [x1 + o, y0, z1 + o], [x1 + o, y1, zm], [x0 - o, y1, zm], [0, ny, nz], col, aux);
+    for (const [x, n] of [[x0, -1], [x1, 1]]) { const v0 = B.nv; B.p.push(x, y0, n < 0 ? z1 : z0, x, y0, n < 0 ? z0 : z1, x, y1, zm); for (let k = 0; k < 3; k++) { B.n.push(n, 0, 0); B.c.push(c2[0], c2[1], c2[2]); B.a.push(aux ? aux[0] : 0, 0, 0, 0); B.f.push(0, 0); B.u.push(0, 0); } B.i.push(v0, v0 + 1, v0 + 2); B.nv += 3; }
   } else {
     const nx = rise / Math.hypot(rise, (x1 - x0) / 2), ny = (x1 - x0) / 2 / Math.hypot(rise, (x1 - x0) / 2);
-    dQuad(B, [x0 - o, y0, z0 - o], [x0 - o, y0, z1 + o], [xm, y1, z1 + o], [xm, y1, z0 - o], [-nx, ny, 0], col, null);
-    dQuad(B, [x1 + o, y0, z1 + o], [x1 + o, y0, z0 - o], [xm, y1, z0 - o], [xm, y1, z1 + o], [nx, ny, 0], col, null);
-    for (const [z, n] of [[z0, -1], [z1, 1]]) { const v0 = B.nv; B.p.push(n < 0 ? x0 : x1, y0, z, n < 0 ? x1 : x0, y0, z, xm, y1, z); for (let k = 0; k < 3; k++) { B.n.push(0, 0, n); B.c.push(c2[0], c2[1], c2[2]); B.a.push(0, 0, 0, 0); B.f.push(0, 0); B.u.push(0, 0); } B.i.push(v0, v0 + 1, v0 + 2); B.nv += 3; }
+    dQuad(B, [x0 - o, y0, z0 - o], [x0 - o, y0, z1 + o], [xm, y1, z1 + o], [xm, y1, z0 - o], [-nx, ny, 0], col, aux);
+    dQuad(B, [x1 + o, y0, z1 + o], [x1 + o, y0, z0 - o], [xm, y1, z0 - o], [xm, y1, z1 + o], [nx, ny, 0], col, aux);
+    for (const [z, n] of [[z0, -1], [z1, 1]]) { const v0 = B.nv; B.p.push(n < 0 ? x0 : x1, y0, z, n < 0 ? x1 : x0, y0, z, xm, y1, z); for (let k = 0; k < 3; k++) { B.n.push(0, 0, n); B.c.push(c2[0], c2[1], c2[2]); B.a.push(aux ? aux[0] : 0, 0, 0, 0); B.f.push(0, 0); B.u.push(0, 0); } B.i.push(v0, v0 + 1, v0 + 2); B.nv += 3; }
   }
 }
 // a vehicle at its real size (the garage's dimensions), shaped from a side profile of its kind: bumper, bonnet,
@@ -982,10 +1116,10 @@ function dVehWheel(Tr, P, W3, N3, lx, ly, lz, r, w, burnt, sd) {
 // shelter, newspaper boxes
 function dFurniture(B, Gl, f, x, z, curb) {
   const y = curb;
-  if (f.k === 'hydrant') { const c = dLin(f.col || '#c03a2e'); dCyl(B, x, y, z, 0.13, 0.11, y + 0.62, 8, c); dCyl(B, x, y + 0.62, z, 0.11, 0.02, y + 0.76, 8, c); dBoxR(B, x, y + 0.36, z, 0.2, 0.05, y + 0.44, 0, c); }
-  else if (f.k === 'signal') { const c = dLin('#3a3d42'); dCyl(B, x, y, z, 0.1, 0.08, y + 5.4, 6, c); const ax = x - 2.6, az = z - 2.3; dBoxR(B, (x + ax) / 2, y + 5.3, (z + az) / 2, Math.hypot(2.6, 2.3) / 2, 0.05, y + 5.42, Math.atan2(-2.3, -2.6), c); dBoxR(B, ax, y + 4.5, az, 0.18, 0.18, y + 5.32, 0.7, dLin('#1a1b1e')); }
+  if (f.k === 'hydrant') { const c = dLin(f.col || '#c03a2e'); dCyl(B, x, y, z, 0.13, 0.11, y + 0.62, 8, c, DL_MET); dCyl(B, x, y + 0.62, z, 0.11, 0.02, y + 0.76, 8, c, DL_MET); dBoxR(B, x, y + 0.36, z, 0.2, 0.05, y + 0.44, 0, c, DL_MET); }
+  else if (f.k === 'signal') { const c = dLin('#3a3d42'); dCyl(B, x, y, z, 0.1, 0.08, y + 5.4, 6, c, DL_MET); const ax = x - 2.6, az = z - 2.3; dBoxR(B, (x + ax) / 2, y + 5.3, (z + az) / 2, Math.hypot(2.6, 2.3) / 2, 0.05, y + 5.42, Math.atan2(-2.3, -2.6), c, DL_MET); dBoxR(B, ax, y + 4.5, az, 0.18, 0.18, y + 5.32, 0.7, dLin('#1a1b1e')); }
   else if (f.k === 'mailbox') { dCyl(B, x, y, z, 0.05, 0.05, y + 1.0, 5, dLin('#3a2a1e')); dBoxR(B, x, y + 1.0, z, 0.24, 0.12, y + 1.26, 0, dLin(f.col || '#2f4f6b')); }
-  else if (f.k === 'busstop') { const c = dLin('#4a4d52'); const L = x + 2.0; dBox(B, x, y, z, x + 0.08, y + 2.4, z + 0.08, c); dBox(B, x + 3.9, y, z, x + 3.98, y + 2.4, z + 0.08, c); dBox(B, x, y + 2.4, z - 0.1, x + 3.98, y + 2.5, z + 1.0, c); dBox(Gl, x + 0.08, y + 0.3, z, x + 3.9, y + 2.3, z + 0.05, [0.08, 0.12, 0.14]); dBox(B, x + 0.4, y + 0.42, z + 0.4, x + 3.5, y + 0.5, z + 0.8, c); void L; }
+  else if (f.k === 'busstop') { const c = dLin('#4a4d52'); const L = x + 2.0; dBox(B, x, y, z, x + 0.08, y + 2.4, z + 0.08, c, DL_MET); dBox(B, x + 3.9, y, z, x + 3.98, y + 2.4, z + 0.08, c, DL_MET); dBox(B, x, y + 2.4, z - 0.1, x + 3.98, y + 2.5, z + 1.0, c, DL_MET); dBox(Gl, x + 0.08, y + 0.3, z, x + 3.9, y + 2.3, z + 0.05, [0.08, 0.12, 0.14]); dBox(B, x + 0.4, y + 0.42, z + 0.4, x + 3.5, y + 0.5, z + 0.8, c); void L; }
   else if (f.k === 'newsbox') { dBox(B, x - 0.24, y, z - 0.2, x + 0.24, y + 1.05, z + 0.2, dLin(f.col || '#2f6fb0')); }
 }
 // shared geometries (built once): a tree's trunk and crown, a flame's quad
@@ -1055,6 +1189,7 @@ function depthRebase(x, y) {
 /* ---------- light, sky and weather each frame ---------- */
 const D_HAS3 = typeof THREE !== 'undefined', D_V = D_HAS3 ? new THREE.Vector3() : null, D_V2 = D_HAS3 ? new THREE.Vector3() : null, D_C = D_HAS3 ? new THREE.Color() : null, D_C2 = D_HAS3 ? new THREE.Color() : null;
 function depthAtmos(rdt) {
+  depthTileOffsets(); DU_GQ.value = DEPTH.lvl >= 1 ? 1 : 0;
   const S = DEPTH.scene, F = CORE.frame, sun = F.sun || {}, amb = LUX.amb || [1, 1, 1], day = LUX.day == null ? 1 : LUX.day, night = 1 - day;
   DEPTH.night = night; DU.uNight.value = clamp((night - 0.25) / 0.45 + (WX.dark || 0) * 0.3, 0, 1);
   DEPTH.wet = clamp(WX.wet || 0, 0, 1); DU.uWet.value = DEPTH.wet;
@@ -1093,7 +1228,7 @@ function depthAtmos(rdt) {
   // the sky's and the ground's light: the ambient colour of the lighting engine
   D_C.setRGB(amb[0] * 0.75 + 0.05, amb[1] * 0.8 + 0.06, amb[2] * 0.9 + 0.1);
   DEPTH.hemi.color.copy(D_C); D_C2.setRGB(amb[0] * 0.32, amb[1] * 0.29, amb[2] * 0.26); DEPTH.hemi.groundColor.copy(D_C2);
-  DEPTH.hemi.intensity = 0.2 + 0.56 * day * (1 - storm * 0.35) + night * 0.16;
+  DEPTH.hemi.intensity = 0.24 + 0.92 * day * (1 - storm * 0.35) + night * 0.16;   // (1.9.9991: the open sky lights a street in shadow more than it did)
   // fog: the haze of the city by day, the dark at night, thick in fog and dust, lighter in the frozen north
   const q = DQ[DEPTH.lvl], far = q.far * (1 - fog * 0.72) * (1 - dust * 0.6) * (1 - storm * 0.25);
   DEPTH.fogFar = far;
@@ -1119,7 +1254,7 @@ function depthAtmos(rdt) {
       DEPTH.envDay = day; DEPTH.envT = G.time || 0;
       const keep = [DEPTH.stars.visible, DEPTH.moon.visible]; DEPTH.stars.visible = false; DEPTH.moon.visible = false;
       const tmp = new THREE.Scene(); const sk2 = DEPTH.sky.clone(); sk2.position.set(0, 0, 0); tmp.add(sk2);
-      const rt = DEPTH.pmrem.fromScene(tmp, 0.02); if (DEPTH.env) DEPTH.env.dispose(); DEPTH.env = rt; S.environment = rt.texture; S.environmentIntensity = 0.15 + day * 0.55;
+      const rt = DEPTH.pmrem.fromScene(tmp, 0.02); if (DEPTH.env) DEPTH.env.dispose(); DEPTH.env = rt; S.environment = rt.texture; S.environmentIntensity = 0.2 + day * 0.7;
       DEPTH.stars.visible = keep[0]; DEPTH.moon.visible = keep[1];
     } catch (e) { coreHurt('DEPTH', e); }
   }
@@ -1247,7 +1382,7 @@ function depthLifeFrame() {
       const gy = fleshGroundY(p);
       if (p.down) put(p.k, x, gy + (p.k === 'can' ? 0.25 : 0.17), z, -(p.a || 0), Math.PI / 2); else put(p.k, x, gy, z, -(p.a || 0), 0);
     }
-    for (const b of WD.birds) {
+    if (!(typeof FAUNA !== 'undefined' && FAUNA.ok)) for (const b of WD.birds) {   // (FAUNA draws them when it is up)
       if (b.st > 1) continue; const x = dX(b.x), z = dZ(b.y), dx = x - piv[0], dz = z - piv[2]; if (dx * dx + dz * dz > far2) continue;
       const big = b.kind === 'vulture' ? 1.7 : b.kind === 'pigeon' ? 0.9 : 1;
       if (b.st === 0) put('bird', x, fleshGroundY(b) + 0.06, z, -(b.a || 0), 0, big * 0.9);
@@ -1333,6 +1468,7 @@ function depthRender() {
     // the lighting engine still decides the hour, the ambient, the sun and the list of lights (it draws nothing here)
     LUX.hour = luxHourNow(); luxAmbient(LUX.amb); luxSun(LUX.amb); LUX.live = SET.lux !== 'off';
     try { luxGather(cam.x - vr, cam.y - vr, cam.x + vr, cam.y + vr, G.rdt || 0.016); } catch (e) { }
+    if (typeof SURF !== 'undefined' && !SURF.ok && SURF.job) surfBake(DEPTH.R, true);
     hoverFrame(G.rdt || 0.016);
     depthStream();
     depthAtmos(G.rdt || 0.016);
@@ -1340,6 +1476,10 @@ function depthRender() {
     if (typeof fleshFrame === 'function') fleshFrame(G.rdt || 0.016);
     if (typeof sparkFrame === 'function') sparkFrame(G.rdt || 0.016);
     depthWeatherFrame(Math.min(0.05, G.rdt || 0.016));
+    if (typeof nimbusFrame === 'function') { try { nimbusFrame(Math.min(0.05, G.rdt || 0.016)); } catch (e) { coreHurt('NIMBUS', e); } }
+    if (typeof driftFrame === 'function') { try { driftFrame(Math.min(0.05, G.rdt || 0.016)); } catch (e) { coreHurt('DRIFT', e); } }
+    if (typeof floraFrame === 'function') { try { floraFrame(Math.min(0.05, G.rdt || 0.016)); } catch (e) { coreHurt('FLORA', e); } }
+    if (typeof faunaFrame === 'function') { try { faunaFrame(Math.min(0.05, G.rdt || 0.016)); } catch (e) { coreHurt('FAUNA', e); } }
     depthLifeFrame();
     depthJetsFrame();
     depthDynFrame();
@@ -1348,6 +1488,7 @@ function depthRender() {
     if (P.bloom) { P.bloom.strength = 0.22 * bloomK() + DEPTH.night * 0.14 + WX.flash * 0.4; P.bloom.threshold = 1.5 - DEPTH.night * 0.45; }
     if (P.grade) { const u = P.grade.uniforms; u.uTime.value = performance.now() / 1000; u.uVig.value = (SET.vig == null ? 50 : SET.vig) / 100 * (0.7 + DEPTH.night * 0.4); u.uGrain.value = SET.grain === false || !DQ[DEPTH.lvl].grain ? 0 : 0.028 + DEPTH.night * 0.03;
       const hf = G.hurtFlash || 0; u.uFlash.value.set(0.55, 0.02, 0.02, clamp(hf * 1.6, 0, 0.55)); if (G.flashA > 0) u.uFlash.value.set(1, 0.84, 0.6, Math.min(0.5, G.flashA)); }
+    if (P.fx) { try { depthFxFrame(P.fx); } catch (e) { P.fx.enabled = false; } }
     DEPTH.R.info.reset();
     if (DEPTH.comp) DEPTH.comp.render(); else DEPTH.R.render(DEPTH.scene, DEPTH.cam);
     DEPTH.calls = DEPTH.R.info.render.calls; DEPTH.tris = DEPTH.R.info.render.triangles;
@@ -1360,6 +1501,24 @@ function depthRender() {
   const ms = performance.now() - t0; DEPTH.ms = ms; DEPTH.msAvg = DEPTH.msAvg * 0.95 + ms * 0.05; coreCost('DEPTH', ms);
   depthGovern(ms);
   return true;
+}
+// (1.9.9991) LIGHTFX's uniforms: the depth the scene is about to be drawn with, the camera, where the sun is on the screen
+// and how strong its shafts are (low sun, thick air, a storm's towers in front of it; none at night or behind you)
+const DFX_V = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+function depthFxFrame(F) {
+  const u = F.uniforms, C = DEPTH.cam, comp = DEPTH.comp;
+  u.tDepth.value = comp.readBuffer.depthTexture; u.uPI.value.copy(C.projectionMatrixInverse); u.uP11.value = C.projectionMatrix.elements[5]; u.uTime.value = (performance.now() / 1000) % 100;
+  const rb = comp.readBuffer; u.uRes.value.set(rb.width, rb.height);
+  const sp = DEPTH.sky ? DEPTH.sky.material.uniforms.sunPosition.value : null; let k = 0;
+  if (sp && sp.y > -0.05 && DEPTH.night < 0.6) {
+    DFX_V.set(C.position.x + sp.x * 500, C.position.y + sp.y * 500, C.position.z + sp.z * 500).project(C);
+    const inFront = DFX_V.z < 1 && Math.abs(DFX_V.x) < 1.6 && Math.abs(DFX_V.y) < 1.6;
+    if (inFront) { u.uSun.value.set(DFX_V.x * 0.5 + 0.5, DFX_V.y * 0.5 + 0.5);
+      const low = 1 - wxSmooth(0.15, 0.55, sp.y), thick = clamp((WX.fog || 0) * 0.8 + (DU.uDust.value || 0) + (typeof NIMBUS !== 'undefined' ? NIMBUS.dark + NIMBUS.occl * 0.6 : 0) + (WX.cloud || 0) * 0.3, 0, 1.2);
+      k = (0.16 + 0.34 * low + 0.3 * thick) * (1 - DEPTH.night) * (1 - clamp((WX.storm || 0) * 0.8, 0, 0.9)) * wxSmooth(1.6, 1.0, Math.max(Math.abs(DFX_V.x), Math.abs(DFX_V.y))); }
+    if (DEPTH.sun) u.uSunC.value.copy(DEPTH.sun.color).multiplyScalar(0.55);
+  }
+  u.uSunK.value = SET.godrays === false ? 0 : k;
 }
 // the governor: frames running late step the level down (or the resolution), room to spare steps it back up
 function depthGovern(ms) {

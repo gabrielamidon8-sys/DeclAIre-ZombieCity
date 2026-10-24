@@ -431,6 +431,72 @@ const ENG_DOCS = {
     works: 'Reads the game\'s lists (bullets, particles, shots, hazards, splats, pickups, rings, blasts, smoke, holes), MUZZLE (smoke and brass), GORE (gibs), PHYSICS (magazines), LUX (flashes), WX (lightning), BLADE (cuts), BOSS (telegraphs); draws into DEPTH\'s scene at FLESH\'s muzzle and HOVER\'s aim.',
     runs: 'The graphics chip: four instanced draws.',
     tune: 'Nothing of its own.'
+  },
+  SURFACE: {
+    title: 'The Materials Lab',
+    character: 'A quiet chemist of grit. It has never seen a photograph and does not need one: brick, asphalt and bark are recipes to it, and it bakes them fresh every time the lights come on.',
+    does: 'HD materials for the 3D view (1.9.9991): seventeen surfaces (brick, concrete panels, stone, clapboard siding, stucco, logs, barn planks, asphalt, sidewalk slabs, grass, soil, roof gravel, corrugated metal, shingles, sand, painted metal, bark) baked on the graphics chip into texture arrays from tileable noise, cells and profiles: colour and roughness, a normal map, cavities, and how much of each takes the paint of what it covers (a brick takes the building\'s colour, its mortar stays grey). Every 3D surface samples them by name.',
+    adapts: 'Its size follows the device: 1024 pixels a tile on Ultra, 512 on most, 256 on the weakest.',
+    repairs: 'A bake that fails frees the arrays and the 3D view keeps its plain colours; its self-test checks the mortar against the brick, that the ground layers are baked and that every normal points out of its surface.',
+    learns: 'Nothing of its own.',
+    works: 'DEPTH (walls, roofs, the ground, the street\'s things), FACADE (trim, fences), FLORA (bark).',
+    runs: 'The graphics chip, once when the 3D view starts (a few milliseconds).',
+    tune: 'Through the 3D quality.'
+  },
+  FACADE: {
+    title: 'The Set Dresser',
+    character: 'Cannot walk past a blank wall. It hangs the signs, bolts on the fire escapes, strings the fences and leaves the posters and the graffiti a city collects, and it knows every storefront needs a name.',
+    does: 'The buildings remade for the 3D view: windows set back in the walls with sills, lintels and mullions, plinths, string courses and stepped cornices on masonry, storefront runs with pilasters, painted, lettered and neon shop signs (lit at night where there is power, some flickering, some dead) and striped awnings, fire escapes up the brick walk-ups, air conditioners in windows, water towers, roof units, antennas and billboards, porches and chimneys on houses, graffiti, the search crews\' X codes and posters; and the fences: chain-link round the courts and lots, board fences between yards, white pickets, iron railings and split-rail on the ranches, cut-out panels that cast their pattern as shadow.',
+    adapts: 'The near blocks get the detail (fire escapes, air conditioners, porches); the far ones the outline.',
+    repairs: 'Its atlases are repainted if they go missing; a block it fails on is built plain.',
+    learns: 'Nothing of its own.',
+    works: 'DEPTH (it builds into each block), SURFACE (its materials), DRIFT (sheets and flags it hangs, chimneys that smoke).',
+    runs: 'The processor while a block is built; the signs and fences one draw each per block.',
+    tune: 'Through the 3D quality.'
+  },
+  FLORA: {
+    title: 'The Greensman',
+    character: 'A gardener who prunes every leaf by hand and talks to the wind. Spruces in tiers, oaks in full crowns, and grass that lies down when you walk through it.',
+    does: 'Trees, bushes and grass in 3D: trees by kind at their real size (trunks in bark, limbs, twigs, crowns of painted leaf clusters lit through from behind, spruces in tiers of drooping needle fronds), swaying and fluttering with the wind and the gusts (and the gust front of a coming storm), bare in winter, red and gold in the fall, blossom in spring, burnt in the burning districts; bushes of small leaves; a field of grass blades round the camera wherever the ground is green, short on lawns, long on the lots, browned late in the year, under the snow in winter, wildflowers in spring and summer, waves of wind across it, parting round your feet.',
+    adapts: 'Fewer trees and clumps and a smaller grass field at the lower levels; no grass at the lowest.',
+    repairs: 'Its leaf atlas is repainted if it goes missing; a block it fails on falls back to the old plants.',
+    learns: 'Nothing of its own.',
+    works: 'DEPTH (the blocks and the scene), SURFACE (bark), WX and NIMBUS (the wind, the gusts, the outflow of a storm).',
+    runs: 'The graphics chip (the wind in the vertex shader; the grass one instanced draw), the processor while a block is built.',
+    tune: 'Through the 3D quality.'
+  },
+  FAUNA: {
+    title: 'The Animal Wrangler',
+    character: 'Knows every stray by name and every deer\'s habits. It keeps them wary, keeps them out of the line of fire, and lets them bolt the moment anything that walks or shoots comes near.',
+    does: 'The animals of the 3D world: stray dogs and cats, foxes at night, deer at dawn and dusk, rabbits, squirrels under the trees, ducks on the water, the crows and pigeons on the ground, flocks crossing the sky and starlings wheeling at dusk. Each grazes, sniffs, sits and wanders, looks up when you come near, and bolts from you, the dead and gunfire; dogs bark at the dead; thunder scatters the flocks. Every kind is one instanced draw, its legs, head, tail and wings moved on the graphics chip. Scenery: bullets pass them by, and each player sees their own.',
+    adapts: 'How many follows the 3D level; no flocks on the weakest.',
+    repairs: 'It frees and rebuilds its meshes; its self-test builds every body and runs a dog through a scare.',
+    learns: 'Nothing of its own.',
+    works: 'DEPTH (the scene), WX (rain sends them under cover), LUX (the hour), the gun\'s report (through the crowd engine\'s hearing), the sound engine (barks).',
+    runs: 'The processor (a small state machine each), the graphics chip (the gaits).',
+    tune: 'Through the 3D quality.'
+  },
+  NIMBUS: {
+    title: 'The Storm Chaser',
+    character: 'Spends its life on the horizon. It sees the anvil before anyone, counts the seconds after every flash, and loves the moment the light goes green-grey and the wind turns.',
+    does: 'The 3D sky and storms you can watch coming: billowing cumulus lit through its depth toward the sun with silver linings, cirrus high above in fair weather, clouds lit from inside by lightning; the towers of the coming thunderstorm, squall line or showers rising far upwind and drifting in timed to the weather (the weather engine now decides what comes next), anvils spreading, rain shafts to the ground, lightning flickering inside and forking down, the thunder arriving as late and as dull as the distance says and from its side, the sky darkening and the anvil swallowing the sun as it comes, then passing on; distant summer storms on the horizon that never come.',
+    adapts: 'Four towers at most; the puffs on High and up, plainer towers on Medium, none on Low.',
+    repairs: 'Its sky material is put back if anything replaces it; its self-test sets a storm on the horizon and watches it arrive.',
+    learns: 'Nothing of its own.',
+    works: 'DEPTH (the sky dome, the sun and the ambient), WX (what comes next, the wind, the flash), the sound engine (thunder by distance and side), FLORA (the gust front), LIGHTFX (sun shafts round its towers).',
+    runs: 'The graphics chip (one sky shader), the processor for the towers.',
+    tune: 'Settings > Graphics > Weather.'
+  },
+  DRIFT: {
+    title: 'The Wind Machine Operator',
+    character: 'Stands just off set with a fan and a smoke machine. Nothing moves until it says so, and then everything does: the sheets, the flags, the smoke off every chimney and every burning roof.',
+    does: 'What the wind moves in the 3D view: smoke from the chimneys of houses where someone holds out, thick dark columns from burning buildings and street fires, leaning downwind and lit orange from below; survivors\' sheets hung out of windows (SOS, HELP US) billowing off the walls; flags and banners on the roofs rippling and snapping in the wind.',
+    adapts: 'Its smoke pool follows the 3D level (none at the lowest) and is shared among the nearest fires and chimneys.',
+    repairs: 'It frees and repaints its atlases; its self-test weaves a sheet and a flag and raises a puff.',
+    learns: 'Nothing of its own.',
+    works: 'DEPTH (the scene and the light), FACADE (where the sheets, flags and chimneys are), WX (the wind, the rain).',
+    runs: 'The graphics chip (cloth in the vertex shader, smoke one instanced draw), the processor for the puffs.',
+    tune: 'Through the 3D quality.'
   }
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = ENG_DOCS;
